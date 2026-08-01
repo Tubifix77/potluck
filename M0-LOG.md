@@ -1451,3 +1451,29 @@ Unchanged: the architecture document's own safety line (decision-closed, and the
 behind it — the original vision documents claimed sub-millisecond safety loops over radio) and
 CLAUDE.md's internal rule, which is a scope constraint on sessions working in this repo, not user
 advice. The owner's principle, recorded for future prose: **state contracts, not conduct.**
+
+---
+
+## Paused — 2026-08-01, awaiting hardware
+
+The owner closed the project down until at least one ESP32-S3 (preferably two) is on a USB cable.
+The right call, and the log should say why it is a pause and not a stall: **everything buildable
+without silicon is built, verified against the real firmware under emulation, and public** — and the
+next unit of work is §13-M0's acceptance soak, which is definitionally a bench activity. Building
+past it would allocate into a memory budget whose one open [MEASURE] item (the Wi-Fi stack's real
+DRAM cost) is the very thing the bench measures first.
+
+State at pause, in the project's own currency: **19 gates green, 0 of 9 milestones accepted.**
+Public at https://github.com/Tubifix77/potluck — Apache-2.0 + NOTICE, and a README whose milestone
+table is the promise to keep.
+
+The resumption path is **WHEN-THE-BOARDS-ARRIVE.md** — hour one, the one-board programme (Wi-Fi DRAM
+measurement, serial link on real wires, formally closing M2 with the ten-minute capture), the
+two-board programme (the first radio heartbeat this project will ever exchange, the soak, the
+failure drills, M1's UNAVAILABLE test), the sharp edges, and what not to do while the soak runs.
+CLAUDE.md and the README both point at it.
+
+Seven sessions, one day: a spec became firmware, the firmware became measurable, two conclusions
+were withdrawn in public, a Greek letter lost a fight with five toolchains, and the project got a
+name you can say at a dinner table. The next entry in this log should begin with a number measured
+off real silicon.

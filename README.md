@@ -177,6 +177,7 @@ With boards on the bench, the same tool talks over `--port COM7` with none of th
 
 | file | what it is |
 |---|---|
+| [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md) | The resumption path. The project is paused until hardware arrives; this is hour one at the bench, with one board and with two |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the eight decision records, and milestones M0–M8 with accept/kill criteria |
 | [M0-LOG.md](M0-LOG.md) | The decision log, newest session last — including the conclusions that were later **withdrawn**, kept struck-through rather than deleted. The QEMU sessions are a study in how a stale flash image manufactures false evidence |
 | [M0-RUNBOOK.md](M0-RUNBOOK.md) | Bench procedure: build, flash, emulate, soak, and the delay methodology to read *before quoting any number* |

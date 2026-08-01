@@ -13,6 +13,11 @@ Code state: M0 firmware complete and M1/M2 verified against real firmware under 
 yet *accepted*** — §13-M0's acceptance table needs two boards and a radio, which is the only thing
 now blocked on hardware.
 
+**The project is paused (2026-08-01) until at least one ESP32-S3 is on a USB cable.** If hardware
+has arrived, start at **[WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md)** — it is the
+resumption path, written for a reader who remembers nothing. Do not start M3+ in the meantime; the
+reasons are in that file and in M0-LOG.md Session 6.
+
 ## The name
 
 **The project was called dμOS until 2026-08-01.** The Greek mu broke five separate tools (Xtensa GCC's
