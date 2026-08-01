@@ -51,18 +51,30 @@ project name.)
 
 ## Honest status — read this before judging anything else
 
-This project's standing rule is that a number without a source is a defect, so here is exactly where
-it stands as of **2026-08-01**:
+Work is organised as **nine falsifiable milestones, M0–M8** — every "M-number" in this README is one
+of them. Each has an acceptance test that can fail and a kill criterion (both spelled out in
+[ARCHITECTURE.md](ARCHITECTURE.md)); a milestone counts as *built* when the code exists, and
+*accepted* only when its test has passed on real hardware. Where they stand as of **2026-08-01**:
 
-| | state |
+| milestone | in one line | state |
+|---|---|---|
+| **M0** — two boards, one heartbeat | frame codec, membership, measured PDR + round-trip delay | **built**, runs under QEMU — **not accepted: two physical boards have never exchanged a heartbeat.** The 24-hour soak needs boards and a radio, and QEMU emulates neither. The boards are in the mail |
+| **M1** — one remote read | the namespace; typed, staleness-checked reads | **built**, exercised against the real firmware under emulation |
+| **M2** — host in the loop | `potctl`, capture, replay | **built**; a captured session replays to byte-identical namespace state, checked by digest |
+| **M3** — deploy and detach | A/B slots, signed manifests, automatic revert | not started |
+| **M4** — locality contract enforced | build-time placement checker; CAN transport | not started |
+| **M5** — signed everything | cluster CA, node enrolment, frame auth | not started |
+| **M6** — reconciler | failure-driven actor re-placement | not started; gated on M5 |
+| **M7** — WASM tier | untrusted / hot-swappable code | gated: only if a named workload ever needs it |
+| **M8** — host services | `potluck-agent`, host-side `svc/*` | not started; gated on M5 |
+
+Beneath the milestones, the standing figures:
+
+| | |
 |---|---|
 | Architecture | decision-closed v1, eight ADRs with revisit triggers ([ARCHITECTURE.md](ARCHITECTURE.md)) |
-| M0 firmware (frame codec, heartbeats, membership, link stats) | **built**, runs under QEMU emulation |
-| M1 namespace (`READ`/`WRITE`/`REPLY`, staleness, six built-in resources) | **built and exercised against the real firmware** under emulation |
-| M2 host bridge (`potctl`, capture, replay) | **built**; replay proven to rebuild byte-identical namespace state from a captured session, gate and all |
 | Test gates | **19 green**: 158 C++ cases / 36,536 checks, 133 Python cases, three independent wire-format implementations agreeing byte-for-byte over generated corpora, AddressSanitizer, a strict-GCC portability gate, and the firmware build with its memory-budget check |
 | Static memory | **53,118 B** of the 64 KB core cap, measured per build |
-| **M0 *accepted*** | **No. Two physical boards have never exchanged a heartbeat.** The acceptance table (24-hour soak, measured PDR, round-trip delay histogram, Wi-Fi DRAM) needs boards and a radio, and QEMU emulates neither. The boards are in the mail. |
 
 Nothing above claims a measurement that was not made. Emulated runs stamp `"no_radio":1` on every
 statistics line precisely so they can never be mistaken for the soak.
