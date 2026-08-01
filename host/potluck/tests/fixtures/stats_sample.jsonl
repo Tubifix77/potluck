@@ -1,0 +1,15 @@
+{"t":"boot","node":258,"epoch":42,"mac":"24:6f:28:00:11:22","espnow_ver":2,"chan":1,"hb_period_ms":100,"hb_miss_limit":6,"fw":"m0","idf":"v6.0.2","dram":{"at_boot":300000,"after_nvs":296000,"after_netif":292000,"after_wifi_init":260000,"after_wifi_start":258000,"after_espnow":256000,"largest_block":110000,"wifi_stack":34000,"espnow":2000,"total_to_radio":44000}}
+{"t":"link","up_ms":123456,"node":258,"peer":52719,"mac":"24:6f:28:ab:cd:ef","state":"alive","epoch":17,"espnow_ver":2,"mtu":1446,"misses":1,"rssi":-67,"tx":{"frames":1000,"cb_ok":990,"cb_fail":8,"enqueue_err":2,"pdr_ppm":991983},"rx":{"frames":950,"lost_seqgap":50,"reorder_dup":3,"dropped_bad":1,"hb_lost":40,"pdr_ppm":950000},"rtt":{"samples":4,"min_us":2600,"max_us":51000,"timeouts":2,"txq_last_us":900,"txq_max_us":1500,"remote_turnaround_us":320,"remote_turnaround_max_us":640,"p50_us":[2000,3000],"p99_us":[42000,60000],"hist":[0,0,2,0,1,0,0,0,0,0,0,1,0,0,0,0]}}
+{"t":"link","up_ms":200,"node":258,"peer":9,"mac":"00:00:00:00:00:00","state":"known","epoch":0,"espnow_ver":0,"mtu":226,"misses":0,"rssi":0,"tx":{"frames":0,"cb_ok":0,"cb_fail":0,"enqueue_err":0,"pdr_ppm":null},"rx":{"frames":0,"lost_seqgap":0,"reorder_dup":0,"dropped_bad":0,"hb_lost":0,"pdr_ppm":null},"rtt":{"samples":0,"min_us":null,"max_us":null,"timeouts":0,"txq_last_us":0,"txq_max_us":0,"remote_turnaround_us":0,"remote_turnaround_max_us":0,"p50_us":null,"p99_us":null,"hist":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}}
+{"t":"node","up_ms":60000,"node":258,"epoch":42,"peers_alive":1,"peers_dead":1,"no_radio":0,"free_dram":200000,"largest_block":100000,"rx":{"total":5000,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":5100,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":2,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+{"t":"event","at_ms":601,"node":258,"kind":"peer_discovered","peer":52719,"slot":0,"a":1,"b":600}
+{"t":"event","at_ms":602,"node":258,"kind":"peer_admitted","peer":52719,"slot":0,"a":2,"b":600}
+{"t":"event","at_ms":603,"node":258,"kind":"peer_alive","peer":52719,"slot":0,"a":3,"b":600}
+{"t":"event","at_ms":604,"node":258,"kind":"peer_dead","peer":52719,"slot":0,"a":4,"b":600}
+{"t":"event","at_ms":605,"node":258,"kind":"peer_revived","peer":52719,"slot":0,"a":5,"b":600}
+{"t":"event","at_ms":606,"node":258,"kind":"peer_rebooted","peer":52719,"slot":0,"a":6,"b":600}
+{"t":"event","at_ms":607,"node":258,"kind":"peer_left","peer":52719,"slot":0,"a":7,"b":600}
+{"t":"event","at_ms":608,"node":258,"kind":"bad_frame","peer":52719,"slot":0,"a":8,"b":600}
+{"t":"event","at_ms":609,"node":258,"kind":"tx_error","peer":52719,"slot":0,"a":9,"b":600}
+{"t":"event","at_ms":610,"node":258,"kind":"probe_timeout","peer":52719,"slot":0,"a":10,"b":600}
+{"t":"event","at_ms":611,"node":258,"kind":"version_pinned","peer":52719,"slot":0,"a":11,"b":600}

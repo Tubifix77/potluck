@@ -1,0 +1,166 @@
+menu "Potluck M0"
+
+config POT_NODE_ID
+    int "Node id (0 = derive from the low two bytes of the station MAC)"
+    range 0 65534
+    default 0
+    help
+        Potluck Frame node id, ARCHITECTURE.md section 5.1. 0x0000 means unprovisioned and 0xFFFF is
+        broadcast, so neither is selectable here.
+
+        Leaving this at 0 derives the id from the board's own MAC, which means the same binary can
+        be flashed to both M0 boards and they will still have distinct ids. That is deliberate: a
+        soak that requires two different builds is a soak where the two boards can differ in ways
+        nobody intended.
+
+config POT_CHANNEL
+    int "Wi-Fi channel"
+    range 1 14
+    default 1
+    help
+        Every node must be on the same channel: ESP-IDF requires a peer's channel to match the
+        channel the local device is on.
+
+config POT_HB_PERIOD_MS
+    int "Heartbeat period in milliseconds"
+    range 20 5000
+    default 100
+    help
+        ARCHITECTURE.md section 8.2 fixes this at 100 ms for ESP-NOW, with death declared after 6
+        misses (600 ms). Section 8.2 also shows that any wireless liveness timeout below ~150 ms
+        is provably wrong, so shortening the derived death window below that is a measurement of
+        false disconnects rather than of the link.
+
+config POT_HB_MISS_LIMIT
+    int "Heartbeat misses before a peer is declared dead"
+    range 2 60
+    default 6
+
+choice POT_BEACON_MODE
+    prompt "How liveness is carried"
+    default POT_BEACON_BROADCAST
+    help
+        ARCHITECTURE.md section 8.2 fixes the heartbeat timings but says nothing about how the
+        beacon reaches its peers, and the difference decides whether a cell fits its channel.
+
+config POT_BEACON_BROADCAST
+    bool "Broadcast beacon + round-robin unicast probe (O(N))"
+    help
+        One broadcast beacon per node per period carries liveness to every peer, and RTT/PDR ride
+        a separate round-robin unicast probe at their own slower interval. Section 8.2's period,
+        miss limit and 600 ms death declaration are unchanged.
+
+        A 20-node cell costs about 240 frames/s this way, against 7600 for unicast full mesh.
+
+config POT_BEACON_UNICAST
+    bool "Unicast full mesh (O(N^2)) - does not scale, kept for comparison"
+    help
+        A probe to every peer every period, each answered immediately: 2*N*(N-1) frames per period.
+        This is what M0 originally shipped, and with two boards it is indistinguishable from
+        correct. At seven nodes it needs about 840 frames/s, which does not fit a 1 Mbit/s channel
+        once real PHY overhead is counted.
+
+        Select it only to reproduce the saturation on hardware. sim/ models it too.
+
+endchoice
+
+config POT_PROBE_INTERVAL_MS
+    int "Round-robin unicast probe interval, in milliseconds"
+    depends on POT_BEACON_BROADCAST
+    range 100 60000
+    default 1000
+    help
+        How often each node probes one peer for RTT and ACK-based PDR. This is a diagnostic rather
+        than a liveness signal, so it need not be the heartbeat period: at one second a 20-node
+        cell still collects over 4000 samples per link across a 24-hour soak.
+
+config POT_STATS_INTERVAL_MS
+    int "Interval between serial statistics dumps, in milliseconds"
+    range 1000 600000
+    default 10000
+
+config POT_HELLO_INTERVAL_MS
+    int "Interval between broadcast HELLO announcements, in milliseconds"
+    range 200 60000
+    default 2000
+    help
+        Broadcast until a peer answers, then keep announcing at this rate so that a peer which
+        rebooted is rediscovered without anyone touching the boards.
+
+config POT_BYE_BUTTON_GPIO
+    int "GPIO that sends BYE and leaves the mesh while held low (-1 disables)"
+    range -1 39
+    default 0
+    help
+        GPIO0 is the BOOT button on most ESP32 development boards. Pressing it makes the node
+        announce an intentional departure (opcode BYE) and stop heartbeating, which is the only
+        way to exercise the difference between "left" and "dead" without unplugging a board.
+        Press again to rejoin.
+
+config POT_LONG_RANGE
+    bool "Enable the ESP-NOW long-range PHY"
+    default n
+    help
+        Off by default. ARCHITECTURE.md section 3's measurements are 802.11b/g at 1 Mbit/s, and a
+        bench figure taken with a different PHY is not comparable to them.
+
+config POT_RADIO_DISABLE
+    bool "Build without the radio (emulation / serial-only bring-up)"
+    default n
+    help
+        Skips Wi-Fi and ESP-NOW entirely. The node still boots, reads its boot epoch, declares its
+        namespace and serves the frame link over UART.
+
+        This exists because QEMU emulates the ESP32-S3's CPU, memory and UARTs but has no Wi-Fi
+        device: esp_wifi_start() enters PHY calibration and never returns, so a normal build hangs
+        rather than failing. It is also the right build for bringing up a serial link on a bench
+        before any radio work.
+
+        A node built this way reports "no_radio":1 on every statistics line, so no run from it can
+        be mistaken for the measured soak section 13-M0 asks for.
+
+config POT_SERIAL_LINK
+    bool "Frame link to a host over UART1 (potluck-bridge)"
+    default y
+    help
+        ARCHITECTURE.md section 7.1's potluck-bridge speaks Potluck Frames over a serial link. This is the
+        node's end of it: COBS + CRC-16 framing on a UART separate from the console, so binary
+        frames and human-readable logs cannot corrupt each other.
+
+        The host appears as an ordinary peer with a reserved MAC, so membership, the namespace and
+        section 4's read contract treat it exactly like a radio peer. Section 8.1 says a mode
+        transition is a non-event, which only holds if a host is not a special case.
+
+        Costs a UART, two GPIOs and about 8 KB. Turn it off for a pure Mode C node.
+
+config POT_SERIAL_TX_GPIO
+    int "Frame-link UART TX pin"
+    depends on POT_SERIAL_LINK
+    default 17
+    help
+        On the ESP32-S3-DevKitC-1 N16R8, GPIO 33-37 are consumed by the octal PSRAM even when PSRAM
+        is disabled in software, so they are avoided here. 17 and 18 are free on that board.
+
+config POT_SERIAL_RX_GPIO
+    int "Frame-link UART RX pin"
+    depends on POT_SERIAL_LINK
+    default 18
+
+config POT_SERIAL_BAUD
+    int "Frame-link UART baud rate"
+    depends on POT_SERIAL_LINK
+    default 921600
+
+config POT_FRAME_TEE
+    bool "Tee every frame to the serial console as hex"
+    default n
+    help
+        Emits one line per frame, in both directions, so host/potluck can record them in
+        ARCHITECTURE.md section 7.6's capture format and replay them later.
+
+        Off by default, and that default is a measurement decision rather than caution: at a 100 ms
+        heartbeat with a probe and a reply in each direction this is roughly 40 lines per second of
+        about 150 bytes, and the console UART's cost would land inside the very timing the soak is
+        measuring. Turn it on to debug the wire, off to measure the link.
+
+endmenu

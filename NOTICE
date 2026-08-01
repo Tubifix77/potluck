@@ -1,0 +1,13 @@
+Potluck — S3 Edition
+Copyright 2026 Tue Wincentz Boas
+
+This product was created by Tue Wincentz Boas (https://github.com/Tubifix77/potluck).
+
+Under section 4(d) of the Apache License 2.0, redistributions of this work or of
+derivative works must include a readable copy of the attribution notices in this
+NOTICE file. In plain words: if you ship this, or something built from it, this
+acknowledgement travels with it.
+
+Measured ESP-NOW link figures cited in ARCHITECTURE.md come from:
+  Becker, Oberli, Zobel, Steinmetz & Meuser,
+  "ESP-NOW Performance in Outdoor Environments", IEEE/IFIP WONS 2025.

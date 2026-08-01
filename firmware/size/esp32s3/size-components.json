@@ -1,0 +1,6078 @@
+{
+    "D:/esp/esp-idf/components/esp_wifi/lib/esp32s3/libnet80211.a": {
+        "abbrev_name": "libnet80211.a",
+        "size": 143533,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 117558,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 117558,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 13476,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 13476,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 12499,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 7677,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".iram0.text": {
+                        "size": 3884,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 938,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/mbedtls/mbedtls/tf-psa-crypto/core/libtfpsacrypto.a": {
+        "abbrev_name": "libtfpsacrypto.a",
+        "size": 95567,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 79152,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 79152,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 15763,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 15763,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 572,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 444,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 128,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 80,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 80,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/wpa_supplicant/libwpa_supplicant.a": {
+        "abbrev_name": "libwpa_supplicant.a",
+        "size": 67114,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 63905,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 63905,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 1838,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 1838,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 1371,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 1363,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 8,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "D:/esp/esp-idf/components/esp_wifi/lib/esp32s3/libpp.a": {
+        "abbrev_name": "libpp.a",
+        "size": 65312,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 42776,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 42776,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 18582,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 14708,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 2640,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 1234,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 3954,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 3954,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/lwip/liblwip.a": {
+        "abbrev_name": "liblwip.a",
+        "size": 64913,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 59535,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 59535,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 2896,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 2896,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 2482,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 2470,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 12,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_stdio/libesp_stdio.a": {
+        "abbrev_name": "libesp_stdio.a",
+        "size": 53934,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Data": {
+                "size": 53524,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 53524,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 394,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 394,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 16,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 16,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "D:/esp/esp-idf/components/esp_phy/lib/esp32s3/libphy.a": {
+        "abbrev_name": "libphy.a",
+        "size": 34387,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 27866,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 27866,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 4497,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 3134,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 1277,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 86,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 2024,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 2024,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/pot_espnow/libpot_espnow.a": {
+        "abbrev_name": "libpot_espnow.a",
+        "size": 33041,
+        "size_diff": 0,
+        "memory_types": {
+            "DIRAM": {
+                "size": 30382,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 30362,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 20,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 2649,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 2649,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 10,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 10,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/main/libmain.a": {
+        "abbrev_name": "libmain.a",
+        "size": 26120,
+        "size_diff": 0,
+        "memory_types": {
+            "DIRAM": {
+                "size": 22736,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 22736,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 3296,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 3296,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 88,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 88,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_hw_support/libesp_hw_support.a": {
+        "abbrev_name": "libesp_hw_support.a",
+        "size": 23425,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 14384,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 14384,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 5343,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 4646,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 540,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 157,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 2517,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 2517,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 1121,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 1121,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 36,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 36,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 24,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 24,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/spi_flash/libspi_flash.a": {
+        "abbrev_name": "libspi_flash.a",
+        "size": 20765,
+        "size_diff": 0,
+        "memory_types": {
+            "DIRAM": {
+                "size": 17085,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 9285,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 7776,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 24,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 1274,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 1274,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 1264,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1264,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 1142,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 1142,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/freertos/libfreertos.a": {
+        "abbrev_name": "libfreertos.a",
+        "size": 20554,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 9753,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 9753,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 8828,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 4956,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 3108,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 764,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 1633,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 1633,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 340,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 340,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_system/libesp_system.a": {
+        "abbrev_name": "libesp_system.a",
+        "size": 13779,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 9232,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 9232,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 2456,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 2456,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 1411,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 661,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 433,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 317,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 680,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 680,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/nvs_flash/libnvs_flash.a": {
+        "abbrev_name": "libnvs_flash.a",
+        "size": 13105,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 12945,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 12945,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 136,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 136,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 24,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 24,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_driver_uart/libesp_driver_uart.a": {
+        "abbrev_name": "libesp_driver_uart.a",
+        "size": 10824,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 9958,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 9958,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 505,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 505,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 361,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.data": {
+                        "size": 328,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 33,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/heap/libheap.a": {
+        "abbrev_name": "libheap.a",
+        "size": 9164,
+        "size_diff": 0,
+        "memory_types": {
+            "DIRAM": {
+                "size": 4340,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 4328,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.bss": {
+                        "size": 8,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 4,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 2662,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 2662,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 1276,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 1276,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 886,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 886,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "C:/Users/tuebo/.espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/../xtensa-esp-elf/../picolibc/xtensa-esp-elf/lib/esp32s3/no-rtti\\libc.a": {
+        "abbrev_name": "libc.a",
+        "size": 8569,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 7585,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 7585,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 980,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 980,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 4,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.data": {
+                        "size": 4,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/pot_link/libpot_link.a": {
+        "abbrev_name": "libpot_link.a",
+        "size": 8531,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 8437,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 8437,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 94,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 94,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_hal_mspi/libesp_hal_mspi.a": {
+        "abbrev_name": "libesp_hal_mspi.a",
+        "size": 5584,
+        "size_diff": 0,
+        "memory_types": {
+            "DIRAM": {
+                "size": 4937,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 4901,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 36,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 559,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 559,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 88,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 88,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_driver_gpio/libesp_driver_gpio.a": {
+        "abbrev_name": "libesp_driver_gpio.a",
+        "size": 4877,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 4284,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 4284,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 557,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 557,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 36,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.data": {
+                        "size": 36,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_ringbuf/libesp_ringbuf.a": {
+        "abbrev_name": "libesp_ringbuf.a",
+        "size": 4521,
+        "size_diff": 0,
+        "memory_types": {
+            "DIRAM": {
+                "size": 2122,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 2122,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 1682,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1682,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 537,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 537,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 180,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 180,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "D:/esp/esp-idf/components/esp_wifi/lib/esp32s3/libespnow.a": {
+        "abbrev_name": "libespnow.a",
+        "size": 4176,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 4105,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 4105,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 71,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 64,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 7,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_libc/libesp_libc.a": {
+        "abbrev_name": "libesp_libc.a",
+        "size": 3939,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1471,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1471,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 1442,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 570,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.bss": {
+                        "size": 540,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 332,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 874,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 874,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 152,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 136,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 16,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/xtensa/libxtensa.a": {
+        "abbrev_name": "libxtensa.a",
+        "size": 3694,
+        "size_diff": 0,
+        "memory_types": {
+            "IRAM": {
+                "size": 2023,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 1596,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 427,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 1524,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.data": {
+                        "size": 1060,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 464,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 99,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 99,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 48,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 48,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_wifi/libesp_wifi.a": {
+        "abbrev_name": "libesp_wifi.a",
+        "size": 3294,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1764,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1764,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 760,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 760,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 567,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.data": {
+                        "size": 480,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 81,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.bss": {
+                        "size": 6,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 203,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 203,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/vfs/libvfs.a": {
+        "abbrev_name": "libvfs.a",
+        "size": 3248,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 2873,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 2873,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 236,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.data": {
+                        "size": 192,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 44,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 139,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 139,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_phy/libesp_phy.a": {
+        "abbrev_name": "libesp_phy.a",
+        "size": 2977,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 2393,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 2393,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 299,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 299,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 196,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 144,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.bss": {
+                        "size": 43,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 9,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 89,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 89,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_mm/libesp_mm.a": {
+        "abbrev_name": "libesp_mm.a",
+        "size": 2835,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1897,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1897,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 403,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 403,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 369,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 234,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 87,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 48,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 166,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 166,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/pot_ns/libpot_ns.a": {
+        "abbrev_name": "libpot_ns.a",
+        "size": 2660,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 2566,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 2566,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 94,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 94,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/hal/libhal.a": {
+        "abbrev_name": "libhal.a",
+        "size": 2588,
+        "size_diff": 0,
+        "memory_types": {
+            "DIRAM": {
+                "size": 2186,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 1907,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 274,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 5,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 402,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 402,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_timer/libesp_timer.a": {
+        "abbrev_name": "libesp_timer.a",
+        "size": 2543,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1373,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1373,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 823,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 755,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.bss": {
+                        "size": 36,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 32,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 248,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 248,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 99,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 99,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_driver_dma/libesp_driver_dma.a": {
+        "abbrev_name": "libesp_driver_dma.a",
+        "size": 2344,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 2163,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 2163,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 102,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 102,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 79,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 67,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 12,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_hal_gpio/libesp_hal_gpio.a": {
+        "abbrev_name": "libesp_hal_gpio.a",
+        "size": 2152,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Data": {
+                "size": 1281,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 1281,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 871,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 871,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/pot_frame/libpot_frame.a": {
+        "abbrev_name": "libpot_frame.a",
+        "size": 2038,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1526,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1526,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 512,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 512,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_hal_security/libesp_hal_security.a": {
+        "abbrev_name": "libesp_hal_security.a",
+        "size": 1933,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1901,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1901,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 32,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 32,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_driver_usb_serial_jtag/libesp_driver_usb_serial_jtag.a": {
+        "abbrev_name": "libesp_driver_usb_serial_jtag.a",
+        "size": 1886,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1570,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1570,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 141,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 141,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 102,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 102,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 73,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.data": {
+                        "size": 56,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 17,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/efuse/libefuse.a": {
+        "abbrev_name": "libefuse.a",
+        "size": 1814,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1091,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1091,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 433,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 433,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 280,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.data": {
+                        "size": 276,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 4,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 10,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 10,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_partition/libesp_partition.a": {
+        "abbrev_name": "libesp_partition.a",
+        "size": 1784,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1608,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1608,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 168,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 168,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 8,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 8,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_common/libesp_common.a": {
+        "abbrev_name": "libesp_common.a",
+        "size": 1772,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Data": {
+                "size": 1726,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 1726,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 46,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 46,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/log/liblog.a": {
+        "abbrev_name": "liblog.a",
+        "size": 1691,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 916,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 916,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 703,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 419,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.bss": {
+                        "size": 276,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 8,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 48,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 48,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 24,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 24,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_hal_dma/libesp_hal_dma.a": {
+        "abbrev_name": "libesp_hal_dma.a",
+        "size": 1636,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1137,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1137,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 499,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 495,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 4,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_event/libesp_event.a": {
+        "abbrev_name": "libesp_event.a",
+        "size": 1549,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1488,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1488,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 57,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 57,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 4,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 4,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "C:/Users/tuebo/.espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/../xtensa-esp-elf/../picolibc/xtensa-esp-elf/lib/esp32s3/no-rtti\\libstdc++.a": {
+        "abbrev_name": "libstdc++.a",
+        "size": 1490,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1270,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1270,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 199,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 199,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 21,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 17,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 4,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_security/libesp_security.a": {
+        "abbrev_name": "libesp_security.a",
+        "size": 1389,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 1365,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 1365,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 16,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 16,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 8,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 8,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/pthread/libpthread.a": {
+        "abbrev_name": "libpthread.a",
+        "size": 1039,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 930,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 930,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 89,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 89,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 20,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.data": {
+                        "size": 16,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 4,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_hal_uart/libesp_hal_uart.a": {
+        "abbrev_name": "libesp_hal_uart.a",
+        "size": 1011,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 927,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 927,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 84,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 84,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/bootloader_support/libbootloader_support.a": {
+        "abbrev_name": "libbootloader_support.a",
+        "size": 951,
+        "size_diff": 0,
+        "memory_types": {
+            "IRAM": {
+                "size": 881,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 881,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 40,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 40,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 30,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 30,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_app_format/libesp_app_format.a": {
+        "abbrev_name": "libesp_app_format.a",
+        "size": 753,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 479,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 479,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 264,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.appdesc": {
+                        "size": 256,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    },
+                    ".flash.rodata": {
+                        "size": 8,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 10,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 10,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/soc/libsoc.a": {
+        "abbrev_name": "libsoc.a",
+        "size": 650,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Data": {
+                "size": 620,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 620,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 30,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 30,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_rom/libesp_rom.a": {
+        "abbrev_name": "libesp_rom.a",
+        "size": 513,
+        "size_diff": 0,
+        "memory_types": {
+            "DIRAM": {
+                "size": 383,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 379,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.data": {
+                        "size": 4,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 66,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 66,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 64,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 64,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_hal_ana_conv/libesp_hal_ana_conv.a": {
+        "abbrev_name": "libesp_hal_ana_conv.a",
+        "size": 473,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 364,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 364,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 100,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 100,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 9,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.data": {
+                        "size": 9,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "D:/esp/esp-idf/components/xtensa/esp32s3/libxt_hal.a": {
+        "abbrev_name": "libxt_hal.a",
+        "size": 437,
+        "size_diff": 0,
+        "memory_types": {
+            "DIRAM": {
+                "size": 405,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 405,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 32,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 32,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Code": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_netif/libesp_netif.a": {
+        "abbrev_name": "libesp_netif.a",
+        "size": 416,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 248,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 248,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 168,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 168,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_hal_clock/libesp_hal_clock.a": {
+        "abbrev_name": "libesp_hal_clock.a",
+        "size": 413,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 413,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 413,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_hal_pmu/libesp_hal_pmu.a": {
+        "abbrev_name": "libesp_hal_pmu.a",
+        "size": 305,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 305,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 305,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "D:/esp/esp-idf/components/esp_wifi/lib/esp32s3/libcore.a": {
+        "abbrev_name": "libcore.a",
+        "size": 304,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 252,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 252,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 43,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 43,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 9,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 9,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/esp_coex/libesp_coex.a": {
+        "abbrev_name": "libesp_coex.a",
+        "size": 265,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 168,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 168,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 97,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 97,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/app_update/libapp_update.a": {
+        "abbrev_name": "libapp_update.a",
+        "size": 179,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 145,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 145,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 30,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 30,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 4,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 4,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/cxx/libcxx.a": {
+        "abbrev_name": "libcxx.a",
+        "size": 46,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 46,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 46,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/mbedtls/libmbedtls.a": {
+        "abbrev_name": "libmbedtls.a",
+        "size": 43,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 43,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 43,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/mbedtls/mbedtls/library/libmbedtls.a": {
+        "abbrev_name": "libmbedtls.a",
+        "size": 29,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 21,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 21,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 8,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.rodata": {
+                        "size": 8,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    },
+    "esp-idf/nvs_sec_provider/libnvs_sec_provider.a": {
+        "abbrev_name": "libnvs_sec_provider.a",
+        "size": 5,
+        "size_diff": 0,
+        "memory_types": {
+            "Flash Code": {
+                "size": 5,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.text": {
+                        "size": 5,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "IRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    },
+                    ".iram0.vectors": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".vectors"
+                    }
+                }
+            },
+            "DIRAM": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".dram0.bss": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".bss"
+                    },
+                    ".dram0.data": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".data"
+                    },
+                    ".iram0.text": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".text"
+                    }
+                }
+            },
+            "Flash Data": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".flash.tdata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".tdata"
+                    },
+                    ".flash.rodata": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rodata"
+                    },
+                    ".flash.appdesc": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".appdesc"
+                    }
+                }
+            },
+            "RTC FAST": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc_reserved": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".rtc_reserved"
+                    }
+                }
+            },
+            "RTC SLOW": {
+                "size": 0,
+                "size_diff": 0,
+                "sections": {
+                    ".rtc.force_slow": {
+                        "size": 0,
+                        "size_diff": 0,
+                        "abbrev_name": ".force_slow"
+                    }
+                }
+            }
+        }
+    }
+}

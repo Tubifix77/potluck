@@ -1,0 +1,58 @@
+# dμOS M0 reference configuration.
+#
+# Every line here is traceable to ARCHITECTURE.md. A setting without a reason is a setting that
+# will be changed by accident, and a soak run under an unrecorded configuration is a measurement
+# of nothing in particular.
+
+# --- Scheduler -----------------------------------------------------------------------------------
+# §4: "L1's 10 ms budget sits exactly on the default scheduler tick — FREERTOS_HZ defaults to 100,
+# i.e. 10 ms per tick — zero margin, so the dμOS reference configuration mandates FREERTOS_HZ=1000
+# (the Kconfig range allows it)." M0 has no L1 actors yet, but the reference configuration is the
+# reference configuration: measuring M0 under a tick rate the rest of the system will not use would
+# make the M0 numbers unusable as a baseline.
+CONFIG_FREERTOS_HZ=1000
+
+# --- Language ------------------------------------------------------------------------------------
+CONFIG_COMPILER_CXX_EXCEPTIONS=n
+CONFIG_COMPILER_CXX_RTTI=n
+
+# --- Memory --------------------------------------------------------------------------------------
+# §6 is written for "ESP32 classic, Wi-Fi enabled, Bluetooth disabled (reclaiming the 64 KB the BT
+# stack would cost)". Bluetooth is off by default on ESP-IDF, but the budget depends on it, so it is
+# stated rather than assumed.
+CONFIG_BT_ENABLED=n
+
+# Optimise for size. §6's cap is on static DRAM rather than flash, but a smaller image also means
+# less .rodata and fewer surprises against the 64 KB core budget.
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+
+# Detect a stack overflow by canary rather than by watchpoint: the link and stats tasks are
+# statically sized and a 24-hour soak is exactly the run where an undersized stack shows up.
+CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y
+
+# Panic rather than silently continue. A node that has corrupted itself must stop being a node —
+# §8.3's safe state is triggered locally and a wedged node cannot trigger anything.
+CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=y
+
+# --- Wi-Fi ---------------------------------------------------------------------------------------
+# ESP-NOW is connectionless and never associates, so the buffers sized for a TCP/IP workload are
+# not needed. Trimming them is the single largest DRAM saving available and it directly serves §6's
+# [MEASURE] item: the Wi-Fi stack must fit inside ~40 KB or the RX ring shrinks first.
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=6
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=6
+CONFIG_ESP_WIFI_TX_BUFFER_TYPE=0
+CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n
+CONFIG_ESP_WIFI_AMPDU_RX_ENABLED=n
+CONFIG_ESP_WIFI_NVS_ENABLED=n
+
+# --- Console -------------------------------------------------------------------------------------
+# The statistics stream is one JSON line per record. At 115200 baud a ~700-byte line takes ~61 ms,
+# and with two peers plus a node line that is enough to matter; 921600 makes it ~8 ms. The stats
+# task runs below the link task so a slow console delays statistics rather than heartbeats, but
+# there is no reason to make it slow. dmu-capture defaults to this rate.
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=921600
+
+# Keep the log level at INFO: membership transitions are logged there and they are the human-
+# readable half of the M0 acceptance evidence.
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y

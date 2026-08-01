@@ -1,0 +1,58 @@
+# ESP32-S3 overrides, applied on top of sdkconfig.defaults.
+#
+# ESP-IDF reads sdkconfig.defaults.<target> in addition to sdkconfig.defaults, so only the
+# differences belong here. Target hardware is the ESP32-S3-DevKitC-1 **N16R8**: 16 MB flash,
+# 8 MB octal PSRAM.
+#
+# Read M0-LOG.md's "ESP32-S3" section before changing any of this. Two of these settings change
+# what the M0 measurement means, rather than merely how it is built.
+
+# --- RF: this one changes the measurement ---------------------------------------------------------
+# The S3 sets SOC_WIFI_PHY_NEEDS_USB_WORKAROUND: "the USB PHY can interfere with WiFi thus lowering
+# WiFi performance". CONFIG_ESP_PHY_ENABLE_USB defaults to **y** on the S3, which keeps the USB PHY
+# powered and accepts the interference so that native USB stays usable.
+#
+# M0 exists to measure PDR and delay. Measuring them on a knowingly degraded radio would produce
+# numbers about our own configuration, and could fire §13-M0's kill criterion — "the transport
+# decision reopens" — for a reason that has nothing to do with ESP-NOW. So the USB PHY is disabled.
+#
+# The cost is that the DevKitC-1's native "USB" port cannot be used while Wi-Fi is running. That is
+# free for us: the console goes over the board's other USB-C port, the "UART" one, which is a
+# separate USB-to-UART bridge chip and is unaffected. M0-RUNBOOK.md says which port to plug into.
+CONFIG_ESP_PHY_ENABLE_USB=n
+
+# Console on the UART bridge, not USB Serial/JTAG, for the same reason.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+
+# --- Flash: N16 = 16 MB ---------------------------------------------------------------------------
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# --- PSRAM: deliberately OFF for the M0 measurement -----------------------------------------------
+# The R8 in N16R8 is 8 MB of octal PSRAM, and it is off by default in ESP-IDF. It stays off here,
+# on purpose.
+#
+# §6's budget and its [MEASURE] item are both about *internal* DRAM. With PSRAM enabled the Wi-Fi
+# stack can place buffers in external RAM, so free-internal-DRAM would rise for reasons that have
+# nothing to do with the Wi-Fi stack's real cost — the §6 number would become unattributable, and
+# it is the number M0 was asked to produce.
+#
+# Enabling it is a good thing to measure *second*, as a separate run, once the baseline exists.
+# It matters for ADR-003 too: §3.1's Correction 3 rejects WASM as a per-node default because
+# wasm3 measures ~156 KB "against a 160 KB static DRAM ceiling". On a board with 8 MB of PSRAM
+# that argument needs re-testing — logged against ADR-003's revisit trigger, not acted on here,
+# because M7 is gated on M0–M6 shipping.
+# CONFIG_SPIRAM=y
+# CONFIG_SPIRAM_MODE_OCT=y
+
+# --- Memory model note ----------------------------------------------------------------------------
+# The S3 has ~512 KB of *unified* internal SRAM: IRAM and DRAM carve out of one pool, and
+# "the maximum statically allocated DRAM size is reduced by the IRAM size of the compiled
+# application". There is no fixed 160 KB static-DRAM ceiling as on the classic part, so §6's
+# headroom arithmetic is more generous here — but the 64 KB core cap is a dμOS design limit, not a
+# silicon one, and it still applies. tools/check_size_budget.py enforces it on both targets.
+
+# --- Dual core ------------------------------------------------------------------------------------
+# The S3 is dual-core Xtensa LX7, like the classic part, so §7.8's "the second core is real
+# capacity" still holds and the link/stats task pinning in m0_main.cpp is unchanged.

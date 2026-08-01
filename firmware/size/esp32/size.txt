@@ -1,0 +1,69 @@
+Executing action: size
+Running ninja in directory D:\esp\potluck-fw-esp32\build
+Executing "ninja all"...
+[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\esp\potluck-fw-esp32\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/esp/potluck-fw-esp32/build/partition_table/partition-table.bin D:/esp/potluck-fw-esp32/build/potluck_m0.bin"
+
+potluck_m0.bin binary size 0xacca0 bytes. Smallest app partition is 0x100000 bytes. 0x53360 bytes (33%) free.
+
+
+[2/4] Performing build step for 'bootloader'
+
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\esp\potluck-fw-esp32\build\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 D:/esp/potluck-fw-esp32/build/bootloader/bootloader.bin"
+
+
+Bootloader binary size 0x65f0 bytes. 0xa10 bytes (9%) free.
+
+
+
+[3/4] No install step for 'bootloader'
+
+[4/4] Completed 'bootloader'
+
+Running ninja in directory D:\esp\potluck-fw-esp32\build
+Executing "ninja size"...
+[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\esp\potluck-fw-esp32\build && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D MAP_FILE=D:/esp/potluck-fw-esp32/build/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
+
+                             Memory Type Usage Summary                              
+
+┌───────────────────────┬──────────────┬──────────┬────────────────┬───────────────┐
+
+│ Memory Type/Section   │ Used [bytes] │ Used [%] │ Remain [bytes] │ Total [bytes] │
+
+├───────────────────────┼──────────────┼──────────┼────────────────┼───────────────┤
+
+│ Flash Code            │       509840 │          │                │               │
+
+│    .text              │       509840 │          │                │               │
+
+│ Flash Data            │        99472 │          │                │               │
+
+│    .rodata            │        99200 │          │                │               │
+
+│    .appdesc           │          256 │          │                │               │
+
+│    .tdata             │           16 │          │                │               │
+
+│ IRAM                  │        81043 │    61.83 │          50029 │        131072 │
+
+│    .text              │        80015 │    61.05 │                │               │
+
+│    .vectors           │         1028 │     0.78 │                │               │
+
+│ DRAM                  │        64127 │    35.48 │         116609 │        180736 │
+
+│    .bss               │        46896 │    25.95 │                │               │
+
+│    .data              │        17231 │     9.53 │                │               │
+
+│ RTC SLOW              │           64 │     0.78 │           8128 │          8192 │
+
+│    .force_slow        │           40 │     0.49 │                │               │
+
+│    .rtc_slow_reserved │           24 │     0.29 │                │               │
+
+└───────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+
+Total image size: 707626 bytes (.bin may be padded larger)
+
+Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
+

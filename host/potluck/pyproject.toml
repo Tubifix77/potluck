@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "potluck-capture"
+version = "0.1.0"
+description = "M0 host tooling for Potluck: read a node's serial stream, record frames, report PDR and delay"
+requires-python = ">=3.10"
+# No required dependencies. The frame decoder, record parser, capture writer and
+# summary are standard library only, so the tool runs on any Python -- including
+# one on a bench machine with no package index reachable. pyserial is needed only
+# to read an actual port, and is imported lazily so --file and --replay work
+# without it.
+dependencies = []
+
+[project.optional-dependencies]
+serial = ["pyserial>=3.5"]
+
+[project.scripts]
+potluck-capture = "potluck.__main__:main"
+# M2. potctl drives a Bridge in-process rather than opening a port itself, which is what keeps
+# §7.1's rule ("nothing above the bridge owns the serial port") true by construction.
+potctl = "potluck.ctl:main"
+
+[tool.setuptools]
+packages = ["potluck"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

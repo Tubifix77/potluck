@@ -1,0 +1,5 @@
+# No line-ending normalisation, anywhere. The bytes in the repository are the bytes that were
+# tested — this project spent a whole session learning what happens when the artefact under test
+# is not the artefact you think it is, and letting git rewrite files per-platform is that mistake
+# as a config option. Editors handle both endings; toolchains that diff golden fixtures do not.
+* -text

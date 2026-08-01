@@ -1,0 +1,53 @@
+# Extra defaults for running under QEMU.
+#
+#   tools\run_qemu.ps1
+#
+# QEMU emulates the ESP32-S3's CPU, memory, timers, flash and UARTs, but it has no Wi-Fi device --
+# `qemu-system-xtensa -device help` lists no wifi or wlan, and the machine is given an Ethernet
+# device instead. esp_wifi_start() therefore enters PHY calibration and never returns, so a normal
+# build hangs at boot rather than failing cleanly.
+#
+# Apply this file *in addition* to sdkconfig.defaults and sdkconfig.defaults.esp32s3:
+#   idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.esp32s3;sdkconfig.qemu" ...
+#
+# What this build can verify: boot, NVS and the boot epoch, task scheduling, the namespace and
+# section 4's read contract, the serial frame link end to end with potluck-bridge, and the static memory
+# figures. What it cannot: anything involving the radio -- which is every number section 13-M0 asks
+# for. Runs from this build report "no_radio":1 on every statistics line for exactly that reason.
+
+CONFIG_POT_RADIO_DISABLE=y
+
+# The frame link is the point of running under emulation, so it stays on.
+CONFIG_POT_SERIAL_LINK=y
+
+# Statistics every 2 s rather than 10: an emulated run is short and interactive.
+CONFIG_POT_STATS_INTERVAL_MS=2000
+
+# No BYE button under emulation.
+#
+# QEMU does not emulate GPIO input, so gpio_get_level() on any pin returns 0 -- which the BYE button
+# reads as "held down". The node therefore announced an intentional departure 6 ms after the frame
+# link came up and stopped heartbeating, on every single emulated run. Nothing was wrong with the
+# node; there is simply no button there to read.
+CONFIG_POT_BYE_BUTTON_GPIO=-1
+
+# QEMU's flash image is built for 16 MB, matching the N16R8.
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+# DUAL CORE, deliberately. Do not add CONFIG_FREERTOS_UNICORE here.
+#
+# It was added once, as a workaround for a "deadlock" that turned out to be link_task busy-spinning at
+# priority 6 on a radio-less build and starving the statistics task -- our bug, not the emulator's
+# (M0-LOG.md, Session 4). QEMU emulates both S3 cores and a dual-core build runs correctly: 172
+# statistics records in 30 s, no panic, one POWERON.
+#
+# Why this matters rather than being tidiness: a single-core emulated run exercises different
+# concurrency from the firmware that ships. Every task-priority and mutex interaction would be the
+# wrong one -- and those interactions are most of what running the real firmware is good for here.
+
+# Info, not debug.
+#
+# Debug level was on while the frame link was being brought up. It is off again because ESP-IDF's own
+# components are chatty at debug level and an emulated run is slow enough that the console becomes the
+# bottleneck -- which changes the timing of the thing being observed.
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
