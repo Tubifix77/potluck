@@ -1477,3 +1477,65 @@ Seven sessions, one day: a spec became firmware, the firmware became measurable,
 were withdrawn in public, a Greek letter lost a fight with five toolchains, and the project got a
 name you can say at a dinner table. The next entry in this log should begin with a number measured
 off real silicon.
+
+---
+
+## During the pause — a candidate "M9" from Powersuit, evaluated and parked
+
+The owner cross-pollinated with his Powersuit project (sibling ESP32-S3 codebase): could Powersuit's
+cloud-link `advisory` messages — server-pushed, severity-tagged, correlated — be modelled on Potluck?
+The chat that tried concluded Potluck has no push path at all ("every primitive through M8 is a
+read") and proposed a new milestone, M9: SUBSCRIBE with an event stream.
+
+**The premise is false, and checking it took two greps.** The architecture already specifies the
+whole primitive:
+
+- §5.2's opcode table reserves `0x12 SUBSCRIBE` (payload: path + min interval + max staleness),
+  `0x13 PUBLISH`, `0x14 UNSUBSCRIBE`; the firmware's opcode header carries the same numbers,
+  commented out per the only-name-what-exists rule.
+- §7.2 defines the **event resource kind** as distinct from sampled — queue semantics, every
+  publication delivered to subscribers in order, per-subscriber bounded queue with *loud* overflow
+  (`EVT_DROPPED`, never silent), staleness explicitly not applied ("two clicks are two clicks").
+  The supercomputer test forced this distinction precisely because a keyboard is not a measurement.
+
+So a Powersuit advisory models today, on paper, with no new machinery: an event-kind resource
+(`potluck://suit/advisory`), severity/TTL/correlation carried as payload — application convention,
+not wire fields, exactly as the proposal itself (correctly) wanted. **The falsification method
+worked as designed: a named external system was thrown at the architecture and no architecture bug
+fell out.** Powersuit is a natural fifth member of §1.2's test fleet when spec work resumes.
+
+**What the exercise actually found — a real hole, one layer up:** §13 *never schedules* any of it.
+No milestone from M0 to M8 builds SUBSCRIBE/PUBLISH or the event-queue semantics. The mechanism is
+fully specified and permanently unbudgeted — which is arguably worse than unspecified, because it
+looks done. Worse, the architecture's own narratives already consume it: M6's canonical demo (the
+supercomputer) needs keyboard events; the home example's wake-word hit is an event. Whatever slot
+this lands in, the dependency arithmetic points *before or alongside* M6 — not at the proposed
+"M9 after M8".
+
+**Kept from the proposal, for when scoping happens:**
+
+1. **Per-subscription monotonic `seq`, receiver-side.** The spec's `EVT_DROPPED` counter is
+   sender-side loudness; a subscriber-visible gap counter is its complement, and it rhymes with the
+   link layer's existing per-(src,dst) seq accounting. Cheap, honest, testable.
+2. **The acceptance draft is good bones:** two nodes, publications at a known rate under induced
+   radio loss; the subscriber's gap count must equal the independently captured drop count, and no
+   event may carry a mismarked quality. That is a §13-grade test — falsifiable, kill-criterion
+   compatible.
+3. **"A subscription must not be an actuation path" — right instinct, wrong mechanism.** It is
+   already structurally true at the wire level (SUBSCRIBE/PUBLISH are not WRITE, and WRITE is
+   per-resource access-checked — the refusal was demonstrated live on real firmware). What cannot
+   ever be structural is forbidding an actor from *reacting* to an event with its own legitimate,
+   access-checked WRITE — reacting to information is what applications are. The enforceable version
+   of Powersuit's hand-maintained downlink whitelist is Potluck's existing ladder: per-resource
+   `Access` today, manifest-declared write capabilities at M3, signed and authenticated at M5. The
+   whitelist becomes the manifest — no subscription-specific machinery needed.
+
+**Rejected:** the proposal's "age/quality with identical semantics to a read, subscriptions not
+exempt from the staleness rule" — that re-opens a closed decision. §7.2 deliberately exempts
+event-kind resources from staleness (a bound on a click stream is meaningless); what an event keeps
+is its timestamp, its delivery age, and its quality. And "M9" itself is rejected *as a label, now*:
+adding a ninth milestone while zero of nine are accepted is the exact scope expansion §14 ranks as
+the fatal risk. The schedule slot gets decided when M4/M5 scoping happens, with this entry as input.
+
+Nothing was changed in ARCHITECTURE.md; the pause holds. This entry exists so the finding survives
+the pause without becoming scope.
