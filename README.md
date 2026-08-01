@@ -9,19 +9,23 @@ dish — a sensor, some RAM, a radio — and the cluster eats together.
 
 ## The idea
 
-An ESP32 is far too powerful to spend its life watching a flowerpot — but there it sits, because its
-pins are wired to the flowerpot. That is **stranded compute**, and every home, car and workshop is
-full of it.
+An [ESP32](https://en.wikipedia.org/wiki/ESP32) — a Wi-Fi microcontroller that costs a few euros —
+is far too powerful to spend its life watching a flowerpot. But there it sits, because its pins are
+wired to the flowerpot. That is **stranded compute**, and every home, car and workshop is full of it.
 
-Potluck federates those machines into one. It is Kubernetes for CPU/GPU/RAM ***and* attached
-hardware**: an application is written against the cluster, never against a board. It refers to
+Potluck federates those machines into one. It is
+[Kubernetes](https://kubernetes.io/) — the tool that pools a datacenter's servers into one big
+computer — for CPU/GPU/RAM ***and* attached hardware**: an application is written against the
+cluster, never against a board. It refers to
 
 ```
 potluck://car/lights/rear/left
 ```
 
-not to "ADC channel 1 on the board behind the utility cupboard". Ten ESP32s, a Raspberry Pi, twenty
-lights and a dash screen ship as **one signed application package for the whole car**; actors that
+not to "analog input 1 on the board behind the utility cupboard". Ten ESP32s, a
+[Raspberry Pi](https://en.wikipedia.org/wiki/Raspberry_Pi), twenty lights and a dash screen ship as **one signed
+application package for the whole car**. The application is composed of *actors* — small isolated
+units of code, in the [actor-model](https://en.wikipedia.org/wiki/Actor_model) sense: the ones that
 must sit next to their hardware pin themselves there, and everything portable is placed by a
 constraint solver at build time. If the node behind the rear bumper dies, its portable actors
 re-activate elsewhere within seconds. The lamp itself is gone until the node returns — physics — and
@@ -36,18 +40,19 @@ That last sentence is the design's centre of gravity:
 > distributed control systems hurt people.
 
 The rule is enforced in the type system on both sides of the wire. The C++ `Reading` has no accessor
-that returns the number alone; in Python, `float(reading)` raises on purpose; and `potctl`
-deliberately has **no flag to print just the value**, because such a flag ends up in a script that
-has lost the age.
+that returns the number alone; in Python, `float(reading)` raises on purpose; and `potctl` — the
+cluster's command-line tool — deliberately has **no flag to print just the value**, because such a
+flag ends up in a script that has lost the age.
 
 ## What "S3 Edition" means
 
-It names the **hardware support, not the project**. This edition targets the **ESP32-S3**
-(bench fleet: 7 × ESP32-S3-DevKitC-1 N16R8) with host tooling on **Windows and Linux**. The
-architecture is deliberately hardware-agnostic — no CPU is second-class, and relative performance is
-a placement input, never an exclusion rule — so later editions add targets without the name having
-baked one vendor's silicon in. (It is also why the ESP32 pun lives in the tagline and not in the
-project name.)
+It names the **hardware support, not the project**. This edition targets the
+[ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3) (bench fleet:
+7 × ESP32-S3-DevKitC-1 N16R8 — the standard devkit board, in its 16 MB flash / 8 MB external-RAM
+variant) with host tooling on **Windows and Linux**. The architecture is deliberately
+hardware-agnostic — no CPU is second-class, and relative performance is a placement input, never an
+exclusion rule — so later editions add targets without the name having baked one vendor's silicon
+in. (It is also why the ESP32 pun lives in the tagline and not in the project name.)
 
 ## Honest status — read this before judging anything else
 
@@ -58,22 +63,22 @@ of them. Each has an acceptance test that can fail and a kill criterion (both sp
 
 | milestone | in one line | state |
 |---|---|---|
-| **M0** — two boards, one heartbeat | frame codec, membership, measured PDR + round-trip delay | **built**, runs under QEMU — **not accepted: two physical boards have never exchanged a heartbeat.** The 24-hour soak needs boards and a radio, and QEMU emulates neither. The boards are in the mail |
+| **M0** — two boards, one heartbeat | the wire format; membership (who is in the cluster and alive); measured packet-delivery ratio and round-trip delay | **built**, runs under [QEMU](https://www.qemu.org/) — a machine emulator, so it is the real firmware executing with no physical board. **Not accepted: two physical boards have never exchanged a heartbeat.** The acceptance test is a 24-hour *soak* (a long unattended measured run) needing boards and a radio, and QEMU emulates no radio. The boards are in the mail |
 | **M1** — one remote read | the namespace; typed, staleness-checked reads | **built**, exercised against the real firmware under emulation |
-| **M2** — host in the loop | `potctl`, capture, replay | **built**; a captured session replays to byte-identical namespace state, checked by digest |
-| **M3** — deploy and detach | A/B slots, signed manifests, automatic revert | not started |
-| **M4** — locality contract enforced | build-time placement checker; CAN transport | not started |
-| **M5** — signed everything | cluster CA, node enrolment, frame auth | not started |
+| **M2** — host in the loop | `potctl`; recording sessions to a capture file and replaying them | **built**; a captured session replays to byte-identical namespace state, checked by digest |
+| **M3** — deploy and detach | A/B firmware slots (two copies, so a bad update falls back by itself); signed deployment manifests | not started |
+| **M4** — locality contract enforced | the rule that tight control loops stay pinned to the node wired to the hardware, rejected at build time otherwise; plus [CAN](https://en.wikipedia.org/wiki/CAN_bus), the automotive wired bus | not started |
+| **M5** — signed everything | a cluster certificate authority, node enrolment, authenticated frames | not started |
 | **M6** — reconciler | failure-driven actor re-placement | not started; gated on M5 |
-| **M7** — WASM tier | untrusted / hot-swappable code | gated: only if a named workload ever needs it |
-| **M8** — host services | `potluck-agent`, host-side `svc/*` | not started; gated on M5 |
+| **M7** — [WebAssembly](https://webassembly.org/) tier | untrusted / hot-swappable code | gated: only if a named workload ever needs it |
+| **M8** — host services | `potluck-agent`, letting a PC offer services (say, speech-to-text) into the cluster's namespace | not started; gated on M5 |
 
 Beneath the milestones, the standing figures:
 
 | | |
 |---|---|
-| Architecture | decision-closed v1, eight ADRs with revisit triggers ([ARCHITECTURE.md](ARCHITECTURE.md)) |
-| Test gates | **19 green**: 158 C++ cases / 36,536 checks, 133 Python cases, three independent wire-format implementations agreeing byte-for-byte over generated corpora, AddressSanitizer, a strict-GCC portability gate, and the firmware build with its memory-budget check |
+| Architecture | decision-closed v1, with eight [Architecture Decision Records](https://adr.github.io/) and the trigger that would reopen each ([ARCHITECTURE.md](ARCHITECTURE.md)) |
+| Test gates | **19 green**: 158 C++ cases / 36,536 checks, 133 Python cases, three independent wire-format implementations agreeing byte-for-byte over generated corpora, [AddressSanitizer](https://github.com/google/sanitizers/wiki/AddressSanitizer), a strict-GCC portability gate, and the firmware build with its memory-budget check |
 | Static memory | **53,118 B** of the 64 KB core cap, measured per build |
 
 Nothing above claims a measurement that was not made. Emulated runs stamp `"no_radio":1` on every
@@ -91,11 +96,20 @@ statistics line precisely so they can never be mistaken for the soak.
   Potluck Frame v1              16-byte header, auth bytes reserved from day one
       │
       ├── ESP-NOW               100 ms broadcast heartbeat beacon, dead at 6 misses;
-      │                         round-robin unicast probe → RTT histogram
+      │                         round-robin unicast probe → round-trip histogram
       ├── UART / USB-serial     COBS + CRC-16/CCITT-FALSE; the host joins as an
       │                         ordinary peer, not a special case
       └── CAN                   single-frame profile via 29-bit extended ID (M4)
 ```
+
+The transports, for the unacquainted:
+[ESP-NOW](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/network/esp_now.html)
+is Espressif's connectionless Wi-Fi messaging (no router, no TCP/IP);
+[UART](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter) is the classic
+serial port, here framed with
+[COBS](https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing) and a
+[CRC](https://en.wikipedia.org/wiki/Cyclic_redundancy_check) checksum so frames survive a raw byte
+stream.
 
 Design choices with teeth:
 
@@ -116,14 +130,16 @@ Design choices with teeth:
 
 ## Try it with no hardware at all
 
-Prerequisites: [ESP-IDF v6.0.2](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/)
-(includes the QEMU fork via `idf_tools.py install qemu-xtensa`), Python ≥ 3.10, and a host C++
-toolchain. The scripts are PowerShell-first; `tools/run_all_tests.sh` exists for Linux but the
-PowerShell path is the one exercised daily.
+Prerequisites: [ESP-IDF v6.0.2](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/) —
+Espressif's development framework for these chips, which also provides
+[the QEMU fork](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/tools/qemu.html)
+via `idf_tools.py install qemu-xtensa` — plus Python ≥ 3.10 and a host C++ toolchain. The scripts
+are PowerShell-first; `tools/run_all_tests.sh` exists for Linux but the PowerShell path is the one
+exercised daily.
 
 ```powershell
-# The gates: C++ suite, ASan, three differential corpora, eleven Python suites,
-# portability, firmware build + memory budget.
+# The gates: C++ suite, AddressSanitizer, three differential corpora,
+# eleven Python suites, portability, firmware build + memory budget.
 tools\run_all_tests.ps1 -Asan -Firmware
 
 # Boot the real firmware under QEMU with its frame link exposed as a TCP socket:
@@ -145,12 +161,14 @@ worst peer RSSI     0         [GOOD, age 2016 ms, ts 10531, class L4]
 6/6 answered with a usable value
 ```
 
-Every line is the full read tuple. `watch sys/peers-alive` shows `0 → 1` as your own host registers
-as a live peer — the membership state machine running over a wire, with the firmware unaware the
-peer is a laptop. Add `--capture session.jsonl` and the session prints the digest command that
-verifies its own capture. One `potctl` per emulated run: QEMU's socket serial accepts a single
-connection per VM lifetime ([M0-RUNBOOK.md](M0-RUNBOOK.md) has the details and the other emulator
-sharp edges).
+Every line is the full read tuple. `L4` is the loosest of the five latency classes (L0 is
+pinned-to-hardware, L4 is best-effort), and the zeros are honest ones: *peers alive* and *RSSI*
+(radio signal strength) read zero because QEMU emulates no radio. `watch sys/peers-alive` shows
+`0 → 1` as your own host registers as a live peer — the membership state machine running over a
+wire, with the firmware unaware the peer is a laptop. Add `--capture session.jsonl` and the session
+prints the digest command that verifies its own capture. One `potctl` per emulated run: QEMU's
+socket serial accepts a single connection per VM lifetime ([M0-RUNBOOK.md](M0-RUNBOOK.md) has the
+details and the other emulator sharp edges).
 
 With boards on the bench, the same tool talks over `--port COM7` with none of those limits, and
 [M0-RUNBOOK.md](M0-RUNBOOK.md) is the step-by-step for the acceptance soak.
@@ -159,7 +177,7 @@ With boards on the bench, the same tool talks over `--port COM7` with none of th
 
 | file | what it is |
 |---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, eight ADRs, falsifiable milestones M0–M8 with accept/kill criteria |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the eight decision records, and milestones M0–M8 with accept/kill criteria |
 | [M0-LOG.md](M0-LOG.md) | The decision log, newest session last — including the conclusions that were later **withdrawn**, kept struck-through rather than deleted. The QEMU sessions are a study in how a stale flash image manufactures false evidence |
 | [M0-RUNBOOK.md](M0-RUNBOOK.md) | Bench procedure: build, flash, emulate, soak, and the delay methodology to read *before quoting any number* |
 | [CLAUDE.md](CLAUDE.md) | Standing rules for working on this repo (largely built with [Claude Code](https://claude.com/claude-code), which these rules keep honest) |
@@ -173,18 +191,20 @@ The repo runs on a few rules that shaped everything in it: every external fact i
 cited and registered in the ledger — no numbers from model memory or anyone else's; design budgets
 and measured facts are labelled as which they are, and bench work is tagged `[MEASURE]` rather than
 resolved from search; and the artefact under test must be *proven* to be the artefact you built —
-`tools/decode_backtrace.ps1` refuses to decode a panic against an ELF whose hash disagrees with the
+`tools/decode_backtrace.ps1` refuses to decode a crash against a compiled binary
+([ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format)) whose hash disagrees with the
 log, a rule that exists because breaking it once cost a full day chasing a fix that had already
 worked.
 
 ## The name
 
-The project was **dμOS** until 2026-08-01. The Greek mu broke five separate tools — Xtensa GCC's
-argv handling, `esp-idf-kconfig`, QEMU's `-serial file:`, Python's stdout on CP1252, and a size
-checker — each in a different way, none with a useful error. µTorrent made the same retreat.
-"Potluck" says what the system does in one word, and every character of it survives every toolchain.
-The renamed workaround code is still in the build script, self-disabling, for whoever clones this
-under a path with an accent in it.
+The project was **dμOS** until 2026-08-01. The Greek mu broke five separate tools — the ESP32
+compiler's argument handling, `esp-idf-kconfig`, QEMU's `-serial file:`, Python's console output on
+[CP1252](https://en.wikipedia.org/wiki/Windows-1252) Windows, and a size checker — each in a
+different way, none with a useful error. µTorrent made the same retreat. "Potluck" says what the
+system does in one word, and every character of it survives every toolchain. The workaround code is
+still in the build script, self-disabling, for whoever clones this under a path with an accent in
+it.
 
 ## The failure contract
 
@@ -209,12 +229,14 @@ runtime states them. Here they are:
 - **Planned (M6): portable actors re-activate on another node within ~2 s** of their host dying.
   The actor moves; whatever was physically wired to the dead node does not.
 
-None of the above is a certified safety function — `SAFE_STATE`, the staleness rules and the
-locality contract are availability and honesty features, not a safety case.
+None of the above is a certified safety function — `SAFE_STATE` (the reserved everyone-freeze
+broadcast), the staleness rules and the locality contract are availability and honesty features, not
+a safety case.
 
 ## License
 
-[Apache License 2.0](LICENSE) with a [NOTICE](NOTICE) file. Slightly stricter than MIT in exactly
-one direction: if you redistribute this or build on it, the attribution in NOTICE travels with your
-distribution (§4(d)), you state significant changes (§4(b)), and you get an explicit patent grant in
-return. Acknowledge the cook; otherwise help yourself.
+[Apache License 2.0](LICENSE) with a [NOTICE](NOTICE) file. Slightly stricter than
+[MIT](https://en.wikipedia.org/wiki/MIT_License) in exactly one direction: if you redistribute this
+or build on it, the attribution in NOTICE travels with your distribution (§4(d)), you state
+significant changes (§4(b)), and you get an explicit patent grant in return. Acknowledge the cook;
+otherwise help yourself.
