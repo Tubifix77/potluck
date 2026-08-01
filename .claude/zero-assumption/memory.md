@@ -193,3 +193,10 @@ ESP-IDF prints `ELF file SHA256: <9 hex>` immediately before `Rebooting...` for 
 `run_qemu.ps1` always regenerates the flash image. The general rule this earns:
 **an address is only as good as the binary it is decoded against, and that pairing must be checked
 by a machine rather than assumed by a person.**
+
+## Publication — 2026-08-01
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| License text is the canonical Apache-2.0 | Fetched from apache.org (11,358 bytes); section 4(d) is the NOTICE-preservation clause that makes it the "acknowledge me" license — redistributions of the work or derivatives must carry the NOTICE file's attribution. 4(b) additionally requires stating significant changes; section 3 grants patents, which MIT does not | https://www.apache.org/licenses/LICENSE-2.0.txt | 2026-08-01 | stable | verified |
+| Public repository | https://github.com/Tubifix77/potluck — public, license auto-detected as Apache-2.0, 13 topics, initial commit = the S3 Edition release (127 files). Build trees, generated sdkconfig, local Claude settings and the two regenerable multi-MB corpora are untracked; the zero-assumption ledger and the two small M2 acceptance captures are tracked deliberately | gh repo view, 2026-08-01 | volatile | verified |

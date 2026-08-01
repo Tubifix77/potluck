@@ -1410,3 +1410,26 @@ resource whose owner is dead — no value at all. An unplugged node is the secon
 is not merely old, it is unattributable, since nothing can say whether the resource still exists. The
 code returns `UNAVAILABLE` and is right; §13's line now says so, with a note on how to actually observe
 `STALE` (stop publishing while leaving the owner alive).
+
+---
+
+## Session 7 — 2026-08-01, published
+
+**https://github.com/Tubifix77/potluck** — public, Apache-2.0 + NOTICE, 13 topics, README.
+
+The license choice, since "acknowledge me, a bit stricter than MIT" has several wrong answers: the
+old BSD advertising clause is deprecated and GPL-incompatible, CC-BY is not a software license, and a
+custom license gets *less* acknowledgement because serious users skip anything unbadged. Apache-2.0's
+section 4(d) is the mechanism wanted: the NOTICE file — which names the author — must travel with every
+redistribution or derivative, 4(b) requires stating significant changes, and section 3 adds a patent
+grant MIT lacks. Text fetched from apache.org rather than typed from memory, per rule 3.
+
+Tracked deliberately: the zero-assumption ledger (CLAUDE.md rule 3 makes it method, not setup) and the
+two small M2 acceptance captures (evidence you cannot open is a claim). Untracked deliberately: build
+trees, generated sdkconfig, the two regenerable multi-MB corpora, and local Claude settings.
+`.gitattributes` pins `* -text` — no line-ending normalisation ever, because letting git rewrite files
+per-platform is the artefact-under-test mistake as a config option.
+
+README states the S3 Edition framing (the label names the hardware support, not the project) and the
+project's own standing caveat, verbatim in spirit: **two physical boards have never exchanged a
+heartbeat.** Nothing published claims a measurement that was not made.
