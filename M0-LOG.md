@@ -1433,3 +1433,21 @@ per-platform is the artefact-under-test mistake as a config option.
 README states the S3 Edition framing (the label names the hardware support, not the project) and the
 project's own standing caveat, verbatim in spirit: **two physical boards have never exchanged a
 heartbeat.** Nothing published claims a measurement that was not made.
+
+### Session 7 addendum — the README safety section, reframed by owner decision
+
+The owner challenged the README's "Safety" section as misplaced: a runtime has no business telling
+application authors how to engineer, and no disclaimer polices what gets wired to a GPIO pin anyway.
+Correct on both counts — the voice was a lecture.
+
+What replaced it is **the failure contract**: the specific behaviours the runtime injects into every
+system built on it — the 600 ms death window, marked-stale delivery, UNAVAILABLE for dead owners, the
+radio's ~100 ms retry tail, RTT-only measurement, the locality contract, and (labelled as planned)
+M6's ~2 s re-activation. Those are ours to declare, because an application inherits them without
+seeing them; whether they are acceptable for a given machine is not decidable unless the runtime
+states them. One factual non-claim survives: none of it is a certified safety function.
+
+Unchanged: the architecture document's own safety line (decision-closed, and the corrective history
+behind it — the original vision documents claimed sub-millisecond safety loops over radio) and
+CLAUDE.md's internal rule, which is a scope constraint on sessions working in this repo, not user
+advice. The owner's principle, recorded for future prose: **state contracts, not conduct.**

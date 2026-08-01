@@ -174,12 +174,31 @@ checker — each in a different way, none with a useful error. µTorrent made th
 The renamed workaround code is still in the build script, self-disabling, for whoever clones this
 under a path with an accent in it.
 
-## Safety
+## The failure contract
 
-Potluck must never be the only thing between a motor and a person. Anything involving actuated force
-near humans goes to a functional-safety engineer, not into this repository. The architecture's
-locality contract exists so that a sub-millisecond control loop physically cannot be written across
-a radio — but that is a guard rail, not a safety case.
+Potluck injects behaviours into every system built on it, and an application author inherits them
+without seeing them — so whether they are acceptable for a given machine is not decidable unless the
+runtime states them. Here they are:
+
+- **A dead node is declared dead after 600 ms** — six missed heartbeats at the default 100 ms period
+  (both configurable). Until that window closes, the cluster still believes the node is alive.
+- **Stale values are delivered, marked.** Past a resource's staleness bound a read still returns the
+  last value, with its exact age and quality `STALE` (the default "informative" policy; a resource
+  declared "strict" withholds the value instead). A dead owner's resources read `UNAVAILABLE` — no
+  value at all, because a dead node's last number is not merely old, it is unattributable.
+- **The radio drops and delays frames as a matter of course.** A frame may legitimately spend
+  ~100 ms in ESP-NOW's retry machinery before being abandoned, and delivery falls off a cliff with
+  distance rather than degrading gracefully. The measured figures and their sources are in
+  [ARCHITECTURE.md](ARCHITECTURE.md).
+- **No one-way latency is ever reported.** Clocks across nodes are unsynchronised, so Potluck
+  measures round trips and never divides by two.
+- **Sub-millisecond loops cannot span the network.** The locality contract pins them to the node
+  wired to the hardware; the build-time checker that enforces this lands at M4.
+- **Planned (M6): portable actors re-activate on another node within ~2 s** of their host dying.
+  The actor moves; whatever was physically wired to the dead node does not.
+
+None of the above is a certified safety function — `SAFE_STATE`, the staleness rules and the
+locality contract are availability and honesty features, not a safety case.
 
 ## License
 
