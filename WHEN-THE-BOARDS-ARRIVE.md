@@ -130,6 +130,21 @@ already true of three identical boards, so a way to tell ports apart is needed r
 `tools\capture.ps1 --list-ports`, unplug one thing, and see which entry disappears. Attach the
 adapter last and it is the newest COM number.
 
+**Put the length on the USB side, not the jumper side.** A dongle-style adapter plugged straight into
+the PC forces the Dupont wires to span the whole distance to the bench, and they are 10–20 cm parts.
+Use a USB-A male-to-female extension so the dongle sits *next to the board* with short jumpers. That is
+not only tidier: USB is shielded, differential and error-checked and is meant to run metres, whereas
+raw TTL on unshielded jumper wire at 921 600 baud is none of those and wants to stay short. The
+reversed arrangement is the one that yields intermittent framing errors.
+
+This makes it **4 PC ports** — three boards plus the extension. If ports are tight, the adapter is the
+one to demote to a hub: a CP2102 draws a few milliamps and is happy anywhere, while the boards are the
+ones with 330 mA transmit bursts and want direct ports.
+
+**If the frame link is flaky, lower the baud before re-checking the wiring.**
+`CONFIG_POT_SERIAL_BAUD` defaults to 921 600 and the frames are tiny; 115 200 is ample. It is a
+one-line change and it cleanly separates "wires too long or too noisy" from anything else.
+
 One adapter is enough, on one board: M1's acceptance is *"`potctl` asks node 1 to read node 2's
 resource, then node 2 is unplugged"*, so only node 1 needs a frame link. During that test one board
 wears two cables — its own USB, plus the adapter — and the others keep one each.
