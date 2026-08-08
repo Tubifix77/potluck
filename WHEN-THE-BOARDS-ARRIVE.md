@@ -66,6 +66,34 @@ Two channels rather than one because the console is human-readable text and the 
 COBS-framed frames; sharing a wire, each corrupts the other. That is why `serial_port.cpp` puts the
 link on UART1 in the first place.
 
+**It is a PC-to-board link, not a board-to-board one, and its far end is pins rather than a socket.**
+The adapter connects to the PC by USB and to the board by *jumper wires on the GPIO header* — the
+board's own USB-C sockets play no part. Nothing here replaces the radio: `hal_send()` routes a frame
+to the serial link only when its destination is `kHostMac`, and everything else goes to ESP-NOW. The
+frame link is how the host joins the cluster as a peer; boards always reach each other by radio.
+
+```
+                        ┌───────────┐
+                        │  your PC  │
+                        └─┬───────┬─┘
+              USB cable   │       │   USB (serial adapter)
+        power/flash/JSON  │       │   ...then 3 jumper wires
+                          │       │   to GPIO 17, 18, GND
+                          ▼       ▼
+                     ┌──────────────┐
+                     │   board 1    │   the only board with two connections
+                     └──────┬───────┘
+                            ┊
+                       ESP-NOW radio — no wires, ever
+                            ┊
+        ┌──────────────┐    ┊    ┌──────────────┐
+        │   board 2    │┈┈┈┈┴┈┈┈┈│   board 3    │
+        └──────┬───────┘         └──────┬───────┘
+               │ USB (console)          │ USB (console)
+               ▼                        ▼
+             to PC                    to PC
+```
+
 Three wires, crossed, and **no power line**:
 
 | board | adapter |
