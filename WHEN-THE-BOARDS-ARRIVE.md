@@ -25,7 +25,7 @@ Nothing here needs soldering. Everything is push-fit.
 | 4 | SN65HVD230 CAN transceiver module | 2 | M4's CAN transport — and the same two modules serve the sibling Powersuit project |
 | 5 | Dupont jumper **female-female** pack (a mixed M-M/M-F/F-F set is fine and no dearer) | 1 | ~10 wires total; a 40-pack is plenty |
 | 6 | ~~Breadboard~~ | **0** | **Not needed, and one will not fit three boards.** See below |
-| 7 | USB-serial adapter (CH340 / CP2102) | 1 | optional, for `potctl` over the UART1 frame link. The free alternative is a rebuild with the frame link on native USB, at the cost of RF quality during that test |
+| 7 | USB-serial adapter (CH340 / CP2102), **3.3 V logic** | 0–1 | optional, and *not* for flashing or power — it is the second serial channel that reaches the UART1 frame link. See below. The free alternative is a rebuild with the frame link on native USB, at the cost of RF quality during that test |
 
 **Do not buy:** 120 Ω resistors (each SN65HVD230 module carries its own, which is exactly right for a
 two-node bus), LEDs, screw-terminal shields, a soldering iron, or a breadboard.
@@ -51,6 +51,39 @@ while Wi-Fi is on. Also confirm the listing says headers are already soldered.
 
 **One cable per board does everything:** 5 V power, flashing, the serial console, and the JSON
 statistics stream `potluck-capture` records. No separate power supply is needed anywhere.
+
+### What the USB-serial adapter is actually for
+
+Not flashing, and not power — both of those already arrive on the board's own USB cable. It exists to
+reach the **frame link**, and only that.
+
+The board's built-in USB-UART bridge is wired to **UART0**, the console: log lines, the JSON
+statistics stream, and flashing. Potluck's frame link is **UART1 on GPIO 17/18** (`CONFIG_POT_SERIAL_TX_GPIO`
+/ `_RX_GPIO`), which are bare header pins with nothing on the board joining them to USB. The adapter
+is the wire from those two pins to the PC.
+
+Two channels rather than one because the console is human-readable text and the frame link is binary
+COBS-framed frames; sharing a wire, each corrupts the other. That is why `serial_port.cpp` puts the
+link on UART1 in the first place.
+
+Three wires, crossed, and **no power line**:
+
+| board | adapter |
+|---|---|
+| GPIO 17 (TX) | RX |
+| GPIO 18 (RX) | TX |
+| GND | GND |
+
+Leave 3V3 and 5V unconnected — the board is already powered by its own USB cable, and tying two
+supplies together invites trouble. GND alone provides the shared reference the signals need.
+
+**The adapter must be 3.3 V logic.** An ESP32 GPIO's absolute maximum is VDD+0.3 V (~3.6 V), and 5 V
+drives overcurrent through the internal clamping diodes. Most CH340 boards carry a 3.3 V/5 V jumper —
+set it to 3.3 V, or buy a 3.3 V-only part.
+
+One adapter is enough, on one board: M1's acceptance is *"`potctl` asks node 1 to read node 2's
+resource, then node 2 is unplugged"*, so only node 1 needs a frame link. During that test one board
+wears two cables — its own USB, plus the adapter — and the others keep one each.
 
 ### Power: the one bench mistake that would fake a protocol failure
 
