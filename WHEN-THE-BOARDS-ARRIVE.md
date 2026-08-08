@@ -25,7 +25,7 @@ Nothing here needs soldering. Everything is push-fit.
 | 4 | SN65HVD230 CAN transceiver module | 2 | M4's CAN transport — and the same two modules serve the sibling Powersuit project |
 | 5 | Dupont jumper **female-female** pack (a mixed M-M/M-F/F-F set is fine and no dearer) | 1 | ~10 wires total; a 40-pack is plenty |
 | 6 | ~~Breadboard~~ | **0** | **Not needed, and one will not fit three boards.** See below |
-| 7 | USB-serial adapter (CH340 / CP2102), **3.3 V logic** | 0–1 | optional, and *not* for flashing or power — it is the second serial channel that reaches the UART1 frame link. See below. The free alternative is a rebuild with the frame link on native USB, at the cost of RF quality during that test |
+| 7 | USB-to-TTL adapter, **3.3 V logic** — prefer **CP2102** over CH340 | 0–1 | optional, and *not* for flashing or power — it is the second serial channel reaching the UART1 frame link. See below for why CP2102. The free alternative is a rebuild with the frame link on native USB, at the cost of RF quality during that test |
 
 **Do not buy:** 120 Ω resistors (each SN65HVD230 module carries its own, which is exactly right for a
 two-node bus), LEDs, screw-terminal shields, a soldering iron, or a breadboard.
@@ -106,8 +106,20 @@ Leave 3V3 and 5V unconnected — the board is already powered by its own USB cab
 supplies together invites trouble. GND alone provides the shared reference the signals need.
 
 **The adapter must be 3.3 V logic.** An ESP32 GPIO's absolute maximum is VDD+0.3 V (~3.6 V), and 5 V
-drives overcurrent through the internal clamping diodes. Most CH340 boards carry a 3.3 V/5 V jumper —
-set it to 3.3 V, or buy a 3.3 V-only part.
+drives overcurrent through the internal clamping diodes.
+
+**Which chip: prefer CP2102 over CH340.** Both work, but the CP2102 signals at 3.3 V *natively* —
+there is no jumper to set, therefore none to set wrongly, and mis-setting it is the only action in
+this build that can damage a board. It also needs no additional driver, since CP210x is already
+required for the boards themselves, and its on-chip EEPROM serial number keeps its COM port stable
+across replugs where a CH340 typically has none. The CH340's one advantage is a 2 Mbps ceiling
+against the CP2102's 1 Mbps, which does not matter here: `CONFIG_POT_SERIAL_BAUD` defaults to
+921 600.
+
+The cost of choosing CP2102 is that every device then enumerates as "Silicon Labs CP210x". That is
+already true of three identical boards, so a way to tell ports apart is needed regardless: run
+`tools\capture.ps1 --list-ports`, unplug one thing, and see which entry disappears. Attach the
+adapter last and it is the newest COM number.
 
 One adapter is enough, on one board: M1's acceptance is *"`potctl` asks node 1 to read node 2's
 resource, then node 2 is unplugged"*, so only node 1 needs a frame link. During that test one board
@@ -146,7 +158,7 @@ avoidable — **both drivers install with no hardware present.** Note they are d
 | chip | on what | driver |
 |---|---|---|
 | **CP2102N** | the three DevKitC-1 boards' USB-to-UART port | [Silicon Labs CP210x VCP](https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers) |
-| **CH340 / CH340G** | the USB-to-TTL adapter for the frame link | [WCH CH341SER](https://www.wch-ic.com/downloads/CH341SER_EXE.html) |
+| **CH340 / CH340G** | *only* if the frame-link adapter uses CH340 rather than CP2102 | [WCH CH341SER](https://www.wch-ic.com/downloads/CH341SER_EXE.html) |
 
 Espressif's [Establish Serial Connection](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/establish-serial-connection.html)
 page is the reference if a port still fails to enumerate. Confirm afterwards with
