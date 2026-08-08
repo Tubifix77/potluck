@@ -248,3 +248,26 @@ Registered before M4 is written, because they change what the milestone can even
 | A bus-powered USB hub cannot run three boards | USB 2.0 gives 500 mA per port and a bus-powered hub shares one such budget across everything downstream — against ~1050 mA of peak demand from three boards. Three *separate* PC ports (500 mA each, 900 mA on USB 3.0) or a mains-powered hub are both fine. **This is a measurement-integrity issue, not a convenience one:** the 330 mA figure is 100 % duty cycle while heartbeat traffic is short bursts, so an undersized supply sags intermittently rather than failing outright; each sag resets a board, bumps its boot epoch and stops its heartbeat, and the peer declares it dead — manufacturing exactly the false death declarations §13-M0's acceptance forbids | USB port current limits + the row above | 2026-08-09 | stable | verified |
 | One USB cable per board covers power, flashing, console and capture | The USB-to-UART port supplies 5 V, carries esptool flashing, the serial console and the JSON statistics stream. No separate power supply is required for any bench configuration in this project | this repo's runbook + board design | 2026-08-09 | stable | verified |
 | A USB-serial adapter on the frame link must be 3.3 V logic | An ESP32 GPIO's absolute maximum input is VDD+0.3 V (~3.6 V); 5 V drives overcurrent through the internal clamping diodes and damages the pin over time. Most CH340 modules carry a 3.3 V/5 V jumper — it must be on 3.3 V. Wiring is three lines only (GPIO17→RX, GPIO18→TX, GND→GND) with **no** power line, since the board is already supplied by its own USB cable | ESP32 datasheet absolute-maximum ratings, corroborated across [ESP32 forum discussion of 5 V tolerance](https://www.esp32.com/viewtopic.php?t=18327) | 2026-08-09 | stable | verified |
+
+## Body-worn 2.4 GHz — registered 2026-08-09, prompted by the Powersuit topology
+
+The owner's Powersuit is 7 ESP32-S3 nodes distributed over armour, a Pi-class node for the HUD, and a
+5G link to a cloud LLM. He observed that node separation is "just the size of a person" and asked
+whether 7 counts as a large network. Two findings, and the second inverts the intuition.
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| 7 nodes is the designed cell size, not a large network | §3's ESP-NOW peer ceiling is 20 *including* broadcast, and `sim/` validates 7 nodes directly: 109 frames/s, ~8.7 % airtime, zero false death declarations under the broadcast beacon. A 7-node suit is inside the envelope with margin | this repo's §3 and `sim/` sweep output | 2026-08-09 | stable | verified |
+| **A human body between two nodes costs roughly 20 dB at 2.4 GHz** | Free-space path loss of ~44 dB rises to **~65 dB** when the body shadows the link at close range. The on-body path-loss *exponent* is 3–4 line-of-sight and **5–6 non-line-of-sight**, against 2 in free space; 2.4 GHz decays about twice as fast on-body as 915 MHz; limbs propagate markedly better than front-to-back across the torso. **Short range does not mean good link** — a body-worn mesh is the shortest-range and worst RF environment in this project, and ~20 dB is a factor of 100 in power | [Human body shadowing at 2.4 GHz (PMC6211019)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6211019/), [On-body RF links 420 MHz–2.4 GHz (PMC6308834)](https://pmc.ncbi.nlm.nih.gov/articles/PMC6308834/) | 2026-08-09 | stable | verified |
+
+**Consequence, and a decision that was already right for a different reason.** ARCHITECTURE §1.2's
+Ironman-suit entry routes the suit over a **wired CAN spine**, with tight loops pinned to the node
+wired to their own actuator, because sub-millisecond loops cannot span a radio (§3.1). That was a
+*latency* argument. The body-shadowing figures make it independently correct on *RF* grounds too — an
+on-body ESP-NOW mesh would be fighting 20 dB of torso on a large fraction of its links. No
+architecture change follows; this is a second, unrelated justification for a decision already closed,
+and it should be cited as such rather than re-derived.
+
+**[MEASURE]** The bench can settle this cheaply: place two boards on opposite sides of a torso and
+capture PDR, alongside the free-space distance sweep. That is the actual Powersuit link condition and
+neither the farmland paper nor a desk test produces it.

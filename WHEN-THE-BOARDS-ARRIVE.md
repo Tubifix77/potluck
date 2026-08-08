@@ -286,6 +286,14 @@ So, after the soak and needing no hardware beyond two boards and some space:
    100 % and 0 from 56–70 m rather than a smooth roll-off. Find out where *your* cliff is, indoors,
    through whatever walls you actually have. Record the geometry with every point; a PDR figure
    without a geometry is not a measurement.
+1b. **Add a through-body point, if Powersuit matters to you.** Put one board on each side of a
+   torso and capture PDR there too. A human body costs roughly **20 dB** at 2.4 GHz — free-space path
+   loss of ~44 dB rises to ~65 dB with the body shadowing the link, and the on-body path-loss exponent
+   is 5–6 non-line-of-sight against 2 in free space. So a body-worn mesh is the shortest-range *and*
+   worst environment in this project, which is the independent RF reason ARCHITECTURE §1.2 already
+   routes the suit over a wired CAN spine rather than radio. Measuring it turns that from a citation
+   into a fact about your own hardware. Sources in the evidence ledger.
+
 2. **Replace the constants** in `sim/link_model.hpp` with the measured points, keeping the paper's as
    named alternatives for comparison rather than deleting them.
 3. **Re-run `build\tests\pot_sim.exe --sweep`.** Every scaling claim in ARCHITECTURE.md and the
