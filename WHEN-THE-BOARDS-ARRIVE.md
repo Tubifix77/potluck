@@ -13,6 +13,35 @@ headroom is committed on paper to later milestones — which is exactly why noth
 
 ---
 
+## Step zero: what to buy
+
+Nothing here needs soldering. Everything is push-fit.
+
+| # | Item | Qty | Why |
+|---|---|---|---|
+| 1 | **ESP32-S3-DevKitC-1 N16R8**, headers pre-soldered, **two USB sockets** | 3 | 2 is the minimum for M0; the 3rd is a spare against a dead-on-arrival board *and* makes the broadcast-beacon comparison meaningful (at 2 nodes broadcast and unicast are indistinguishable) |
+| 2 | USB cables matching the board's sockets | 3 | check the listing photos — Micro-USB vs USB-C varies by revision |
+| 3 | Powered USB hub | 1 | for the 24 h soak; unpowered ports plus a PC that suspends USB is the likeliest way to lose a day |
+| 4 | SN65HVD230 CAN transceiver module | 2 | M4's CAN transport — and the same two modules serve the sibling Powersuit project |
+| 5 | Dupont jumper mixed pack (M-M, M-F, F-F) | 1 | ~10 wires for the CAN wiring; a 40-pack is plenty |
+| 6 | Small breadboard | 1 | optional — module-to-module goes direct with F-F jumpers |
+| 7 | USB-serial adapter (CH340 / CP2102) | 1 | optional, for `potctl` over the UART1 frame link. The free alternative is a rebuild with the frame link on native USB, at the cost of RF quality during that test |
+
+**Do not buy:** 120 Ω resistors (each SN65HVD230 module carries its own, which is exactly right for a
+two-node bus), LEDs, screw-terminal shields, or a soldering iron.
+
+**Check before clicking buy:** the photo shows **two** USB sockets — a board with only the native USB
+port cannot run this firmware at all, because `CONFIG_ESP_PHY_ENABLE_USB=n` makes that port unusable
+while Wi-Fi is on. Also confirm the listing says headers are already soldered.
+
+Stay with **N16R8** unless you have a reason not to: it is what every memory figure in this repo is
+attributed to, and deviating means re-measuring rather than comparing.
+
+Sources and the wider pin-exclusion list are in `.claude/zero-assumption/memory.md` under
+*Bench hardware*.
+
+---
+
 ## Hour one, regardless of how many boards came
 
 ```powershell
