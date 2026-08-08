@@ -109,6 +109,16 @@ Now the part no emulator could touch — the first heartbeat this project ever e
   concluded and later withdrew. The log keeps its mistakes; that is its value.
 - Commit and push. The public status table is a promise.
 
+## If you build the LED demo
+
+Making the board's onboard RGB LED a writable cluster resource — `potctl write` on the laptop, the
+*other* board's LED changes — is the vision in miniature and needs no extra hardware. One thing to
+get right on the first try: **the LED's GPIO differs by board revision (48 on v1.0, 38 on v1.1)**,
+because GPIO47/48 sit on the 1.8 V SPI rail used by PSRAM. Both revisions are sold and listings
+rarely say which. So the pin is a **Kconfig value with no default that is silently wrong** — a
+hardcoded 48 on a v1.1 board is a dead LED that looks exactly like a broken driver. Sources and the
+wider pin-exclusion list are in `.claude/zero-assumption/memory.md` under *Bench hardware*.
+
 ## Sharp edges, one line each
 
 - USB socket dead while Wi-Fi runs → by design, use the UART socket ([runbook §2](M0-RUNBOOK.md)).
