@@ -138,6 +138,20 @@ attributed to, and deviating means re-measuring rather than comparing.
 Sources and the wider pin-exclusion list are in `.claude/zero-assumption/memory.md` under
 *Bench hardware*.
 
+### Do this while the parcel is in transit: install two drivers
+
+"The board does not appear as a COM port" is the classic first-hour blocker, and it is entirely
+avoidable — **both drivers install with no hardware present.** Note they are different chips:
+
+| chip | on what | driver |
+|---|---|---|
+| **CP2102N** | the three DevKitC-1 boards' USB-to-UART port | [Silicon Labs CP210x VCP](https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers) |
+| **CH340 / CH340G** | the USB-to-TTL adapter for the frame link | [WCH CH341SER](https://www.wch-ic.com/downloads/CH341SER_EXE.html) |
+
+Espressif's [Establish Serial Connection](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/establish-serial-connection.html)
+page is the reference if a port still fails to enumerate. Confirm afterwards with
+`tools\capture.ps1 --list-ports`, which prints every port it can see and needs no board attached.
+
 ---
 
 ## Hour one, regardless of how many boards came
