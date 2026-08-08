@@ -563,11 +563,15 @@ extern "C" void app_main(void) {
     cfg.hb_period_ms = CONFIG_POT_HB_PERIOD_MS;
     cfg.hb_miss_limit = CONFIG_POT_HB_MISS_LIMIT;
     cfg.hello_interval_ms = CONFIG_POT_HELLO_INTERVAL_MS;
-#ifdef CONFIG_POT_BEACON_BROADCAST
+    // Polarity is "opt in to the bad one", because the knob is a plain bool rather than the Kconfig
+    // `choice` it wants to be — a choice member cannot be set from an sdkconfig.defaults overlay and
+    // fails *silently*, which for a knob whose only purpose is a scripted A/B measurement would mean
+    // broadcast numbers reported as unicast. See Kconfig.projbuild for the measurement that showed it.
+#if CONFIG_POT_BEACON_UNICAST
+    cfg.beacon_mode = BeaconMode::UnicastFullMesh;
+#else
     cfg.beacon_mode = BeaconMode::BroadcastBeacon;
     cfg.probe_interval_ms = CONFIG_POT_PROBE_INTERVAL_MS;
-#else
-    cfg.beacon_mode = BeaconMode::UnicastFullMesh;
 #endif
 
     // Derive the node id from the MAC unless one is configured, so both boards take the same

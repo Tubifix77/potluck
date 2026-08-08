@@ -1539,3 +1539,88 @@ the fatal risk. The schedule slot gets decided when M4/M5 scoping happens, with 
 
 Nothing was changed in ARCHITECTURE.md; the pause holds. This entry exists so the finding survives
 the pause without becoming scope.
+
+---
+
+## During the pause — Powersuit's build findings, and the two real bugs they exposed here
+
+The owner relayed nine findings from Powersuit, verified there by building and running. Rather than
+filing them, each was **tested against this repository** — a finding from ESP-IDF 5.5 is not
+automatically true of the v6.0.2 pinned here. Three did not apply. Two found live bugs in this
+project's own tooling, both of the silent kind.
+
+### Bug 1: the `-Extra` bisection tool could not set the one knob it was built for
+
+Powersuit's finding: *a Kconfig `choice` member cannot be overridden from an `sdkconfig.defaults`
+overlay.* This repo had exactly one `choice` — the beacon mode — and `run_qemu.ps1 -Extra` writes
+overlay fragments. Tested: an overlay carrying `CONFIG_POT_BEACON_UNICAST=y` produced a build whose
+generated `sdkconfig` said `CONFIG_POT_BEACON_BROADCAST=y`. Accepted in silence, build reported
+success. A plain int in the *same fragment* applied fine, so the mechanism works and choice members
+specifically vanish.
+
+The consequence was not academic. That knob's own help text says *"Select it only to reproduce the
+saturation on hardware"* — so the first bench session trying to reproduce the O(N²) airtime result
+would have measured **broadcast**, labelled it unicast, and concluded the saturation problem did not
+exist. The whole point of the broadcast-beacon work would have been quietly unfalsifiable.
+
+Fixed by flattening the choice to a plain `bool` (`POT_BEACON_UNICAST`, default n — opt in to the bad
+one). Verified end to end in both directions: `beacon mode: unicast_full_mesh` with the flag,
+`broadcast_beacon` without.
+
+### Bug 2, found while fixing bug 1, and worse
+
+The new guard immediately flagged something unasked-for: `CONFIG_POT_NODE_ID=4097` had *also* been
+ignored, reverting to 0 — and that one had worked in earlier sessions. Cause: **ESP-IDF treats an
+existing `sdkconfig` as authoritative** and consults `sdkconfig.defaults` only for symbols it does
+not already contain. So on the second and later runs, a *changed* overlay is ignored entirely. Not a
+choice-member problem — a whole-mechanism problem, affecting every `-Extra` and `-NodeId` bisection
+ever run here.
+
+That is uncomfortably close to the stale-flash-image failure of Session 4: the tool that varies one
+thing per run silently not varying it. Fixed by deleting `sdkconfig` before every configure, which
+forces regeneration from the defaults chain; build objects survive, so the cost is a reconfigure.
+
+**And a general guard, because the class matters more than the two instances:** `run_qemu.ps1` now
+reads back the generated `sdkconfig` and **refuses to run** if any requested override is missing,
+printing asked-vs-got per symbol. Same rule as `decode_backtrace.ps1`'s ELF-SHA gate — a build is
+only evidence about the configuration you believe it has if something checked that belief. It caught
+bug 2 within a minute of existing.
+
+### Bug 3, caught by the compiler, and it is finding #5 in the flesh
+
+Flattening the choice left `CONFIG_POT_PROBE_INTERVAL_MS` with `depends on` a symbol that no longer
+existed. Powersuit's finding: *an unselected Kconfig symbol is undefined, not 0* — it reads as 0 in
+`#if` and compiles, but is an undeclared identifier in ordinary C. The unicast build failed with
+"was not declared in this scope". Loud, which is the good outcome. The dependency was removed: a knob
+that is meaningless in one mode is better left defined and ignored than made to vanish.
+
+### Checked and *not* applicable here
+
+- **`set(SDKCONFIG_DEFAULTS ...)` before `project()` clobbering `-D SDKCONFIG_DEFAULTS`** —
+  `firmware/CMakeLists.txt` has no such `set()`. Checked rather than assumed; had it been there,
+  every `-D` override this project has ever relied on would have been fiction.
+- **`uxTaskGetStackHighWaterMark()` returning bytes, not words** — not called anywhere in this
+  firmware. Registered anyway, because §6's stack budgets are precisely where it would appear and
+  reading it as words overstates headroom fourfold.
+
+### Carried into M4's scope, unbuilt
+
+- **A lone CAN node cannot transmit** — TWAI needs a peer to ACK every frame, so no single-board CAN
+  task can ever be scheduled. M4's acceptance already implies two transmitters; now it is explicit.
+- One transceiver per node; and above two nodes the modules' built-in 120 Ω terminators are one too
+  many. Powersuit flags the three-node case as inference, so it is registered **unverified**.
+- **`esp_driver_twai` does not copy the TX payload** — a stack local corrupts frames under load.
+  Observed on IDF 5.5, *not* re-checked against v6.0.2, and flagged in the ledger as such. ESP-NOW
+  does not share the hazard (`esp_now_send` copies), which is why M0's TX path is safe.
+
+### Worth stealing later: tests that run on the target
+
+Powersuit runs a QEMU self-test image that deliberately touches no unemulated peripheral, and gets 27
+checks on real Xtensa under real FreeRTOS — packed-struct access, single-precision FPU, dual-core
+scheduling, true stack consumption, timing against a real clock. This repo has a gap of exactly that
+shape: **158 C++ cases, all executed on host x86-64.** The wire format's layout asserts do run on
+target (they are `static_assert`s compiled for Xtensa), but no test *executes* there. Not started —
+it is post-M0 work — but it is the cheapest way to close the "works on the laptop" gap, and the
+emulator to run it on already exists here.
+
+All 19 gates green after the changes; static data unchanged at 53,118 B.

@@ -36,39 +36,42 @@ config POT_HB_MISS_LIMIT
     range 2 60
     default 6
 
-choice POT_BEACON_MODE
-    prompt "How liveness is carried"
-    default POT_BEACON_BROADCAST
+config POT_BEACON_UNICAST
+    bool "Carry liveness by unicast full mesh (O(N^2)) instead of the broadcast beacon"
+    default n
     help
         ARCHITECTURE.md section 8.2 fixes the heartbeat timings but says nothing about how the
         beacon reaches its peers, and the difference decides whether a cell fits its channel.
 
-config POT_BEACON_BROADCAST
-    bool "Broadcast beacon + round-robin unicast probe (O(N))"
-    help
-        One broadcast beacon per node per period carries liveness to every peer, and RTT/PDR ride
-        a separate round-robin unicast probe at their own slower interval. Section 8.2's period,
-        miss limit and 600 ms death declaration are unchanged.
+        DEFAULT (n) - broadcast beacon + round-robin unicast probe, O(N). One broadcast beacon per
+        node per period carries liveness to every peer, and RTT/PDR ride a separate round-robin
+        unicast probe at their own slower interval. Section 8.2's period, miss limit and 600 ms
+        death declaration are unchanged. A 20-node cell costs about 240 frames/s this way.
 
-        A 20-node cell costs about 240 frames/s this way, against 7600 for unicast full mesh.
+        SET TO y - unicast full mesh, O(N^2). A probe to every peer every period, each answered
+        immediately: 2*N*(N-1) frames per period, about 7600 frames/s at 20 nodes. This is what M0
+        originally shipped, and with two boards it is indistinguishable from correct. At seven nodes
+        it needs about 840 frames/s, which does not fit a 1 Mbit/s channel once real PHY overhead is
+        counted. Select it only to reproduce the saturation on hardware. sim/ models it too.
 
-config POT_BEACON_UNICAST
-    bool "Unicast full mesh (O(N^2)) - does not scale, kept for comparison"
-    help
-        A probe to every peer every period, each answered immediately: 2*N*(N-1) frames per period.
-        This is what M0 originally shipped, and with two boards it is indistinguishable from
-        correct. At seven nodes it needs about 840 frames/s, which does not fit a 1 Mbit/s channel
-        once real PHY overhead is counted.
-
-        Select it only to reproduce the saturation on hardware. sim/ models it too.
-
-endchoice
+        WHY THIS IS A bool AND NOT A choice, WHICH IS WHAT IT WANTS TO BE: a Kconfig `choice` member
+        cannot be overridden from an sdkconfig.defaults overlay - the assignment is accepted in
+        silence and the default wins. Verified here on 2026-08-09: an overlay carrying
+        CONFIG_POT_BEACON_UNICAST=y produced a build with CONFIG_POT_BEACON_BROADCAST=y, while a
+        plain int in the same fragment applied correctly. Since the only reason to touch this knob is
+        a scripted A/B measurement on the bench, a form of the knob that scripts cannot set is worse
+        than useless: it would hand back broadcast numbers labelled as unicast.
 
 config POT_PROBE_INTERVAL_MS
     int "Round-robin unicast probe interval, in milliseconds"
-    depends on POT_BEACON_BROADCAST
     range 100 60000
     default 1000
+    # Deliberately NOT `depends on` the beacon mode. It used to depend on the broadcast half of a
+    # Kconfig choice, which meant that in the other mode the symbol was not merely unset but
+    # *undefined* — an unselected Kconfig symbol does not exist at all, it does not silently become
+    # zero. In `#if` that reads as 0 and compiles; in ordinary C it is an undeclared identifier. The
+    # unicast build broke on exactly that the moment the choice was flattened. A knob that is
+    # meaningless in one mode is better left defined and ignored than made to vanish.
     help
         How often each node probes one peer for RTT and ACK-based PDR. This is a diagnostic rather
         than a liveness signal, so it need not be the heartbeat period: at one second a 20-node

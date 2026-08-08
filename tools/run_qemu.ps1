@@ -68,13 +68,56 @@ try {
     } else {
         Remove-Item (Join-Path $MirrorDir "sdkconfig.qemu.node") -Force -ErrorAction SilentlyContinue
     }
+    # ALWAYS delete sdkconfig, never only on a fresh build directory.
+    #
+    # ESP-IDF treats an existing `sdkconfig` as authoritative and consults sdkconfig.defaults only
+    # for symbols it does not already contain. So on the second and later runs, a *changed* overlay
+    # is ignored — the previous run's value wins, the build succeeds, and nothing says a word. That
+    # makes -Extra and -NodeId, whose entire purpose is varying one knob between runs, silently
+    # unreliable in exactly the situation they exist for. Deleting sdkconfig forces regeneration from
+    # the defaults chain every time; the build objects survive, so the cost is a reconfigure.
+    Remove-Item -Force "sdkconfig" -ErrorAction SilentlyContinue
     if (-not (Test-Path "build\CMakeCache.txt")) {
-        Remove-Item -Force "sdkconfig" -ErrorAction SilentlyContinue
         idf.py -D SDKCONFIG_DEFAULTS="$defaults" set-target esp32s3
         if ($LASTEXITCODE -ne 0) { throw "set-target failed" }
     }
     idf.py -D SDKCONFIG_DEFAULTS="$defaults" build
     if ($LASTEXITCODE -ne 0) { throw "build failed" }
+
+    # --- did the overlay actually take effect? ---------------------------------------------------
+    # Kconfig accepts an assignment it cannot honour *in silence*. A `choice` member is the known
+    # case: setting one from an sdkconfig.defaults overlay leaves the default in place, the build
+    # succeeds, and the only tell is behaviour that does not match the flag you passed. Measured here
+    # on 2026-08-09 with CONFIG_POT_BEACON_UNICAST, which is why that knob is now a plain bool.
+    #
+    # So every line this script asked for is checked against the sdkconfig that was generated. This
+    # is the same rule as the ELF-SHA gate in decode_backtrace.ps1: a build is only evidence about the
+    # configuration you believe it has if something checked that belief.
+    if ($frag_lines.Count -gt 0 -and (Test-Path "sdkconfig")) {
+        $generated = Get-Content "sdkconfig"
+        $ignored = @()
+        foreach ($line in $frag_lines) {
+            if ($line -notmatch '^(CONFIG_[A-Za-z0-9_]+)=(.*)$') { continue }
+            $sym, $want = $Matches[1], $Matches[2]
+            # `=n` legitimately appears in the generated file as a comment, not an assignment.
+            $expected = if ($want -eq 'n') { "# $sym is not set" } else { "$sym=$want" }
+            if ($generated -notcontains $expected) {
+                $actual = ($generated | Where-Object { $_ -match "^$sym=" }) -join ', '
+                if (-not $actual) { $actual = ($generated | Where-Object { $_ -match "^# $sym is not set" }) -join ', ' }
+                if (-not $actual) { $actual = '(symbol absent - typo, or it does not exist)' }
+                $ignored += "  asked: $line`n     got: $actual"
+            }
+        }
+        if ($ignored.Count -gt 0) {
+            Write-Host ""
+            Write-Host "CONFIG OVERRIDE SILENTLY IGNORED" -ForegroundColor Red
+            $ignored | ForEach-Object { Write-Host $_ -ForegroundColor Red }
+            Write-Host ""
+            Write-Host "The build succeeded but is NOT configured the way you asked. A Kconfig"
+            Write-Host "'choice' member cannot be set from an overlay; a plain bool or int can."
+            throw "refusing to run: the generated sdkconfig does not match the requested overrides"
+        }
+    }
 
     # idf.py qemu builds the flash and efuse images for us, then runs QEMU. Doing the run by hand
     # instead, so the console can be captured to a file and UART1 exposed on a socket.
