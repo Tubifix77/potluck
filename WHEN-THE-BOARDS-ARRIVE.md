@@ -21,7 +21,7 @@ Nothing here needs soldering. Everything is push-fit.
 |---|---|---|---|
 | 1 | **ESP32-S3-DevKitC-1 N16R8**, headers pre-soldered, **two USB sockets** | 3 | 2 is the minimum for M0; the 3rd is a spare against a dead-on-arrival board *and* makes the broadcast-beacon comparison meaningful (at 2 nodes broadcast and unicast are indistinguishable) |
 | 2 | USB cables matching the board's sockets | 3 | check the listing photos — Micro-USB vs USB-C varies by revision |
-| 3 | Powered USB hub | 1 | for the 24 h soak; unpowered ports plus a PC that suspends USB is the likeliest way to lose a day |
+| 3 | USB hub — **only if short of PC ports, and only a mains-powered one** | 0–1 | three free ports on the PC is the better setup; see the power note below |
 | 4 | SN65HVD230 CAN transceiver module | 2 | M4's CAN transport — and the same two modules serve the sibling Powersuit project |
 | 5 | Dupont jumper **female-female** pack (a mixed M-M/M-F/F-F set is fine and no dearer) | 1 | ~10 wires total; a 40-pack is plenty |
 | 6 | ~~Breadboard~~ | **0** | **Not needed, and one will not fit three boards.** See below |
@@ -48,6 +48,28 @@ test, which uses no wires at all, just USB power.
 **Check before clicking buy:** the photo shows **two** USB sockets — a board with only the native USB
 port cannot run this firmware at all, because `CONFIG_ESP_PHY_ENABLE_USB=n` makes that port unusable
 while Wi-Fi is on. Also confirm the listing says headers are already soldered.
+
+**One cable per board does everything:** 5 V power, flashing, the serial console, and the JSON
+statistics stream `potluck-capture` records. No separate power supply is needed anywhere.
+
+### Power: the one bench mistake that would fake a protocol failure
+
+The ESP32-S3-WROOM-1 draws a **peak of 330 mA at 3.3 V transmitting 802.11b at 20.5 dBm**
+([datasheet](https://documentation.espressif.com/esp32-s3_datasheet_en.html)) — an LDO passes that
+through nearly one-for-one from the 5 V rail. So per board, budget ~350 mA of peak USB current.
+
+- **Three separate PC ports** — 500 mA each on USB 2.0, 900 mA on USB 3.0. Fine, and the best setup.
+- **A mains-powered hub** — fine.
+- **A bus-powered hub** (no wall wart) — **not fine**: 500 mA total shared, against roughly 1050 mA
+  of peak demand from three boards.
+
+Why this deserves its own section rather than a footnote: the 330 mA figure is a 100 %-duty-cycle
+measurement, while heartbeat traffic is short bursts every 100 ms. An undersized supply therefore
+does not fail cleanly — it sags **occasionally**, mid-transmit, at random times across 24 hours. Each
+sag resets a board, which bumps its boot epoch and stops its heartbeat, and the peer declares it
+dead. §13-M0's acceptance criterion is *zero false death declarations*, so a marginal hub would
+manufacture precisely the failures the soak exists to rule out, and they would read as a protocol
+bug. Related: stop the PC sleeping, or USB suspend ends the capture mid-soak.
 
 Stay with **N16R8** unless you have a reason not to: it is what every memory figure in this repo is
 attributed to, and deviating means re-measuring rather than comparing.
