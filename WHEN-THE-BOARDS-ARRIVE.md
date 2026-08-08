@@ -288,7 +288,7 @@ So, after the soak and needing no hardware beyond two boards and some space:
    without a geometry is not a measurement.
 2. **Replace the constants** in `sim/link_model.hpp` with the measured points, keeping the paper's as
    named alternatives for comparison rather than deleting them.
-3. **Re-run `build	ests\pot_sim.exe --sweep`.** Every scaling claim in ARCHITECTURE.md and the
+3. **Re-run `build\tests\pot_sim.exe --sweep`.** Every scaling claim in ARCHITECTURE.md and the
    README now rests on this bench instead of on a citation — and if the numbers move enough to change
    §8.2's timers or the beacon conclusion, that is a finding, not an inconvenience.
 
