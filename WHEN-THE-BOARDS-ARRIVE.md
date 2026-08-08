@@ -23,12 +23,27 @@ Nothing here needs soldering. Everything is push-fit.
 | 2 | USB cables matching the board's sockets | 3 | check the listing photos — Micro-USB vs USB-C varies by revision |
 | 3 | Powered USB hub | 1 | for the 24 h soak; unpowered ports plus a PC that suspends USB is the likeliest way to lose a day |
 | 4 | SN65HVD230 CAN transceiver module | 2 | M4's CAN transport — and the same two modules serve the sibling Powersuit project |
-| 5 | Dupont jumper mixed pack (M-M, M-F, F-F) | 1 | ~10 wires for the CAN wiring; a 40-pack is plenty |
-| 6 | Small breadboard | 1 | optional — module-to-module goes direct with F-F jumpers |
+| 5 | Dupont jumper **female-female** pack (a mixed M-M/M-F/F-F set is fine and no dearer) | 1 | ~10 wires total; a 40-pack is plenty |
+| 6 | ~~Breadboard~~ | **0** | **Not needed, and one will not fit three boards.** See below |
 | 7 | USB-serial adapter (CH340 / CP2102) | 1 | optional, for `potctl` over the UART1 frame link. The free alternative is a rebuild with the frame link on native USB, at the cost of RF quality during that test |
 
 **Do not buy:** 120 Ω resistors (each SN65HVD230 module carries its own, which is exactly right for a
-two-node bus), LEDs, screw-terminal shields, or a soldering iron.
+two-node bus), LEDs, screw-terminal shields, a soldering iron, or a breadboard.
+
+**Why no breadboard.** The devkit and the transceiver module both have male header pins, so
+female-female jumpers join them directly: 3V3, GND, TX and RX from each board to its own module, then
+CANH→CANH and CANL→CANL between the two modules. Ten wires, nothing in between. A breadboard would
+only add a place for a wire to fall out of.
+
+It would not fit anyway, which is worth knowing before buying one hopefully: a half-size (400-point)
+breadboard is about 82 × 54 mm and a DevKitC-1 is about 70 × 28 mm, so one small breadboard holds
+**one** board. Three would want ~210 mm of length; even a full-size 830-point board (~165 mm) takes
+only two.
+
+That situation never arises regardless: **the three boards are never all wired at once.** Only two
+ever carry CAN transceivers — a two-node bus is what both acceptance tests need, and a third module
+would put three terminators on a bus that wants exactly two. The third board is for the Wi-Fi mesh
+test, which uses no wires at all, just USB power.
 
 **Check before clicking buy:** the photo shows **two** USB sockets — a board with only the native USB
 port cannot run this firmware at all, because `CONFIG_ESP_PHY_ENABLE_USB=n` makes that port unusable
