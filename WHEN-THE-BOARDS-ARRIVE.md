@@ -268,6 +268,33 @@ Now the part no emulator could touch — the first heartbeat this project ever e
    node 2 — the read must return **`UNAVAILABLE`**. Note: the architecture doc originally said
    `STALE` here and was corrected; the code is right. Do not "fix" the firmware to match old prose.
 
+## The experiment two boards buy that more boards would not
+
+Three boards cannot test a twenty-node cell. What they *can* do is make the twenty-node **prediction**
+honest, and that is worth more than it sounds.
+
+`sim/link_model.hpp` currently carries three hardcoded link points — `54m_clear`, `52m_fringe`,
+`58m_cliff` — with their PDR, mean delay, sigma and maximum taken from §3's cited paper, measured in
+open farmland with other hardware. Every large-N figure this project quotes (7 nodes at 109 frames/s
+and ~8.7 % airtime with zero false deaths; ~240 frames/s at 20 nodes) is the real `pot::Node` policy
+run against **borrowed physics**. The policy is ours. The channel is not.
+
+So, after the soak and needing no hardware beyond two boards and some space:
+
+1. **Sweep distance.** Put the boards at increasing separations — a corridor, a garden, a car park —
+   and capture a few minutes at each. §3 claims PDR above 99 % below 56 m and an oscillation between
+   100 % and 0 from 56–70 m rather than a smooth roll-off. Find out where *your* cliff is, indoors,
+   through whatever walls you actually have. Record the geometry with every point; a PDR figure
+   without a geometry is not a measurement.
+2. **Replace the constants** in `sim/link_model.hpp` with the measured points, keeping the paper's as
+   named alternatives for comparison rather than deleting them.
+3. **Re-run `build	ests\pot_sim.exe --sweep`.** Every scaling claim in ARCHITECTURE.md and the
+   README now rests on this bench instead of on a citation — and if the numbers move enough to change
+   §8.2's timers or the beacon conclusion, that is a finding, not an inconvenience.
+
+This is also the honest answer to "can I test a big mesh with three boards?" — no, but you can stop
+the big-mesh numbers being someone else's.
+
 ## After acceptance
 
 - Tick the checklist in the runbook, move M0 (and M1/M2) from *built* to **accepted** in the
