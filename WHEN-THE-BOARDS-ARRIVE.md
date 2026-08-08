@@ -20,7 +20,7 @@ Nothing here needs soldering. Everything is push-fit.
 | # | Item | Qty | Why |
 |---|---|---|---|
 | 1 | **ESP32-S3-DevKitC-1 N16R8**, headers pre-soldered, **two USB sockets** | 3 | 2 is the minimum for M0; the 3rd is a spare against a dead-on-arrival board *and* makes the broadcast-beacon comparison meaningful (at 2 nodes broadcast and unicast are indistinguishable) |
-| 2 | USB cables matching the board's sockets | 3 | check the listing photos — Micro-USB vs USB-C varies by revision |
+| 2 | USB **data** cables matching the sockets | 3–4 | 3 for the boards; a 4th only if the serial adapter is the socket kind rather than a USB-A dongle. Check the listing photos — connector type varies by board revision. See the charge-only warning below |
 | 3 | USB hub — **only if short of PC ports, and only a mains-powered one** | 0–1 | three free ports on the PC is the better setup; see the power note below |
 | 4 | SN65HVD230 CAN transceiver module | 2 | M4's CAN transport — and the same two modules serve the sibling Powersuit project |
 | 5 | Dupont jumper **female-female** pack (a mixed M-M/M-F/F-F set is fine and no dearer) | 1 | ~10 wires total; a 40-pack is plenty |
@@ -48,6 +48,15 @@ test, which uses no wires at all, just USB power.
 **Check before clicking buy:** the photo shows **two** USB sockets — a board with only the native USB
 port cannot run this firmware at all, because `CONFIG_ESP_PHY_ENABLE_USB=n` makes that port unusable
 while Wi-Fi is on. Also confirm the listing says headers are already soldered.
+
+**A 4th cable, or not, depends on the adapter's shape.** A USB-to-TTL adapter comes either as a
+dongle with a USB-A plug moulded on — plugs straight into the PC, no cable — or as a module with a
+Micro-USB/USB-C socket, which needs its own. Check the listing photo before assuming.
+
+**⚠ Charge-only cables are the trap here.** Many cheap USB cables carry power but no data lines. Such
+a cable powers the board perfectly and it never enumerates as a COM port — which presents as a driver
+problem, or a dead board, and costs an hour. Prefer cables that shipped with real data devices.
+**If a board lights up but no COM port appears, swap the cable before suspecting anything else.**
 
 **One cable per board does everything:** 5 V power, flashing, the serial console, and the JSON
 statistics stream `potluck-capture` records. No separate power supply is needed anywhere.
