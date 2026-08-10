@@ -1680,3 +1680,45 @@ That is one specific requirement, and it can be declined.
 
 **Recorded, not scheduled.** If the requirement ever becomes real, start from the three mechanisms
 above and build them on M6, not beside it.
+
+### Follow-up: "wait for every node to acknowledge before switching"
+
+The owner's next proposal, and a better one: rather than announce-and-go, collect an acknowledgement
+from every node and only then switch. It is the right direction and a real implementation would do it
+— but it cannot be made airtight, for a reason worth writing down once.
+
+**The acknowledgement can be lost too.** Node C hears the command, ACKs, and switches. The ACK is
+dropped. The coordinator, still waiting, does not switch. Now C is alone on the new channel while the
+rest stay on the old one — **the node that obeyed correctly is the one that is stranded.** The failure
+has been inverted, not removed. Adding a confirmation of the confirmation moves the same problem one
+level up: that message can be lost as well.
+
+This is the **Two Generals Problem**, and it is provably unsolvable — two parties cannot reach certain
+agreement over a channel that may drop messages, regardless of how many round trips are added. Each
+extra exchange lowers the probability and never reaches zero.
+
+Beneath the impossibility sits a practical one: **how long does the coordinator wait for a silent
+node?** It may be rebooting, asleep, or momentarily shadowed. Waiting indefinitely lets one
+unresponsive node block the cluster for ever — the node wanting Wi-Fi never gets it. Timing out
+returns to the original failure with extra latency. And a coordinator that dies mid-protocol leaves
+everyone genuinely unable to tell whether the migration happened.
+
+**Therefore the design principle is not stronger agreement but survivable disagreement:**
+
+> The split cannot be prevented. Make it recoverable instead.
+
+This is why the rendezvous channel matters more than the handshake — it does not promise nobody gets
+lost, it promises anyone lost can get home. It is also the same philosophy §4 rule 2 already applies
+one layer up: staleness is not prevented, it is made visible and recoverable. The three mechanisms are
+complementary rather than alternatives — **countdown** makes a miss unlikely, **ACK** identifies who is
+at risk before jumping, **rendezvous** makes being wrong survivable.
+
+**A final observation that weakens the whole idea.** The coordinator cannot actually negotiate: the
+router dictates "this channel or no connection". Collecting votes is therefore theatre, because the
+outcome is not in the cluster's gift. The node's real choice is *join Wi-Fi and leave the cell* or
+*stay in the cell and skip Wi-Fi* — a radio occupies one channel at a time, and time-slicing between
+two would destroy the latency budget §4 is built on.
+
+So the conclusion above stands, and for a stronger reason than complexity: **mixing an infrastructure
+association into a peer cell is the mistake.** The host-over-serial bridge removes the requirement
+rather than solving it.
