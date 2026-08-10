@@ -352,3 +352,84 @@ Wi-Fi DRAM figure that validates the whole budget is the very thing being measur
 membership timers under everything else are being validated against real packet loss for the first
 time. Two boards exchanging measured heartbeats outrank any amount of new code — that sentence has
 been the project's rule since the first session, and the pause exists to honour it.
+
+---
+
+## Phase two, after acceptance: the greenstation demo
+
+**Not before M0 is accepted.** Sensors add tasks, I2C traffic and interrupt load, all of which move the
+timing §13-M0 measures. Bare boards first, hardware second — the same reason the frame tee stays off
+during a measurement run.
+
+The demo is ARCHITECTURE §1.2's *home* entry made real: *"a watering node in the garden, moisture nodes
+inside, a screen by the door."* Three nodes, each owning hardware only it can reach, and a rule that
+cannot run on any one of them.
+
+| node | part | AliExpress search term | interface |
+|---|---|---|---|
+| **A** plant | Capacitive soil moisture **v1.2** | `capacitive soil moisture sensor v1.2 corrosion resistant` | analog, **ADC1 only** |
+| **A** | 1-channel relay, **3.3 V logic** | `1 channel relay module 3.3V low level trigger optocoupler` | 1 GPIO |
+| **A** | 5 V submersible pump + tubing | `mini submersible water pump 5V DC + silicone tube` | relay screw terminals |
+| **B** window | BME280 | `BME280 temperature humidity pressure sensor module I2C` | I2C |
+| **B** | BH1750 | `BH1750 GY-302 light intensity sensor module` | I2C |
+| **C** desk | SSD1306 OLED 0.96in | `0.96 inch OLED display module I2C SSD1306 128x64` | I2C |
+| **C** | Passive buzzer module | `passive buzzer module 3.3V arduino` | 1 GPIO |
+| **C** | Push button module | `push button module 3 pin arduino` | 1 GPIO |
+| **C** | *optional* PIR motion | `HC-SR501 PIR motion sensor module` | 1 GPIO |
+
+Roughly EUR 12-15 for the set. Every part is a breakout with pre-soldered male pins, so female-female
+Dupont reaches everything and nothing is soldered. No breadboard: each node carries only two or three
+modules, which its own header accommodates — a property of the design being distributed rather than
+centralised.
+
+### Constraints that will otherwise cost an evening
+
+- **The soil sensor must be on an ADC1 pin (GPIO 1-10, skipping the GPIO 3 strapping pin).** ADC2 is
+  used by the Wi-Fi driver and is unusable while Wi-Fi is running, which for this firmware is always.
+  The symptom is garbage readings that look like a faulty sensor.
+- **Capacitive, not resistive.** Resistive probes electrolyse and corrode away within weeks; the
+  capacitive v1.2 costs the same.
+- **The relay must accept 3.3 V logic** (look for "low level trigger" / optocoupler). Many 5 V modules
+  will not switch reliably from a 3.3 V pin, and that failure reads as a software bug.
+- **Do not power the pump from the board.** GPIO drives the relay coil; the pump takes its own supply
+  through the relay's screw terminals. Prove the loop with an LED or the buzzer in the pump's place
+  first — water and a first build are a poor combination.
+
+### Starting pin map
+
+Avoiding strapping (0, 3, 45, 46), native USB (19, 20), flash/PSRAM (26-32) and Octal-PSRAM (35-37),
+plus the frame link on 17/18:
+
+| node | assignment |
+|---|---|
+| A | soil to **GPIO 4** (ADC1), relay to GPIO 5 |
+| B | I2C0 SDA/SCL to GPIO 8/9 (BME280); I2C1 SDA/SCL to GPIO 10/11 (BH1750) |
+| C | I2C SDA/SCL to GPIO 8/9 (OLED), buzzer to GPIO 4, button to GPIO 5 |
+
+Node B uses **both** I2C controllers so its two sensors need not share a bus — which is what removes any
+need for a wiring junction.
+
+### Why this is a Potluck demo rather than a gadget
+
+Each feature is exercised by something visible:
+
+- **Remote read** — the watering rule needs soil from A *and* climate from B; vapour-pressure deficit
+  cannot be computed on one node's data.
+- **Remote write, access-checked** — C's button writes A's pump. Try writing A's *soil sensor* and
+  watch it refused `NOT_WRITABLE`.
+- **§4 rule 2 with consequences** — unplug B mid-run. Climate reads `UNAVAILABLE`, not a cached number.
+  The rule must now decide whether to water blind, with a plant as the outcome.
+- **`event` versus `sampled`** — the button (and PIR) are event resources: two presses are two presses.
+  Moisture is sampled: last value, staleness bound. The distinction the supercomputer test forced,
+  finally visible in hardware.
+- **Displays join at state level (§7.2)** — C subscribes to typed state owned by A and B, not pixels.
+
+### Deliberately excluded
+
+- **Uncalibrated gas / air-quality sensors** (MQ-135 and similar): no stated unit, no accuracy figure.
+  A namespace entry needs both, so such a part would produce precisely the unqualified number §4 rule 2
+  exists to forbid.
+- **I2S microphone and TinyML**: substantial effort testing nothing about a distributed runtime.
+- **E-ink**: pricier, slower, fiddlier. OLED first.
+- **CPU-maximising workloads** (the "mine Bitcoin on core 0" pattern): they optimise a single chip,
+  which is the inverse of this project's thesis. Three nodes cooperating beats one node at 100 %.
