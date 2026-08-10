@@ -433,3 +433,59 @@ Each feature is exercised by something visible:
 - **E-ink**: pricier, slower, fiddlier. OLED first.
 - **CPU-maximising workloads** (the "mine Bitcoin on core 0" pattern): they optimise a single chip,
   which is the inverse of this project's thesis. Three nodes cooperating beats one node at 100 %.
+
+### Where everything physically goes
+
+The parts table says what to buy; this says where it lives. Written as prose because the placement
+reasoning matters more than the pin numbers — several of these positions are chosen to stop a sensor
+measuring the wrong thing.
+
+**By the plant (node A).** A terracotta pot on a low table, with the capacitive moisture probe pushed
+vertically into the soil, buried to the white line printed on its face and **no further** — everything
+above that line is electronics and must stay dry. A thin lead runs from its head, over the rim, to the
+ESP32 board. Beside the pot stands a jar of water with the submersible pump in it, a length of clear
+silicone tube arcing from the jar to the pot with **its end tucked at the soil surface**, not left
+hanging over the rim, or the pump sprays rather than seeps. Between board and pump sits the relay
+module, its screw terminals holding the pump's two wires — the only place in the build needing a
+screwdriver.
+
+**Keep the board out of the splash zone.** The natural-looking arrangement puts the ESP32 between the
+pot and an open jar of water, directly under the tube. Put it on the far side of the table or a shelf
+below instead, with only the probe lead and relay wires reaching into the wet area.
+
+**At the window (node B).** A second identical board on the sill with two postage-stamp sensors on
+short leads, and **the two are oriented differently on purpose**. The light sensor faces the glass, so
+it sees daylight rise and fall. The climate sensor is set back into the shade of the frame, out of
+direct sun and away from any radiator below — a black PCB in a sunbeam reports the sun warming itself,
+not the room.
+
+**It is at the window and not at the plant deliberately.** A humidity sensor beside a freshly watered
+pot measures the pot's microclimate, not the room's, and the watering rule depends entirely on knowing
+the difference. This is the demonstration in miniature: the sensor must be *somewhere specific*, and
+that somewhere is not where the decision is made.
+
+**On the desk (node C).** A board by the keyboard, a small OLED angled toward the chair, a button and a
+buzzer. The screen carries a few lines of plain text — soil moisture, room temperature, humidity, when
+it last watered — each with its age. Pressing the button waters the pot across the room. Two cables
+leave: USB to the PC, and three jumper wires to the USB-serial dongle that is the frame link.
+
+**And between the three, nothing.** No wire crosses the room. The boards find each other over the air,
+announcing themselves ten times a second. The watering rule gathers soil from the pot, humidity from
+the window and a button press from the desk before deciding anything. Unplug the window node and the
+screen neither freezes nor lies: the humidity line becomes `UNAVAILABLE`, and the rule declines to
+water a plant it can no longer reason about.
+
+### Image-generator brief
+
+For renders of the finished setup:
+
+> A bright home interior, wide shot, three small electronics stations connected by nothing visible.
+> Foreground left: a terracotta plant pot on a low wooden table, a slim black moisture probe pushed
+> upright into the soil, a small ESP32 development board, a blue relay module, and a glass jar of water
+> with a small black submersible pump inside and a clear silicone tube arcing from the jar into the pot.
+> Middle distance: a sunlit windowsill with a second identical ESP32 board and two tiny sensor breakout
+> boards on short colourful jumper wires, one facing the glass, one shaded by the window frame.
+> Foreground right: a wooden desk with a third ESP32 board, a small blue-and-white OLED display showing
+> lines of text, a round push button, and a small black buzzer, with two USB cables running toward a
+> laptop. Thin coloured Dupont jumper wires at each station, no wires between stations. Warm natural
+> daylight, shallow depth of field, domestic rather than industrial, photographic, 35mm.
