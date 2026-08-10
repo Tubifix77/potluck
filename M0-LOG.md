@@ -1722,3 +1722,43 @@ two would destroy the latency budget §4 is built on.
 So the conclusion above stands, and for a stronger reason than complexity: **mixing an infrastructure
 association into a peer cell is the mistake.** The host-over-serial bridge removes the requirement
 rather than solving it.
+
+### Resolution: the cluster does not need to migrate atomically, so it needs no agreement
+
+The owner's closing point, and it supersedes both designs above: **a node lost to a channel change is
+just an unreachable node.** It should be flagged, not waited on, and should carry the same status the
+cluster already gives anything it cannot hear.
+
+That is not a simplification of the problem — it **removes** it. Every analysis above assumed the cell
+must move as one. Drop that assumption and:
+
+- the node that wants Wi-Fi simply **moves**, unilaterally, with no announcement, vote or ACK;
+- whoever can still hear one another carries on;
+- whoever cannot is declared `Dead` by §8.2's existing miss limit, `PeerDead` is emitted, and the
+  owner's resources read `UNAVAILABLE` per §4 rule 2;
+- a node that moved and finds itself alone moves **back**, again unilaterally, on purely local
+  information.
+
+No consensus, therefore no Two Generals, therefore no blocking on a silent peer — **nobody waits on
+anybody, so nobody can wait wrongly.** The rendezvous stops being a protocol and becomes a local
+policy: *alone for T seconds, return to the configured channel.*
+
+**The machinery already exists and needs no addition.** `PeerState` covers it (`Dead` is documented as
+"miss limit reached; the slot and its stats are kept" — kept, so a returning node re-joins cleanly),
+`PeerDead` and `PeerRevived` are already in the event ring, and §4 rule 2 already specifies what a read
+of an unreachable owner's resource returns. A channel-lost node requires **zero new code**.
+
+**One refinement on "flagged as such": keep it out of the state and put it in the event.** `Dead` is a
+state; "lost following a channel change" is a *cause*. Five peer states is enough, and a sixth that
+behaves identically to `Dead` would force every consumer of peer state to learn a distinction with no
+behavioural difference. Causes belong in the event ring — which is precisely where `PeerRebooted`
+already sits: the state is `Alive`, and the event explains why the epoch moved.
+
+**The transferable lesson, which cost three rounds to reach:**
+
+> Before solving a distributed agreement problem, check whether agreement is required.
+
+The countdown/ACK/rendezvous protocol sketched above was real engineering aimed at a requirement that
+existed only because atomic migration had been assumed. Removing the assumption removed the protocol.
+This belongs alongside §14's scope discipline: the cheapest distributed algorithm is the one whose
+requirement was retired.
