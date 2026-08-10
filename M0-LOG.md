@@ -1624,3 +1624,59 @@ it is post-M0 work — but it is the cheapest way to close the "works on the lap
 emulator to run it on already exists here.
 
 All 19 gates green after the changes; static data unchanged at 53,118 B.
+
+---
+
+## During the pause — channel migration, evaluated and rejected for v1
+
+The owner asked a good question while planning the sensor testbed: if the cluster runs on channel 8
+and one node joins a router that wants channel 7, could that node broadcast *"everyone move to 7"* on
+channel 8 and then switch?
+
+**The shape is right — 802.11 does exactly this** with Channel Switch Announcement. The naive version
+has one flaw, and it is fatal in a specific way worth naming.
+
+### Why the one-shot broadcast cannot work
+
+ARCHITECTURE §8.2 already records the property that kills it: **a broadcast draws no MAC-layer ACK.**
+The migration message is therefore fire-and-forget. A node that misses it — and PDR is never 1.0 —
+stays on the old channel, and then:
+
+- it cannot hear the cluster, which has moved;
+- it cannot be *told* it erred, because telling it requires the channel it just failed to leave;
+- it cannot distinguish "I am isolated" from "everyone else died".
+
+**The failure destroys the channel through which the failure could be corrected.** That is worse than
+the usual unreliable-coordination trap, because the state being mutated *is the medium*. Note this is
+also exactly the situation §8.2 is otherwise careful about: liveness rides broadcast precisely because
+losing one beacon is harmless, and a migration command is the opposite — losing one is unrecoverable.
+
+### What it would take to do properly
+
+1. **Repeat with a countdown.** Not one announcement: the switch goes in every beacon for N intervals
+   with a decrementing counter, so the requirement softens from "receive this packet" to "receive one
+   of N". This is what CSA does and it is the single highest-value piece.
+2. **A rendezvous channel.** Hearing nothing for T seconds returns a node to a fixed home channel to
+   wait. Unconditional recovery, at the cost of a node in a radio shadow thrashing home and needing
+   re-recruitment.
+3. **Scan on isolation.** Sweep the channel list hunting for the cell. Slowest, most robust, the
+   natural backstop behind the other two.
+
+### Why it is not v1 work
+
+**A channel split is a network partition**, and this project already has a designated home for
+partition semantics: M6's reconciler with epoch fencing, whose acceptance test is literally *"partition
+and heal the mesh"*. Implementing migration earlier would mean inventing partition handling twice, in
+two places, with two sets of bugs. If it is ever built it belongs on that machinery.
+
+It also has the profile §14 names as the standing danger: it *sounds* like "broadcast a move command"
+and is actually distributed agreement plus partition recovery.
+
+**And v1 does not need it.** The channel is only forced by a node joining a router, and the cluster has
+a better bridge available — the host over the serial frame link is already an ordinary peer (§8.1) and
+already has connectivity, so no node touches an AP and  stays pinned. A node in
+station mode is required *only* when the cluster must reach the internet with the host switched off.
+That is one specific requirement, and it can be declined.
+
+**Recorded, not scheduled.** If the requirement ever becomes real, start from the three mechanisms
+above and build them on M6, not beside it.
