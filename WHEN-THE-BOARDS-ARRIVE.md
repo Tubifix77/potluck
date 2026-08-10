@@ -444,14 +444,14 @@ measuring the wrong thing.
 vertically into the soil, buried to the white line printed on its face and **no further** — everything
 above that line is electronics and must stay dry. A thin lead runs from its head, over the rim, to the
 ESP32 board. Beside the pot stands a jar of water with the submersible pump in it, a length of clear
-silicone tube arcing from the jar to the pot with **its end tucked at the soil surface**, not left
-hanging over the rim, or the pump sprays rather than seeps. Between board and pump sits the relay
-module, its screw terminals holding the pump's two wires — the only place in the build needing a
-screwdriver.
+silicone tube arcing from the jar to the pot, its end descending past the rim so water reaches the
+soil rather than being dropped onto it. Between board and pump sits the relay module, its screw
+terminals holding the pump's two wires — the only place in the build needing a screwdriver.
 
-**Keep the board out of the splash zone.** The natural-looking arrangement puts the ESP32 between the
-pot and an open jar of water, directly under the tube. Put it on the far side of the table or a shelf
-below instead, with only the probe lead and relay wires reaching into the wet area.
+**Give the board a little standoff from the water, in depth as well as plan.** Nothing here is
+delicate, but an open jar and a USB connector are worth keeping a hand's width apart. Placing the
+board forward of the pot rather than between pot and jar is enough; the tube then passes behind and
+above it.
 
 **At the window (node B).** A second identical board on the sill with two postage-stamp sensors on
 short leads, and **the two are oriented differently on purpose**. The light sensor faces the glass, so
