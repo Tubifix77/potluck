@@ -271,3 +271,16 @@ and it should be cited as such rather than re-derived.
 **[MEASURE]** The bench can settle this cheaply: place two boards on opposite sides of a torso and
 capture PDR, alongside the free-space distance sweep. That is the actual Powersuit link condition and
 neither the farmland paper nor a desk test produces it.
+
+### ESP-NOW alongside station mode — added 2026-08-09
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **ESP-NOW and Wi-Fi station mode coexist on one chip** | "You can send ESP-NOW data via both the Station and the SoftAP interface." A single node can be a full cluster peer *and* joined to a router — no dedicated bridge node and no cable between boards is needed | [ESP-IDF ESP-NOW](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/network/esp_now.html) | 2026-08-09 | stable | verified |
+| **…but the router then dictates the whole cell channel** | "The channel must be set as the channel that station or softap is on"; a mismatch returns `ESP_ERR_ESPNOW_CHAN` ("current Wi-Fi channel does not match that of peer"). So one node joining an AP forces every other node onto that AP channel. Two consequences: a router that auto-selects channels can silently split the cell, and the cluster then shares airtime with all household Wi-Fi traffic — which is exactly the contention §13-M0 measures *without*. This is why the firmware pins `CONFIG_POT_CHANNEL` and joins no router | same | 2026-08-09 | stable | verified |
+| Power save must be configured explicitly for ESP-NOW | Sleep with ESP-NOW requires `esp_wifi_connectionless_module_set_wake_interval()`; sleep is supported only in station mode. A dozing node otherwise misses frames | same | 2026-08-09 | stable | verified |
+
+**Design note.** For a cluster that needs internet, the least-compromised bridge is usually **the host over
+the serial frame link** — it is already an ordinary peer (§8.1) and already has connectivity, so no node
+touches a router and no channel is forced. A node in station mode is only necessary when the cluster
+must reach the internet with the host switched off.
