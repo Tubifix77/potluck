@@ -1674,7 +1674,7 @@ and is actually distributed agreement plus partition recovery.
 
 **And v1 does not need it.** The channel is only forced by a node joining a router, and the cluster has
 a better bridge available — the host over the serial frame link is already an ordinary peer (§8.1) and
-already has connectivity, so no node touches an AP and  stays pinned. A node in
+already has connectivity, so no node touches an AP and `CONFIG_POT_CHANNEL` stays pinned. A node in
 station mode is required *only* when the cluster must reach the internet with the host switched off.
 That is one specific requirement, and it can be declined.
 
