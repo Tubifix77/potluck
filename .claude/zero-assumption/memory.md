@@ -284,3 +284,20 @@ neither the farmland paper nor a desk test produces it.
 the serial frame link** — it is already an ordinary peer (§8.1) and already has connectivity, so no node
 touches a router and no channel is forced. A node in station mode is only necessary when the cluster
 must reach the internet with the host switched off.
+
+### Ed25519, for the host-side manifest signer — added 2026-08-23
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **RFC 8032 publishes Ed25519 test vectors, and all three of section 7.1 now pass against this repo's implementation** | Test 1 (empty message), Test 2 (1 byte, `72`), Test 3 (2 bytes, `af82`), each with a secret key, public key and 64-byte signature. Reproduced verbatim in `host/potluck/tests/test_signing.py` and checked on every gate run | [RFC 8032 §7.1](https://www.rfc-editor.org/rfc/rfc8032.txt) | 2026-08-23 | stable | verified |
+| The field prime, group order and cofactor used by `ed25519_ref.py` | p = 2^255 − 19; L = 2^252 + 27742317777372353535851937790883648493; the secret scalar has its low three bits cleared, bit 255 cleared and bit 254 set (§5.1.5) | same | 2026-08-23 | stable | verified |
+
+**Why the vectors matter more than the code.** `host/potluck/potluck/ed25519_ref.py` is a
+dependency-free implementation written from the specification, and the only thing that makes it
+trustworthy is that the specification's own vectors pass. They are also what would let a vetted
+library replace it later without anyone having to trust the swap.
+
+**Still open, and not answered by any of this.** §13-M5's **[MEASURE]** — *"Ed25519 vs P-256 decided
+on measured verify cost"* — is a bench question about the *node*, and choosing Ed25519 for the host
+tool says nothing about it. Which is why `alg` is a field in every signing structure and the verifier
+dispatches on it: adding P-256 when the bench answers needs no format change.

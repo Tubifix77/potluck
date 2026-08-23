@@ -2103,3 +2103,68 @@ missing result read as a pass is how a broken gate stays green, so a run that pr
 exits 2 with that said out loud. `tools\run_all_tests.ps1 -Selftest` folds it into the gate suite;
 off by default, because it builds firmware and boots an emulator — a minute or two against the seconds
 everything else takes.
+
+### H6: signed packages, and the plan is finished
+
+`potluck/signing.py` plus `potluck/ed25519_ref.py`. §9.3 asks for three things and two of them are now
+here:
+
+- **A cluster CA separate from the deploy key**, because *"compromise means bad code, not a forged
+  cluster identity — a deliberate separation so the two failures are recoverable independently."* The
+  CA signs a short certificate authorising a deploy key; the deploy key signs manifests; a verifier
+  needs only the CA's *public* key, because the certificate travels inside the package.
+- **Anti-rollback.** The counter is *inside* the signed preimage rather than beside it, so a downgrade
+  produces an invalid signature instead of a valid signature with a suspicious number next to it. And
+  a correctly signed *older* package is refused before the signature is even checked — a correctly
+  signed downgrade is precisely the attack the counter exists for.
+- The firmware's verification path, enrolment and the NVS counter itself are M5 proper and wait for
+  boards.
+
+**Ed25519 in one dependency-free file, and why that is defensible.** The project's test harness is a
+single header specifically so that nothing becomes the first dependency; the same argument applies to
+a signer that runs once per build. What makes it trustworthy is not the code, it is that all three of
+[RFC 8032](https://www.rfc-editor.org/rfc/rfc8032.txt) §7.1's published test vectors pass, on every
+gate run — the same discipline as the frame codec's golden bytes, and the same reason: an
+implementation checked only against itself agrees with its own mistakes. Those vectors are also what
+would let a vetted library replace the file later without anybody having to trust the swap. It is not
+constant-time and says so at the top, along with why that is acceptable for a key its holder already
+has, on their own machine, with nobody measuring.
+
+**What H6 deliberately does not decide.** §13-M5's **[MEASURE]** — *"Ed25519 vs P-256 decided on
+measured verify cost"* — is a bench question about the *node*, and picking Ed25519 for a laptop tool
+says nothing about it. So `alg` is a field in every structure, the verifier dispatches on it, and
+adding P-256 when the bench answers needs no format change. Registered in the ledger as such.
+
+Three properties the tests insist on, each because the opposite is the plausible mistake:
+
+- **A signature says who wrote something, never that it is well-formed.** A signed manifest is
+  re-parsed and fully re-validated before the signature is checked, so H3's whole validator stands
+  between a signed package and a deployed one.
+- **A certificate cannot be replayed as a package signature**, because the two preimages are
+  domain-separated by their type strings. Checked, not asserted.
+- **Nothing secret reaches a package or a `.pub` file**, private key files are created with
+  owner-only permissions from the outset rather than chmod-ed afterwards (between the two there is a
+  window), and `.gitignore` refuses `*.key` by pattern rather than by path — a key that reaches a
+  public repository has to be replaced along with everything it ever signed. On Windows the tool says
+  out loud that the file mode is advisory rather than pretending otherwise.
+
+One small thing worth keeping: a **key id covers the algorithm as well as the bytes**. The day a
+second algorithm exists, the same 32 bytes under it must be a different key, or a trust decision made
+on an id means two things.
+
+### Where the plan stands
+
+**H0 through H6 are all done**, and the count is 21 gates green: 172 C++ cases and 36,658 checks on
+the firmware core, 29 on-target checks under QEMU, and 154 Python cases including the manifest, the
+locality contract and the signer. Firmware core 53,406 B, 11.8 KB of the 64 KB cap left.
+
+What is left is hardware and only hardware: M0's 24-hour soak with a radio, M1's unplug test, M3's A/B
+slots and trial-commit, M4's CAN half with two transceivers and a scope, M5's on-node verification and
+enrolment, M6's reconciler. §13's acceptance tests are untouched and the ADRs unopened; the plan only
+ever supplied an order to work in.
+
+The one thing that has not moved, and should be said again so it is not lost: **the founding
+grievance** — *an ESP32 is far too powerful to just watch a flowerpot* — now has a measured answer
+rather than a designed one. H2 says the pattern scales linearly to the whole cell and survives a
+worker dying. Whether §7.8's scope is *enough*, and whether it deserves promoting up the roadmap, is
+still a vision question and still the owner's.

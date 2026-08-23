@@ -9,19 +9,20 @@ this edition targets ESP32-S3, with host tooling on Windows and Linux. Later edi
 the architecture is deliberately hardware-agnostic (ARCHITECTURE.md §0.1) and the edition label exists
 so that stays visible.
 
-Code state: M0 firmware complete and M1/M2 verified against real firmware under emulation. **M0 is not
-yet *accepted*** — §13-M0's acceptance table needs two boards and a radio, which is the only thing
-now blocked on hardware.
+Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
+accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
+coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
+**M0 is not yet accepted** — §13-M0's acceptance table needs two boards and a radio.
 
 **Hardware is awaited (paused 2026-08-01).** Two entry points, depending on what is on the desk:
 
 - **Boards have arrived** -> [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md), the bench
   resumption path, written for a reader who remembers nothing.
-- **Still waiting** -> [HARDWARE-FREE-PLAN.md](HARDWARE-FREE-PLAN.md), steps H0-H6. An earlier session
-  claimed everything was hardware-blocked; that was too broad. The real constraint is only two things:
-  allocate no significant static firmware RAM until the Wi-Fi DRAM `[MEASURE]` resolves, and tune no
-  timing policy against cited rather than measured PDR. Host tooling, simulator work, wire-format work
-  and on-target testing under emulation are all fair game -- which is most of what M3, M4 and M5 are.
+- **Still waiting** -> [HARDWARE-FREE-PLAN.md](HARDWARE-FREE-PLAN.md). **All seven steps H0-H6 are
+  done** (2026-08-23). M2 is accepted, half of M4 is accepted, and section 7.8's compute pattern is
+  measured in simulation. What is left in the milestones is hardware and only hardware; if a session
+  wants more to do without boards, the honest answer is that the queue is empty and the next thing
+  is a vision decision, not an engineering one.
 
 ## The name
 

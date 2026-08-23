@@ -68,7 +68,7 @@ record "differential fuzz corpus" $?
 "$BUILD_DIR/pot_tests" --emit-serial-corpus host/potluck/tests/fixtures
 record "serial framing corpus" $?
 
-for t in test_frame.py test_records.py test_differential.py test_paths.py test_sys_paths.py test_serial.py test_serial_diff.py test_value.py test_ns_diff.py test_bridge.py test_replay.py test_transport.py test_manifest.py test_locality.py; do
+for t in test_frame.py test_records.py test_differential.py test_paths.py test_sys_paths.py test_serial.py test_serial_diff.py test_value.py test_ns_diff.py test_bridge.py test_replay.py test_transport.py test_manifest.py test_locality.py test_signing.py; do
     echo "### Python: $t"
     ( cd host/potluck && "$PYTHON" "tests/$t" )
     record "Python $t" $?

@@ -17,11 +17,14 @@ it advances, why it is unblocked, and what it explicitly does not deliver.
 | **H3** | **DONE** | manifest schema, parser and validator; 41 tests |
 | **H4** | **DONE -- half of M4 accepted** | the locality-contract checker; section 13-M4's first sentence passes, error names both ends |
 | **H5** | **DONE** | 29 on-target checks under QEMU, run by `tools/run_selftest.ps1` |
-| H6 | next | manifest signing |
+| **H6** | **DONE** | cluster CA, deploy keys, signed packages, anti-rollback; RFC 8032 vectors pass |
 
-172 C++ cases and 36,658 checks on the firmware core, plus 61 Python cases on the manifest and the
-locality checker; 0 failures, and the full gate suite green with AddressSanitizer and the firmware
-build.
+**All seven steps are done.** What remains is hardware: M0's acceptance soak, M1's unplug test, M3's
+A/B slots, M4's CAN half, M5's firmware verification path, M6's reconciler.
+
+21 gates green: 172 C++ cases and 36,658 checks on the firmware core, 29 on-target checks under QEMU,
+and 154 Python cases including the manifest, the locality contract and the signer. Zero failures, with
+AddressSanitizer and the firmware build. Firmware core 53,406 B, 11.8 KB of the 64 KB cap left.
 
 ### What H0 produced
 
@@ -282,6 +285,49 @@ consumption, timing against a real clock — none reachable from a laptop test.
 **Deliverable:** a self-test firmware target plus a `tools\` runner that reports pass/fail from the
 console.
 **Note:** the pattern is borrowed from the sibling Powersuit project, which runs 27 such checks.
+
+### What H6 produced
+
+```
+python -m potluck.signing keygen  --role ca     --label lab-ca  --out keys/lab-ca
+python -m potluck.signing keygen  --role deploy --label lab-dep --out keys/lab-deploy
+python -m potluck.signing certify --ca keys/lab-ca.key --key keys/lab-deploy.pub --out keys/lab-deploy.cert
+python -m potluck.signing sign    --key keys/lab-deploy.key --cert keys/lab-deploy.cert                                   --counter 7 manifests/home.json --out build/home.potpkg.json
+python -m potluck.signing verify  --ca keys/lab-ca.pub --min-counter 7 build/home.potpkg.json
+```
+
+§9.3 asks for three things and two of them are here:
+
+- **A cluster CA separate from the deploy key**, because *"compromise means bad code, not a forged
+  cluster identity"*. The CA signs a short certificate authorising a deploy key; the deploy key signs
+  manifests; a verifier needs only the CA's public key, since the certificate travels in the package.
+- **Anti-rollback.** The counter is *inside* the signed preimage, so a downgrade produces an invalid
+  signature rather than a valid one with a suspicious number beside it. A correctly signed older
+  package is refused too, before the signature is even checked — that is the attack the counter is
+  for.
+- The firmware's verification path, enrolment and the NVS counter itself are M5 proper and wait for
+  boards.
+
+**Ed25519 in one dependency-free file**, `ed25519_ref.py`, checked against all three of RFC 8032
+§7.1's published test vectors on every gate run. The project's test harness is a single header
+specifically to avoid a first dependency, and the same reasoning applies here; the vectors are what
+make it trustworthy, and what would let a vetted library replace it later without anyone having to
+trust the swap. It is not constant-time and says so at the top.
+
+**What this deliberately does not decide.** §13-M5's **[MEASURE]** — *"Ed25519 vs P-256 decided on
+measured verify cost"* — is a bench question about the node. `alg` is therefore a field in every
+structure and the verifier dispatches on it, so adding P-256 when the bench answers needs no format
+change.
+
+Three properties the tests insist on, each because the opposite is a plausible mistake:
+
+- **A signature says who wrote it, never that it is well-formed**, so a signed manifest is re-parsed
+  and re-validated in full before the signature is checked.
+- **A certificate cannot be replayed as a package signature**, because the two preimages are
+  domain-separated by their type strings.
+- **Nothing secret reaches a package or a `.pub` file**, and `.gitignore` refuses `*.key` by pattern
+  rather than by path — a key that reaches a public repository has to be replaced along with
+  everything it ever signed.
 
 ## H6 — Manifest signing · advances **M5** · only if the wait is long
 

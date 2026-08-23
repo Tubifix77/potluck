@@ -41,3 +41,13 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .venv/
+
+# Private keys. Never. The signing tool writes `<name>.key` next to `<name>.pub`, and a key that
+# reaches a public repository is a key that has to be replaced along with everything it signed --
+# so this is a pattern rather than a path, and it covers directories nobody has thought of yet.
+*.key
+keys/
+!*.pub
+
+# Signed packages are build output: they are reproducible from a manifest, a key and a counter.
+*.potpkg.json
