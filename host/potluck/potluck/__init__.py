@@ -32,6 +32,8 @@ __all__ = [
     "frame",
     "link_stats",
     "live",
+    "locality",
+    "manifest",
     "ns_payloads",
     "payloads",
     "records",

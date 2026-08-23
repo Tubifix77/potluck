@@ -1989,3 +1989,74 @@ run names the case it aborted in.
 
 Same family as the stale-ELF lesson and the heredoc one: the evidence was lying, and the fix was to the
 instrument rather than to the code.
+
+### H3 and H4: the manifest, and §4 becomes a contract
+
+`potluck/manifest.py` defines, parses and validates the deploy manifest; `potluck/locality.py` is the
+Locality Contract check. Together they turn §4 from a convention into something a build refuses to
+violate — which is the whole reason §4 exists, and until now nothing enforced it anywhere.
+
+**§13-M4's first acceptance sentence now passes.** The wording *is* the test — *"a manifest binding an
+L1 actor to a remote resource fails the build with a readable error naming both ends"* — so the error
+text is part of the deliverable, not decoration:
+
+> `vent_loop -> potluck://home/vents/hallway: actor is L1 (<10 ms, same node) and runs on 'utility'
+> (0x1003), but this resource is owned by 'hallway' (0x1001). L1 may not leave its own node, so this
+> binding cannot be made -- pin the actor to 'hallway', or declare it a looser class and accept the
+> deadline that comes with it`
+
+Six kinds of violation are found: an L0/L1 actor bound off-node; an actor bound to a resource looser
+than itself; a class the transport between those two nodes cannot carry; two nodes with no transport
+between them; a route needing two hops (v1 has none — two <500 ms hops compose to <1 s, which is not
+L3); and actors whose declared headroom cannot fit the node they were placed on. `manifests/home.json`
+passes and `manifests/broken-locality.json` is broken in all six ways on purpose, checked through the
+command line with an exit code, the way a build would use it.
+
+The one that took a moment to get right: an **L2 actor reaching across ESP-NOW**. Nothing is wrong
+with either declaration on its own — the actor is L2, the resource is L2 — and the violation lives
+entirely in the fabric between them. That is exactly what §4 rule 3 means by *"class is
+transport-derived, not aspirational"*, and it is the case a reviewer reading the manifest would never
+spot. It needed the topology, so the manifest gained an optional `links` section: which nodes are
+wired to which, and by what. Part of the package rather than a separate file, because §7.4 ships "one
+artifact per system" and the nodes a package expects to find, and how it expects them wired, are the
+same kind of statement.
+
+**Two validator checks are there because of the firmware, not the document,** and neither can be
+caught anywhere else:
+
+- **Path hash collisions.** The node stores a 32-bit FNV-1a hash and never the string, so two
+  colliding paths are *one resource* to it — which is what `NsError::HashCollision` has always meant
+  by "a manifest error". It is a property of the whole set of paths in the system, so a build is the
+  only place it is visible at all. The test uses a real collision found by search rather than an
+  asserted one: `potluck://home/node-1001/x/aguzx` and `.../x/a52ad` both hash to `0x627da2e7`.
+- **§14's 128-entry namespace cap per node.** Otherwise a manifest deploys cleanly and fails at the
+  129th `declare`, at runtime, on one node.
+
+**Three policy checks are there because the architecture insists the runtime must not guess:**
+
+- **Unknown keys are errors, not warnings.** A misspelled `staleness_policy` is a resource that
+  silently reverts to `informative` — the exact failure §4 rule 2 exists to prevent. A validator that
+  shrugged at it would be undoing rule 2 in the name of convenience.
+- **An actor that binds a writable resource must declare `on_host_loss`.** §8.3 says a node that
+  keeps integrating a dead host's last velocity command "is not autonomous, it is unattended". There
+  is no safe default for something that can move the world, so the manifest has to say it out loud.
+  The check follows a binding, because §7.2's whole point is that the application does not know which
+  node it is talking to — but the checker must.
+- **Background work on a battery or solar node needs an explicit opt-in.** §7.8: harvesting idle
+  cycles denies sleep, and the §1.2 garden node stays sleepy unless told otherwise.
+
+Two smaller decisions worth keeping. **The canonical byte form is in place from the start** — sorted
+keys, no incidental whitespace, one trailing newline — because H6 signs the manifest and a signature
+over "whatever the editor saved" is a signature over formatting; a test checks that reordering and
+re-indenting the file does not move the digest, and that changing one policy does. And **the validator
+reports every problem rather than the first**, because a build tool that reports one error per cycle
+turns fixing a manifest into as many cycles as there are mistakes.
+
+What H4 deliberately does not claim: it cannot tell you a link will be *good enough*. §4 divides the
+work precisely — class ceilings are static and provable on a laptop, class satisfaction is
+environmental and the same manifest passes at 3 m and fails at 60 m across §3's PDR cliff. This is the
+laptop half. It says the link is the wrong *kind*, and rule 4's runtime demotion says the link went
+bad. Both are loud; neither substitutes for the other.
+
+61 Python cases across the two modules, 20 gates green. Zero firmware bytes: it is all host tooling,
+which is why it was reachable at all with no board on the desk.

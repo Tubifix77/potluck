@@ -14,11 +14,14 @@ it advances, why it is unblocked, and what it explicitly does not deliver.
 | **H0** | **DONE** -- M2 is accepted | 13.7-minute session, 11,444 frames, all six resources, replayed to a byte-identical digest |
 | **H1** | **DONE** | CALL/CAST opcodes real, 8-byte header, both-side bounds check |
 | **H2** | **DONE** | coordinator and workers measured in simulation; 19 workers give 18.99x; a killed worker loses no work |
-| H3 | next | the manifest schema and parser |
-| H4-H6 | not started | |
+| **H3** | **DONE** | manifest schema, parser and validator; 41 tests |
+| **H4** | **DONE -- half of M4 accepted** | the locality-contract checker; section 13-M4's first sentence passes, error names both ends |
+| H5 | next | on-target self-test under QEMU |
+| H6 | not started | manifest signing |
 
-172 C++ cases, 36,658 checks, 0 failures; the full gate suite green with AddressSanitizer and the
-firmware build.
+172 C++ cases and 36,658 checks on the firmware core, plus 61 Python cases on the manifest and the
+locality checker; 0 failures, and the full gate suite green with AddressSanitizer and the firmware
+build.
 
 ### What H0 produced
 
@@ -161,6 +164,60 @@ a worker mid-job loses no work** — the coordinator reassigns. That second half
 reconciler for free.
 **What it settles:** whether §7.8's promise holds, before any firmware commits RAM to it — and
 therefore whether §7.8 deserves promoting up the roadmap.
+
+### What H3 and H4 produced
+
+`potluck/manifest.py` is the schema, parser and validator; `potluck/locality.py` is the Locality
+Contract check. Two manifests ship with them: `manifests/home.json`, which passes, and
+`manifests/broken-locality.json`, which is broken on purpose in six different ways.
+
+```
+python -m potluck.manifest  check manifests/home.json --resolved
+python -m potluck.locality  check manifests/home.json
+```
+
+**Section 13-M4's first sentence now passes**, and it is worth quoting because the wording is the
+test: *"a manifest binding an L1 actor to a remote resource fails the build with a readable error
+naming both ends."* What the checker actually prints for that case:
+
+```
+vent_loop -> potluck://home/vents/hallway: actor is L1 (<10 ms, same node) and runs on 'utility'
+(0x1003), but this resource is owned by 'hallway' (0x1001). L1 may not leave its own node, so this
+binding cannot be made -- pin the actor to 'hallway', or declare it a looser class and accept the
+deadline that comes with it
+```
+
+It finds six kinds of violation: an L0/L1 actor bound off-node; an actor bound to a resource looser
+than itself; a class the transport between those two nodes cannot carry (an L2 actor reaching across
+ESP-NOW, which is L3 at best -- *"class is transport-derived, not aspirational"*); two nodes with no
+transport between them at all; a route needing two hops, which v1 does not have, because two <500 ms
+hops compose to <1 s and that is not L3; and actors whose declared headroom cannot fit on the node
+they were placed on.
+
+**Two validator checks exist because of properties of the firmware rather than of the document,** and
+neither could be caught anywhere else:
+
+- **Path hash collisions.** The node stores a 32-bit FNV-1a hash and never the string, so two
+  colliding paths are one resource to it -- which is what `NsError::HashCollision` means by "a
+  manifest error". It is a property of the whole set of paths, so the build is the only place it can
+  be seen. The test uses a *real* collision, found by search rather than asserted:
+  `potluck://home/node-1001/x/aguzx` and `.../x/a52ad` both hash to `0x627da2e7`.
+- **The 128-entry namespace cap per node.** Otherwise the manifest deploys and fails at the 129th
+  `declare`, at runtime, on one node.
+
+Three policy checks are there because the architecture says the runtime must not guess:
+
+- **Unknown keys are errors, not warnings.** A misspelled `staleness_policy` is a resource that
+  silently reverts to `informative`, which is the exact failure §4 rule 2 exists to prevent.
+- **An actor that binds a writable resource must declare `on_host_loss`.** §8.3: a node that keeps
+  integrating a dead host's last velocity command "is not autonomous, it is unattended". There is no
+  safe default for something that can move the world, so the manifest has to say.
+- **Background work on a battery or solar node needs an explicit opt-in.** §7.8: harvesting idle
+  cycles denies sleep, and the garden node stays sleepy unless told otherwise.
+
+The manifest's canonical byte form (sorted keys, no incidental whitespace, one trailing newline) is
+in place from the start, because H6 signs it and a signature over "whatever the editor saved" is a
+signature over formatting.
 
 ## H3 — The manifest · advances **M3**
 

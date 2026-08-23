@@ -1,0 +1,224 @@
+{
+  "schema": 1,
+  "system": "home-broken",
+  "min_core_version": 1,
+  "nodes": [
+    {
+      "node_id": 4097,
+      "label": "hallway",
+      "power": "mains",
+      "headroom_bytes": 49152,
+      "owns": [
+        {
+          "path": "potluck://home/node-1001/temp/hallway",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 1,
+          "staleness_bound_ms": 5000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://home/node-1001/pwm/0",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 1,
+          "staleness_bound_ms": 1000,
+          "staleness_policy": "strict"
+        }
+      ]
+    },
+    {
+      "node_id": 4098,
+      "label": "garden",
+      "power": "solar",
+      "headroom_bytes": 40960,
+      "owns": [
+        {
+          "path": "potluck://home/node-1002/soil/moisture",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 600000,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 4099,
+      "label": "utility",
+      "power": "mains",
+      "headroom_bytes": 65536,
+      "owns": [
+        {
+          "path": "potluck://home/node-1003/pressure/mains",
+          "unit": "pascal",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 30000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://home/node-1003/leak/alarm",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://home/node-1003/flow/rate",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 3,
+          "staleness_bound_ms": 2000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://home/node-1003/valve/position",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 2,
+          "staleness_bound_ms": 50,
+          "staleness_policy": "strict"
+        }
+      ]
+    },
+    {
+      "node_id": 4100,
+      "label": "shed",
+      "power": "battery",
+      "headroom_bytes": 20480,
+      "owns": [
+        {
+          "path": "potluck://home/node-1004/door/state",
+          "unit": "none",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 60000,
+          "staleness_policy": "informative"
+        }
+      ]
+    }
+  ],
+  "actors": [
+    {
+      "name": "vent_loop",
+      "module": "vent_loop.so",
+      "latency_class": 1,
+      "needs": [
+        "potluck://home/vents/hallway",
+        "potluck://home/node-1001/temp/hallway"
+      ],
+      "headroom_bytes": 8192,
+      "priority": "critical",
+      "on_host_loss": "hold"
+    },
+    {
+      "name": "soil_report",
+      "module": "soil_report.so",
+      "latency_class": 4,
+      "needs": [
+        "potluck://home/node-1002/soil/moisture"
+      ],
+      "headroom_bytes": 4096,
+      "priority": "normal"
+    },
+    {
+      "name": "leak_watch",
+      "module": "leak_watch.so",
+      "latency_class": 4,
+      "needs": [
+        "potluck://home/node-1003/leak/alarm",
+        "potluck://home/node-1003/pressure/mains"
+      ],
+      "headroom_bytes": 4096,
+      "priority": "normal"
+    },
+    {
+      "name": "heat_model",
+      "module": "heat_model.so",
+      "latency_class": 4,
+      "needs": [],
+      "headroom_bytes": 16384,
+      "priority": "background"
+    },
+    {
+      "name": "pressure_trend",
+      "module": "pressure_trend.so",
+      "latency_class": 2,
+      "needs": [
+        "potluck://home/node-1003/pressure/mains"
+      ],
+      "headroom_bytes": 2048,
+      "priority": "normal"
+    },
+    {
+      "name": "flow_limit",
+      "module": "flow_limit.so",
+      "latency_class": 1,
+      "needs": [
+        "potluck://home/node-1003/flow/rate"
+      ],
+      "headroom_bytes": 2048,
+      "priority": "critical",
+      "pin": 4099
+    },
+    {
+      "name": "valve_mirror",
+      "module": "valve_mirror.so",
+      "latency_class": 2,
+      "needs": [
+        "potluck://home/node-1003/valve/position"
+      ],
+      "headroom_bytes": 2048,
+      "priority": "normal"
+    },
+    {
+      "name": "door_log",
+      "module": "door_log.so",
+      "latency_class": 4,
+      "needs": [
+        "potluck://home/node-1004/door/state"
+      ],
+      "headroom_bytes": 2048,
+      "priority": "normal"
+    }
+  ],
+  "bindings": {
+    "potluck://home/vents/hallway": "potluck://home/node-1001/pwm/0"
+  },
+  "placement": {
+    "heat_model": 4099,
+    "leak_watch": 4099,
+    "soil_report": 4098,
+    "vent_loop": 4099,
+    "pressure_trend": 4097,
+    "valve_mirror": 4097,
+    "door_log": 4097
+  },
+  "links": [
+    {
+      "a": 4097,
+      "b": 4098,
+      "transport": "espnow"
+    },
+    {
+      "a": 4097,
+      "b": 4099,
+      "transport": "espnow"
+    },
+    {
+      "a": 4098,
+      "b": 4099,
+      "transport": "espnow"
+    }
+  ]
+}
