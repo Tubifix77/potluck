@@ -303,11 +303,13 @@ PAYLOAD_BY_OPCODE = {
 
 
 def _register_ns_payloads() -> None:
-    from .ns_payloads import Read, Reply, Write
+    from .ns_payloads import Call, Read, Reply, Write
 
     PAYLOAD_BY_OPCODE.setdefault(0x10, Read)
     PAYLOAD_BY_OPCODE.setdefault(0x11, Write)
+    PAYLOAD_BY_OPCODE.setdefault(0x20, Call)
     PAYLOAD_BY_OPCODE.setdefault(0x21, Reply)
+    PAYLOAD_BY_OPCODE.setdefault(0x22, Call)
 
 
 _register_ns_payloads()

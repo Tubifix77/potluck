@@ -27,6 +27,14 @@ bool load_read(const uint8_t* p, uint16_t len, ReadPayload& out) { return load_f
 bool load_write(const uint8_t* p, uint16_t len, WritePayload& out) { return load_fixed(p, len, out); }
 bool load_reply(const uint8_t* p, uint16_t len, ReplyPayload& out) { return load_fixed(p, len, out); }
 
+bool load_call(const uint8_t* p, uint16_t len, CallPayload& out) {
+    if (!load_fixed(p, len, out)) {
+        return false;
+    }
+    // The declared argument length must be backed by bytes that actually arrived.
+    return static_cast<size_t>(len) >= sizeof(CallPayload) + static_cast<size_t>(out.arg_len);
+}
+
 Value value_from_wire(uint8_t type, uint8_t len, const uint8_t* raw) {
     Value v;
     v.type = static_cast<ValueType>(type);

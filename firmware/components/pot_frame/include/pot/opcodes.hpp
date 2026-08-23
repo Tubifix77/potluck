@@ -26,7 +26,10 @@ constexpr uint8_t kOpWrite = 0x11;  // path ← typed value
 // constexpr uint8_t kOpList        = 0x15;
 
 // ---- Actors ----
-// constexpr uint8_t kOpCall  = 0x20;
+// Invoke an actor at a path and get a Value back in a REPLY. The path is an ordinary section 7.2
+// path, so an actor is addressed exactly like a resource -- nothing new to learn and nothing new to
+// route.
+constexpr uint8_t kOpCall = 0x20;
 
 // The generic response. §5.2 lists it under Actors because that is where it is first needed, but
 // its definition there — "response, carries request msg_id" — is not actor-specific, and §5.1 makes
@@ -34,7 +37,10 @@ constexpr uint8_t kOpWrite = 0x11;  // path ← typed value
 // with two more opcodes: the opcode space is wire format, and spending two values on something an
 // existing one already means would be waste that outlives the decision.
 constexpr uint8_t kOpReply = 0x21;
-// constexpr uint8_t kOpCast  = 0x22;
+// Fire and forget: same payload shape as CALL, no REPLY expected and none sent. Used where the
+// result is not wanted, or where the callee will publish it into the namespace instead of returning
+// it -- which is how a result larger than a Value travels (see ns_payloads.hpp).
+constexpr uint8_t kOpCast = 0x22;
 
 // ---- Lifecycle (M3 / M6) ----
 // constexpr uint8_t kOpDeployBegin    = 0x30;

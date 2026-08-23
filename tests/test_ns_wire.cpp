@@ -102,6 +102,45 @@ TEST(ns_wire, reply_matches_the_bytes_in_section_5_2) {
     CHECK_EQ(hex(bytes_of(&p, sizeof(p))), hex(want));
 }
 
+TEST(ns_wire, call_matches_the_bytes_in_section_5_2) {
+    CallPayload c{};
+    c.path_hash = 0xFEEDFACE;
+    c.flags = 0;
+    c.arg_len = 4;
+
+    const std::vector<uint8_t> want = {
+        0xCE, 0xFA, 0xED, 0xFE,  // path_hash
+        0x00, 0x00,              // flags
+        0x04, 0x00,              // arg_len
+    };
+    CHECK_EQ(hex(bytes_of(&c, sizeof(c))), hex(want));
+    // CAST shares the layout; the opcode carries the difference.
+    CHECK_EQ(sizeof(CastPayload), sizeof(CallPayload));
+}
+
+TEST(ns_wire, load_call_refuses_an_arg_len_the_frame_cannot_back) {
+    // 8-byte header claiming 100 argument bytes, in a 12-byte payload. A loader that trusted
+    // arg_len would hand the callee 100 bytes of which 96 are whatever followed in memory.
+    uint8_t buf[12] = {};
+    buf[6] = 100;  // arg_len low byte
+    CallPayload c{};
+    CHECK(!load_call(buf, sizeof(buf), c));
+
+    // Exactly enough is fine, and so is more than enough.
+    uint8_t ok[8 + 4] = {};
+    ok[6] = 4;
+    CHECK(load_call(ok, sizeof(ok), c));
+    CHECK_EQ(static_cast<int>(c.arg_len), 4);
+    CHECK(load_call(ok, sizeof(ok) + 8, c));
+
+    // A header alone, with no declared arguments, is a legitimate no-argument call.
+    uint8_t bare[8] = {};
+    CHECK(load_call(bare, sizeof(bare), c));
+    CHECK_EQ(static_cast<int>(c.arg_len), 0);
+    // But a truncated header is not.
+    CHECK(!load_call(bare, sizeof(CallPayload) - 1, c));
+}
+
 TEST(ns_wire, a_stale_reply_still_carries_its_value) {
     // §4 rule 2: "Past the resource's staleness bound, quality becomes STALE and the value is
     // *still delivered*". A reply that dropped the value when marking it stale would satisfy every
@@ -230,6 +269,27 @@ int emit(const char* dir) {
                      static_cast<unsigned>(p.value_type), static_cast<unsigned>(p.value_len),
                      hex(bytes_of(&p, sizeof(p))).c_str());
     };
+
+    auto emit_call = [&](uint32_t h, uint16_t arg_len, uint8_t fill) {
+        CallPayload c{};
+        c.path_hash = h;
+        c.arg_len = arg_len;
+        std::vector<uint8_t> whole = bytes_of(&c, sizeof(c));
+        for (uint16_t i = 0; i < arg_len; ++i) {
+            whole.push_back(static_cast<uint8_t>(fill + i));
+        }
+        std::fprintf(f, "{\"op\":\"call\",\"path_hash\":%lu,\"arg_len\":%u,\"bytes\":\"%s\"}\n",
+                     static_cast<unsigned long>(h), static_cast<unsigned>(arg_len),
+                     hex(whole).c_str());
+    };
+
+    // CALLs: no arguments, a few bytes, and the v1 profile's ceiling, where an off-by-one in the
+    // length arithmetic on either side would show up.
+    emit_call(0xFEEDFACE, 0, 0x00);
+    emit_call(0x00000001, 1, 0xA0);
+    emit_call(0xDEADBEEF, 8, 0x10);
+    emit_call(0x11223344, 64, 0x40);
+    emit_call(0xFFFFFFFF, kMaxCallArgsV1, 0x01);
 
     // READs, including the real built-in paths so the host's own hashing is checked against ours.
     for (uint32_t h : {0u, 1u, 0x11223344u, 0xFFFFFFFFu}) {

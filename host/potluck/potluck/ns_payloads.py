@@ -205,6 +205,51 @@ class Reply:
                 f"{self.reading().format()}")
 
 
+# ---------------------------------------------------------------------------------------------
+# CALL / CAST -- 0x20 and 0x22, an 8-byte header plus opaque arguments
+# ---------------------------------------------------------------------------------------------
+
+_CALL = struct.Struct("<IHH")
+CALL_SIZE = 8
+assert _CALL.size == CALL_SIZE, _CALL.size
+
+
+@dataclass
+class Call:
+    """An actor invocation. The result returns as an ordinary REPLY, carrying a Value.
+
+    Results larger than a Value are not returned at all: the callee publishes them to a namespace
+    path and the reply says only that they are there. That keeps messages small and costs the REPLY
+    codec nothing -- see ns_payloads.hpp for the same note on the firmware side.
+
+    CAST is this exact layout with no reply expected; the opcode carries the difference, so there is
+    one class rather than two identical ones.
+    """
+
+    path_hash: int
+    args: bytes = b""
+    flags: int = 0
+
+    def encode(self) -> bytes:
+        return _CALL.pack(self.path_hash, self.flags, len(self.args)) + self.args
+
+    @classmethod
+    def parse(cls, payload: bytes) -> Call:
+        path_hash, flags, arg_len = _unpack(_CALL, payload, "CALL")
+        # The declared length must be backed by bytes that actually arrived. Rejected rather than
+        # clamped: a silently truncated argument list is the same class of fault as an unmarked
+        # stale value.
+        if len(payload) < CALL_SIZE + arg_len:
+            raise ShortNsPayload(
+                f"CALL declares {arg_len} argument bytes but the payload holds "
+                f"{len(payload) - CALL_SIZE}"
+            )
+        return cls(path_hash=path_hash, flags=flags, args=bytes(payload[CALL_SIZE:CALL_SIZE + arg_len]))
+
+    def __str__(self) -> str:
+        return f"CALL hash=0x{self.path_hash:08x} args={len(self.args)}B"
+
+
 def describe_unit(u: int) -> str:
     return Unit.name_of(u)
 

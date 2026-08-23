@@ -66,7 +66,7 @@ class TestNsCorpus(unittest.TestCase):
         counts: dict[str, int] = {}
         for e in self.corpus:
             counts[e["op"]] = counts.get(e["op"], 0) + 1
-        self.assertEqual(counts, {"read": 10, "write": 13, "reply": 66},
+        self.assertEqual(counts, {"read": 10, "write": 13, "reply": 66, "call": 5},
                          f"the corpus changed shape: {counts}")
 
     def test_python_decodes_every_read_the_firmware_encoded(self):
@@ -110,6 +110,39 @@ class TestNsCorpus(unittest.TestCase):
             self.assertEqual(p.value.type, e["value_type"])
             self.assertEqual(p.value.len, e["value_len"])
             self.assertEqual(p.encode().hex(), e["bytes"])
+
+    def test_python_decodes_and_re_encodes_every_call(self):
+        from potluck.ns_payloads import CALL_SIZE, Call
+
+        n = 0
+        for e in (x for x in self.corpus if x["op"] == "call"):
+            raw = bytes.fromhex(e["bytes"])
+            self.assertEqual(len(raw), CALL_SIZE + e["arg_len"])
+            c = Call.parse(raw)
+            self.assertEqual(c.path_hash, e["path_hash"])
+            self.assertEqual(len(c.args), e["arg_len"])
+            self.assertEqual(c.encode().hex(), e["bytes"])
+            n += 1
+        self.assertGreater(n, 0, "no CALL cases in the corpus")
+
+    def test_a_call_declaring_more_args_than_it_carries_is_refused(self):
+        """The bounds check, from the host side. The firmware has the mirror of this."""
+        from potluck.ns_payloads import Call, ShortNsPayload
+
+        # header claiming 100 argument bytes inside a 12-byte payload
+        hostile = Call(path_hash=1, args=b"x" * 100).encode()[:12]
+        with self.assertRaises(ShortNsPayload):
+            Call.parse(hostile)
+
+        # and a truncated header is refused too
+        with self.assertRaises(ShortNsPayload):
+            Call.parse(b"\x00" * 7)
+
+    def test_the_call_corpus_includes_the_v1_ceiling(self):
+        """An off-by-one in either side's length arithmetic shows up only at the boundary."""
+        lens = {e["arg_len"] for e in self.corpus if e["op"] == "call"}
+        self.assertIn(0, lens, "no zero-argument call")
+        self.assertIn(218, lens, "no call at the v1 argument ceiling (226 - 8)")
 
     def test_the_reply_field_order_is_not_symmetric(self):
         """A guard against the failure this whole file exists for.

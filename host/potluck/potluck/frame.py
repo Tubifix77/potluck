@@ -61,7 +61,9 @@ class Op(IntEnum):
     BYE = 0x04
     READ = 0x10
     WRITE = 0x11
+    CALL = 0x20
     REPLY = 0x21
+    CAST = 0x22
     SAFE_STATE = 0x50
     ERR = 0x7F
 

@@ -111,11 +111,49 @@ static_assert(offsetof(ReplyPayload, value_type) == 18, "REPLY offset");
 static_assert(offsetof(ReplyPayload, value_len) == 19, "REPLY offset");
 static_assert(offsetof(ReplyPayload, value_raw) == 20, "REPLY offset");
 
-// All three fit the 226 B ESP-NOW v1 floor unfragmented, so a namespace read works on a mixed-
+// ---------------------------------------------------------------------------------------------
+// CALL / CAST — 0x20 and 0x22, an 8-byte header plus opaque arguments
+//
+//  off  size  field       notes
+//   0     4   path_hash   the actor's canonical path, hashed like any other §7.2 path
+//   4     2   flags       reserved, zero
+//   6     2   arg_len     bytes of argument data following this header
+//   8   arg_len  args     opaque to the transport; meaning is between caller and callee
+//
+// THE RESULT COMES BACK AS AN ORDINARY REPLY, and that is a deliberate constraint rather than an
+// oversight. A REPLY carries a Value, so a call returns at most 8 bytes. Anything larger is meant to
+// travel the way every other datum in this system travels: the callee *publishes* it to a namespace
+// path and the reply says only that it is there. That keeps messages small, keeps results readable
+// by anything that can read the namespace, and costs the tested REPLY codec no changes at all.
+//
+// CAST is the same shape with no reply. The opcode carries the difference, so the wire layout is
+// shared rather than duplicated.
+// ---------------------------------------------------------------------------------------------
+
+struct CallPayload {
+    uint32_t path_hash;
+    uint16_t flags;
+    uint16_t arg_len;
+};
+
+static_assert(sizeof(CallPayload) == 8, "CALL header is 8 bytes");
+static_assert(offsetof(CallPayload, path_hash) == 0, "CALL offset");
+static_assert(offsetof(CallPayload, flags) == 4, "CALL offset");
+static_assert(offsetof(CallPayload, arg_len) == 6, "CALL offset");
+
+using CastPayload = CallPayload;
+
+// How many argument bytes fit unfragmented on each transport profile (§5.3). A caller that stays
+// under the v1 figure works on a mixed-version link without touching §5.4's reassembly path.
+constexpr uint16_t kMaxCallArgsV1 = static_cast<uint16_t>(kMaxPayloadV1 - sizeof(CallPayload));
+constexpr uint16_t kMaxCallArgsV2 = static_cast<uint16_t>(kMaxPayloadV2 - sizeof(CallPayload));
+
+// All four fit the 226 B ESP-NOW v1 floor unfragmented, so a namespace read works on a mixed-
 // version link without touching the reassembly path (§5.3, §5.4).
 static_assert(sizeof(ReadPayload) <= kMaxPayloadV1, "READ must fit the v1 profile");
 static_assert(sizeof(WritePayload) <= kMaxPayloadV1, "WRITE must fit the v1 profile");
 static_assert(sizeof(ReplyPayload) <= kMaxPayloadV1, "REPLY must fit the v1 profile");
+static_assert(sizeof(CallPayload) <= kMaxPayloadV1, "CALL header must fit the v1 profile");
 
 // ---------------------------------------------------------------------------------------------
 // Loaders and converters
@@ -124,6 +162,13 @@ static_assert(sizeof(ReplyPayload) <= kMaxPayloadV1, "REPLY must fit the v1 prof
 bool load_read(const uint8_t* payload, uint16_t len, ReadPayload& out);
 bool load_write(const uint8_t* payload, uint16_t len, WritePayload& out);
 bool load_reply(const uint8_t* payload, uint16_t len, ReplyPayload& out);
+
+// CALL and CAST share a loader, since they share a layout. Unlike the fixed payloads this one also
+// checks that the declared arg_len is actually present in the frame: a peer claiming more arguments
+// than it sent would otherwise have the callee read past the payload. Rejected rather than clamped,
+// because clamping hands the callee a silently truncated argument list, which is the same class of
+// mistake as serving a stale value unmarked.
+bool load_call(const uint8_t* payload, uint16_t len, CallPayload& out);
 
 // Pack a Reading into a REPLY, and unpack it again. Kept as functions rather than done inline at
 // the two call sites, because §4 rule 2's tuple must survive the round trip intact and one place to
