@@ -95,6 +95,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--interval", type=float, default=1.0)
     s.add_argument("--count", type=int, default=0, help="stop after this many reads (0 = forever)")
 
+    s = sub.add_parser("soak", help="read every built-in resource in a loop, for a duration")
+    s.add_argument("--seconds", type=float, default=600.0,
+                   help="how long to keep sweeping (default 600, M2's ten minutes)")
+    s.add_argument("--interval", type=float, default=1.0, help="pause between sweeps")
+
     sub.add_parser("info", help="say hello and report what the node announced")
 
     return p
@@ -161,6 +166,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_write(bridge, canonical(args.path, node_id), args)
         if args.cmd == "watch":
             return cmd_watch(bridge, canonical(args.path, node_id), args)
+        if args.cmd == "soak":
+            return cmd_soak(bridge, node_id, args)
         return 2
     finally:
         try:
@@ -260,6 +267,55 @@ def cmd_watch(bridge: Bridge, path: str, args) -> int:
     except KeyboardInterrupt:
         print("\n# interrupted", file=sys.stderr)
     return 0
+
+
+def cmd_soak(bridge: Bridge, node_id: int, args) -> int:
+    """Sweep the whole namespace repeatedly, in one connection.
+
+    `watch` holds one path, so a capture taken through it replays a namespace of exactly one entry,
+    and "byte-identical" over one entry is a weak thing to claim. This sweeps every built-in
+    instead, so a long session exercises the whole namespace without needing a second connection --
+    which matters, because QEMU's socket serial accepts exactly one per VM lifetime.
+    """
+    paths = sys_paths_for(node_id)
+    width = max(len(describe(p)) for p in paths)
+    deadline = time.monotonic() + args.seconds
+    sweeps = reads = timeouts = unusable = 0
+    try:
+        while time.monotonic() < deadline:
+            for p in paths:
+                try:
+                    r = bridge.read(p, timeout=args.timeout)
+                except RequestTimeout:
+                    timeouts += 1
+                    continue
+                reads += 1
+                if not r.usable():
+                    unusable += 1
+            sweeps += 1
+            print(f"{time.strftime('%H:%M:%S')}  sweep {sweeps}: {reads} read, "
+                  f"{timeouts} timed out, {unusable} unusable", flush=True)
+            time.sleep(args.interval)
+    except KeyboardInterrupt:
+        print("# interrupted", file=sys.stderr)
+
+    # End by showing the tuples rather than only counting them, and let the exit code speak for the
+    # final sweep -- the state the capture's digest is taken over.
+    failures = 0
+    print("")
+    print(f"after {sweeps} sweeps, {reads} reads, {timeouts} timeouts:")
+    for p in paths:
+        label = describe(p)
+        try:
+            r = bridge.read(p, timeout=args.timeout)
+        except RequestTimeout:
+            print(f"{label:<{width}}  TIMEOUT")
+            failures += 1
+            continue
+        print(f"{label:<{width}}  {r.format()}")
+        if not r.usable():
+            failures += 1
+    return 0 if failures == 0 else 1
 
 
 if __name__ == "__main__":

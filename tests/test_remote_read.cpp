@@ -321,9 +321,13 @@ TEST(m1, a_read_of_an_unknown_path_is_answered_not_ignored) {
 }
 
 TEST(m1, outstanding_requests_are_bounded_and_expire) {
-    // Four slots, then refusal — an unbounded request table on a link with a 500 ms p99 is a memory
-    // leak waiting for a partition. And a request nobody answers must free its slot, or four stuck
-    // reads would block every later one.
+    // The table is bounded, then requests are refused -- an unbounded request table on a link with
+    // a 500 ms p99 is a memory leak waiting for a partition. And a request nobody answers must free
+    // its slot, or a table full of stuck reads would block every later one.
+    //
+    // The bound is read from the class rather than typed in. It was typed in once, as 4, and
+    // section 7.8's coordinator later needed one slot per worker: the test then failed for the
+    // table being *larger*, which is not a defect anybody wanted reported.
     Cell2 c;
     c.build(2);
     c.start();
@@ -334,14 +338,15 @@ TEST(m1, outstanding_requests_are_bounded_and_expire) {
     declare_both(c, owner.config().node_id, 5000);
 
     c.partitioned = true;  // nothing will be answered
+    const size_t cap = Node::max_calls_outstanding();
     size_t issued = 0;
-    for (int i = 0; i < 10; ++i) {
+    for (size_t i = 0; i < cap + 5; ++i) {
         if (reader.request_read(owner.config().node_id, kAdc0) != 0) ++issued;
     }
-    CHECK_EQ(issued, static_cast<size_t>(4));
+    CHECK_EQ(issued, cap);
 
     c.advance_ms(2500);  // past ns_request_timeout_ms
-    CHECK_EQ(reader.ns_counters().read_timeouts, 4u);
+    CHECK_EQ(reader.ns_counters().read_timeouts, static_cast<uint32_t>(cap));
 
     // Slots are free again.
     c.partitioned = false;

@@ -57,6 +57,12 @@ void Node::note(MembershipChange c, PeerLink* p) {
             ++counters_.deaths_declared;
             emit(EventKind::PeerDead, p, p->misses,
                  (hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0) - p->last_rx_ms);
+            // Work units dispatched to it are owed answers that are never coming. Writing them
+            // off here rather than on a timer is deliberate: the death window (section 8.2) is
+            // the system's one definition of "gone", and a second, longer deadline invented for
+            // work units would be a number with no measurement behind it -- and would make a
+            // coordinator wait past the moment it already knew.
+            abandon_calls_to(p->node_id);
             break;
         case MembershipChange::Revived:
             ++counters_.revivals;
@@ -65,8 +71,14 @@ void Node::note(MembershipChange c, PeerLink* p) {
         case MembershipChange::Rebooted:
             ++counters_.reboots_seen;
             emit(EventKind::PeerRebooted, p, p->boot_epoch);
+            // A rebooted worker is a different incarnation: it has no memory of the unit it
+            // accepted, so that unit is lost even though the peer is answering again.
+            abandon_calls_to(p->node_id);
             break;
-        case MembershipChange::Left: emit(EventKind::PeerLeft, p); break;
+        case MembershipChange::Left:
+            emit(EventKind::PeerLeft, p);
+            abandon_calls_to(p->node_id);
+            break;
         case MembershipChange::StaleEpoch: ++counters_.rx_stale_epoch; break;
         case MembershipChange::Alive: emit(EventKind::PeerAlive, p); break;
         default: break;
@@ -420,6 +432,14 @@ Node::PendingNs* Node::pending_claim() {
 
 void Node::pending_expire(uint32_t now_ms) {
     for (PendingNs& q : pending_) {
+        // A work unit is not a read and does not get the read timeout. The whole premise of
+        // section 7.8 is that a unit runs for far longer than a round trip, so a two-second
+        // deadline would write off every job worth shipping. What ends a unit is the peer dying
+        // (abandon_calls_to) or the coordinator giving up on its own terms (cancel_call) -- the
+        // application knows how long its work takes, and the node does not.
+        if (q.op == kOpCall) {
+            continue;
+        }
         if (q.msg_id != 0 && (now_ms - q.sent_ms) > cfg_.ns_request_timeout_ms) {
             // A request nobody answered. Freeing the slot matters more than the counter: four
             // stuck requests would block every subsequent read, which is the same wedging failure
@@ -597,8 +617,26 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
         ++ns_counters_.replies_unmatched;
         return;
     }
+    const uint8_t op = q->op;
+    const uint32_t asked_for = q->path_hash;
+    const uint16_t worker = q->peer_node;
     q->msg_id = 0;
     ++ns_counters_.replies_matched;
+
+    if (op == kOpCall) {
+        // A call's answer is a result, not a reading: it names no resource this node holds, so it
+        // goes to the coordinator and nowhere near the namespace. Caching it would invent a
+        // resource whose age nobody bounds.
+        if (call_result_ != nullptr) {
+            const bool ok = static_cast<NsError>(rep.status) == NsError::Ok &&
+                            quality_has_value(static_cast<Quality>(rep.quality));
+            const Value v = ok ? value_from_wire(rep.value_type, rep.value_len, rep.value_raw)
+                               : Value{};
+            call_result_(result_ctx_, worker, f.hdr.msg_id, asked_for,
+                         ok ? CallOutcome::Ok : CallOutcome::Refused, v);
+        }
+        return;
+    }
 
     if (static_cast<NsError>(rep.status) != NsError::Ok) {
         return;  // the owner refused; nothing to cache
@@ -615,6 +653,195 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
     // our clock, because the two clocks are unsynchronised.
     ns_.apply_remote(rep.path_hash, v, rep.timestamp_ms, now,
                      static_cast<Quality>(rep.quality) == Quality::Faulty);
+}
+
+// -------------------------------------------------------------------------------------------
+// section 7.8: work units. CALL carries a unit out, REPLY carries the result back, CAST is the
+// same thing with nobody waiting.
+// -------------------------------------------------------------------------------------------
+
+// The whole request lives in one v1-profile payload. Work units are tiny in, tiny out by design:
+// the arguments are a seed and a count, not a data set, and the result is a Value. Sizing the
+// encode buffer at the v1 cap keeps a 1446-byte v2 buffer off the caller's stack for a payload
+// nothing intends to fill; a workload that genuinely needs more should put it in the namespace,
+// which is the same answer the result side gives.
+static constexpr uint16_t kCallArgLimit = kMaxCallArgsV1;
+
+size_t Node::calls_outstanding() const {
+    size_t n = 0;
+    for (const PendingNs& q : pending_) {
+        if (q.msg_id != 0 && q.op == kOpCall) {
+            ++n;
+        }
+    }
+    return n;
+}
+
+void Node::abandon_calls_to(uint16_t peer_node_id) {
+    for (PendingNs& q : pending_) {
+        if (q.msg_id == 0 || q.op != kOpCall || q.peer_node != peer_node_id) {
+            continue;
+        }
+        const uint16_t msg_id = q.msg_id;
+        const uint32_t path_hash = q.path_hash;
+        q.msg_id = 0;  // free the slot first: the callback may dispatch the unit again from here
+        ++ns_counters_.calls_lost;
+        if (call_result_ != nullptr) {
+            call_result_(result_ctx_, peer_node_id, msg_id, path_hash, CallOutcome::Unavailable,
+                         Value{});
+        }
+    }
+}
+
+bool Node::cancel_call(uint16_t msg_id) {
+    for (PendingNs& q : pending_) {
+        if (q.msg_id != msg_id || q.op != kOpCall) {
+            continue;
+        }
+        const uint16_t worker = q.peer_node;
+        const uint32_t path_hash = q.path_hash;
+        q.msg_id = 0;  // freed first: the callback may dispatch this unit again from inside it
+        ++ns_counters_.calls_lost;
+        if (call_result_ != nullptr) {
+            call_result_(result_ctx_, worker, msg_id, path_hash, CallOutcome::Unavailable, Value{});
+        }
+        return true;
+    }
+    return false;  // already answered, already written off, or never ours
+}
+
+uint16_t Node::request_call(uint16_t peer_node_id, uint32_t path_hash, const uint8_t* args,
+                            uint16_t arg_len) {
+    if (arg_len > kCallArgLimit || (arg_len != 0 && args == nullptr)) {
+        return 0;
+    }
+    PeerLink* p = peers_.find_by_node_id(peer_node_id);
+    if (p == nullptr || departed_) {
+        return 0;
+    }
+    PendingNs* q = pending_claim();
+    if (q == nullptr) {
+        return 0;  // every slot outstanding; the caller still owns the work and retries
+    }
+
+    uint16_t msg_id = p->msg_id_next++;
+    if (msg_id == 0) {
+        msg_id = p->msg_id_next++;
+    }
+
+    // Registered before sending, for the reason request_read() gives at length: a transport can
+    // deliver the reply inside send().
+    q->msg_id = msg_id;
+    q->peer_node = peer_node_id;
+    q->path_hash = path_hash;
+    q->sent_ms = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+    q->op = kOpCall;
+
+    uint8_t buf[sizeof(CallPayload) + kCallArgLimit];
+    CallPayload hdr{};
+    hdr.path_hash = path_hash;
+    hdr.flags = 0;
+    hdr.arg_len = arg_len;
+    std::memcpy(buf, &hdr, sizeof(hdr));
+    if (arg_len != 0) {
+        std::memcpy(buf + sizeof(hdr), args, arg_len);
+    }
+    const uint16_t len = static_cast<uint16_t>(sizeof(hdr) + arg_len);
+
+    if (!send_frame(p, p->mac, kOpCall, buf, len, true, msg_id, p->node_id, false)) {
+        q->msg_id = 0;
+        return 0;
+    }
+    ++ns_counters_.calls_requested;
+    return msg_id;
+}
+
+bool Node::cast(uint16_t peer_node_id, uint32_t path_hash, const uint8_t* args, uint16_t arg_len) {
+    if (arg_len > kCallArgLimit || (arg_len != 0 && args == nullptr)) {
+        return false;
+    }
+    PeerLink* p = peers_.find_by_node_id(peer_node_id);
+    if (p == nullptr || departed_) {
+        return false;
+    }
+    uint16_t msg_id = p->msg_id_next++;
+    if (msg_id == 0) {
+        msg_id = p->msg_id_next++;
+    }
+
+    uint8_t buf[sizeof(CallPayload) + kCallArgLimit];
+    CallPayload hdr{};
+    hdr.path_hash = path_hash;
+    hdr.flags = 0;
+    hdr.arg_len = arg_len;
+    std::memcpy(buf, &hdr, sizeof(hdr));
+    if (arg_len != 0) {
+        std::memcpy(buf + sizeof(hdr), args, arg_len);
+    }
+    const uint16_t len = static_cast<uint16_t>(sizeof(hdr) + arg_len);
+    return send_frame(p, p->mac, kOpCast, buf, len, false, msg_id, p->node_id, false);
+}
+
+bool Node::reply_call(uint16_t peer_node_id, uint16_t msg_id, uint32_t path_hash, const Value& v) {
+    PeerLink* p = peers_.find_by_node_id(peer_node_id);
+    if (p == nullptr) {
+        // The unit was finished and the coordinator is gone. Nothing to send it to, and nothing to
+        // retry: the coordinator has already written this unit off (abandon_calls_to) and given the
+        // work to somebody else.
+        return false;
+    }
+    ReplyPayload rep{};
+    rep.path_hash = path_hash;
+    const uint32_t now = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+    rep.timestamp_ms = now;
+    rep.age_ms = 0;  // computed, not stale: it was produced now
+    rep.unit = static_cast<uint16_t>(Unit::None);
+    rep.reply_to = kOpCall;
+    rep.status = static_cast<uint8_t>(NsError::Ok);
+    rep.quality = static_cast<uint8_t>(Quality::Good);
+    rep.latency_class = 4;  // L4: it crossed the radio to get here, whatever produced it
+    value_to_wire(v, rep.value_type, rep.value_len, rep.value_raw);
+    return send_frame(p, p->mac, kOpReply, &rep, sizeof(rep), false, msg_id, p->node_id, false);
+}
+
+void Node::handle_call(PeerLink* p, const Frame& f, bool wants_reply) {
+    if (p == nullptr) {
+        return;
+    }
+    CallPayload req{};
+    if (!load_call(f.payload, f.payload_len, req)) {
+        // Either shorter than the header, or an arg_len the frame cannot back. Rejected rather
+        // than clamped: a silently truncated argument list is the same class of fault as an
+        // unmarked stale value.
+        ++counters_.rx_short_payload;
+        send_err(p, p->mac, kErrPayloadTooShort, f.hdr.msg_id);
+        return;
+    }
+
+    const uint8_t* args = f.payload + sizeof(CallPayload);
+    const bool accepted =
+        call_handler_ != nullptr &&
+        call_handler_(call_ctx_, p->node_id, f.hdr.msg_id, req.path_hash, args, req.arg_len);
+
+    if (accepted) {
+        ++ns_counters_.calls_served;
+        return;  // the result is owed, and arrives later through reply_call()
+    }
+    ++ns_counters_.calls_refused;
+
+    if (!wants_reply) {
+        return;  // a CAST nobody is waiting for; the counter is the only record
+    }
+    // Refused now rather than left to a timeout. A coordinator that gets an answer can hand the
+    // unit to another worker immediately; one that gets silence has to wait out a death window
+    // for a worker that is alive and simply not doing the job.
+    ReplyPayload rep{};
+    rep.path_hash = req.path_hash;
+    rep.reply_to = kOpCall;
+    rep.status = static_cast<uint8_t>(NsError::NotFound);
+    rep.quality = static_cast<uint8_t>(Quality::Unavailable);
+    rep.value_type = static_cast<uint8_t>(ValueType::None);
+    send_frame(p, p->mac, kOpReply, &rep, sizeof(rep), false, f.hdr.msg_id, p->node_id, false);
 }
 
 void Node::handle_bye(PeerLink* p, const Frame& f) {
@@ -693,6 +920,8 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         case kOpRead: handle_read(p, f); break;
         case kOpWrite: handle_write(p, f); break;
         case kOpReply: handle_reply(p, f); break;
+        case kOpCall: handle_call(p, f, true); break;
+        case kOpCast: handle_call(p, f, false); break;
         case kOpErr: handle_err(p, f); break;
         default:
             ++counters_.rx_unknown_opcode;

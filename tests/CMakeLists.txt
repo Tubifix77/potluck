@@ -62,6 +62,7 @@ add_executable(pot_tests
   test_sys_resources.cpp
   test_serial_framing.cpp
   test_ns_wire.cpp
+  test_work_units.cpp
 )
 target_link_libraries(pot_tests PRIVATE pot_portable)
 target_include_directories(pot_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -112,6 +113,6 @@ add_test(NAME pot_tests COMMAND pot_tests)
 
 # The suites are also registered individually so a failure names the area rather than just
 # "pot_tests". The filter is a substring match on suite or case name.
-foreach(suite golden codec reject fuzz heartbeat peer_table stats budget json node ns m1 sysres serial)
+foreach(suite golden codec reject fuzz heartbeat peer_table stats budget json node ns m1 sysres serial work)
   add_test(NAME pot_${suite} COMMAND pot_tests ${suite})
 endforeach()

@@ -2,6 +2,11 @@
 
 #include <cstring>
 
+#ifdef _MSC_VER
+#include <crtdbg.h>
+#include <stdlib.h>
+#endif
+
 namespace pot_test_fixtures {
 // Defined in test_stats_json.cpp: writes one of each serial record to <dir>/stats_sample.jsonl so
 // the Python tests in host/potluck parse exactly the bytes a board emits.
@@ -44,6 +49,19 @@ int run_all(int argc, char** argv) {
     }
     const char* filter = (argc > 1) ? argv[1] : nullptr;
 
+#ifdef _MSC_VER
+    // A debug-build bounds check in the standard library opens a modal dialog by default, which
+    // stops the suite dead until somebody clicks it -- and this suite is normally run from a script.
+    // It also makes the run unreadable: stdout to a pipe is block-buffered, so the last line
+    // printed is not the last case run, and the abort appears to be wherever the buffer happened to
+    // end. Report to stderr, and flush per case below, so an abort names the case it happened in.
+    _set_error_mode(_OUT_TO_STDERR);
+    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+#endif
+
     const char* last_suite = "";
     int ran = 0;
     for (const Case& c : registry()) {
@@ -60,6 +78,7 @@ int run_all(int argc, char** argv) {
         c.fn();
         ++ran;
         std::printf("  %-4s %s\n", failures() == before ? "ok" : "FAIL", c.name);
+        std::fflush(stdout);
     }
 
     std::printf("\n%d case(s), %d check(s), %d failure(s)\n", ran, checks(), failures());

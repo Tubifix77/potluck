@@ -117,6 +117,13 @@ class TcpTransport:
         self.connect_timeout = connect_timeout
         self._sock: socket.socket | None = None
         self.closed_by_peer = False
+        # read() and write() are called from different threads -- the bridge's reader and whatever
+        # is issuing requests -- and both go through _ensure(). Without this lock they can each
+        # open a socket, and QEMU's chardev accepts exactly ONE connection per VM lifetime: the
+        # loser's socket then sits unaccepted forever, so one thread talks to the guest and the
+        # other reads silence. That is a coin toss between working and a session that looks like a
+        # dead node. Cost of the fix: one uncontended lock acquisition per byte-pipe call.
+        self._connect_lock = threading.Lock()
 
     @property
     def description(self) -> str:
@@ -125,6 +132,12 @@ class TcpTransport:
     def _ensure(self) -> socket.socket:
         if self._sock is not None:
             return self._sock
+        with self._connect_lock:
+            if self._sock is None:
+                self._connect()
+        return self._sock
+
+    def _connect(self) -> None:
         deadline = time.time() + self.connect_timeout
         last: Exception | None = None
         while time.time() < deadline:
@@ -133,7 +146,7 @@ class TcpTransport:
                 s.settimeout(self.timeout)
                 s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 self._sock = s
-                return s
+                return
             except OSError as exc:
                 last = exc
                 time.sleep(0.2)

@@ -6,6 +6,7 @@
 
 #include "pot/link_stats.hpp"
 #include "pot/membership.hpp"
+#include "pot/node.hpp"
 #include "pot/payloads.hpp"
 #include "test_harness.hpp"
 
@@ -374,6 +375,13 @@ TEST(budget, structures_fit_their_section_6_allocations) {
 
     CHECK(kPeerTableBytes <= 2560);   // §6: "Peer table, 20 × 128 B | 2.5 KB"
     CHECK(kStatsLineBytes <= 2048);   // §6: "Counters, link stats, event ring | 2.0 KB"
+
+    // The outstanding-request table. Section 6 has no line for it: it is charged against the
+    // 12.1 KB the budget still had spare, and it is the only static allocation section 7.8's
+    // request side makes. Pinned here so a later change to the table cannot enlarge it quietly --
+    // one slot per peer the cell can hold is the reason it is this size, not a round number.
+    CHECK_EQ(Node::pending_table_bytes(), static_cast<size_t>(320));
+    CHECK_EQ(Node::max_calls_outstanding(), kMaxPeers);
 
     // The whole peer table plus statistics, which is what the two §6 lines buy.
     CHECK(kPeerTableBytes + kStatsLineBytes <= 2560 + 2048);

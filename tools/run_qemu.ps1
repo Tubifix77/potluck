@@ -44,6 +44,7 @@ if ($LASTEXITCODE -ge 8) { throw "robocopy failed with $LASTEXITCODE" }
 $env:IDF_PATH = $IdfPath
 & (Join-Path $IdfPath "export.ps1") *> $null
 
+$launched = $null   # the only VM this script is allowed to kill on the way out
 Push-Location $MirrorDir
 try {
     if ($Clean -and (Test-Path "build")) { Remove-Item -Recurse -Force "build" }
@@ -146,7 +147,14 @@ try {
     if (Test-Path $flash) { Start-Sleep -Milliseconds 1500 }
     Stop-Job $gen -ErrorAction SilentlyContinue
     Remove-Job $gen -Force -ErrorAction SilentlyContinue
-    Get-Process qemu-system-xtensa -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    # A VM already running holds the frame-link port, so a stale one has to go -- but say so.
+    # Silence here once let a 2-minute smoke run appear to kill nothing while it shot down a
+    # 10-minute soak, which then reported a transport error and blamed the socket.
+    $stale = @(Get-Process qemu-system-xtensa -ErrorAction SilentlyContinue)
+    if ($stale.Count -gt 0) {
+        Write-Host "killing $($stale.Count) QEMU process(es) already running: $($stale.Id -join ', ')"
+        $stale | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
     if (-not (Test-Path $flash)) { throw "qemu_flash.bin was not generated" }
 
     $qemu = (Get-Command qemu-system-xtensa -ErrorAction SilentlyContinue).Source
@@ -176,6 +184,7 @@ try {
     Write-Host "qemu: $qemu"
     Write-Host "console -> $log"
     $p = Start-Process -FilePath $qemu -ArgumentList $args -PassThru -WindowStyle Hidden
+    $launched = $p
     Write-Host "running for $Seconds s (pid $($p.Id))"
     Start-Sleep -Seconds $Seconds
     Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
@@ -191,5 +200,6 @@ try {
     }
 } finally {
     Pop-Location
-    Get-Process qemu-system-xtensa -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    # Only the VM this run started. Sweeping by name here is what made one run tear down another.
+    if ($launched) { Stop-Process -Id $launched.Id -Force -ErrorAction SilentlyContinue }
 }

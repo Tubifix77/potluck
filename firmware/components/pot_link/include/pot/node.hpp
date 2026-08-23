@@ -175,6 +175,69 @@ class Node {
     uint16_t request_read(uint16_t peer_node_id, uint32_t path_hash);
     uint16_t request_write(uint16_t peer_node_id, uint32_t path_hash, const Value& v);
 
+    // ---- section 7.8: work units (CALL / REPLY / CAST) ------------------------------------
+    //
+    // A coordinator hands a unit of work to a peer with request_call(); the peer runs it and
+    // answers with reply_call(). Neither side is synchronous, and that is the whole design: a
+    // unit of work worth shipping across a link whose round trip is milliseconds runs for far
+    // longer than one, so a handler that answered inline would hold the receive path for the
+    // duration of the job. The handler therefore only *accepts* the unit.
+    //
+    // The result is a Value, so at most 8 bytes. Anything bigger travels the way every other
+    // datum here travels: the worker publishes it to a path and the reply says only that it is
+    // there.
+    enum class CallOutcome : uint8_t {
+        Ok = 0,       // the worker answered with a value
+        Refused,      // the worker answered, but with an error status
+        Unavailable,  // the worker died before answering; this unit was never completed
+    };
+
+    // Worker side. Return true to accept the unit -- the result is owed, and must be delivered
+    // with reply_call(msg_id). Return false to refuse it, which sends an error back at once
+    // rather than letting the coordinator wait out a death window for an answer never coming.
+    using CallHandler = bool (*)(void* ctx, uint16_t from_node, uint16_t msg_id,
+                                 uint32_t path_hash, const uint8_t* args, uint16_t arg_len);
+
+    // Coordinator side. Called once per request_call(), with Ok and a value, or with Refused or
+    // Unavailable and no value. Exactly once: a unit is either answered or written off, never
+    // both, because a coordinator that can be told twice will hand out the same work twice.
+    using CallResultFn = void (*)(void* ctx, uint16_t from_node, uint16_t msg_id,
+                                  uint32_t path_hash, CallOutcome outcome, const Value& v);
+
+    void set_call_handler(CallHandler fn, void* ctx) { call_handler_ = fn; call_ctx_ = ctx; }
+    void set_call_result(CallResultFn fn, void* ctx) { call_result_ = fn; result_ctx_ = ctx; }
+
+    // Send a unit of work. Returns the msg_id, or 0 if it could not be sent -- no peer, no free
+    // slot, or the transport refused. 0 is not a failure of the job: nothing was dispatched, so
+    // the caller still owns the work.
+    uint16_t request_call(uint16_t peer_node_id, uint32_t path_hash, const uint8_t* args,
+                          uint16_t arg_len);
+
+    // Answer a unit accepted earlier. `msg_id` and `peer_node_id` are the ones the handler was
+    // given.
+    bool reply_call(uint16_t peer_node_id, uint16_t msg_id, uint32_t path_hash,
+                    const Value& v);
+
+    // Give up on a unit without waiting for the peer to die. A work unit gets no timeout from the
+    // node -- section 7.8's units run for far longer than the read timeout, and a node that
+    // guessed a deadline would be guessing about somebody else's workload. A coordinator that
+    // knows its own job durations calls this; the outcome is reported as Unavailable, once.
+    bool cancel_call(uint16_t msg_id);
+
+    // Fire and forget: same layout, no reply, no pending slot. For work whose result the sender
+    // does not want -- section 7.8's "stays sleepy unless told otherwise" side of the pattern.
+    bool cast(uint16_t peer_node_id, uint32_t path_hash, const uint8_t* args, uint16_t arg_len);
+
+    // Units this node is still owed answers for. A coordinator uses it to decide whether it has
+    // capacity to dispatch more, rather than discovering the ceiling by getting 0 back.
+    size_t calls_outstanding() const;
+    static constexpr size_t max_calls_outstanding() { return kMaxPendingNs; }
+
+    // The static cost of that table, so it can be checked against the section 6 budget rather than
+    // discovered by a linker map. It is charged against the headroom section 6 has left, and it is
+    // the only allocation section 7.8's request side makes.
+    static constexpr size_t pending_table_bytes();
+
     struct NsCounters {
         uint32_t reads_served;
         uint32_t reads_requested;
@@ -183,6 +246,10 @@ class Node {
         uint32_t writes_served;
         uint32_t writes_rejected;
         uint32_t read_timeouts;
+        uint32_t calls_requested;
+        uint32_t calls_served;     // units accepted by a handler here
+        uint32_t calls_refused;    // units this node declined, or had no handler for
+        uint32_t calls_lost;       // units dispatched to a peer that died before answering
     };
     const NsCounters& ns_counters() const { return ns_counters_; }
 
@@ -231,6 +298,8 @@ class Node {
     void handle_read(PeerLink* p, const Frame& f);
     void handle_write(PeerLink* p, const Frame& f);
     void handle_reply(PeerLink* p, const Frame& f);
+    void handle_call(PeerLink* p, const Frame& f, bool wants_reply);
+    void abandon_calls_to(uint16_t peer_node_id);
     void handle_err(PeerLink* p, const Frame& f);
 
     void do_beacon_round(uint32_t now_ms);
@@ -248,7 +317,13 @@ class Node {
     // sharing one with the unicast streams would make every alternation look like a gap.
     // Outstanding namespace requests. Small and fixed: §6 has no line for a request table, and
     // an unbounded one on a link with a 500 ms p99 is a memory leak waiting for a partition.
-    static constexpr size_t kMaxPendingNs = 4;
+    // One outstanding request per peer the cell can hold. The read path never needs more than a
+    // couple, but a coordinator handing out work units (section 7.8) needs one per worker or its
+    // parallelism is capped by this table rather than by the cell -- and a ceiling that is an
+    // accident of a constant is the kind of limit nobody remembers is there. kMaxPeers is the
+    // cell's own ceiling, so the table cannot be the binding constraint. 20 slots at 16 B is
+    // 320 B of static DRAM, which section 6 has room for; anything unbounded does not.
+    static constexpr size_t kMaxPendingNs = kMaxPeers;
     struct PendingNs {
         uint16_t msg_id;      // 0 = free
         uint16_t peer_node;
@@ -263,6 +338,11 @@ class Node {
 
     Namespace ns_;
     NsCounters ns_counters_{};
+
+    CallHandler call_handler_ = nullptr;
+    void* call_ctx_ = nullptr;
+    CallResultFn call_result_ = nullptr;
+    void* result_ctx_ = nullptr;
 
     uint16_t seq_tx_bcast_ = 0;
     uint32_t hb_seq_bcast_ = 0;
@@ -279,6 +359,8 @@ class Node {
     // the node is single-threaded by contract, so one is enough.
     uint8_t tx_[kEspNowV2LinkMtu];
 };
+
+constexpr size_t Node::pending_table_bytes() { return sizeof(PendingNs) * kMaxPendingNs; }
 
 // §3's twenty-peer ESP-NOW ceiling includes the broadcast entry, so a cell admits nineteen unicast
 // peers. Stated here because it is a property of the policy, not of the transport code.
