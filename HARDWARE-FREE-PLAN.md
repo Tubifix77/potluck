@@ -7,6 +7,31 @@ knows about a constraint they do not: no ESP32-S3 is attached to this machine.
 Steps are numbered **H0–H6** so they can never be confused with milestones. Each says which milestone
 it advances, why it is unblocked, and what it explicitly does not deliver.
 
+## Progress
+
+| step | state | notes |
+|---|---|---|
+| **H0** | **IN FLIGHT** | see below -- may need re-running |
+| **H1** | **DONE** (commit 4e006de) | CALL/CAST opcodes real, 8-byte header, both-side bounds check, 160 C++ cases, 16 gates green |
+| H2 | next | the coordinator/worker simulator -- the point of the plan |
+| H3-H6 | not started | |
+
+### H0's in-flight state, and how to resume it
+
+A 10-minute session was running when this was written: QEMU on port 5555 (started with -Seconds 800),
+and potctl capturing to captures/m2-10min-frames.jsonl via
+"watch sys/heap-free --interval 1 --count 600".
+
+**If potctl printed its digest and verify command, finish the step:** run the printed
+"python -m potluck --replay ... --expect-digest ..." and, on exit 0, move M2 from *built* to
+**accepted** in the README milestone table, then log it.
+
+**If the process was interrupted before printing, just re-run the whole thing.** It is ten minutes and
+the capture alone is not enough: the test compares the *live* digest against the *replayed* one, and a
+capture replayed against itself would match trivially and prove nothing. The mechanism is already
+proven and digest-gated (M0-LOG Session 6, six entries, gate shown to fail on a wrong digest); H0 adds
+only the duration that section 13-M2 asks for.
+
 ## The actual constraint, stated narrowly
 
 An earlier session said "everything is blocked on hardware". That was too broad and it was wrong. The
