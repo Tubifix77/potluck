@@ -1762,3 +1762,103 @@ The countdown/ACK/rendezvous protocol sketched above was real engineering aimed 
 existed only because atomic migration had been assumed. Removing the assumption removed the protocol.
 This belongs alongside §14's scope discipline: the cheapest distributed algorithm is the one whose
 requirement was retired.
+
+---
+
+## Session 8 — 2026-08-23, a work plan for the wait, and CALL on the wire
+
+### The correction that made this session possible
+
+An earlier session concluded "we are at the stop — nothing more can be built without hardware." The
+owner pushed back: *we have an emulator, surely more can be coded.* He was right and the claim was
+over-broad.
+
+The argument only ever supported two prohibitions, and stating them narrowly is what unlocked
+everything else:
+
+1. **Allocate no significant static firmware RAM** while §6's remaining 12.1 KB is committed on paper
+   and the Wi-Fi DRAM `[MEASURE]` is unresolved. This bars large buffers, actor blocks, crypto
+   contexts and WASM instances. It does **not** bar small structures — a four-entry correlation table
+   is 64 B, which is 0.5% of the headroom.
+2. **Tune no timing policy against cited rather than measured PDR.**
+
+Everything else — host tooling, simulator work, wire formats, on-target emulation — was always open,
+and that is most of what M3, M4 and M5 actually consist of.
+
+### HARDWARE-FREE-PLAN.md, steps H0–H6
+
+A work order *underneath* the milestones rather than a revision of them. §13's acceptance tests and
+kill criteria are untouched and the ADRs unopened; the plan only supplies an order to work in given a
+constraint §13 does not know about. Numbered H-something specifically so it can never be mistaken for
+a milestone.
+
+Two findings set the order:
+
+- **§13-M2's acceptance says nothing about hardware** — *"a captured 10-minute session replays and
+  produces byte-identical namespace state."* The mechanism was already proven and digest-gated in
+  Session 6; only the *duration* was missing, and only because QEMU's socket serial accepts one
+  connection per VM lifetime. A single `potctl` invocation holds a single connection, so a genuine
+  ten-minute session is possible today. **M2 is acceptable without a board.**
+- **§13-M4's acceptance is two sentences and the first needs no hardware:** *"a manifest binding an L1
+  actor to a remote resource fails the build with a readable error naming both ends."* That is a
+  manifest parser and a constraint checker. Half of M4 is genuinely reachable now, and it is the half
+  that turns §4's central safety claim from a convention into something the build refuses to violate.
+
+### H1 — CALL and CAST are real
+
+Opcodes `0x20` and `0x22` were reserved and commented out; they now exist. An 8-byte header
+(`path_hash`, `flags`, `arg_len`) plus opaque arguments, given the same treatment as every payload
+here: offset `static_assert`s, golden bytes typed from §5.2 rather than produced by the encoder, a
+generated corpus, and a second independent Python implementation required to agree byte-for-byte.
+
+**The design decision worth keeping: a call's result returns in an ordinary REPLY, carrying a Value —
+so at most 8 bytes.** That reads like a limitation and is not. `ReplyPayload`'s discriminator
+(`reply_to`) sits at offset 14, so a variable-shaped reply could not be cheaply dispatched anyway —
+but the deeper reason is that anything larger should travel the way every other datum here travels:
+the callee **publishes** it to a namespace path and the reply says only that it is there. Small
+messages, data in the namespace, and **zero changes to the tested REPLY codec.** `CAST` is the same
+layout with no reply; the opcode carries the difference, so there is one struct rather than two
+identical ones.
+
+`load_call` additionally verifies the declared `arg_len` is backed by bytes that actually arrived, and
+**rejects rather than clamps** — a silently truncated argument list is the same class of fault as an
+unmarked stale value. Both implementations have the check and both have a test that a hostile header
+claiming 100 argument bytes inside a 12-byte payload is refused.
+
+160 C++ cases, 16 gates green, no firmware RAM consumed yet.
+
+### A tooling trap that cost three breakages
+
+Bash heredocs on this machine **strip one level of backslash escaping** before Python sees the body,
+even with a quoted delimiter. `\\n` became a real newline inside a C++ string literal; `\\x00` became
+an actual NUL byte in a `.py` file; and separately, backticks in a heredoc body are still command
+substitution, which silently deleted a word from a Markdown file in an earlier session. Two of the
+three were caught by a compiler; the Markdown one produced no error at all and reached a commit.
+
+Recorded in memory as `heredoc-eats-a-backslash`: build dangerous characters from `chr()` codes, or
+use the Write tool and append with PowerShell, and grep the written line back afterwards. Same family
+as the stale-ELF lesson — the file on disk was not the file I believed I had written.
+
+### Vision conversation, worth carrying forward
+
+The owner spent the session reconstructing his own mental model against what got built, and reached a
+conclusion the log should hold: the divergence from his original vision was justified, but **for two
+different reasons that should not be conflated.** Physics killed the pooling — no MMU, 512 KB, 2.8 ms
+best case. *Safety* killed the transparency: hiding the seams would have produced a system that passed
+every bench test and failed in a wall. Only the second was a judgement call.
+
+His original grievance — *an ESP32 is far too powerful to just watch a flowerpot* — **remains largely
+unaddressed**, and he named it as the next thing to dig into. §7.8 answers it, is designed, and is
+unbuilt at the far end of the roadmap. Whether that scope is enough, and whether it should be promoted,
+is an open vision question rather than an engineering one. **H2 exists to answer the first half of it
+cheaply.**
+
+Corroborating detail: asked independently, Gemini reproduced most of this architecture unprompted —
+capability-announcing nodes, local I/O by physical binding, ESP-NOW peer-to-peer, coordinator/worker
+Monte Carlo, core 0 network / core 1 background, heartbeat carrying free heap, monolithic firmware with
+a static task registry, WASM as the dynamic alternative. Two models converging independently is decent
+evidence the design is the natural one for this hardware. Where they differed, Potluck was better in
+one specific way worth remembering: Gemini wanted nodes to broadcast CPU load so a coordinator could
+choose, whereas §7.8 needs no load metric at all — `background` priority maps just above idle, so a
+worker consumes only spare cycles and the local scheduler is the arbiter. Nothing to advertise, nothing
+to go stale, no coordinator decision to get wrong.
