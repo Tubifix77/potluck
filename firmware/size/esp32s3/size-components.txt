@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xb2220 bytes. Smallest app partition is 0x100000 bytes. 0x4dde0 bytes (30%) free.
+potluck_m0.bin binary size 0xb2470 bytes. Smallest app partition is 0x100000 bytes. 0x4db90 bytes (30%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -47,7 +47,7 @@ Executing "ninja size-components"...
 
 │ libpot_espnow.a                 │      33041 │    0 │     0 │        0 │ 30382 │ 30362 │    20 │     0 │       2649 │   2649 │         10 │      0 │      10 │        0 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      26120 │    0 │     0 │        0 │ 22736 │ 22736 │     0 │     0 │       3296 │   3296 │         88 │      0 │      88 │        0 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      26412 │    0 │     0 │        0 │ 23024 │ 23024 │     0 │     0 │       3300 │   3300 │         88 │      0 │      88 │        0 │        0 │             0 │        0 │           0 │
 
 │ libesp_hw_support.a             │      23425 │ 2517 │  2517 │        0 │  5343 │   157 │   540 │  4646 │      14384 │  14384 │       1121 │      0 │    1121 │        0 │       24 │            24 │       36 │          36 │
 
@@ -63,9 +63,9 @@ Executing "ninja size-components"...
 
 │ libheap.a                       │       9164 │ 1276 │  1276 │        0 │  4340 │     8 │     4 │  4328 │       2662 │   2662 │        886 │      0 │     886 │        0 │        0 │             0 │        0 │           0 │
 
-│ libc.a                          │       8569 │    0 │     0 │        0 │     4 │     0 │     4 │     0 │       7585 │   7585 │        980 │      0 │     980 │        0 │        0 │             0 │        0 │           0 │
+│ libpot_link.a                   │       9056 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       8962 │   8962 │         94 │      0 │      94 │        0 │        0 │             0 │        0 │           0 │
 
-│ libpot_link.a                   │       8531 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       8437 │   8437 │         94 │      0 │      94 │        0 │        0 │             0 │        0 │           0 │
+│ libc.a                          │       8569 │    0 │     0 │        0 │     4 │     0 │     4 │     0 │       7585 │   7585 │        980 │      0 │     980 │        0 │        0 │             0 │        0 │           0 │
 
 │ libesp_hal_mspi.a               │       5584 │   88 │    88 │        0 │  4937 │     0 │    36 │  4901 │        559 │    559 │          0 │      0 │       0 │        0 │        0 │             0 │        0 │           0 │
 
@@ -87,7 +87,7 @@ Executing "ninja size-components"...
 
 │ libesp_mm.a                     │       2835 │  403 │   403 │        0 │   369 │    48 │    87 │   234 │       1897 │   1897 │        166 │      0 │     166 │        0 │        0 │             0 │        0 │           0 │
 
-│ libpot_ns.a                     │       2660 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       2566 │   2566 │         94 │      0 │      94 │        0 │        0 │             0 │        0 │           0 │
+│ libpot_ns.a                     │       2718 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       2624 │   2624 │         94 │      0 │      94 │        0 │        0 │             0 │        0 │           0 │
 
 │ libhal.a                        │       2588 │  402 │   402 │        0 │  2186 │     5 │   274 │  1907 │          0 │      0 │          0 │      0 │       0 │        0 │        0 │             0 │        0 │           0 │
 

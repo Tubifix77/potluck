@@ -11,26 +11,83 @@ it advances, why it is unblocked, and what it explicitly does not deliver.
 
 | step | state | notes |
 |---|---|---|
-| **H0** | **IN FLIGHT** | see below -- may need re-running |
-| **H1** | **DONE** (commit 4e006de) | CALL/CAST opcodes real, 8-byte header, both-side bounds check, 160 C++ cases, 16 gates green |
-| H2 | next | the coordinator/worker simulator -- the point of the plan |
-| H3-H6 | not started | |
+| **H0** | **DONE** -- M2 is accepted | 13.7-minute session, 11,444 frames, all six resources, replayed to a byte-identical digest |
+| **H1** | **DONE** | CALL/CAST opcodes real, 8-byte header, both-side bounds check |
+| **H2** | **DONE** | coordinator and workers measured in simulation; 19 workers give 18.99x; a killed worker loses no work |
+| H3 | next | the manifest schema and parser |
+| H4-H6 | not started | |
 
-### H0's in-flight state, and how to resume it
+172 C++ cases, 36,658 checks, 0 failures; the full gate suite green with AddressSanitizer and the
+firmware build.
 
-A 10-minute session was running when this was written: QEMU on port 5555 (started with -Seconds 800),
-and potctl capturing to captures/m2-10min-frames.jsonl via
-"watch sys/heap-free --interval 1 --count 600".
+### What H0 produced
 
-**If potctl printed its digest and verify command, finish the step:** run the printed
-"python -m potluck --replay ... --expect-digest ..." and, on exit 0, move M2 from *built* to
-**accepted** in the README milestone table, then log it.
+`potctl soak` (new) sweeps every built-in resource in one connection for a duration, then prints the
+digest of the namespace state it observed and the command that checks a capture reproduces it:
 
-**If the process was interrupted before printing, just re-run the whole thing.** It is ten minutes and
-the capture alone is not enough: the test compares the *live* digest against the *replayed* one, and a
-capture replayed against itself would match trivially and prove nothing. The mechanism is already
-proven and digest-gated (M0-LOG Session 6, six entries, gate shown to fail on a wrong digest); H0 adds
-only the duration that section 13-M2 asks for.
+```
+potctl --tcp 127.0.0.1:5555 --node 1001 --capture captures/m2-10min-soak.jsonl soak --seconds 630
+python -m potluck --replay captures/m2-10min-soak.jsonl --expect-digest <printed digest>
+```
+
+The first attempt met the letter of section 13-M2 with a namespace of **one** entry, because `watch`
+holds a single path. One entry is a weak thing to call byte-identical, hence `soak`. One connection
+matters: QEMU's chardev accepts exactly one per VM lifetime.
+
+Two bugs surfaced on the way, both of which had been making the emulator look flaky:
+
+- `TcpTransport` connected lazily from the reader thread *and* the writer, so a race opened two
+  sockets; QEMU bound the guest's UART to the first and left the second in the backlog. One thread
+  talked to the guest, the other read silence, and the symptom was a node that answers nothing.
+- `run_qemu.ps1` killed every `qemu-system-xtensa` on the way out, so a two-minute smoke run's
+  teardown shot down a ten-minute soak three minutes in. It now kills only the VM it started.
+
+### What H2 produced, and what it settles
+
+`pot_work` (new, `sim/work.cpp`) runs section 7.8's pattern on the same modelled cell `pot_sim`
+uses, driving the same real `pot::Node` the firmware runs. `sim/cell.hpp` was extracted so both
+drivers share it.
+
+**Scaling, 380 units of 200 ms, bench link:**
+
+| workers | elapsed | speedup | efficiency | airtime |
+|---|---|---|---|---|
+| 1 | 78.30 s | 1.00x | 97% | 2.9% |
+| 6 | 13.19 s | 5.94x | 96% | 12.9% |
+| 12 | 6.59 s | 11.87x | 96% | 28.5% |
+| 19 | 4.12 s | 18.99x | 97% | 55.8% |
+
+Linear to the ESP-NOW peer ceiling, at 93-97% of a perfect scheduler with no dispatch cost at all.
+Efficiency is against that ideal, so the missing few percent *is* the price of distribution.
+
+**Where it stops working.** With units of 20 ms -- only three round trips long -- efficiency falls
+to 76% and the channel saturates at 13 workers; at 18 the cell collapses and the job never finishes,
+because the dispatch traffic starves the heartbeats and peers start being declared dead. The
+guidance follows from the measurement rather than from taste: **a unit must be much longer than a
+round trip**, and the round trip here is 5.6 ms.
+
+**Killing a worker mid-job loses no work.** 60 units, six workers, worker 3 killed while holding a
+unit: 60 of 60 completed, one unit written off and handed out again. The lossy links behave too --
+`58m_cliff` (PDR 0.832) finishes at 96% efficiency, because ESP-NOW's unicast retries absorb the
+loss before the pattern ever sees it.
+
+**Three bugs it found, none of which any unit test had a chance of finding:**
+
+1. The correlation table keyed on `msg_id` alone. A `msg_id` is unique per *peer*, so six workers
+   all have a msg 0x0001 outstanding; a reply was credited to whichever slot matched first, marking
+   one unit done twice and stranding another. It stalled a job at 59 of 60 units. Now keyed on
+   (peer, msg_id).
+2. A unit dispatched to a peer already believed dead vanished silently: the frame went nowhere, the
+   slot stayed held, and the write-off for that death had already happened. `request_call` now
+   refuses.
+3. A coordinator that reads a worker's state instead of its own put a second unit on the wire during
+   the 2.8 ms the first was still in flight -- 78 wasted frames in a 60-unit job.
+
+**And one design consequence worth stating.** The node puts *no* deadline on a work unit, on purpose:
+it cannot know how long somebody else's job takes. That means a lost CALL or REPLY on a worker that
+stays alive strands its unit for good unless the coordinator has a deadline of its own. That is the
+coordinator's half of the contract, `Node::cancel_call()` is how it keeps it, and `pot_work`
+demonstrates both it and the livelock that follows from setting it shorter than a unit.
 
 ## The actual constraint, stated narrowly
 

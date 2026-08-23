@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xb2220 bytes. Smallest app partition is 0x100000 bytes. 0x4dde0 bytes (30%) free.
+potluck_m0.bin binary size 0xb2470 bytes. Smallest app partition is 0x100000 bytes. 0x4db90 bytes (30%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -31,13 +31,13 @@ Executing "ninja size"...
 
 ├─────────────────────┼──────────────┼──────────┼────────────────┼───────────────┤
 
-│ Flash Code          │       525796 │          │                │               │
+│ Flash Code          │       526388 │          │                │               │
 
-│    .text            │       525796 │          │                │               │
+│    .text            │       526388 │          │                │               │
 
-│ DIRAM               │       148799 │    43.54 │         192961 │        341760 │
+│ DIRAM               │       149087 │    43.62 │         192673 │        341760 │
 
-│    .bss             │        69200 │    20.25 │                │               │
+│    .bss             │        69488 │    20.33 │                │               │
 
 │    .text            │        59379 │    17.37 │                │               │
 
@@ -67,7 +67,7 @@ Executing "ninja size"...
 
 └─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
 
-Total image size: 729511 bytes (.bin may be padded larger)
+Total image size: 730103 bytes (.bin may be padded larger)
 
 Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
 

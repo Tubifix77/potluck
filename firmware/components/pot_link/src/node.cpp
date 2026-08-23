@@ -409,12 +409,18 @@ void Node::handle_heartbeat(PeerLink* p, const Frame& f, uint32_t recv_us, bool 
 // M1: the namespace (§7.2, §4 rule 2)
 // -------------------------------------------------------------------------------------------
 
-Node::PendingNs* Node::pending_find(uint16_t msg_id) {
+Node::PendingNs* Node::pending_find(uint16_t msg_id, uint16_t peer_node) {
     if (msg_id == 0) {
         return nullptr;
     }
+    // Keyed on both. A msg_id is unique per *peer* (section 5.1 makes seq and msg_id per link, and
+    // each PeerLink has its own msg_id_next), so two peers routinely have the same msg_id
+    // outstanding at once -- their sixth request each. Matching on msg_id alone frees whichever
+    // slot is found first, which is a reply credited to the wrong peer and a request left to sit
+    // until it times out. It never showed while the table held four entries and a coordinator
+    // talked to one owner; it appeared immediately with six workers.
     for (PendingNs& q : pending_) {
-        if (q.msg_id == msg_id) {
+        if (q.msg_id == msg_id && q.peer_node == peer_node) {
             return &q;
         }
     }
@@ -610,7 +616,7 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
         return;
     }
 
-    PendingNs* q = pending_find(f.hdr.msg_id);
+    PendingNs* q = pending_find(f.hdr.msg_id, p->node_id);
     if (q == nullptr) {
         // Answers a request already given up on. Not an error - the timeout fired first - but
         // counted, because a link where this is common has a timeout set too short.
@@ -719,6 +725,14 @@ uint16_t Node::request_call(uint16_t peer_node_id, uint32_t path_hash, const uin
     if (p == nullptr || departed_) {
         return 0;
     }
+    // Only to a peer this node believes is alive. A unit sent to a Dead peer is a unit that
+    // vanishes: the frame goes nowhere, the pending slot is held, and abandon_calls_to has already
+    // fired for that death, so nobody is ever told. Refusing here hands the decision back to the
+    // coordinator while it still has the work -- the same principle as section 4 rule 2's
+    // Unavailable outranking any cached freshness.
+    if (p->state != PeerState::Alive) {
+        return 0;
+    }
     PendingNs* q = pending_claim();
     if (q == nullptr) {
         return 0;  // every slot outstanding; the caller still owns the work and retries
@@ -761,8 +775,8 @@ bool Node::cast(uint16_t peer_node_id, uint32_t path_hash, const uint8_t* args, 
         return false;
     }
     PeerLink* p = peers_.find_by_node_id(peer_node_id);
-    if (p == nullptr || departed_) {
-        return false;
+    if (p == nullptr || departed_ || p->state != PeerState::Alive) {
+        return false;  // see request_call: a unit sent to a dead peer vanishes silently
     }
     uint16_t msg_id = p->msg_id_next++;
     if (msg_id == 0) {

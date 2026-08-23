@@ -459,3 +459,94 @@ TEST(work, a_unit_outlives_the_read_timeout_and_a_coordinator_ends_it_on_its_own
     CHECK(!c.slots[0].node->cancel_call(msg_id));
     CHECK_EQ(c.slots[0].results.size(), static_cast<size_t>(1));
 }
+
+TEST(work, a_unit_is_never_dispatched_to_a_peer_believed_dead) {
+    // Found by the simulator, not by reading the code. A unit sent to a Dead peer vanishes: the
+    // frame goes nowhere, the pending slot stays held, and the write-off for that death has already
+    // happened, so nobody is ever told. A coordinator kept feeding a dead worker and the job
+    // stalled four units short, forever.
+    WorkCell c;
+    join(c, 3);
+
+    c.slots[1].muted = true;
+    c.advance_ms(1200);  // long enough for the coordinator to reach the miss limit
+    CHECK(c.slots[0].node->peers().find_by_node_id(c.id(1))->state == PeerState::Dead);
+
+    CHECK_EQ(c.slots[0].node->request_call(c.id(1), kJob, nullptr, 0), static_cast<uint16_t>(0));
+    CHECK(!c.slots[0].node->cast(c.id(1), kJob, nullptr, 0));
+    CHECK_EQ(c.slots[0].node->calls_outstanding(), static_cast<size_t>(0));
+
+    // The live worker still takes work, so this is a refusal about that peer and not a stuck node.
+    CHECK(c.slots[0].node->request_call(c.id(2), kJob, nullptr, 0) != 0);
+    c.advance_ms(10);
+    CHECK_EQ(c.slots[2].accepted.size(), static_cast<size_t>(1));
+
+    // And when it comes back, it is dispatchable again.
+    c.slots[1].muted = false;
+    c.advance_ms(1200);
+    CHECK(c.slots[0].node->request_call(c.id(1), kJob, nullptr, 0) != 0);
+}
+
+TEST(work, two_workers_using_the_same_msg_id_do_not_answer_for_each_other) {
+    // A msg_id is unique per peer, not per node: every worker numbers its own requests from one, so
+    // six workers all have a msg 0x0001 outstanding. The correlation table used to match on msg_id
+    // alone, which credited a reply to whichever slot was found first -- one unit marked done twice
+    // and another left running for the rest of the job. The simulator stalled at 59 of 60 units on
+    // exactly this, and no unit test had ever put two peers in flight at once.
+    WorkCell c;
+    join(c, 3);
+
+    // Line the two peers' counters up, so the collision is constructed rather than hoped for. It
+    // happens on its own in a long run -- that is how it was found -- but a test that depends on
+    // two counters drifting into step is a test that passes for the wrong reason most days.
+    PeerLink* p1 = c.slots[0].node->peers().find_by_node_id(c.id(1));
+    PeerLink* p2 = c.slots[0].node->peers().find_by_node_id(c.id(2));
+    CHECK(p1 != nullptr);
+    CHECK(p2 != nullptr);
+    if (p1 == nullptr || p2 == nullptr) {
+        return;
+    }
+    p1->msg_id_next = 0x0077;
+    p2->msg_id_next = 0x0077;
+
+    const uint16_t a = c.slots[0].node->request_call(c.id(1), kJob, nullptr, 0);
+    const uint16_t b = c.slots[0].node->request_call(c.id(2), kJob, nullptr, 0);
+    CHECK(a != 0);
+    CHECK(b != 0);
+    CHECK_EQ(a, b);  // the collision this test exists for
+    c.advance_ms(10);
+    CHECK_EQ(c.slots[0].node->calls_outstanding(), static_cast<size_t>(2));
+    CHECK_EQ(c.slots[1].accepted.size(), static_cast<size_t>(1));
+    CHECK_EQ(c.slots[2].accepted.size(), static_cast<size_t>(1));
+    if (c.slots[1].accepted.empty() || c.slots[2].accepted.empty()) {
+        return;
+    }
+
+    // Worker 2 answers first. Only its own unit may be resolved by it.
+    const WorkUnit u2 = c.slots[2].accepted[0];
+    CHECK(c.slots[2].node->reply_call(u2.from, u2.msg_id, u2.path_hash, Value::of_u32(222)));
+    c.advance_ms(10);
+    CHECK_EQ(c.slots[0].results.size(), static_cast<size_t>(1));
+    CHECK_EQ(c.slots[0].node->calls_outstanding(), static_cast<size_t>(1));
+    if (c.slots[0].results.empty()) {
+        return;
+    }
+    CHECK_EQ(c.slots[0].results[0].worker, c.id(2));
+    uint32_t got = 0;
+    CHECK(c.slots[0].results[0].value.as_u32(got));
+    CHECK_EQ(got, 222u);
+
+    // Then worker 1, whose unit is still outstanding and must still be answerable.
+    const WorkUnit u1 = c.slots[1].accepted[0];
+    CHECK(c.slots[1].node->reply_call(u1.from, u1.msg_id, u1.path_hash, Value::of_u32(111)));
+    c.advance_ms(10);
+    CHECK_EQ(c.slots[0].results.size(), static_cast<size_t>(2));
+    CHECK_EQ(c.slots[0].node->calls_outstanding(), static_cast<size_t>(0));
+    if (c.slots[0].results.size() < 2) {
+        return;
+    }
+    CHECK_EQ(c.slots[0].results[1].worker, c.id(1));
+    CHECK(c.slots[0].results[1].value.as_u32(got));
+    CHECK_EQ(got, 111u);
+    CHECK_EQ(c.slots[0].node->ns_counters().replies_unmatched, 0u);
+}

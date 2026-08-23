@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <string>
+
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -128,5 +130,15 @@ class Rng {
     double spare_ = 0.0;
     bool have_spare_ = false;
 };
+
+// Look up a link point by the name the command line uses. Here rather than in a driver, because
+// both drivers offer the same --link flag and two copies would drift.
+inline const LinkPoint* link_by_name(const std::string& s) {
+    if (s == "bench") return &kBench;
+    if (s == "54m_clear") return &kClear54m;
+    if (s == "52m_fringe") return &kFringe52m;
+    if (s == "58m_cliff") return &kCliff58m;
+    return nullptr;
+}
 
 }  // namespace potsim

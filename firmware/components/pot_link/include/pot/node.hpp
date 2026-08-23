@@ -332,7 +332,7 @@ class Node {
         uint8_t op;           // kOpRead or kOpWrite
     };
     PendingNs pending_[kMaxPendingNs]{};
-    PendingNs* pending_find(uint16_t msg_id);
+    PendingNs* pending_find(uint16_t msg_id, uint16_t peer_node);
     PendingNs* pending_claim();
     void pending_expire(uint32_t now_ms);
 

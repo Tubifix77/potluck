@@ -108,6 +108,18 @@ else()
   target_compile_options(pot_sim PRIVATE -Wall -Wextra)
 endif()
 
+# The section 7.8 work-unit driver: a coordinator and N workers on the same modelled cell, sharing
+# sim/cell.hpp with pot_sim. See sim/work.cpp.
+add_executable(pot_work "${CMAKE_CURRENT_SOURCE_DIR}/../sim/work.cpp")
+target_link_libraries(pot_work PRIVATE pot_portable)
+target_include_directories(pot_work PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../sim")
+if(MSVC)
+  target_compile_options(pot_work PRIVATE /W4 /permissive- /utf-8)
+  target_compile_definitions(pot_work PRIVATE _CRT_SECURE_NO_WARNINGS)
+else()
+  target_compile_options(pot_work PRIVATE -Wall -Wextra)
+endif()
+
 enable_testing()
 add_test(NAME pot_tests COMMAND pot_tests)
 

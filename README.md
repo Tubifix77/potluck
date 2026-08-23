@@ -59,18 +59,20 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 Work is organised as **nine falsifiable milestones, M0–M8** — every "M-number" in this README is one
 of them. Each has an acceptance test that can fail and a kill criterion (both spelled out in
 [ARCHITECTURE.md](ARCHITECTURE.md)); a milestone counts as *built* when the code exists, and
-*accepted* only when its test has passed on real hardware. Where they stand as of **2026-08-01**:
+*accepted* only when its test has passed. Most acceptance tests need hardware; M2's does not, and
+it is the one that has passed. Where they stand as of **2026-08-23**:
 
 | milestone | in one line | state |
 |---|---|---|
 | **M0** — two boards, one heartbeat | the wire format; membership (who is in the cluster and alive); measured packet-delivery ratio and round-trip delay | **built**, runs under [QEMU](https://www.qemu.org/) — a machine emulator, so it is the real firmware executing with no physical board. **Not accepted: two physical boards have never exchanged a heartbeat.** The acceptance test is a 24-hour *soak* (a long unattended measured run) needing boards and a radio, and QEMU emulates no radio. The boards are in the mail |
 | **M1** — one remote read | the namespace; typed, staleness-checked reads | **built**, exercised against the real firmware under emulation |
-| **M2** — host in the loop | `potctl`; recording sessions to a capture file and replaying them | **built**; a captured session replays to byte-identical namespace state, checked by digest |
+| **M2** — host in the loop | `potctl`; recording sessions to a capture file and replaying them | **accepted.** A 13.7-minute session against the real firmware under emulation — 11,444 frames, every resource read 412 times — replayed to byte-identical namespace state, verified by [SHA-256](https://en.wikipedia.org/wiki/SHA-2) digest. Its acceptance test never asked for hardware and this is the whole of it |
 | **M3** — deploy and detach | A/B firmware slots (two copies, so a bad update falls back by itself); signed deployment manifests | not started |
 | **M4** — locality contract enforced | the rule that tight control loops stay pinned to the node wired to the hardware, rejected at build time otherwise; plus [CAN](https://en.wikipedia.org/wiki/CAN_bus), the automotive wired bus | not started |
 | **M5** — signed everything | a cluster certificate authority, node enrolment, authenticated frames | not started |
 | **M6** — reconciler | failure-driven actor re-placement | not started; gated on M5 |
 | **M7** — [WebAssembly](https://webassembly.org/) tier | untrusted / hot-swappable code | gated: only if a named workload ever needs it |
+| §7.8 — background compute | a coordinator handing units of work to nodes that would otherwise idle, so a node is not limited to watching one sensor | **built and measured in simulation**: 19 workers reach 18.99x the throughput of one, at 93–97% of a perfect scheduler, and killing a worker mid-job loses no work. Not a milestone of its own — it is the compute half of M7's tier and the answer to why an ESP32-S3 is worth clustering at all |
 | **M8** — host services | `potluck-agent`, letting a PC offer services (say, speech-to-text) into the cluster's namespace | not started; gated on M5 |
 
 Beneath the milestones, the standing figures:

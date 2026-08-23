@@ -1862,3 +1862,130 @@ one specific way worth remembering: Gemini wanted nodes to broadcast CPU load so
 choose, whereas §7.8 needs no load metric at all — `background` priority maps just above idle, so a
 worker consumes only spare cycles and the local scheduler is the arbiter. Nothing to advertise, nothing
 to go stale, no coordinator decision to get wrong.
+
+---
+
+## Session 9 — 2026-08-23, M2 accepted, and §7.8 measured
+
+### H0: M2 is accepted, and the first version of it was too weak
+
+§13-M2 asks for *"a captured 10-minute session [that] replays and produces byte-identical namespace
+state."* A ten-minute run finished and its digest matched — over a namespace of **one entry**, because
+`potctl watch` holds a single path. That satisfies the sentence and proves very little; "byte-identical"
+over one number is not a property worth reporting.
+
+`potctl soak` fixes it: sweep every built-in resource, in one connection, for a duration. One
+connection is not a stylistic choice — QEMU's socket chardev accepts exactly one per VM lifetime, so a
+long session has to be a single invocation.
+
+**The accepted run:** 13.7 minutes, 11,444 frames, 412 sweeps, 2,472 reads, zero timeouts, all six
+resources, replayed to `2f58c843…20d0a67c` — identical to the digest the live session computed. M2 goes
+from *built* to **accepted**, the first of nine, and it never needed a board.
+
+### Two bugs that had been making the emulator look unreliable
+
+Both were found by trying to run a long session rather than by reading anything.
+
+**`TcpTransport` opened two sockets under a race.** The connect was lazy and reached from both the
+bridge's reader thread and whatever thread was issuing requests. Two sockets, and QEMU's chardev binds
+the guest's UART to the one it accepts first — the other sits unaccepted in the listen backlog forever.
+One thread then talks to the guest and the other reads silence. The symptom is *"no answer from tcp
+127.0.0.1:5555"* while the guest's own console shows it received the HELLO and answered it. Serialised
+behind a lock. The regression test counts **connections, not accepts**, because the kernel completes the
+second handshake into the backlog whether or not anyone accepts it — counting accepts would pass with
+the bug present.
+
+**`run_qemu.ps1` killed every QEMU on the way out.** A two-minute smoke run's teardown shot down a
+ten-minute soak that was three minutes in; the soak reported `ConnectionResetError` and looked like a
+transport fault. It now kills only the VM it started, and announces the stale ones it kills on the way
+in — the silence was half the cost of that bug.
+
+### H2: §7.8 measured, and it holds
+
+`pot_work` (`sim/work.cpp`) runs a coordinator and N workers on the same modelled cell `pot_sim` uses,
+driving the same real `pot::Node` the firmware runs. `sim/cell.hpp` was extracted so both drivers share
+one simulator rather than two.
+
+**380 units of 200 ms, bench link:** 1 worker 78.30 s → 19 workers 4.12 s. **18.99× at 19 workers**,
+97% of a perfect scheduler, 55.8% airtime. Linear the whole way to §3's peer ceiling, at 93–97%
+efficiency throughout. Efficiency here is measured against total compute divided by workers — an ideal
+with no dispatch cost at all — so the missing few percent *is* the price of distribution, not slack in
+the definition.
+
+**Where it stops working, which is the more useful half.** With units of 20 ms — three round trips long
+— efficiency drops to 76%, the channel saturates at 13 workers, and at 18 the cell collapses: the job
+never finishes, because dispatch traffic starves the heartbeats and workers start being declared dead.
+So the guidance comes out of the measurement instead of out of taste: **a unit must be much longer than
+a round trip**, and the round trip on this link is 5.6 ms. §7.8's "latency-indifferent" is not a
+preference, it is a floor.
+
+**Killing a worker mid-job loses no work.** Six workers, 60 units, worker 3 put to sleep while holding
+one: 60 of 60 completed, one unit written off on the death window and handed out again. The lossy links
+are undramatic — `58m_cliff` at PDR 0.832 finishes at 96% efficiency, because ESP-NOW's 31 unicast
+retries absorb the loss before the pattern ever sees it.
+
+### Three bugs the simulator found that no unit test could have
+
+1. **The correlation table keyed on `msg_id` alone.** A `msg_id` is unique per *peer* — every PeerLink
+   has its own `msg_id_next` — so six workers all have a msg 0x0001 outstanding at once. A reply was
+   credited to whichever pending slot matched first: one unit marked done twice, another left running
+   forever. It stalled a job at **59 of 60 units**, and the diagnosis needed three rounds of
+   instrumentation because the first two hypotheses (frame loss, then channel saturation) were both
+   wrong. Now keyed on (peer, msg_id). Invisible for as long as the table held four slots and a reader
+   talked to one owner; guaranteed the moment a coordinator talks to six.
+
+2. **A unit dispatched to a peer already believed dead vanished silently.** The frame goes nowhere, the
+   pending slot stays held, and `abandon_calls_to` had already fired for that death — so nobody is ever
+   told. `request_call` and `cast` now refuse a peer that is not Alive, which hands the decision back to
+   the coordinator while it still holds the work. Same principle as §4 rule 2's Unavailable outranking
+   any cached freshness.
+
+3. **A coordinator that reads a worker's state instead of its own** put a second unit on the wire during
+   the 2.8 ms the first was still in flight, and every one of them was refused: 78 wasted frames in a
+   60-unit job. The fix is bookkeeping, not code — a coordinator knows only what it dispatched and what
+   came back — but it is worth recording because the reference implementation had the bug and the
+   numbers looked fine.
+
+### The design decision, and the obligation that comes with it
+
+**A work unit gets no deadline from the node.** §7.8's premise is that a unit runs far longer than a
+round trip, so the 2 s namespace request timeout must not touch it, and a node cannot invent a number
+for how long somebody else's job takes. What ends a unit is the peer dying (the death window — the
+system's one definition of gone), the peer rebooting (a new incarnation has forgotten what it accepted),
+or the coordinator calling `cancel_call()`.
+
+The consequence has to be said plainly: **a lost CALL or REPLY on a worker that stays alive strands its
+unit for good** unless the coordinator keeps a deadline of its own. That is not a hole in the runtime,
+it is the coordinator's half of the contract — and `pot_work` now demonstrates both halves, including
+the livelock that follows from setting the deadline *shorter* than a unit (every unit taken back before
+any worker finishes, retries saturating the channel at 93%, job never completing). The tool diagnoses
+that case in words rather than leaving a reader to work it out.
+
+Two smaller decisions in the same family: a handler only **accepts** a unit, because answering inline
+would hold the receive path for the length of the job; and a refusal answers **immediately** rather than
+going quiet, so a coordinator can reassign at once instead of waiting out a death window for a worker
+that is alive and simply not doing the job.
+
+### Memory: the one allocation §7.8's request side makes
+
+The pending-request table went from 4 slots to one per peer the cell can hold (20), because otherwise a
+coordinator's parallelism would have been capped by a constant nobody would ever have found — four busy
+workers in a cell of twenty. Design cost 320 B; **measured cost 288 B**: the firmware core went from
+53,118 B to 53,406 B, leaving 11.8 KB of the 64 KB cap. Pinned by a budget test so it cannot grow
+quietly. This is the only static allocation the work-unit path makes, and it is charged against the
+headroom §6 had spare rather than against any §6 line.
+
+One existing test had to change: `outstanding_requests_are_bounded_and_expire` had `4` typed into it and
+failed because the table was now *larger*, which is not a defect anybody wanted reported. It reads
+`Node::max_calls_outstanding()` now.
+
+### A tooling fix that cost two rounds of guessing
+
+A debug-build bounds assertion in MSVC's standard library opens a **modal dialog**, which stopped the
+suite dead until a human clicked it — and stdout to a pipe is block-buffered, so the last line printed
+was not the last case run and the crash appeared to be in whatever had been flushed. Twice I diagnosed
+the wrong test. The runner now sends CRT reports to stderr and flushes after every case, so an aborting
+run names the case it aborted in.
+
+Same family as the stale-ELF lesson and the heredoc one: the evidence was lying, and the fix was to the
+instrument rather than to the code.

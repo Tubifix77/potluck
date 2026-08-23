@@ -67,7 +67,7 @@ if ($exe) {
 }
 
 $python = if (Get-Command python -ErrorAction SilentlyContinue) { "python" } else { "py" }
-foreach ($t in @("test_frame.py", "test_records.py", "test_differential.py", "test_paths.py", "test_sys_paths.py", "test_serial.py", "test_serial_diff.py", "test_value.py", "test_ns_diff.py", "test_bridge.py", "test_replay.py")) {
+foreach ($t in @("test_frame.py", "test_records.py", "test_differential.py", "test_paths.py", "test_sys_paths.py", "test_serial.py", "test_serial_diff.py", "test_value.py", "test_ns_diff.py", "test_bridge.py", "test_replay.py", "test_transport.py")) {
     Write-Host ""
     Write-Host "### Python: $t"
     Push-Location "host/potluck"
