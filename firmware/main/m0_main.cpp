@@ -506,8 +506,22 @@ void stats_task(void*) {
 }  // namespace
 }  // namespace pot
 
+#if CONFIG_POT_SELFTEST
+extern "C" int pot_selftest_run(void);
+#endif
+
 extern "C" void app_main(void) {
     using namespace pot;
+
+#if CONFIG_POT_SELFTEST
+    // First, and then nothing else. The self-test starts no radio, no serial link and no tasks of
+    // its own beyond the one it pins to core 1, so its console output is only its own -- which is
+    // what lets tools\run_selftest.ps1 read a verdict off the console instead of parsing around a
+    // running node's statistics lines.
+    const int failed = pot_selftest_run();
+    ESP_LOGI(kTag, "selftest finished with %d failure(s)", failed);
+    return;
+#endif
 
     g_mutex = xSemaphoreCreateMutexStatic(&g_mutex_buf);
 

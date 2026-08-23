@@ -2060,3 +2060,46 @@ bad. Both are loud; neither substitutes for the other.
 
 61 Python cases across the two modules, 20 gates green. Zero firmware bytes: it is all host tooling,
 which is why it was reachable at all with no board on the desk.
+
+### H5: 29 checks that only the target can make
+
+`firmware/main/selftest.cpp`, behind `CONFIG_POT_SELFTEST`, run by `tools\run_selftest.ps1`. The 172
+host cases compile the portable core for x86-64 and prove the logic; the layout `static_assert`s do
+compile for Xtensa, so sizes and offsets are proven on the target — but until now nothing *executed*
+there. Everything in this file is a property of the running machine rather than of the source.
+
+All 29 pass. The ones worth naming:
+
+- **A struct cast onto an unaligned buffer, at all four offsets in a word.** §5's parser casts the
+  header straight onto received bytes. On x86-64 an unaligned load is merely slow; on Xtensa it is a
+  different instruction path. Had it been wrong, every frame arriving at an odd offset would have been
+  wrong on the target and *no host test could have seen it*. It is not wrong — but it was never
+  checked, and that was luck rather than evidence.
+- **`.rodata` and RAM parse identically.** Different address regions on this part.
+- **Doubles keep all 53 bits and a denormal is not flushed.** The S3's FPU is single-precision only,
+  so `double` is software — the place a silent truncation would live.
+- **A task actually lands on core 1.** `portNUM_PROCESSORS` is a constant; this is an observation.
+- **The codec path uses about 1 KB of stack** after 32 parses (3060 B unused of 4096). A property of
+  the compiler and the target's register windows, so the figure is worth keeping — unlike anything
+  timing-related below.
+- **`FREERTOS_HZ` is 1000.** §4 mandates it because L1's 10 ms budget sits exactly on the 100 Hz
+  default tick, and a build that lost the setting would pass every host test while giving L1 zero
+  margin on the target. Now it cannot lose it quietly.
+
+**The finding that justified the whole step.** The first version asserted that `vTaskDelay(50 ms)`
+takes at least 50 ms. It failed, at **48,703 µs** — short by more than a tick, so not the familiar "N
+ticks means N−1 full ticks" off-by-one. A second run measured **49,677 µs**. Under QEMU the FreeRTOS
+tick and the microsecond timer run at slightly different rates, and not even consistently between
+runs.
+
+So: **timing cannot be checked under emulation, not even to one tick.** That is now recorded in the
+one place a future session would go looking. The check asserts what it honestly can — that the two
+clocks agree within a tenth, which a gross tick misconfiguration would break — and prints the delta
+labelled as an emulator observation. It joins the standing rule that no timing policy may be tuned
+against anything but a bench.
+
+The runner distinguishes three outcomes rather than two: pass, fail, and **no verdict at all**. A
+missing result read as a pass is how a broken gate stays green, so a run that produces zero checks
+exits 2 with that said out loud. `tools\run_all_tests.ps1 -Selftest` folds it into the gate suite;
+off by default, because it builds firmware and boots an emulator — a minute or two against the seconds
+everything else takes.

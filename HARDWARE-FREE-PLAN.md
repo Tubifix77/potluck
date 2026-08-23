@@ -16,8 +16,8 @@ it advances, why it is unblocked, and what it explicitly does not deliver.
 | **H2** | **DONE** | coordinator and workers measured in simulation; 19 workers give 18.99x; a killed worker loses no work |
 | **H3** | **DONE** | manifest schema, parser and validator; 41 tests |
 | **H4** | **DONE -- half of M4 accepted** | the locality-contract checker; section 13-M4's first sentence passes, error names both ends |
-| H5 | next | on-target self-test under QEMU |
-| H6 | not started | manifest signing |
+| **H5** | **DONE** | 29 on-target checks under QEMU, run by `tools/run_selftest.ps1` |
+| H6 | next | manifest signing |
 
 172 C++ cases and 36,658 checks on the firmware core, plus 61 Python cases on the manifest and the
 locality checker; 0 failures, and the full gate suite green with AddressSanitizer and the firmware
@@ -242,6 +242,35 @@ the build *refuses* to violate.
 negative test.
 **Acceptance:** exactly §13-M4's first sentence, including that the error names both ends.
 **Does not deliver:** the CAN half — that needs two boards, two transceivers and a scope.
+
+### What H5 produced
+
+`firmware/main/selftest.cpp`, behind `CONFIG_POT_SELFTEST`, run by `tools/run_selftest.ps1`. 29
+checks, all passing, of things that are properties of the running machine rather than of the source:
+
+- **A struct cast onto an unaligned buffer, at all four offsets in a word.** §5's parser casts the
+  header straight onto received bytes; on x86-64 an unaligned load is merely slow and on Xtensa it is
+  a different instruction path. If it were wrong, every frame arriving at an odd offset would be
+  wrong, and no host test could ever see it. It is not wrong.
+- **Bytes from `.rodata` and from RAM parse identically** — different address regions on this part.
+- **Doubles keep all 53 bits, and a denormal is not flushed.** The S3's FPU is single-precision only,
+  so `double` is software, and this is where a silent truncation would live.
+- **A task actually lands on core 1.** `portNUM_PROCESSORS` is a constant; this is an observation.
+- **The codec path uses about 1 KB of stack** after 32 parses (3060 B unused of 4096). A property of
+  the compiler and the target's register windows, so the number is worth keeping.
+- **The namespace holds exactly its capacity and refuses the entry past it** — the runtime half of
+  H3's manifest check, since a manifest is only one of the ways a resource gets declared.
+- **`FREERTOS_HZ` is 1000**, which §4 mandates because L1's 10 ms budget sits exactly on the 100 Hz
+  default tick. A build that lost that setting would pass every host test and give L1 zero margin.
+
+**And one finding about the emulator, which is why this step was worth doing at all.** The first
+version asserted that `vTaskDelay(50 ms)` takes at least 50 ms. It failed at 48,703 us -- short by
+more than one tick, so not the familiar "N ticks means N-1 full ticks" off-by-one. A second run
+measured 49,677 us. Under QEMU the FreeRTOS tick and the microsecond timer run at slightly different
+rates, and not even consistently between runs. **Timing cannot be checked under emulation, not even
+to one tick.** The check now asserts what it honestly can -- that the two clocks agree within a tenth,
+which a gross tick misconfiguration would break -- and prints the delta as an emulator observation
+rather than a measurement.
 
 ## H5 — On-target self-test under QEMU · advances **test coverage, all milestones**
 

@@ -166,4 +166,20 @@ config POT_FRAME_TEE
         about 150 bytes, and the console UART's cost would land inside the very timing the soak is
         measuring. Turn it on to debug the wire, off to measure the link.
 
+config POT_SELFTEST
+    bool "Run the on-target self-test instead of the node"
+    default n
+    help
+        Runs the checks in main/selftest.cpp and stops, without starting the node, the radio, or the
+        serial link. Everything it checks is a property of the running machine rather than of the
+        source: a struct cast onto an unaligned buffer, double-precision arithmetic on a part whose
+        FPU is single-precision only, a task actually landing on core 1, and the codec path's real
+        stack cost. The host tests prove the same code on x86-64; nothing there can see any of this.
+
+        It touches no peripheral, so it runs under QEMU -- which is the point, since a board is not
+        required to catch a target-specific mistake. No timing figure it prints is a performance
+        measurement: QEMU is not cycle-accurate.
+
+        Use tools/run_selftest.ps1 rather than setting this by hand.
+
 endmenu

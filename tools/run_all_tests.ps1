@@ -3,13 +3,15 @@
 #   tools\run_all_tests.ps1            # C++ suite, fixture regen, Python suites
 #   tools\run_all_tests.ps1 -Asan      # also run the C++ suite under AddressSanitizer
 #   tools\run_all_tests.ps1 -Firmware  # also build the firmware and check the section 6 budget
+#   tools\run_all_tests.ps1 -Selftest  # also run the on-target self-test under QEMU (~2 min)
 #
 # Exits non-zero if anything failed, so it is usable as a gate.
 
 [CmdletBinding()]
 param(
     [switch]$Asan,
-    [switch]$Firmware
+    [switch]$Firmware,
+    [switch]$Selftest
 )
 
 $ErrorActionPreference = "Continue"
@@ -97,6 +99,16 @@ if ($Firmware) {
     Write-Host "### firmware build and section 6 budget check"
     & (Join-Path $PSScriptRoot "build_firmware.ps1")
     Record "firmware build + budget" $LASTEXITCODE
+}
+
+if ($Selftest) {
+    # The checks that only the target can make: an unaligned struct cast, soft-float doubles, a task
+    # on core 1, the codec path's real stack cost. Off by default because it builds the firmware and
+    # boots an emulator, which is a minute or two rather than the seconds everything above takes.
+    Write-Host ""
+    Write-Host "### on-target self-test under QEMU"
+    & (Join-Path $PSScriptRoot "run_selftest.ps1")
+    Record "on-target self-test" $LASTEXITCODE
 }
 
 Write-Host ""
