@@ -130,6 +130,45 @@ Design choices with teeth:
   so every frame can be teed to a capture file, and a replayed capture must rebuild **byte-identical
   namespace state**, checked by SHA-256 digest with a gate that exits non-zero on mismatch.
 
+## What you would build with it
+
+Nothing in this section exists yet. These are design targets — and they are also *architecture
+tests*, under a standing rule: if a named system cannot be built under this design, the design is
+wrong and gets fixed, rather than the example quietly dropped. So each one below states what it
+costs and what it refuses to do.
+
+**The house.** A watering node in the garden, moisture sensors indoors, a voice box, a screen by the
+door, and a PC that is sometimes on. One signed package for the whole house. The watering rule is
+pinned to the valve it owns and keeps working with the PC off; the anomaly detector is portable and
+lands wherever there is headroom; the voice box keeps wake-word detection on its own microphone and
+ships only the utterance to the PC's speech service, degrading to a handful of canned local intents
+when the PC is off. You address the house, and no application ever names a board.
+*What it costs:* that speech service is best-effort by construction, so nothing time-critical may
+ever be built on top of it.
+
+**The production line.** A test *fixture* — the lidded box a finished circuit board is dropped into,
+so spring-loaded pins can touch its bare test pads and check it works before it ships — is a
+microcontroller bolted permanently beside hardware at one fixed spot. A factory floor has dozens,
+each running its own standalone program, each updated by carrying a USB stick over to it. Under
+Potluck the fixture's chip runs the runtime and the test is an actor above it: every fixture's
+readings are addressable by name from anywhere and arrive stamped with their age, a new test version
+ships as one signed package to every fixture at once and reverts itself if it is bad, and a recorded
+session replays frame-for-frame when a customer disputes a unit six months later.
+*What it costs:* forty fixtures exceed the ~20-node ceiling of a single v1 radio cell, so this is a
+wired deployment or it waits for the routed profile named as the post-v1 path.
+*What it refuses:* anything that clamps, presses or moves near an operator's hands. Potluck
+instruments the fixture; the interlock is hardware, and it belongs to a functional-safety engineer.
+
+**The workshop cluster.** A Raspberry Pi owns the only screen, keyboard and mouse; a dozen ESP32s
+around the room each watch one sensor and are idle the rest of the time. A coordinator on the Pi
+scatters latency-indifferent work — indexing, compression, batch analysis — across every chip at
+background priority, below every pinned duty, consuming only the cycles nothing else wanted. The
+Pi's keyboard and screen are namespace entries like any pins. Kill a worker mid-job and no work is
+lost. This is the answer to why an ESP32-S3 is worth clustering at all, and it is the one scenario
+here with numbers behind it: 19 workers reaching 18.99× the throughput of one, in simulation.
+*What it costs:* harvesting idle cycles denies sleep, so battery and solar nodes stay out of
+background pools unless a manifest opts them in.
+
 ## Try it with no hardware at all
 
 Prerequisites: [ESP-IDF v6.0.2](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/) —
