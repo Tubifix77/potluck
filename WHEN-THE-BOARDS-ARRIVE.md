@@ -52,11 +52,19 @@ with onboard termination. No multimeter was ordered, so this is unconfirmed — 
   hour of "the board is broken" later.
 - **Disable USB selective suspend and system sleep before the 24-hour soak.** Windows suspending a
   port overnight kills the capture, and the evidence it leaves looks like a firmware fault.
-- **Two jumper genders to check, and buy locally if needed.** The order is F-F only, which joins the
-  boards to the transceivers and the transceivers to each other. But the CP2102 dongle's header is
-  probably *female* (most red USB-A dongles are), and the DevKit's pins are male — that pairing
-  needs **M-M**. Check the dongle before the parcel is opened wide; a few M-M jumpers and the
-  **USB-A male-to-female extension** the dongle needs to reach the floor are the same local errand.
+- **Jumper gender is settled: F-F is right for everything, and no M-M is needed.** Verified from the
+  listing photo on 2026-09-21. The CP2102 dongle presents **male** pins, like the DevKit and the
+  transceiver, so one gender joins the whole bench. (An earlier note here guessed the dongle would
+  be female, as many red USB-A dongles are. It is not. The photo settled it, the same way it settled
+  the transceiver's pin order.)
+- **The one thing still to buy locally: a USB-A male-to-female extension.** The CP2102 is a dongle
+  with the plug moulded on, so it goes into the PC while the boards sit on the floor. Nothing else
+  is missing.
+- **Wire the CP2102 with three jumpers and not four.** GND↔GND, the dongle's TXD to the board's
+  frame-link RX, the dongle's RXD to the board's frame-link TX. **Do not connect its 3V3 or 5V pin.**
+  The board already has its own USB supply, and tying two powered rails together is how a bench
+  develops a brownout that reads as a firmware fault. The dongle exposes a power pin because it can
+  power a bare chip; that is not this.
 
 ---
 
