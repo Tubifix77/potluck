@@ -5,15 +5,75 @@ hardware is built, verified, and public, and the next line of work *requires* a 
 a USB cable. This file is the resumption path. It assumes months may have passed and nobody
 remembers anything.
 
-**State at pause:** 19 test gates green (158 C++ cases / 36,536 checks, 133 Python). Firmware builds
-in place for esp32s3. M0/M1/M2 built — M1 and M2 exercised against the real firmware under QEMU
-emulation, M2's replay mechanism digest-proven. **Zero milestones accepted**, because every
-acceptance test left needs silicon. Static data 53,118 B of the 64 KB cap, and the remaining
-headroom is committed on paper to later milestones — which is exactly why nothing past M2 was built.
+**State as of 2026-09-21:** 21 test gates green (172 C++ cases / 36,658 checks, 29 on-target checks
+under emulation, 154 Python). Firmware builds in place for esp32s3. **M2 is accepted** — a
+13.7-minute session replays to a byte-identical digest — and **half of M4 is accepted**: the
+locality-contract checker rejects a cross-node L1 binding, naming both ends. Everything still
+unaccepted needs silicon. Static data 53,406 B of the 64 KB cap, and the remaining 11.8 KB is
+committed on paper to later milestones.
 
 ---
 
-## Step zero: what to buy
+## Step zero is done: what was actually ordered
+
+**Ordered 2026-09-21, DKK 408 all-in, AliExpress Choice, expected mid-October 2026.** A shared order
+with the sibling Powersuit project: its Appendix A bench and this project's M0/M4 are covered by one
+parcel. An EU-supplier route was checked and rejected — four times the price on the wire, and no
+two-USB-C-socket N16R8 in EU stock at all.
+
+| In the box | Qty |
+|---|---|
+| ESP32-S3-DevKitC-1 N16R8, **two USB-C sockets**, headers pre-soldered | 3 |
+| SN65HVD230 CAN transceiver module | 2 |
+| Dupont **F-F**, 20 cm | 40 |
+| CP2102 USB-TTL, **USB-A male dongle** (red module) | 1 |
+| 6-port USB mains charger (power only) | 1 |
+
+Deliberately not bought: USB cables (A-to-C already owned), USB hub, multimeter, breadboard,
+resistors.
+
+**Verified from the seller's photos of the exact modules ordered** — the same method that settled
+the two-USB-socket question, and worth trusting more than a generic datasheet:
+
+- The SN65HVD230 board presents a **4-pin male header in the order 3.3V / GND / RX / TX**. There is
+  no RS pin exposed; slope control is handled onboard, so there is nothing to jumper.
+- **CANH and CANL come out twice, in parallel** — a 2-pin header *and* a blue screw terminal. F-F
+  jumpers do the whole bus and the screw terminal stays free for a probe or a longer run.
+
+**Inferred, not measured:** an SMD part on the transceiver is marked `121`, i.e. 120 Ω, consistent
+with onboard termination. No multimeter was ordered, so this is unconfirmed — and at two nodes over
+~20 cm it barely matters: propagation is ~1.5 ns against a 1 µs bit time.
+
+### Unboxing notes — read before plugging anything in
+
+- **Tape-label the two USB-C sockets on every board.** They are visually identical and only the
+  silkscreen distinguishes the UART socket from the native USB one, which this firmware makes dead
+  (`CONFIG_ESP_PHY_ENABLE_USB=n` while Wi-Fi is on). Five minutes with tape at unboxing against an
+  hour of "the board is broken" later.
+- **Disable USB selective suspend and system sleep before the 24-hour soak.** Windows suspending a
+  port overnight kills the capture, and the evidence it leaves looks like a firmware fault.
+- **Two jumper genders to check, and buy locally if needed.** The order is F-F only, which joins the
+  boards to the transceivers and the transceivers to each other. But the CP2102 dongle's header is
+  probably *female* (most red USB-A dongles are), and the DevKit's pins are male — that pairing
+  needs **M-M**. Check the dongle before the parcel is opened wide; a few M-M jumpers and the
+  **USB-A male-to-female extension** the dongle needs to reach the floor are the same local errand.
+
+---
+
+## Prep before the parcel lands
+
+Day one should be flashing, not tooling. None of this needs hardware, and **none of it has been
+started** — it is listed so a session can offer it rather than discover it on the day.
+
+| # | What | Why it is not already done |
+|---|---|---|
+| 1 | **A flash script** — `tools\flash.ps1 -Port COMx`, and a three-board variant | `tools\` has build, emulate, test and capture scripts, and nothing that flashes a board. Nobody has ever flashed one |
+| 2 | **Produce and keep a radio-enabled image** | Every image ever built here ran `CONFIG_POT_RADIO_DISABLE=y` for the emulator. The real configuration links and fits the budget — the size gate proves it — but no soak image has ever existed as an artefact |
+| 3 | **Check `tools\capture.ps1` survives 24 hours** | It was written for short sessions. Overnight wants incremental flushing, a resumable file, and behaviour defined for a port that vanishes |
+| 4 | **Turn §13-M0's acceptance table into a pass/fail report** | The soak's verdict should not be a human reading JSON at 7 a.m. |
+| 5 | **Record the MAC-to-label mapping at unboxing** | Node ids derive from the MAC, so which board is `0x____` is decided by the silicon, not by a config — write it down once |
+
+## The original shopping list, kept for reference
 
 Nothing here needs soldering. Everything is push-fit.
 
@@ -32,8 +92,13 @@ two-node bus), LEDs, screw-terminal shields, a soldering iron, or a breadboard.
 
 **Why no breadboard.** The devkit and the transceiver module both have male header pins, so
 female-female jumpers join them directly: 3V3, GND, TX and RX from each board to its own module, then
-CANH→CANH and CANL→CANL between the two modules. Ten wires, nothing in between. A breadboard would
-only add a place for a wire to fall out of.
+CANH→CANH, CANL→CANL **and GND→GND** between the two modules. Eleven wires, nothing in between. A
+breadboard would only add a place for a wire to fall out of.
+
+That eleventh wire is the inter-module ground tie, and this file said ten until 2026-09-21: the
+sibling project's wiring appendix ties the grounds and this one did not. Two boards on separate USB
+ports usually do share a ground through the PC — "usually" being the word that makes it worth the
+wire.
 
 It would not fit anyway, which is worth knowing before buying one hopefully: a half-size (400-point)
 breadboard is about 82 × 54 mm and a DevKitC-1 is about 70 × 28 mm, so one small breadboard holds

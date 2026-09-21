@@ -14,10 +14,22 @@ accepted** (the locality-contract checker rejects a cross-node L1 binding, namin
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
 **M0 is not yet accepted** — §13-M0's acceptance table needs two boards and a radio.
 
-**Hardware is awaited (paused 2026-08-01).** Two entry points, depending on what is on the desk:
+**Hardware is ORDERED — 2026-09-21, expected mid-October 2026.** A shared AliExpress order with the
+sibling Powersuit project, DKK 408 all-in, covering Potluck's M0/M4 and Powersuit's Appendix A bench
+at once: 3x ESP32-S3-DevKitC-1 N16R8 (two USB-C sockets, headers pre-soldered), 2x SN65HVD230, 40x
+F-F dupont, a CP2102 USB-A dongle, and a 6-port mains charger for power-only boards.
+
+> **SAY THIS AT THE START OF THE NEXT SESSION.** The owner asked to be reminded. Two things:
+> whether the parcel has landed, and that **there is prep worth doing before it does** — the list is
+> in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md) under "Prep before the parcel lands".
+> Day one should be flashing, not tooling. Do not start that prep unprompted; offer it.
+
+Two entry points, depending on what is on the desk:
 
 - **Boards have arrived** -> [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md), the bench
-  resumption path, written for a reader who remembers nothing.
+  resumption path, written for a reader who remembers nothing. Read its unboxing notes *before*
+  plugging anything in: the two USB-C sockets are visually identical and one of them is dead in this
+  firmware.
 - **Still waiting** -> [HARDWARE-FREE-PLAN.md](HARDWARE-FREE-PLAN.md). **All seven steps H0-H6 are
   done** (2026-08-23). M2 is accepted, half of M4 is accepted, and section 7.8's compute pattern is
   measured in simulation. What is left in the milestones is hardware and only hardware; if a session
