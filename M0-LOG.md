@@ -2168,3 +2168,60 @@ grievance** — *an ESP32 is far too powerful to just watch a flowerpot* — now
 rather than a designed one. H2 says the pattern scales linearly to the whole cell and survives a
 worker dying. Whether §7.8's scope is *enough*, and whether it deserves promoting up the roadmap, is
 still a vision question and still the owner's.
+
+---
+
+## Session 10 — 2026-09-21, the hardware is ordered
+
+Short entry, because the work was a purchase rather than a change. **Ordered 2026-09-21, DKK 408
+all-in, expected mid-October 2026.** Three ESP32-S3-DevKitC-1 N16R8 with two USB-C sockets and
+headers pre-soldered, two SN65HVD230 transceivers, forty F-F dupont, a CP2102 USB-A dongle, and a
+six-port mains charger for boards that only need to be alive rather than talked to.
+
+Two decisions in it worth keeping:
+
+**One parcel for two projects.** The bench lists in this repo and in the sibling Powersuit repo were
+written to dovetail — Powersuit's Appendix A even tags each line `[both]` or `[sibling]` — and the
+union turned out to be almost exactly the intersection. Powersuit's dead-man-switch bench and this
+project's M0 and M4 are covered by the same three boards and the same two transceivers. Nothing was
+bought twice.
+
+**The EU-supplier route was checked and rejected**: four times the price on the wire, and no
+two-USB-C-socket N16R8 in EU stock at all. That second half matters more than the first — §13-M0's
+console depends on a board having a UART socket separate from the native USB port, which
+`CONFIG_ESP_PHY_ENABLE_USB=n` makes dead during any radio run. It is a purchasing criterion, not a
+preference, and it eliminated an entire supply route.
+
+### A guess I recorded as a caution, and the photo that killed it
+
+I warned that the CP2102 dongle would probably present a *female* header, as many red USB-A dongles
+do, and that the F-F-only order would therefore not reach the DevKit's male pins — buy M-M locally.
+The listing photo shows **male pins**. F-F covers the whole bench and no second gender is needed.
+
+Worth noting how the wrong half and the right half of that came about. The pin-gender claim was a
+generalisation from a product category, which is exactly the kind of thing the zero-assumption ledger
+exists to stop, and it went in as prose rather than through the ledger. The *method* was sound
+though: the same session had already settled the transceiver's pin order from seller photos, and
+applying that method one step further settled this too. The caution is replaced in the runbook rather
+than left standing beside the fact.
+
+Added while correcting it, because it is the more expensive mistake: the dongle takes **three** wires
+and not four. Its 3V3/5V pin exists to power a bare chip; the board already has a USB supply, and
+tying two powered rails together produces an intermittent brownout that reads as a firmware fault.
+
+### Ledger
+
+The termination row for the SN65HVD230 has carried *"confirm against the actual listing"* since
+2026-08-01. There is now an actual listing, so it is partly closed: **pin order and the doubled
+CANH/CANL bus pins are verified** from the photos; **the 120 Ω is inferred from a `121` marking and
+not measured**, since no multimeter was ordered. Left tagged `[MEASURE]` — a meter across CANH/CANL
+settles it in ten seconds at unboxing, and at two nodes over 20 cm it barely matters either way
+(~1.5 ns propagation against a 1 µs bit time).
+
+### Standing state
+
+Nothing in the code moved. 21 gates green, M2 accepted, half of M4 accepted, all seven hardware-free
+steps done. The prep list for the wait is written down in the runbook and **deliberately not
+started**: there is no flash script, no radio-enabled image has ever been produced as an artefact,
+`capture.ps1` has never run overnight, and M0's acceptance table is not yet a pass/fail report.
+CLAUDE.md now opens the next session with a reminder to ask about the parcel and offer that list.
