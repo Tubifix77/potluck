@@ -410,3 +410,38 @@ decodes, the convention is right, and the remaining risk is confined to one wire
 two pages of EU RoHS/REACH/CE compliance boilerplate for an "Integrated circuit-module" with the
 model field blank. It contains no pinout, no ratings and no CAN timing, and says so itself: *"refer to
 the product datasheet"*. Recorded so nobody reads it again hoping for specifications.
+
+### The CAN transceivers are capped at 250 kbit/s by a fixed resistor — 2026-10-01
+
+The seller's listing included the module's **schematic**, which settles two things and raises one that
+affects M4's bench directly.
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **The onboard 120 Ω termination is confirmed, not inferred** | The schematic draws **R2 = 120** directly across CANH/CANL. This closes the open item that had been inferred from a `121` SMD marking and left `[MEASURE]` for want of a multimeter — a drawing is better evidence than a meter reading anyway | seller's schematic for the ordered module | 2026-10-01 | stable | **verified** |
+| Header pinout confirmed a second way | P1 is a 4-pin header, order **3.3V / GND / RX / TX**, matching the photos. The schematic shows `CAN_TX` to pin 1 (`D`), GND to 2, 3.3 V to 3 (`VCC`), `CAN_RX` to 4 (`R`). CANH/CANL go to a 2-pin screw terminal | same | 2026-10-01 | stable | verified |
+| **`Rs` is tied to GND through R1 = 10 kΩ, which puts the module in slope-control mode** | TI: `Rs` selects high-speed (GND or open), slope control (resistor), or standby (VCC). **"A 10 kΩ resistor gives a slew rate of approximately 1.0 V/µs"**, and the **recommended maximum signalling rate in slope-control mode is 250 kbit/s**, against 1 Mbit/s in high-speed mode | [TI SN65HVD230 datasheet](https://www.ti.com/lit/ds/symlink/sn65hvd230.pdf) + the module schematic | 2026-10-01 | stable | **verified** |
+| **The mode cannot be changed without soldering** | `Rs` is not brought out to the header — P1 carries only 3.3V/GND/RX/TX — so reaching high-speed mode means removing or shorting an SMD resistor. No soldering iron was bought, deliberately. **250 kbit/s is the practical ceiling for this bench, full stop** | same | 2026-10-01 | stable | verified |
+| Module supply and thresholds | 3.0–3.6 V; input low ≤0.8 V, input high ≥2 V (so the S3's 3.3 V logic drives it comfortably); differential input −6 V to +6 V; −40 °C to 80 °C; 370 µA standby. The listing's graphic reads "370MA", which is wrong by three orders of magnitude — the body text says µA and that is the believable figure | seller's listing | 2026-10-01 | volatile | claimed, with one obvious typo |
+
+**What this does and does not cost us.**
+
+§5.3.1's capacity analysis is written at **500 kbit/s and 1 Mbit/s**, and already found that eleven
+nodes under *segmentation-only* need 122 % of a 500 kbit/s bus — which is precisely why the `SINGLE`
+flag exists, making a liveness beacon exactly one CAN frame instead of ten. With `SINGLE`, eleven
+nodes at §8.2's 20 ms wired period need ~550 frames/s at ≤111 bits, which is **about 24 % of a
+250 kbit/s bus.** The car still fits. The design survives the cap because a decision already taken
+for a different reason happens to carry it.
+
+What the cap *does* remove is the ability to **validate §5.3.1's 500 kbit/s and 1 Mbit/s rows on this
+bench at all.** Any CAN capacity figure measured here is a 250 kbit/s figure and must be labelled as
+one.
+
+**§13-M4's acceptance survives intact.** *"A `SAFE_STATE` frame wins CAN arbitration against
+saturating telemetry"* is a statement about identifier priority, which is bitrate-independent. It
+demonstrates just as well at 250 kbit/s.
+
+**Cross-project, for the sibling Powersuit bench:** its `node_bench` TWAI configuration must be set to
+**250 kbit/s or below**, or the dead-man-switch test will fight the hardware rather than exercise the
+firmware. Above the recommended rate the slew-limited edges cause bit errors; on a 20 cm bench it may
+appear to work anyway, which is the worst outcome — out of spec and seemingly fine.
