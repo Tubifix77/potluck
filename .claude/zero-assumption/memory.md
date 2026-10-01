@@ -302,3 +302,18 @@ library replace it later without anyone having to trust the swap.
 on measured verify cost"* — is a bench question about the *node*, and choosing Ed25519 for the host
 tool says nothing about it. Which is why `alg` is a field in every signing structure and the verifier
 dispatches on it: adding P-256 when the bench answers needs no format change.
+
+### First contact with real silicon — 2026-10-01
+
+Facts that stopped being lookups and became observations. Three boards arrived; one was brought up.
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **The ordered boards are genuinely N16R8** | `esptool chip-id` on board A reports ESP32-S3 (QFN56) rev v0.2, dual core + LP core, 240 MHz, **embedded PSRAM 8 MB (AP_3v3)**, and `flash-id` reports **16 MB** flash with the eFuse set to quad at 3.3 V. Flash quad and PSRAM octal is the correct combination for this part. Worth confirming rather than assuming, because the listing is a clone with no Espressif seal and recycled ESP32-C3 marketing copy | the board itself, over COM3 | 2026-10-01 | stable | **measured** |
+| **The boards' USB-to-UART bridge is a CH343, not a CP2102** | `USB-Enhanced-SERIAL CH343 (COM3)`, `VID_1A86 PID_55D3` — WCH, not Silicon Labs. Windows 11 enumerated it on first plug with no driver install. This **falsifies** the reasoning recorded on 2026-08-01 for preferring a CP2102 adapter, which argued that CP210x "is already required for the boards themselves". It is not, and neither part needed a driver. The preference itself still stands on the 3.3 V-native argument, which was always the load-bearing half | the board itself | 2026-10-01 | stable | **measured — supersedes an inference** |
+| **Board A's identity, and therefore its node id** | MAC `b8:1f:3f:da:63:00`. The firmware derives `node_id = (mac[4] << 8) \| mac[5]`, so this board is **0x6300** — not 0x0000 or 0xFFFF, so no nudge applies. Which board answers to which id is decided by silicon, and the register lives in [WHEN-THE-BOARDS-ARRIVE.md](../../WHEN-THE-BOARDS-ARRIVE.md) | the board itself | 2026-10-01 | stable | **measured** |
+| **DTR/RTS auto-reset is wired** | esptool finishes with *"Hard resetting via RTS pin"* and needed no BOOT button held to enter the bootloader. Flashing can be scripted without a human pressing anything | the board itself | 2026-10-01 | stable | **measured** |
+
+**Still [MEASURE], and now cheap.** The SN65HVD230 termination row above is inferred from a `121`
+marking. No multimeter was ordered, so it stays open — but it is ten seconds of work if one is
+borrowed before M4.

@@ -68,6 +68,48 @@ with onboard termination. No multimeter was ordered, so this is unconfirmed — 
 
 ---
 
+## First contact — 2026-10-01
+
+The parcel arrived and one board was brought up on its own, deliberately slowly: plug in, see what
+enumerates, read the chip, write nothing. It all worked first time. What that session established,
+recorded because some of it contradicts what this file assumed:
+
+**The USB-to-UART bridge is a CH343, not a CP2102.** `USB-Enhanced-SERIAL CH343 (COM3)`,
+`VID_1A86 PID_55D3` — WCH's part, not Silicon Labs'. Windows 11 already had the driver and the port
+enumerated on the first plug with no install, so the practical advice below is unchanged, but the
+*reason* given for it was wrong. Nothing in this project cares which bridge it is: CH343 handles the
+921600 console baud comfortably.
+
+**The board is what the listing claimed**, which is not guaranteed with a clone (a reviewer notes
+there is no Espressif seal):
+
+| Property | Reported by `esptool chip-id` / `flash-id` |
+|---|---|
+| Chip | ESP32-S3 (QFN56), revision v0.2 |
+| Cores | Dual core + LP core, 240 MHz |
+| Flash | **16 MB** — the `N16` |
+| PSRAM | **8 MB** embedded, AP_3v3 — the `R8` |
+| Flash mode in eFuse | quad, 3.3 V (flash is quad and PSRAM is octal on this part — both correct) |
+
+**Auto-reset works.** esptool ends with *"Hard resetting via RTS pin"*, so DTR/RTS reset is wired:
+flashing will not need the BOOT button held.
+
+**The silkscreen offers pins that must never be used.** The listing's dimensioned drawing shows the
+bottom header exposing **35, 36 and 37**, which on an N16R8 are the octal PSRAM. The board presents
+them as ordinary GPIOs. They are not.
+
+### The board register
+
+Node ids derive from the MAC — `node_id = (mac[4] << 8) | mac[5]` — so which board answers to which
+id is decided by the silicon, not by a config. Record each board here as it is first read, and write
+the same label on the board itself.
+
+| Label | MAC | Derived node id | Notes |
+|---|---|---|---|
+| **A** | `b8:1f:3f:da:63:00` | **0x6300** | First board brought up, 2026-10-01. Enumerated as COM3 on the owner's PC |
+| B | — | — | not yet read |
+| C | — | — | not yet read |
+
 ## Prep before the parcel lands
 
 Day one should be flashing, not tooling. None of this needs hardware, and **none of it has been
@@ -192,16 +234,25 @@ drives overcurrent through the internal clamping diodes.
 
 **Which chip: prefer CP2102 over CH340.** Both work, but the CP2102 signals at 3.3 V *natively* —
 there is no jumper to set, therefore none to set wrongly, and mis-setting it is the only action in
-this build that can damage a board. It also needs no additional driver, since CP210x is already
-required for the boards themselves, and its on-chip EEPROM serial number keeps its COM port stable
+this build that can damage a board. Its on-chip EEPROM serial number also keeps its COM port stable
 across replugs where a CH340 typically has none. The CH340's one advantage is a 2 Mbps ceiling
 against the CP2102's 1 Mbps, which does not matter here: `CONFIG_POT_SERIAL_BAUD` defaults to
 921 600.
 
-The cost of choosing CP2102 is that every device then enumerates as "Silicon Labs CP210x". That is
-already true of three identical boards, so a way to tell ports apart is needed regardless: run
-`tools\capture.ps1 --list-ports`, unplug one thing, and see which entry disappears. Attach the
-adapter last and it is the newest COM number.
+> **Two claims above were corrected on 2026-10-01, by the boards arriving.** The reasoning for
+> preferring CP2102 said it "needs no additional driver, since CP210x is already required for the
+> boards themselves". It is not: these boards carry a **CH343** bridge (`VID_1A86 PID_55D3`), and
+> Windows 11 had that driver already too — so neither part needed an install and the argument was
+> simply wrong about which chip was involved.
+>
+> The paragraph that followed worried that choosing CP2102 would make "every device enumerate as
+> Silicon Labs CP210x", so telling ports apart would be hard. The opposite turned out to be true and
+> it is a small gift: the three boards appear as **CH343** and the dongle as **CP2102**, so the
+> adapter is distinguishable from the boards at a glance in Device Manager. Telling the three boards
+> apart from *each other* still needs the unplug trick below.
+
+To tell three identical boards apart: run `tools\capture.ps1 --list-ports`, unplug one, and see which
+entry disappears. Attach the adapter last and it is the newest COM number.
 
 **Put the length on the USB side, not the jumper side.** A dongle-style adapter plugged straight into
 the PC forces the Dupont wires to span the whole distance to the bench, and they are 10–20 cm parts.
