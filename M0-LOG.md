@@ -2225,3 +2225,88 @@ steps done. The prep list for the wait is written down in the runbook and **deli
 started**: there is no flash script, no radio-enabled image has ever been produced as an artefact,
 `capture.ps1` has never run overnight, and M0's acceptance table is not yet a pass/fail report.
 CLAUDE.md now opens the next session with a reminder to ask about the parcel and offer that list.
+
+---
+
+## Session 11 — 2026-10-01, the firmware runs on real silicon
+
+The parcel arrived. One board, one cable, no jumpers — and the oldest open number in the project
+closed.
+
+### Bring-up, deliberately slow
+
+Baseline the COM ports, plug in one board, see what appears. `USB-Enhanced-SERIAL CH343 (COM3)`,
+`VID_1A86 PID_55D3` — and **not** the CP2102 this file had assumed since August. Windows 11 had the
+driver already, so nothing was lost but the *reason* recorded for preferring a CP2102 adapter was
+wrong; the preference survives on its other leg, that the CP2102 is 3.3 V native with no jumper to
+set wrongly.
+
+`esptool chip-id` and `flash-id` before writing anything: ESP32-S3 QFN56 rev v0.2, dual core plus LP
+core, **16 MB flash, 8 MB PSRAM**, eFuse flash mode quad at 3.3 V. The listing is a clone with no
+Espressif seal and recycled ESP32-C3 marketing copy, so confirming the part was worth the thirty
+seconds. MAC `b8:1f:3f:da:63:00`, which makes this board **0x6300** — derived, not configured.
+
+Before flashing: `get-security-info` showed **Secure Boot disabled, Flash Encryption disabled**, all
+key blocks empty. Then a full 16 MB dump of the factory image, verified rather than assumed — 0xE9
+at byte 0, `AA50` at 0x8000, 1.34 MB written against 92 % erased. A 16 MB file of 0xFF would have
+been a silent read failure and looked identical from the outside.
+
+### The section 6 [MEASURE] is closed
+
+Open since 2026-08-01. Named in §13-M0's acceptance table. **The reason nothing past M2 was built**,
+because 11.8 KB of the 64 KB budget sat committed on paper against a number nobody had.
+
+| step | free DRAM after | cost |
+|---|---|---|
+| at boot | 292,916 | — |
+| NVS | 291,492 | 1,424 |
+| netif | 283,648 | 7,844 |
+| `esp_wifi_init` | 253,088 | 30,560 |
+| `esp_wifi_start` | 251,384 | 1,704 |
+| `esp_now_init` | 251,232 | **152** |
+
+**The Wi-Fi stack costs 32,264 B — 31.5 KiB, under §6's ~40 KB trigger. The RX ring does not
+shrink.** ESP-NOW itself costs 152 bytes; the expensive thing is the radio underneath it, not the
+protocol.
+
+The figure *not* to quote is the 41,684 B boot-to-radio total. It folds in NVS and netif, which are
+Potluck's own choices rather than the radio's cost — which is exactly why `dram_probe.hpp` samples
+every step separately instead of reporting one number. Quoting the total against the ~40 KB line
+reads as a breach that is not one.
+
+### A mistake worth recording, because it is reusable
+
+This session reported, confidently and in the middle of the good news, that §6's promised
+threshold warning **had never been implemented** and that the trigger had silently failed on its
+first real use.
+
+It is implemented. `DramProfile::exceeds_section6_expectation()` at `dram_probe.hpp:44`, evaluated at
+`m0_main.cpp:336`. It stayed quiet because 31.5 KB is under 40 KB — it was *correct*.
+
+The error was a `grep` for `total_to_radio|40960|40 \\* 1024|dram_warn|threshold`, none of which match
+the name `exceeds_section6_expectation`. An empty result from a search I had not verified could find
+the thing was read as the thing being absent.
+
+Same family as the stale-ELF session and the one-stack-sample diagnosis, and worth stating as a rule
+rather than an anecdote: **a negative result from an unverified instrument is not evidence.** Before
+concluding a feature is missing, prove the search could have found it.
+
+### What one board showed that an emulator never could
+
+- **`"no_radio":0`** for the first time in the project's history. Every prior run, on every prior
+  session, reported 1.
+- **Zero `enqueue_err`** across 213 transmitted frames in 20 s. Under QEMU that counter climbed every
+  100 ms forever, which cost a whole session once before it was understood as "there is no radio
+  here" rather than a bug.
+- ~10.6 frames/s, matching §8.2's 100 ms heartbeat period on a real clock rather than an emulated
+  one that cannot be trusted to a tick.
+- **ESP-NOW v2** negotiated, so the 1446-byte profile is available on this silicon.
+- The boot line carries `"fw":"095f21e"` — the image states the commit it was built from, so rule 7
+  is satisfied by the artefact itself rather than by anyone remembering to check.
+
+### Still true, and still the point
+
+M0 is **not** accepted. Its acceptance needs two boards, a 24-hour soak, a delay histogram and a PDR
+figure. One board heartbeating to nobody is not a measurement of a link. What closed today is one
+acceptance item out of several — the one that happened to be blocking the memory budget for
+everything after M2.

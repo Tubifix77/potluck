@@ -18,16 +18,18 @@ coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work l
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
 Powersuit's Appendix A bench at once.
 
-Board A — MAC `b8:1f:3f:da:63:00`, therefore **node 0x6300** — enumerated on first plug as
-**CH343 (COM3)** with no driver install, and `esptool` confirmed a real N16R8: ESP32-S3 rev v0.2,
-16 MB flash, 8 MB PSRAM, DTR/RTS auto-reset wired. **Nothing has been flashed yet.** The board
-register and the first-contact findings are in
-[WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
+Board A — MAC `b8:1f:3f:da:63:00`, therefore **node 0x6300** — enumerated as **CH343 (COM3)**, and is
+**flashed with Potluck and running** (fw `095f21e`). Its factory image is backed up. The board
+register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
 
-> **The prep list is now the critical path**, and none of it is done: there is no flash script, no
-> radio-enabled image has ever been produced as an artefact (every build in this project's history
-> ran `CONFIG_POT_RADIO_DISABLE=y` for the emulator), `capture.ps1` has never run overnight, and
-> §13-M0's acceptance table is not yet a pass/fail report. See "Prep before the parcel lands".
+> **§6's Wi-Fi DRAM [MEASURE] is CLOSED (2026-10-01): 32,264 B — 31.5 KiB, under the ~40 KB
+> trigger, so the RX ring does not shrink.** That number had been open since the architecture was
+> written, is named in §13-M0's acceptance table, and was the reason nothing past M2 was built:
+> 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
+> with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
+
+**M0 is still not accepted.** Its acceptance needs two boards, a 24-hour soak, a delay histogram and
+a measured PDR. One board heartbeating to nobody is not a measurement of a link.
 
 Two entry points, depending on what is on the desk:
 

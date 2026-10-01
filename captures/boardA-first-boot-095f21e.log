@@ -1,0 +1,108 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xda0
+load:0x403cb700,len:0x2f54
+entry 0x403c8908
+I (24) boot: ESP-IDF v6.0.2 2nd stage bootloader
+I (25) boot: compile time Aug  1 2026 20:41:25
+I (25) boot: Multicore bootloader
+I (25) boot: chip revision: v0.2
+I (28) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (35) boot.esp32s3: SPI Mode       : DIO
+I (39) boot.esp32s3: SPI Flash Size : 16MB
+I (43) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (50) boot: ## Label            Usage          Type ST Offset   Length
+I (56) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (63) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (69) boot:  2 factory          factory app      00 00 00010000 00100000
+I (76) boot: End of partition table
+I (79) esp_image: segment 0: paddr=00010020 vaddr=3c090020 size=1a4b0h (107696) map
+I (106) esp_image: segment 1: paddr=0002a4d8 vaddr=3fc96900 size=04efch ( 20220) load
+I (111) esp_image: segment 2: paddr=0002f3dc vaddr=40374000 size=00c3ch (  3132) load
+I (112) esp_image: segment 3: paddr=00030020 vaddr=42000020 size=80834h (526388) map
+I (213) esp_image: segment 4: paddr=000b085c vaddr=40374c3c size=11bb8h ( 72632) load
+I (230) esp_image: segment 5: paddr=000c241c vaddr=50000000 size=00024h (    36) load
+I (239) boot: Loaded app from partition at offset 0x10000
+I (239) boot: Disabling RNG early entropy source...
+I (249) cpu_start: Multicore app
+I (258) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (258) cpu_start: Pro cpu start user code
+I (258) cpu_start: cpu freq: 160000000 Hz
+I (260) app_init: Application information:
+I (264) app_init: Project name:     potluck_m0
+I (268) app_init: App version:      095f21e
+I (272) app_init: Compile time:     Oct  1 2026 17:55:04
+I (277) app_init: ELF file SHA256:  59fe7629f...
+I (281) app_init: ESP-IDF:          v6.0.2
+I (285) efuse_init: Min chip rev:     v0.0
+I (289) efuse_init: Max chip rev:     v0.99 
+I (293) efuse_init: Chip rev:         v0.2
+I (297) heap_init: Initializing. RAM available for dynamic allocation:
+I (303) heap_init: At 3FCAC770 len 0003CFA0 (243 KiB): RAM
+I (308) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (313) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (318) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (325) spi_flash: detected chip: generic
+I (327) spi_flash: flash io: dio
+I (331) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (337) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (344) main_task: Started on CPU0
+I (374) main_task: Calling app_main()
+I (386) pp: pp rom version: e7ae62f
+I (386) net80211: net80211 rom version: e7ae62f
+I (388) wifi:wifi driver task: 3fcee5b0, prio:23, stack:6656, core=0
+I (389) wifi:wifi firmware version: 00ad238
+I (392) wifi:wifi certification version: v7.0
+I (396) wifi:config NVS flash: disabled
+I (400) wifi:config nano formatting: disabled
+I (404) wifi:Init data frame dynamic rx buffer num: 16
+I (409) wifi:Init static rx mgmt buffer num: 5
+I (413) wifi:Init management short buffer num: 32
+I (417) wifi:Init dynamic tx buffer num: 32
+I (421) wifi:Init static tx FG buffer num: 2
+I (425) wifi:Init static rx buffer size: 1600
+I (429) wifi:Init static rx buffer num: 6
+I (433) wifi:Init dynamic rx buffer num: 16
+I (438) wifi_init: accept mbox: 6
+I (440) wifi_init: tcpip mbox: 32
+I (443) wifi_init: udp mbox: 6
+I (446) wifi_init: tcp mbox: 6
+I (449) wifi_init: tcp tx win: 5760
+I (452) wifi_init: tcp rx win: 5760
+I (455) wifi_init: tcp mss: 1440
+I (458) wifi_init: WiFi IRAM OP enabled
+I (462) wifi_init: WiFi RX IRAM OP enabled
+I (466) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+I (509) wifi:mode : sta (b8:1f:3f:da:63:00)
+I (509) wifi:enable tsf
+I (510) wifi:Set ps type: 0, coexist: 0
+
+I (513) ESPNOW: espnow [version: 2.0] init
+I (513) pot.espnow: esp-now v2 up on channel 1, mac b8:1f:3f:da:63:00
+I (520) pot.epoch: boot epoch 2
+I (521) pot.m0: namespace: 6 resources declared
+I (526) pot.serial: frame link on UART1, tx=17 rx=18, 921600 baud
+I (531) pot.m0: Potluck M0 node 0x6300 epoch 2, heartbeat 100 ms x 6 misses = 600 ms
+I (539) main_task: Returned from app_main()
+{"t":"boot","node":25344,"epoch":2,"mac":"b8:1f:3f:da:63:00","espnow_ver":2,"chan":1,"hb_period_ms":100,"hb_miss_limit":6,"fw":"095f21e","idf":"v6.0.2","dram":{"at_boot":292916,"after_nvs":291492,"after_netif":283648,"after_wifi_init":253088,"after_wifi_start":251384,"after_espnow":251232,"largest_block":204800,"wifi_stack":32264,"espnow":152,"total_to_radio":41684}}
+I (574) pot.m0: beacon mode: broadcast_beacon
+{"t":"node","up_ms":10254,"node":25344,"epoch":2,"peers_alive":0,"peers_dead":0,"no_radio":0,"free_dram":249936,"largest_block":204800,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":107,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+{"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":25,"ts":10254,"updates":1,"value":2}
+{"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":39,"ts":10254,"updates":1,"value":0}
+{"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":54,"ts":10254,"updates":1,"value":0}
+{"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":69,"ts":10254,"updates":1,"value":249936}
+{"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":85,"ts":10254,"updates":1,"value":10}
+{"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":100,"ts":10254,"updates":1,"value":204800}
+{"t":"node","up_ms":20370,"node":25344,"epoch":2,"peers_alive":0,"peers_dead":0,"no_radio":0,"free_dram":249936,"largest_block":204800,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":213,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+{"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":24,"ts":20370,"updates":2,"value":2}
+{"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":39,"ts":20370,"updates":2,"value":0}
+{"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":54,"ts":20370,"updates":2,"value":0}
+{"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":69,"ts":20370,"updates":2,"value":249936}
+{"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":85,"ts":20370,"updates":2,"value":20}
+{"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":100,"ts":20370,"updates":2,"value":204800}

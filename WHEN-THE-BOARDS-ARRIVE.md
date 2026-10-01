@@ -106,7 +106,7 @@ the same label on the board itself.
 
 | Label | MAC | Derived node id | Notes |
 |---|---|---|---|
-| **A** | `b8:1f:3f:da:63:00` | **0x6300** | First board brought up, 2026-10-01. Enumerated as COM3 on the owner's PC |
+| **A** | `b8:1f:3f:da:63:00` | **0x6300** | First board brought up, 2026-10-01. COM3. **Flashed with Potluck** (fw `095f21e`) and running; factory image backed up to `D:/esp/board-backups/boardA-b81f3fda6300-factory-16MB.bin` |
 | B | — | — | not yet read |
 | C | — | — | not yet read |
 

@@ -18,6 +18,9 @@
 /captures/*
 !/captures/m2-acceptance.jsonl
 !/captures/m2-ls.jsonl
+# And board A's first boot with the radio up: it is the evidence behind section 6's [MEASURE]
+# being closed, and 8 KB of it. Same rule as the two above.
+!/captures/boardA-first-boot-095f21e.log
 
 # Local Claude Code session settings stay local; the zero-assumption ledger IS
 # tracked, because CLAUDE.md rule 3 makes it part of the project's method rather

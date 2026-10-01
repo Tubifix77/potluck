@@ -317,3 +317,23 @@ Facts that stopped being lookups and became observations. Three boards arrived; 
 **Still [MEASURE], and now cheap.** The SN65HVD230 termination row above is inferred from a `121`
 marking. No multimeter was ordered, so it stays open — but it is ten seconds of work if one is
 borrowed before M4.
+
+### The section 6 Wi-Fi DRAM [MEASURE] is CLOSED — 2026-10-01
+
+Open since 2026-08-01, named in section 13-M0's acceptance table, and the reason nothing past M2 was
+built: 11.8 KB of the 64 KB budget was committed on paper against a number nobody had. Board A was
+flashed with the radio enabled and printed it on the boot line, exactly as section 6 said it would.
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **The Wi-Fi stack costs 32,264 B of internal DRAM with ESP-NOW active on an ESP32-S3 N16R8** | 31.5 KiB, measured as `esp_wifi_init` plus `esp_wifi_start` (`DramProfile::wifi_stack_bytes()`). **Under section 6's ~40 KB trigger, so the RX ring does not shrink** and the headroom committed on paper survives | board A (MAC `b8:1f:3f:da:63:00`), fw `095f21e`, IDF v6.0.2, ESP-NOW v2, channel 1 | 2026-10-01 | stable per IDF version | **measured — this is the [MEASURE] answer** |
+| ESP-NOW costs almost nothing on top of a started Wi-Fi stack | **152 B**. The expensive thing is the radio underneath it, not the protocol | same | 2026-10-01 | stable per IDF version | measured |
+| Boot-to-radio total is 41,684 B, and that is **not** the figure to quote | It folds in NVS (1,424 B) and netif (7,844 B), which are Potluck's own choices rather than the radio's cost. Quoting it against the ~40 KB trigger would read as a breach that is not one — which is precisely why `dram_probe.hpp` attributes the steps separately | same | 2026-10-01 | stable per IDF version | measured |
+| Steady-state free internal DRAM with the radio up | **249,936 B free, largest block 204,800 B**, 20 s after boot with one node and no peers | same | 2026-10-01 | volatile — grows with M1+ allocations | measured |
+
+**A correction worth keeping, because the mistake is reusable.** This session first reported the
+threshold as *crossed* and the warning as *unimplemented*, on the strength of a `grep` whose patterns
+happened not to match `exceeds_section6_expectation`. An empty grep was read as absence. The check
+exists, it is correct, and it stayed quiet because 31.5 KB is under 40 KB. Same family as the
+stale-ELF and the one-stack-sample lessons: a negative result from an instrument you did not verify
+is not evidence.
