@@ -31,14 +31,46 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 **M0 is still not accepted.** Its acceptance needs a 24-hour soak, a delay histogram and a measured
 PDR.
 
-> **A 24-HOUR SOAK MAY BE RUNNING RIGHT NOW.** Check with `tools\soak.ps1 -Status` before touching
-> anything. If it is: do not unplug a board, do not reflash, do not close the capture processes, and
-> do not let the machine sleep. All three boards are on the PC and the capture is detached, so it
-> survives any session ending -- including this one. `-Stop` ends it deliberately.
+> ## A 24-HOUR SOAK IS RUNNING. CHECK BEFORE TOUCHING ANYTHING.
 >
-> The soak is the *control* for the distance sweep that follows, which is the test that can actually
-> reopen the transport decision. See "the sweep is not follow-up work, it is the kill criterion" in
-> [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
+> `tools\soak.ps1 -Status` — judges the capture **files**, not the tasks, because a task reported
+> Running whose file stopped growing is the failure that looks healthy from outside.
+>
+> **Run 2 started 2026-10-02 00:31, completes 2026-10-03 00:31.** Three boards on the PC, one
+> scheduled task per port (`potluck-soak-COM3/4/5`).
+>
+> **THREE CONSOLE WINDOWS ARE OPEN ON THE DESKTOP — one per capture. Closing a window kills that
+> capture. So does Ctrl-C in it.** They are minimised, not closed. Failure is now isolated per board:
+> if one dies the other two continue, and only that one needs restarting.
+>
+> | survives | does not survive |
+> |---|---|
+> | the Claude app closing, updating or crashing | **logging off** (tasks are `Interactive`) |
+> | this session ending; the shell closing | PC shutdown or restart |
+> | screen lock | sleep (power settings prevent it) |
+>
+> **Why run 1 died, and why this is different.** Run 1 used `Start-Process` and lasted 3 h 27 m. The
+> processes were genuinely orphaned — their launching shell had exited and they survived it — but
+> *orphaned is not outside a job object*. Windows job membership is inherited down the creation
+> chain and does not care about parentage, so `app -> PowerShell -> python` left them inside the
+> app's job. When the app restarted at 22:43:09 the job closed and took all three. Task Scheduler
+> spawns from a service instead (`svchost` pid 2072, running since the PC booted and demonstrably
+> alive through that exact event), so the app is not in the chain at all.
+>
+> Run 1's data is kept as `captures/partial-3h27m-*.jsonl` — ~124,000 heartbeats per node. Not
+> acceptance, but real evidence on both open defects and the memory trend.
+>
+> **Already established on hardware, so do not re-measure:** zero deaths, revivals or reboots across
+> six continuous hours on three nodes; §6's Wi-Fi DRAM figure (31.5 KiB, closed); 100 % packet
+> delivery and a 4–6 ms round trip on all six links at desk range.
+>
+> **Two open defects, both deterministic and neither RF-related.** `reorder_dup` reports ~20 spurious
+> duplicates for every peer that booted *before* the reporting node (a sequence-expectation artefact
+> at admission; it makes a healthy link look flaky for its first seconds). And `peer_admitted` fires
+> for an already-admitted peer at exactly `hello_interval_ms`, forever — over half the capture volume.
+>
+> **After the soak comes the distance sweep, and that is the kill criterion** — the only test that
+> can reopen the transport decision. The soak is its control. See WHEN-THE-BOARDS-ARRIVE.md.
 
 Two entry points, depending on what is on the desk:
 
