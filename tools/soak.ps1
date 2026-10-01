@@ -60,13 +60,9 @@ if ($Stop) {
     if (-not (Test-Path $stateFile)) { Write-Host "no soak recorded as running"; exit 0 }
     $state = Get-Content $stateFile -Raw | ConvertFrom-Json
     foreach ($p in $state.processes) {
-        $proc = Get-Process -Id $p.pid -ErrorAction SilentlyContinue
-        if ($proc) {
-            Stop-Process -Id $p.pid -Force
-            Write-Host "stopped $($p.port) (pid $($p.pid))"
-        } else {
-            Write-Host "$($p.port) (pid $($p.pid)) was already gone"
-        }
+        Stop-ScheduledTask -TaskName $p.task -ErrorAction SilentlyContinue
+        Unregister-ScheduledTask -TaskName $p.task -Confirm:$false -ErrorAction SilentlyContinue
+        Write-Host "stopped and removed $($p.task) ($($p.port))"
     }
     Remove-Item $stateFile -Force
     exit 0
@@ -80,14 +76,15 @@ if ($Status) {
     Write-Host ("started {0}  --  running {1:dd}d {1:hh}h {1:mm}m" -f $started, $elapsed)
     $bad = 0
     foreach ($p in $state.processes) {
-        $alive = [bool](Get-Process -Id $p.pid -ErrorAction SilentlyContinue)
+        $t = Get-ScheduledTask -TaskName $p.task -ErrorAction SilentlyContinue
+        $alive = $t -and $t.State -eq "Running"
         $size = if (Test-Path $p.file) { (Get-Item $p.file).Length } else { 0 }
         $age = if (Test-Path $p.file) { ((Get-Date) - (Get-Item $p.file).LastWriteTime).TotalSeconds } else { 9999 }
-        # A live process with a file that stopped growing is the failure that matters: it looks fine
-        # from the outside and produces nothing. Judge on the file, not on the process.
-        $verdict = if (-not $alive) { "DEAD" } elseif ($age -gt 120) { "STALLED ($([int]$age)s since write)" } else { "ok" }
+        # Judge on the FILE, not on the task. A task reported as Running whose file stopped growing is
+        # the failure that matters, because it looks healthy from outside and produces nothing.
+        $verdict = if (-not $alive) { "NOT RUNNING" } elseif ($age -gt 120) { "STALLED ($([int]$age)s since write)" } else { "ok" }
         if ($verdict -ne "ok") { $bad++ }
-        Write-Host ("  {0,-6} pid {1,-7} {2,10:N0} B  {3}" -f $p.port, $p.pid, $size, $verdict)
+        Write-Host ("  {0,-6} {1,-22} {2,12:N0} B  {3}" -f $p.port, $p.task, $size, $verdict)
     }
     exit $(if ($bad -eq 0) { 0 } else { 1 })
 }
@@ -112,13 +109,32 @@ Write-Host "ports : $($Ports -join ', ')"
 $procs = @()
 foreach ($port in $Ports) {
     $file = Join-Path $capDir "soak-$Label-$port.jsonl"
-    $argv = @("-m", "potluck", "--port", $port, "--baud", "$Baud", "--capture", $file, "--quiet")
-    # Detached on purpose: the soak must survive the shell, the terminal and the session that
-    # started it. -WindowStyle Hidden keeps three console windows off the desktop for a day.
-    $p = Start-Process -FilePath $python -ArgumentList $argv -WorkingDirectory $pkgDir `
-                       -WindowStyle Hidden -PassThru
-    $procs += [pscustomobject]@{ port = $port; pid = $p.Id; file = $file }
-    Write-Host ("  {0} -> pid {1}  {2}" -f $port, $p.Id, $file)
+    $argv = "-m potluck --port $port --baud $Baud --capture `"$file`" --quiet"
+    $taskName = "potluck-soak-$port"
+
+    # A SCHEDULED TASK, not Start-Process. This is the second attempt and the reason matters.
+    #
+    # The first version used Start-Process and announced itself as detached. It was detached from the
+    # *shell* -- the launching PowerShell exited and the captures kept running, which looked like
+    # proof. It was not detached from the *application*: Start-Process leaves the child inside the
+    # parent's Windows job object, so when the Claude desktop app restarted itself at 22:43 on
+    # 2026-10-01 it took all three captures down with it, 3 h 27 m into a 24-hour run. The PC never
+    # slept, never rebooted, and the boards stayed enumerated throughout.
+    #
+    # Task Scheduler spawns from a service instead, outside any application's job object. Nothing a
+    # GUI does can reach it.
+    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+    $action = New-ScheduledTaskAction -Execute $python -Argument $argv -WorkingDirectory $pkgDir
+    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(15)
+    # ExecutionTimeLimit 0 = no limit. The default is three days, which would silently truncate a
+    # long soak; StartWhenAvailable and the idle settings stop Windows helping in other ways.
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+                    -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) `
+                    -DontStopOnIdleEnd -MultipleInstances IgnoreNew
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger `
+                           -Settings $settings -Description "Potluck soak capture on $port" | Out-Null
+    $procs += [pscustomobject]@{ port = $port; task = $taskName; file = $file }
+    Write-Host ("  {0} -> scheduled task {1}  {2}" -f $port, $taskName, $file)
 }
 
 [pscustomobject]@{
@@ -129,6 +145,7 @@ foreach ($port in $Ports) {
 } | ConvertTo-Json -Depth 4 | Set-Content -Path $stateFile -Encoding ascii
 
 Write-Host ""
-Write-Host "soak started. It is detached - closing this shell will not stop it."
+Write-Host "soak started as scheduled tasks. Closing this shell, this session, or the"
+Write-Host "Claude app will NOT stop it - Task Scheduler runs them from a service."
 Write-Host "  check:  tools\soak.ps1 -Status"
 Write-Host "  stop :  tools\soak.ps1 -Stop"
