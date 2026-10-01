@@ -19,8 +19,19 @@ it advances, why it is unblocked, and what it explicitly does not deliver.
 | **H5** | **DONE** | 29 on-target checks under QEMU, run by `tools/run_selftest.ps1` |
 | **H6** | **DONE** | cluster CA, deploy keys, signed packages, anti-rollback; RFC 8032 vectors pass |
 
-**All seven steps are done.** What remains is hardware: M0's acceptance soak, M1's unplug test, M3's
-A/B slots, M4's CAN half, M5's firmware verification path, M6's reconciler.
+**All seven steps are done, and this document is now history.** The hardware arrived on 2026-10-01;
+three boards are flashed and M0's 24-hour soak is running. What this plan existed to do -- keep the
+project honest and moving while the post was slow -- is finished.
+
+It earned its keep twice over. M2 was accepted without a board, half of M4 was accepted without a
+board, and §7.8's compute pattern was measured in simulation -- then the hardware arrived and
+**validated the simulator rather than contradicting it**: a modelled 5.57 ms round trip against a
+measured 4-6 ms, and a modelled ~12 frames/s per node against a measured 13.6. Every conclusion H2
+reached rested on those numbers being roughly right.
+
+For what happens next, go to [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md). What remains is
+M0's soak, then the distance sweep that is M0's kill criterion, then M1's unplug test, M3's A/B slots,
+M4's CAN half, M5's firmware verification path and M6's reconciler.
 
 21 gates green: 172 C++ cases and 36,658 checks on the firmware core, 29 on-target checks under QEMU,
 and 154 Python cases including the manifest, the locality contract and the signer. Zero failures, with
