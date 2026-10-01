@@ -2623,4 +2623,5 @@ Three things follow, all from the 10-second samples:
 No deaths in either run. A false death needs six heartbeat periods (600 ms) with no HEARTBEAT,
 HELLO or HELLO_ACK from the peer. Those three are the only frames that call `peer_on_frame()`
 (node.cpp:331/352/366), so the unicast probes do not keep a peer alive. The worst 10-second sample
-lost 14 of its 100 heartbeats, and none of those losses ran to six in a row.
+lost 14 of its 100 heartbeats. Zero deaths proves that no 600 ms window went without one of those
+three frames.
