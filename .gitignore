@@ -22,6 +22,11 @@
 # being closed, and 8 KB of it. Same rule as the two above.
 !/captures/boardA-first-boot-095f21e.log
 
+# Both sides of the first two-node link. The PDR and RTT figures quoted in M0-LOG session 11 come
+# from these two files; 10 KB for the evidence behind the project's first link measurement.
+!/captures/pair-A-0x6300-first-link.log
+!/captures/pair-B-0x7368-first-link.log
+
 # Local Claude Code session settings stay local; the zero-assumption ledger IS
 # tracked, because CLAUDE.md rule 3 makes it part of the project's method rather
 # than part of anyone's setup.

@@ -337,3 +337,24 @@ happened not to match `exceeds_section6_expectation`. An empty grep was read as 
 exists, it is correct, and it stayed quiet because 31.5 KB is under 40 KB. Same family as the
 stale-ELF and the one-stack-sample lessons: a negative result from an instrument you did not verify
 is not evidence.
+
+### The first measured link — 2026-10-01
+
+Two boards, 20 cm apart on a desk, 26 seconds. The first PDR and RTT figures in this repository that
+were **measured rather than cited**. Easiest possible conditions, so these are a ceiling and not a
+characterisation.
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **ESP-NOW round-trip time between two ESP32-S3 at 20 cm** | **p50 in [4000, 6000] µs on both sides**, min 4031 / 4036 µs, remote turnaround 114–119 µs. A's p99 landed in [11000, 16000] µs; B saw one 44.6 ms outlier that put its p99 in [42000, 60000] | boards 0x6300 and 0x7368, fw `095f21e`, `captures/pair-*-first-link.log` | 2026-10-01 | volatile — desk conditions, one 26 s window | **measured** |
+| **`sim/link_model.hpp` is calibrated against reality, not merely self-consistent** | The model puts the one-way delay at 2782.85 µs from §3's cited figures — a **5.57 ms round trip** — and the measured p50 bucket is [4, 6] ms. The modelled figure falls inside the measured median. Every H2 conclusion rests on this: 19 workers at 18.99x, the livelock at 20 ms units, and "a unit must run far longer than a round trip" | same, against `sim/link_model.hpp` | 2026-10-01 | volatile | **measured — model validated** |
+| Packet delivery at 20 cm is 100 % in both directions | 1000000 ppm each way, 0 `lost_seqgap`, 0 `hb_lost`, 0 `cb_fail`, 0 `enqueue_err`, RSSI −21 / −22 dBm. **This is the trivial case**: a link that failed here would mean something was badly wrong. §13-M0's figure needs the 24 h soak and §3's distance sweep across the range cliff | same | 2026-10-01 | volatile | measured, and not the M0 number |
+| ESP-NOW v2 negotiates the 1446-byte profile between two real boards | Both link records report `espnow_ver: 2, mtu: 1446`, so §5.3's v2 profile is reachable on this hardware rather than only on paper | same | 2026-10-01 | stable per IDF version | measured |
+| **The CH343 exposes a unique serial per device** | Board A is `5CBC414102`, board B `5C93086589`, in the Windows instance id. Three identical boards are therefore individually identifiable **without unplugging anything** — this repo assumed the unplug-and-see-what-vanishes trick would be needed | Device Manager / `Get-PnpDevice` | 2026-10-01 | stable | measured |
+
+**Two anomalies, open rather than explained.** One 26-second window diagnoses nothing, which is the
+same discipline that stopped a single stack sample from diagnosing a hang here. (1) `reorder_dup` is
+1 on A and **149** on B against ~785 received frames each, while every other figure is symmetric to
+within a dB — first suspect is the broadcast-versus-unicast sequence accounting §5.1 separates.
+(2) B emits `peer_admitted` for an already-admitted peer **every 2 s**, exactly `hello_interval_ms`,
+which would make a genuine admission indistinguishable from a repeat in the event ring.

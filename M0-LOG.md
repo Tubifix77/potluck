@@ -2310,3 +2310,69 @@ M0 is **not** accepted. Its acceptance needs two boards, a 24-hour soak, a delay
 figure. One board heartbeating to nobody is not a measurement of a link. What closed today is one
 acceptance item out of several — the one that happened to be blocking the memory budget for
 everything after M2.
+
+### Two boards, and the first real link
+
+Board B — MAC `b8:1f:3f:da:73:68`, node **0x7368** — backed up and flashed. Both boards then listened
+to simultaneously, without resetting either: opening a serial port must not reset the thing being
+observed, or peer discovery and a settled peer table are destroyed by the act of looking. `listen.py`
+clears DTR and RTS *before* `open()` for exactly that reason.
+
+They found each other.
+
+| | A sees B | B sees A |
+|---|---|---|
+| state | alive | alive |
+| peer id | 0x7368 | 0x6300 |
+| profile | ESP-NOW v2, MTU 1446 | ESP-NOW v2, MTU 1446 |
+| RSSI | −21 dBm | −22 dBm |
+| tx PDR | 1000000 ppm (151/151) | 1000000 ppm (152/152) |
+| rx PDR | 1000000 ppm | 1000000 ppm |
+| lost_seqgap / hb_lost | 0 / 0 | 0 / 0 |
+| **RTT p50** | **[4000, 6000] µs** | **[4000, 6000] µs** |
+| RTT min | 4031 µs | 4036 µs |
+| remote turnaround | 114 µs (max 124) | 119 µs (max 148) |
+
+**The simulator is calibrated, not merely self-consistent.** `sim/link_model.hpp` models the ESP-NOW
+one-way delay at 2782.85 µs from §3's cited figures — a 5.57 ms round trip. Real silicon measures a
+p50 of 4–6 ms with a 4.03 ms floor. The modelled number falls inside the measured median bucket.
+
+That matters beyond this session, because every H2 result rests on it: 19 workers at 18.99×, the
+collapse into livelock at 20 ms work units, and the rule that a unit must run far longer than a round
+trip. Those were conclusions about a model. The model now has a measurement behind it.
+
+### Two anomalies, recorded rather than explained
+
+One 26-second window diagnoses nothing — the same reason one stack sample never diagnosed a hang
+here. Both of these are written down to be looked at, not resolved from a single sample:
+
+**1. `reorder_dup` is wildly asymmetric: 1 on A, 149 on B**, against 784 and 787 received frames
+respectively. Everything else about the link is symmetric to within a dB and a few microseconds,
+which makes a 0.1 % versus 19 % split interesting rather than noise. First place to look is the
+broadcast-versus-unicast sequence accounting: §5.1 makes `seq` per (src,dst), the code deliberately
+does not fold the broadcast stream into `account_rx_seq`, and A has been up eleven minutes against
+B's sixty seconds — so the two nodes are at very different points in their sequence histories.
+
+**2. B emits `peer_admitted` for A every two seconds, forever**, for a peer already sitting in slot 0
+— at 42877, 44880, 46877, 48877 ms and onward. Two seconds is exactly `hello_interval_ms`, so B
+appears to re-admit a known peer on every periodic HELLO rather than only on the transition into the
+table. If that reading is right it is a real defect: the event ring fills with repeats, and a genuine
+admission becomes indistinguishable from the hundredth re-announcement of a peer that never left.
+
+A third, smaller: B logged a single 44.6 ms RTT sample against a 4 ms median, putting its p99 in the
+[42000, 60000] µs bucket where A's sat at [11000, 16000]. One outlier in sixty is what a p99 is for,
+and §8's insistence on reporting percentiles as intervals rather than invented numbers is doing its
+job here.
+
+### What this is and is not
+
+It is **two boards exchanging measured heartbeats** — the sentence this project has used since the
+beginning to describe the thing that outranks all further spec work. It is also the first PDR and RTT
+figures in the repository that were measured rather than cited.
+
+It is **not M0 accepted.** §13-M0 wants a 24-hour soak with a published delay histogram and a PDR
+figure, plus §3's distance sweep across the range cliff. Twenty-six seconds at 20 cm on a desk is the
+easiest conceivable condition: 100 % PDR at −21 dBm is what *should* happen, and a link that failed
+*here* would have meant something was badly wrong.
+
+Evidence: `captures/pair-A-0x6300-first-link.log` and `captures/pair-B-0x7368-first-link.log`.

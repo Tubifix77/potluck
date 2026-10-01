@@ -106,9 +106,15 @@ the same label on the board itself.
 
 | Label | MAC | Derived node id | Notes |
 |---|---|---|---|
-| **A** | `b8:1f:3f:da:63:00` | **0x6300** | First board brought up, 2026-10-01. COM3. **Flashed with Potluck** (fw `095f21e`) and running; factory image backed up to `D:/esp/board-backups/boardA-b81f3fda6300-factory-16MB.bin` |
-| B | — | — | not yet read |
+| **A** | `b8:1f:3f:da:63:00` | **0x6300** | 2026-10-01. COM3, CH343 serial `5CBC414102`. Flashed with Potluck (fw `095f21e`); full 16 MB factory image backed up |
+| **B** | `b8:1f:3f:da:73:68` | **0x7368** | 2026-10-01. COM4, CH343 serial `5C93086589`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up |
 | C | — | — | not yet read |
+
+**The CH343 carries a unique serial, so the boards identify themselves.** `5CBC414102` is board A and
+`5C93086589` is board B, visible in Device Manager's instance id without unplugging anything. This
+file assumed the unplug-and-see-what-vanishes trick would be needed to tell three identical boards
+apart; it is not, and the trick is only a fallback now. Backups live in `D:/esp/board-backups/`,
+named by MAC so a restore cannot go to the wrong board.
 
 ## Prep before the parcel lands
 
