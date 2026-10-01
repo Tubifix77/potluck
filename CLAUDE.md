@@ -28,8 +28,17 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-**M0 is still not accepted.** Its acceptance needs two boards, a 24-hour soak, a delay histogram and
-a measured PDR. One board heartbeating to nobody is not a measurement of a link.
+**M0 is still not accepted.** Its acceptance needs a 24-hour soak, a delay histogram and a measured
+PDR.
+
+> **A 24-HOUR SOAK MAY BE RUNNING RIGHT NOW.** Check with `tools\soak.ps1 -Status` before touching
+> anything. If it is: do not unplug a board, do not reflash, do not close the capture processes, and
+> do not let the machine sleep. All three boards are on the PC and the capture is detached, so it
+> survives any session ending -- including this one. `-Stop` ends it deliberately.
+>
+> The soak is the *control* for the distance sweep that follows, which is the test that can actually
+> reopen the transport decision. See "the sweep is not follow-up work, it is the kill criterion" in
+> [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
 
 Two entry points, depending on what is on the desk:
 

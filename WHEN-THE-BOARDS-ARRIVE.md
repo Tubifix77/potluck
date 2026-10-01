@@ -411,11 +411,42 @@ run against **borrowed physics**. The policy is ours. The channel is not.
 
 So, after the soak and needing no hardware beyond two boards and some space:
 
+> **The sweep is not follow-up work. It is the kill criterion.**
+>
+> §13-M0 has two clauses and they ask different questions. *Accept* wants a 24-hour soak with a
+> histogram and a PDR figure — **is this link stable over time?** *Kill* says "if a stable link **at
+> your intended geometry** cannot be achieved, the transport decision reopens **before anything else
+> is built**" — **does this link exist where I actually need it?** The soak cannot answer the second
+> question, because a soak at one distance holds geometry constant by definition. Only the sweep can
+> reopen ESP-NOW, which makes it the higher-stakes of the two.
+>
+> Three things learned on 2026-10-01 that change how to run it:
+>
+> * **The soak is the control for the sweep.** Twenty-four hours at a fixed distance measures how
+>   much the link wanders with *no geometry change at all*, in this house, against these neighbours'
+>   Wi-Fi. Without that baseline you cannot tell "delivery fell because I moved behind a wall" from
+>   "delivery fell because someone started a video call". Run the soak first and the sweep's numbers
+>   become attributable.
+> * **Only one board needs a console.** Every node reports its own view of every link, so the board
+>   cabled to the PC describes the whole cell. The *other* board can live on the mains charger and
+>   walk the house socket to socket. That is what makes a real geometry cheap — no long USB runs, no
+>   second capture.
+> * **Moving a board power-cycles it, and that is data.** The boot epoch lives in NVS and increments
+>   every power-up, so the fixed board will declare the moving one **dead** after ~600 ms and then
+>   **rebooted** rather than *revived* when it returns. Each relocation is a free live test of §8.2's
+>   machinery; `reboots_seen` climbing is the proof it fired.
+
 1. **Sweep distance.** Put the boards at increasing separations — a corridor, a garden, a car park —
-   and capture a few minutes at each. §3 claims PDR above 99 % below 56 m and an oscillation between
+   and capture at each. §3 claims PDR above 99 % below 56 m and an oscillation between
    100 % and 0 from 56–70 m rather than a smooth roll-off. Find out where *your* cliff is, indoors,
    through whatever walls you actually have. Record the geometry with every point; a PDR figure
    without a geometry is not a measurement.
+   **Dwell longest where the variance is.** Because the cliff *oscillates* rather than rolling off,
+   a short sample taken in it aliases to either 100 % or 0 and both readings are lies about the
+   average. Two minutes is plenty at close range where PDR is pinned; give the far points five to ten,
+   so the oscillation shows up *as* oscillation. §3's cliff figures are open farmland, line of sight —
+   indoors in a congested band, expect it much closer, and treat that as the measurement rather than
+   as a contradiction of the citation.
 1b. **Add a through-body point, if Powersuit matters to you.** Put one board on each side of a
    torso and capture PDR there too. A human body costs roughly **20 dB** at 2.4 GHz — free-space path
    loss of ~44 dB rises to ~65 dB with the body shadowing the link, and the on-body path-loss exponent
