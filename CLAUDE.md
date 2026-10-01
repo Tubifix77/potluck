@@ -36,6 +36,11 @@ PDR.
 > `tools\soak.ps1 -Status` — judges the capture **files**, not the tasks, because a task reported
 > Running whose file stopped growing is the failure that looks healthy from outside.
 >
+> **A soak is not started until its first ten minutes have been read** with
+> `python tools\soak_report.py captures\soak-<label>-COM*.jsonl`. File size growing is not content
+> being right: run 2's smoke test found a since-boot histogram the size check could never have seen.
+> Run 2 passed it at 0.47 h (2026-10-02 00:59) — zero deaths, same histogram shape as run 1.
+>
 > **Run 2 started 2026-10-02 00:31, completes 2026-10-03 00:31.** Three boards on the PC, one
 > scheduled task per port (`potluck-soak-COM3/4/5`).
 >
