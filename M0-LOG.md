@@ -2597,7 +2597,7 @@ Boards in a straight line at about 10 cm spacing, 20 cm end to end:
 | | arrangement | adjacent pairs (~10 cm) | end pair (~20 cm) |
 |---|---|---|---|
 | run 1 | B C A | B–C −11 dBm, C–A −19 | A–B −27 |
-| run 2 | A B C (B and C swapped **one minute after the start**, then left alone) | A–B **−31**, B–C −4 | A–C **−14** |
+| run 2 | C B A (B and C swapped **one minute after the start**; A never moved) | A–B **−31**, B–C −4 | A–C **−14** |
 
 Board identities: A = 0x6300, B = 0x7368, C = 0x8160. Run 2 has had a single geometry for all but
 its first minute, so it is a clean control for the sweep.
