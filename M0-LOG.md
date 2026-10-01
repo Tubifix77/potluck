@@ -2589,3 +2589,36 @@ sweep is still the only test that can reopen the transport decision.
 What this does settle: the acceptance analysis exists, it has been run against real data and
 corrected by it, and every figure §13-M0 asks for now has a shape. The histogram is not bimodal, the
 PDR has margin, and memory stays flat.
+
+### The geometry, from the owner — and what it shows
+
+Boards in a straight line at about 10 cm spacing, 20 cm end to end:
+
+| | arrangement | adjacent pairs (~10 cm) | end pair (~20 cm) |
+|---|---|---|---|
+| run 1 | B C A | B–C −11 dBm, C–A −19 | A–B −27 |
+| run 2 | A B C (B and C swapped **one minute after the start**, then left alone) | A–B **−31**, B–C −4 | A–C **−14** |
+
+Board identities: A = 0x6300, B = 0x7368, C = 0x8160. Run 2 has had a single geometry for all but
+its first minute, so it is a clean control for the sweep.
+
+Three things follow, all from the 10-second samples:
+
+1. **At desk range, distance does not decide signal strength.** In run 2 the *adjacent* A–B pair is
+   the weakest link and the A–C pair at the two ends is among the strongest. A–B was the weakest
+   pair in run 1 too, at twice the distance. Orientation and the PCB antennas' patterns outweigh
+   10 cm. The sweep plan now requires orientation to be recorded and held fixed.
+2. **Heartbeat loss does not follow signal strength either.** B–C, the strongest link at −4 dBm,
+   was the cleanest pair in run 1 (19 and 26 lost in 3.45 h) and is the lossiest in run 2 (225 and
+   192 in 0.56 h, a loss in about half of all 10-second samples, at most 14 per sample). Since the
+   swap, the links to and from B lose most. In run 1 it was A. The pattern follows the arrangement,
+   and no single cause is claimed for it here.
+3. **Unicast lost nothing, anywhere: zero sequence gaps on every link in both runs**, while the
+   broadcast heartbeats on those same links lost hundreds. That is the design working as described
+   in §8.2: a unicast frame is MAC-acknowledged and retransmitted, and a broadcast is sent once, so
+   the heartbeat stream shows the radio's raw single-shot loss and unicast shows what survives the
+   retries. That makes heartbeat loss the more sensitive instrument, which is why it is worth
+   emitting its denominator properly after the soak.
+
+No deaths in either run: a false death needs six consecutive missed heartbeats *and* no other frame
+in that window, and the worst 10-second sample lost 14 of its 100 heartbeats.

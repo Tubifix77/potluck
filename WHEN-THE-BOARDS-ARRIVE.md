@@ -441,6 +441,11 @@ So, after the soak and needing no hardware beyond two boards and some space:
    100 % and 0 from 56–70 m rather than a smooth roll-off. Find out where *your* cliff is, indoors,
    through whatever walls you actually have. Record the geometry with every point; a PDR figure
    without a geometry is not a measurement.
+   **Geometry means orientation as well as distance, and orientation is held fixed between points.**
+   On the desk, ten centimetres apart, orientation outweighed distance outright: in run 2 the
+   *adjacent* A-B pair was the weakest link (-31 dBm) and the A-C pair at the two ends one of the
+   strongest (-14). Mark which way each board faces, and keep it that way as the distance grows, or
+   a sweep measures how the boards were set down rather than how far apart they are.
    **Dwell longest where the variance is.** Because the cliff *oscillates* rather than rolling off,
    a short sample taken in it aliases to either 100 % or 0 and both readings are lies about the
    average. Two minutes is plenty at close range where PDR is pinned; give the far points five to ten,
