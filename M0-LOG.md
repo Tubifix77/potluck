@@ -2463,3 +2463,129 @@ It is still not acceptance. §13-M0 wants a 24-hour soak with a published delay 
 figure measured rather than cited, and §3's distance sweep across the range cliff. Forty-one seconds
 at desk range is the easiest case that exists. What has been established is that the mechanism works,
 the numbers are real, and two defects were found that no amount of emulation would have shown.
+
+## Session 12 — 2026-10-02, reading run 1, and a smoke test that should have come first
+
+Run 1 died at 3 h 27 m when the desktop app restarted and closed the job object its captures were
+invisibly inside. Run 2 runs on Task Scheduler. While it ran, I read run 1's data for the first time.
+
+**The owner's point, recorded because it is right:** a 24-hour run of an untested pipeline should be
+preceded by a ten-minute smoke test. One was done, but it checked file *size*. A check of file
+*content* would have found both problems below before the 24 hours started, while fixing them cost
+nothing. From now on a soak is not considered started until `tools\soak_report.py` has been run
+against its first ten minutes and read.
+
+### A tool, so that the end of the soak is a command and not an improvisation
+
+`tools\soak_report.py` turns captures into the figures §13-M0's table asks for. It follows the two
+rules in M0-RUNBOOK §5: a percentile is printed as the **bucket interval** that contains it, and a
+ratio with an empty denominator prints `unmeasured`. Both halves of each link pair are printed next
+to each other, so one node's view can be checked against the other's.
+
+**Its first version was wrong, and the smoke test caught it.** The firmware's RTT histogram is
+cumulative **since boot**, and these boards have not been reset since before run 1. The tool
+differenced frame and heartbeat counters across the window but took the histogram from the last
+sample alone. Run 2's half-hour report then showed RTT maxima identical to run 1's to the
+microsecond, which no independent window can produce. The histogram, sample count and timeouts are
+now differenced too. The min and max cannot be differenced, so they are printed as since-boot and
+labelled that way. The run-1 figures below are from the corrected tool. An earlier draft of this
+entry said 46,029 samples, and that figure was the since-boot total.
+
+### Run 1: the delay histogram, 37,252 samples pooled across six links, 3.45 h
+
+| bucket | samples | share | cumulative |
+|---|---:|---:|---:|
+| 3–4 ms | 5 | 0.01 % | 0.01 % |
+| **4–6 ms** | **31,396** | **84.28 %** | 84.29 % |
+| 6–8 ms | 3,722 | 9.99 % | 94.28 % |
+| 8–11 ms | 863 | 2.32 % | 96.60 % |
+| 11–16 ms | 531 | 1.43 % | 98.03 % |
+| 16–22 ms | 370 | 0.99 % | 99.02 % |
+| 22–30 ms | 231 | 0.62 % | 99.64 % |
+| 30–42 ms | 92 | 0.25 % | 99.89 % |
+| 42–60 ms | 42 | 0.11 % | 100.00 % |
+| 60 ms and above | **0** | — | — |
+
+p50 **4–6 ms**, p99 **16–22 ms**, p99.9 **42–60 ms**. Nothing above 60 ms, and **no empty bucket
+inside the tail**. The kill criterion asks whether the tail is *bimodal*, because §3's range cliff
+shows up as PDR flipping between 100 % and 0, not as gradual decay. A tail that falls off steadily
+from the mode with no gap means the link is working. The report checks for that gap explicitly.
+p99 against L3's 500 ms deadline leaves a factor of 23 in hand. Run 2's first half hour (5,033
+samples) has the same shape, bucket for bucket.
+
+**The tail comes from local queueing, not air time.** `remote_turnaround_us` is 104–119 µs typical on
+all six links, so the peer's own processing is about a tenth of a millisecond. `txq_max_us`, the time
+from submitting a frame to the send callback, reaches 30–49 ms. The slow samples are frames waiting
+in this node's transmit queue. That is a scheduling property, not a radio one.
+
+### PDR, and a gap in what the firmware reports
+
+Run 1's unicast delivery was **100.0000 % on all six links, both directions**: 892,612 frames
+received, zero `lost_seqgap`, `dropped_bad`, `cb_fail` and `enqueue_err`.
+
+**The printed PDR covers unicast only.** `pdr_rx_ppm()`'s denominator is `rx_frames +
+rx_lost_seqgap`, and both of those are unicast counters. Broadcast heartbeat loss is counted in
+`rx_hb_lost_seqgap`, a gap in the 32-bit `hb_seq`, so it is a real loss. Its denominator,
+`rx_bcast_frames`, is **never emitted in the stats line**. The firmware therefore counts heartbeat
+losses but never states a heartbeat delivery ratio, even though the heartbeat is the traffic M0 is
+about.
+
+The tool reconstructs the denominator from elapsed uptime. That is valid only while the peer did not
+reboot: its fixed-period timer then sent `interval / 100 ms` heartbeats. The tool checks
+`reboots_seen` and a constant `epoch`, and labels every derived figure RECONSTRUCTED.
+
+| link (receiver ← sender) | run 1, 3.45 h | run 2, first 0.47 h |
+|---|---:|---:|
+| 0x6300 ← 0x7368 | 99.9638 % | 99.4014 % |
+| 0x7368 ← 0x6300 | 99.8212 % | 99.8989 % |
+| 0x6300 ← 0x8160 | 99.8639 % | 99.6887 % |
+| 0x8160 ← 0x6300 | 99.8003 % | 99.9286 % |
+| 0x7368 ← 0x8160 | 99.9847 % | 99.2625 % |
+| 0x8160 ← 0x7368 | 99.9791 % | 99.4528 % |
+
+§13-M0's false-death arithmetic is `(1 − PDR)^6` for six consecutive misses. At the worst link above
+(0.74 % loss) that gives 1.6 × 10⁻¹³. Observed deaths: **zero** in both runs.
+
+**Decision: emit `rx_bcast_frames` after the soak, not now.** The acceptance line asks for a PDR
+measured in both directions, and the unicast figure is measured directly. Restarting would change
+the binary the figures are accepted against in exchange for a ratio that is already sound with the
+reboot check clean.
+
+### ~~The heartbeat loss is transmit-side and localised to board A~~ — withdrawn the same day
+
+In run 1, 0x6300's transmissions accounted for 470 of 729 lost heartbeats, and an earlier draft of
+this entry called that the first measurement to set one board apart from its neighbours. Run 2
+reverses it. Over its first half hour, 0x6300 is the *cleanest* transmitter: 29 lost, against 192
+for 0x7368 and 176 for 0x8160. RSSI moved between the runs as well: B↔C went from −11 to −4/−5 dBm,
+A↔B from −27 to −31 and A↔C from −19 to −14. The geometry changed, and the loss pattern changed with
+it. **The pattern belongs to the arrangement and the environment, not to a board.** Only the sweep,
+with recorded geometry, can say more.
+
+### Static allocation holds, with a number
+
+Over run 1's 3.45 hours, with about 367,000 frames received per node, `free_dram` drifted **+0 B** on
+two nodes and **−244 B** on the third. `largest_block` was **204,800 B on every one of 3,615
+samples**: the same value each time, not approximately constant. There is no fragmentation because
+there is no allocation. Run 2 shows the same single 244-byte step on a different node, which looks
+like one buffer's worth of transient state rather than a leak. Run 2's 24 hours will settle it.
+
+### The duplicate defect, with 3.45 hours instead of 41 seconds
+
+The boot-order rule from session 11 holds exactly, and the long window adds the part that matters:
+**once a peer is admitted, the counter stops.** On the three links showing 20, the last increase came
+before the capture began, and the counter stayed flat for 3.45 hours. The other three each tick once
+in the whole window. So there are two populations:
+
+1. **The admission artefact.** Exactly 20, once, on peers that booted earlier. It never recurs.
+2. **Genuine duplicates, about 1 per 180,000 frames.** This is the lost-MAC-ACK-and-retry case I
+   overclaimed about in session 11 and withdrew. It is real, at roughly three parts per million.
+
+### What this does and does not settle
+
+It is **not** acceptance. Run 1 covered 3.45 hours on one desk, the easiest case there is, and §3's
+range cliff sits at 56–70 m. Run 2 provides the duration and the sweep provides the geometry. The
+sweep is still the only test that can reopen the transport decision.
+
+What this does settle: the acceptance analysis exists, it has been run against real data and
+corrected by it, and every figure §13-M0 asks for now has a shape. The histogram is not bimodal, the
+PDR has margin, and memory stays flat.
