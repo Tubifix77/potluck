@@ -108,7 +108,7 @@ the same label on the board itself.
 |---|---|---|---|
 | **A** | `b8:1f:3f:da:63:00` | **0x6300** | 2026-10-01. COM3, CH343 serial `5CBC414102`. Flashed with Potluck (fw `095f21e`); full 16 MB factory image backed up |
 | **B** | `b8:1f:3f:da:73:68` | **0x7368** | 2026-10-01. COM4, CH343 serial `5C93086589`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up |
-| C | — | — | not yet read |
+| **C** | `b8:1f:3f:da:81:60` | **0x8160** | 2026-10-01. COM5, CH343 serial `5C93086538`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up |
 
 **The CH343 carries a unique serial, so the boards identify themselves.** `5CBC414102` is board A and
 `5C93086589` is board B, visible in Device Manager's instance id without unplugging anything. This

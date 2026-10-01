@@ -358,3 +358,24 @@ same discipline that stopped a single stack sample from diagnosing a hang here. 
 within a dB — first suspect is the broadcast-versus-unicast sequence accounting §5.1 separates.
 (2) B emits `peer_admitted` for an already-admitted peer **every 2 s**, exactly `hello_interval_ms`,
 which would make a genuine admission indistinguishable from a repeat in the event ring.
+
+### A standing measurement condition, and a three-node cell — 2026-10-01
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **The bench sits in an RF-saturated house** | The owner's home is full of Wi-Fi and Bluetooth devices. Every PDR, RTT and loss figure measured here carries household contention in it, and `CONFIG_POT_CHANNEL=1` is among the most crowded Wi-Fi channels. §13-M0's figures **must state this condition** or they mislead. §3's range citations came from open farmland, so expect the distance sweep to be worse here without that being a contradiction. Measuring PDR across channels is legitimate M0 work | the owner, stated 2026-10-01 | 2026-10-01 | stable | stated by the owner |
+| **A three-node cell converges and holds** | 0x6300, 0x7368, 0x8160 reset together: `peers_alive: 2` on every node, **0 deaths and 0 reboots_seen over 41 s**, all six links at 100 % tx PDR with 0 `lost_seqgap` and 0 `hb_lost`, RTT p50 in [4000, 6000] µs on every link, maxima 7.2–11.6 ms. RSSI −13 to −32 dBm by physical position | `captures/trio-*.log` | 2026-10-01 | volatile — desk range, 41 s | **measured** |
+| **`sim/`'s airtime model validates against hardware** | Each node transmits ~13.6 frames/s; `print_sweep()` predicts ~12 for broadcast-beacon mode at n=3 (ten beacons plus a probe round per second). Together with the round-trip figure, **both load-bearing numbers in the simulator now have measurements behind them** — it was built from citations with no hardware to check against | same, against `sim/sim.cpp` | 2026-10-01 | volatile | **measured — model validated** |
+
+**`reorder_dup` settled by experiment, and a withdrawn claim.** This session asserted the asymmetry
+was *provably not* RF because PDR was 100 % and `lost_seqgap` 0. **Withdrawn** — a lost MAC-layer ACK
+followed by a retry delivers a genuine duplicate with delivery still at 100 % and no sequence gap, so
+RF was a live hypothesis. Three boards reset together settled it: **~20 duplicates for every peer that
+booted *before* the reporting node and 1 for every peer that booted after, across all six links with
+no exceptions.** RF knows nothing of boot order and does not land on exactly 20 three times. It is a
+sequence-expectation artefact at admission, corroborated by `unknown_peer` counts of 2 / 24 / 44 in
+boot order. Transient and harmless in effect, but `reorder_dup` is a link-health signal and for the
+first seconds of every link it reports a flaky link that is not flaky. **Open, mechanism named.**
+
+**Still open and not RF:** `peer_admitted` fires for an already-admitted peer at exactly
+`hello_interval_ms` with no jitter. A congested band cannot produce a metronome.

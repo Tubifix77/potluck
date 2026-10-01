@@ -27,6 +27,13 @@
 !/captures/pair-A-0x6300-first-link.log
 !/captures/pair-B-0x7368-first-link.log
 
+# All three nodes, reset together. These are the evidence for the reorder_dup finding in M0-LOG
+# session 11 -- the boot-order pattern is only visible across all six links at once -- and for the
+# three-node cell holding together. 60 KB for the first three-node measurement in the project.
+!/captures/trio-A-0x6300.log
+!/captures/trio-B-0x7368.log
+!/captures/trio-C-0x8160.log
+
 # Local Claude Code session settings stay local; the zero-assumption ledger IS
 # tracked, because CLAUDE.md rule 3 makes it part of the project's method rather
 # than part of anyone's setup.

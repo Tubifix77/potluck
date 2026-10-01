@@ -2376,3 +2376,90 @@ easiest conceivable condition: 100 % PDR at −21 dBm is what *should* happen, a
 *here* would have meant something was badly wrong.
 
 Evidence: `captures/pair-A-0x6300-first-link.log` and `captures/pair-B-0x7368-first-link.log`.
+
+### A standing measurement condition, stated before any soak
+
+The owner volunteered something that reframes every number on this bench: **the house is saturated
+with Wi-Fi and Bluetooth devices.** It is written down as a memory and belongs here too, because
+§13-M0's acceptance figures will be measured in it and a figure without its conditions misleads
+whoever reads it later.
+
+It cuts both ways, and the second direction is the one that earns its keep.
+
+**It is a real error factor.** Latency tails, occasional retries, bursty loss and p99 blowouts are the
+expected signature of a congested 2.4 GHz band, not evidence of a firmware fault. Reaching for the
+code first would be a mistake. §3's cited range figures came from open farmland; expect the distance
+sweep to be markedly worse here and do not read the gap as a contradiction of the citation. And
+`CONFIG_POT_CHANNEL=1` sits on one of the most crowded Wi-Fi channels there is — measuring PDR across
+several channels to find a quiet one is legitimate M0 bench work here, possibly worth more than
+anything in the firmware.
+
+**But it is a hypothesis per counter, never a blanket excuse.** Ask whether RF can physically move
+the counter in question. A latency tail: yes. A counter that fires on a metronome: no.
+
+### A claim withdrawn, and then settled by experiment
+
+This session first asserted that the `reorder_dup` asymmetry was **provably not** an RF effect,
+reasoning that PDR was 100 % and `lost_seqgap` was 0. **That reasoning was wrong and is withdrawn.**
+There is a perfectly ordinary RF path to a duplicate: the frame arrives, its MAC-layer ACK is lost,
+the sender retries, and the receiver gets it twice. Delivery stays at 100 % because the frame *did*
+arrive, and no sequence gap appears because nothing was lost. In a congested house that is routine.
+
+So the anomaly went back to undecided — and three boards made it answerable. All three were reset
+together, so their sequence histories began at the same moment rather than eleven minutes apart, and
+all six links were read at once:
+
+| reporting node | peer | `reorder_dup` |
+|---|---|---|
+| 0x6300 (first to boot) | 0x7368 | 1 |
+| 0x6300 | 0x8160 | 1 |
+| 0x7368 | 0x8160 | 1 |
+| 0x7368 | 0x6300 | **20** |
+| 0x8160 | 0x6300 | **20** |
+| 0x8160 | 0x7368 | **20** |
+
+**The rule is exact: ~20 duplicates for every peer that booted *before* the reporting node, 1 for
+every peer that booted after.** Six links, no exceptions, and the same constant three times.
+
+RF cannot produce that. Interference does not know boot order and does not land on exactly 20
+repeatedly. **It is a sequence-expectation artefact at peer admission**: a node admitting a peer that
+has already been transmitting starts its expectation behind that peer's advanced counter, and the
+catch-up is accounted as duplicates. The `unknown_peer` counts corroborate it — 2, 24 and 44 for the
+first, second and third node to boot, scaling with how many peers were already running. The earlier
+149 was the same defect with eleven minutes of history to catch up on instead of seconds.
+
+Harmless in effect: it is a transient at admission, not an ongoing error. But it is a genuine
+cosmetic defect, because `reorder_dup` exists as a link-health signal and for the first seconds of
+every link it reports a flaky link that is not flaky. Open, with the mechanism now named.
+
+The second anomaly stands unchanged and is **not** RF: `peer_admitted` fires for an already-admitted
+peer at exactly `hello_interval_ms` with no jitter. A congested band cannot produce a metronome.
+
+### The first three-node cell
+
+| | |
+|---|---|
+| Nodes | 0x6300, 0x7368, 0x8160 — all reset together |
+| Convergence | `peers_alive: 2` on every node, **0 deaths, 0 reboots_seen** across 41 s |
+| All six links | **100 % tx PDR, 0 `lost_seqgap`, 0 `hb_lost`** |
+| RTT p50 | **[4000, 6000] µs on all six**, maxima 7.2–11.6 ms |
+| RSSI | B↔C −13/−15 dBm (adjacent ports), A↔B −20, A↔C −31/−32 — the radio maps the desk |
+
+No 44 ms outlier this time, which strengthens the reading of the earlier one as passing contention
+rather than anything structural.
+
+**And the airtime model validates too.** Each node transmitted ~13.6 frames/s. `print_sweep()`
+predicts ~12 for broadcast-beacon mode at three nodes — ten beacons plus a probe round per second.
+That is the second independent part of `sim/` to match measured reality today, after the round-trip
+figure. The simulator was built from citations with no hardware to check against; both of its
+load-bearing numbers now have measurements behind them.
+
+### Where M0 actually stands
+
+Three boards converge, six links deliver every frame, and the round trip is 4–6 ms — **in a house
+full of competing radios.** That is a better result than the conditions deserved.
+
+It is still not acceptance. §13-M0 wants a 24-hour soak with a published delay histogram, a PDR
+figure measured rather than cited, and §3's distance sweep across the range cliff. Forty-one seconds
+at desk range is the easiest case that exists. What has been established is that the mechanism works,
+the numbers are real, and two defects were found that no amount of emulation would have shown.
