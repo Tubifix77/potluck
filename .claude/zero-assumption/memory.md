@@ -379,3 +379,34 @@ first seconds of every link it reports a flaky link that is not flaky. **Open, m
 
 **Still open and not RF:** `peer_admitted` fires for an already-admitted peer at exactly
 `hello_interval_ms` with no jitter. A congested band cannot produce a metronome.
+
+### The CP2102 adapter, and the safe order to wire it — 2026-10-01
+
+M1's acceptance needs `potctl` to reach a board's frame-link pins, which is what the adapter is for.
+One of these facts is safety-relevant: the ESP32-S3's GPIOs are not 5 V tolerant.
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **A CP2102's UART logic level is set by its `VIO` pin, not by the chip** | `VIO` powers the serial I/O and **accepts 1.8–5 V**; output high is **V_OH ≈ VIO − 0.1 V**. So a module's signalling voltage is a property of *how that module is wired*, not a guarantee of the part. A board that ties `VIO` to USB VBUS would idle TX near 5 V | [CP2102/9 datasheet](https://www.silabs.com/documents/public/data-sheets/CP2102-9.pdf) (via search; silabs returns 403 to direct fetch) | 2026-10-01 | stable | verified |
+| The ordered module claims 3.3 V signalling | Seller's description: pins are **3.3 V (<40 mA), 5 V, GND, TX, RX**; "signal pin level is 3.3 V, positive logic"; 300 bps–1 Mbps; onboard state LED plus transceiver LEDs that blink on traffic; needs the CP210x driver. The presence of a 3.3 V output pin implies an onboard regulator with `VIO` tied to it, which is the usual design — **but this is a seller's listing, not a datasheet, and the row above means it cannot be assumed** | AliExpress product description for the ordered part | 2026-10-01 | volatile | **claimed, not verified** |
+| **Its 3.3 V rail cannot power a board** | **<40 mA.** An ESP32-S3 with the radio up draws several hundred. This replaces the earlier generic "do not tie two powered rails together" caution with a specific number: the pin physically cannot do it | same | 2026-10-01 | volatile | claimed |
+| 921600 baud fits, with about 8 % margin | `CONFIG_POT_SERIAL_BAUD` defaults to 921600 against the module's stated 1 Mbps ceiling. If the frame link proves flaky, 460800 is a drop-in and nothing in §5.3's framing cares | same, against `firmware/main/Kconfig.projbuild` | 2026-10-01 | volatile | derived |
+
+**Bring-up order, because one direction is safe and the other is not.** Board TX into the adapter is
+3.3 V into a 1.8–5 V tolerant input: safe regardless. Adapter TX into the board is the direction that
+could put 5 V on a GPIO rated to ~3.6 V. So:
+
+1. **Loopback the adapter first** — one jumper, its own TX to its own RX, no board involved. Proves
+   the adapter, its driver and the COM port before anything else can be blamed. The seller's own
+   description recommends this and it is right.
+2. **Then GND and board-TX → adapter-RX only.** Receive-only. Read the frame link, confirm the baud
+   and the byte stream, with the adapter's output still unconnected and unable to drive anything.
+3. **Only then add adapter-TX → board-RX**, which is what `potctl` needs to send READs.
+
+No multimeter was ordered, so step 2 is how the 3.3 V claim gets tested without one: if the stream
+decodes, the convention is right, and the remaining risk is confined to one wire added last.
+
+**Not a datasheet.** The PDF supplied with the order (`S47e3eaf6a9ed4e11a850141ba34a132f7.pdf`) is
+two pages of EU RoHS/REACH/CE compliance boilerplate for an "Integrated circuit-module" with the
+model field blank. It contains no pinout, no ratings and no CAN timing, and says so itself: *"refer to
+the product datasheet"*. Recorded so nobody reads it again hoping for specifications.
