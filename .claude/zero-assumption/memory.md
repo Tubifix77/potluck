@@ -420,8 +420,9 @@ affects M4's bench directly.
 |-------|-------|--------|-----------|-----------|--------|
 | **The onboard 120 Ω termination is confirmed, not inferred** | The schematic draws **R2 = 120** directly across CANH/CANL. This closes the open item that had been inferred from a `121` SMD marking and left `[MEASURE]` for want of a multimeter — a drawing is better evidence than a meter reading anyway | seller's schematic for the ordered module | 2026-10-01 | stable | **verified** |
 | Header pinout confirmed a second way | P1 is a 4-pin header, order **3.3V / GND / RX / TX**, matching the photos. The schematic shows `CAN_TX` to pin 1 (`D`), GND to 2, 3.3 V to 3 (`VCC`), `CAN_RX` to 4 (`R`). CANH/CANL go to a 2-pin screw terminal | same | 2026-10-01 | stable | verified |
-| **`Rs` is tied to GND through R1 = 10 kΩ, which puts the module in slope-control mode** | TI: `Rs` selects high-speed (GND or open), slope control (resistor), or standby (VCC). **"A 10 kΩ resistor gives a slew rate of approximately 1.0 V/µs"**, and the **recommended maximum signalling rate in slope-control mode is 250 kbit/s**, against 1 Mbit/s in high-speed mode | [TI SN65HVD230 datasheet](https://www.ti.com/lit/ds/symlink/sn65hvd230.pdf) + the module schematic | 2026-10-01 | stable | **verified** |
-| **The mode cannot be changed without soldering** | `Rs` is not brought out to the header — P1 carries only 3.3V/GND/RX/TX — so reaching high-speed mode means removing or shorting an SMD resistor. No soldering iron was bought, deliberately. **250 kbit/s is the practical ceiling for this bench, full stop** | same | 2026-10-01 | stable | verified |
+| ~~`Rs` = 10 kΩ caps the module at 250 kbit/s~~ | ~~"A 10 kΩ resistor gives a slew rate of approximately 1.0 V/µs", recommended maximum 250 kbit/s~~ | ~~TI datasheet~~ | 2026-10-01 | — | **WITHDRAWN the same day — both numbers were wrong. See the correction below** |
+| **`Rs` is tied to GND through R1 = 10 kΩ, which selects slope-control mode** | Verified from the module's schematic. `Rs` selects high-speed (GND or open), **slope control (10 kΩ–100 kΩ to GND)**, or low-power (pull up to VCC). This half was right | the module schematic + TI SLOS346O | 2026-10-01 | stable | verified |
+| **The mode cannot be changed without soldering** | `Rs` is not brought out to the header — P1 carries only 3.3V/GND/RX/TX — so changing it means removing or shorting an SMD resistor, and no iron was bought. True, but it matters far less than the withdrawn row claimed | same | 2026-10-01 | stable | verified |
 | Module supply and thresholds | 3.0–3.6 V; input low ≤0.8 V, input high ≥2 V (so the S3's 3.3 V logic drives it comfortably); differential input −6 V to +6 V; −40 °C to 80 °C; 370 µA standby. The listing's graphic reads "370MA", which is wrong by three orders of magnitude — the body text says µA and that is the believable figure | seller's listing | 2026-10-01 | volatile | claimed, with one obvious typo |
 
 **What this does and does not cost us.**
@@ -429,13 +430,13 @@ affects M4's bench directly.
 §5.3.1's capacity analysis is written at **500 kbit/s and 1 Mbit/s**, and already found that eleven
 nodes under *segmentation-only* need 122 % of a 500 kbit/s bus — which is precisely why the `SINGLE`
 flag exists, making a liveness beacon exactly one CAN frame instead of ten. With `SINGLE`, eleven
-nodes at §8.2's 20 ms wired period need ~550 frames/s at ≤111 bits, which is **about 24 % of a
-250 kbit/s bus.** The car still fits. The design survives the cap because a decision already taken
-for a different reason happens to carry it.
+nodes at §8.2's 20 ms wired period need ~550 frames/s at ≤111 bits — **about 12 % of a 500 kbit/s bus
+and 24 % of a 250 kbit/s one.** The car fits either way.
 
-What the cap *does* remove is the ability to **validate §5.3.1's 500 kbit/s and 1 Mbit/s rows on this
-bench at all.** Any CAN capacity figure measured here is a 250 kbit/s figure and must be labelled as
-one.
+~~What the cap does remove is the ability to validate §5.3.1's 500 kbit/s and 1 Mbit/s rows on this
+bench at all.~~ **Withdrawn — there is no cap.** Those rows *can* be validated here; see the
+correction at the end of this file. The rate is chosen from the bus budget, and on a 20 cm bench the
+budget is generous.
 
 **§13-M4's acceptance survives intact.** *"A `SAFE_STATE` frame wins CAN arbitration against
 saturating telemetry"* is a statement about identifier priority, which is bitrate-independent. It
@@ -445,3 +446,33 @@ demonstrates just as well at 250 kbit/s.
 **250 kbit/s or below**, or the dead-man-switch test will fight the hardware rather than exercise the
 firmware. Above the recommended rate the slew-limited edges cause bit errors; on a 20 cm bench it may
 appear to work anyway, which is the worst outcome — out of spec and seemingly fine.
+
+### Correction: there is no 250 kbit/s cap. Read the document, not a summary of it — 2026-10-01
+
+Hours after writing the row above, the sibling Powersuit project challenged it from the datasheet.
+It was right on every point, and the primary source settles it. Quoting **TI SLOS346O, revised April
+2018**, read directly from the PDF:
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **10 kΩ on `Rs` gives ~15 V/µs, not ~1.0 V/µs** | *"a resistor value of 10 kΩ the device will have a slew rate of ~15 V/μs, and with a resistor value of 100 kΩ the device will have a slew rate of ~2 V/μs"*. The withdrawn figure was wrong by a factor of fifteen | TI SLOS346O §10.4.2 | 2026-10-01 | stable | **verified from the PDF** |
+| **No data-rate limit is stated for slope-control mode** | The part is *"Designed for Data Rates up to 1 Mbps"* with no slope-control exception. **"250 kbps" occurs exactly once in a rate context**, as the caption *"Figure 41. Typical SN65HVD230 250-kbps Output Pulse Waveforms With Slope Control"* — a test condition on a waveform plot, not a recommendation | TI SLOS346O | 2026-10-01 | stable | **verified from the PDF** |
+| **The trade-off slope control actually names is bus length, not bit rate** | *"a tradeoff between the total bus length able to be used and the driver's output slope used via the slope control"*. Loop delay rises with 10 kΩ (datasheet timing rows: 70–180 ns, against *"Figure 40. 70.7-ns Loop Delay ... With RS = 0"*), and delay eats the sample-point budget — which is a *length* constraint at a given rate, not a rate ceiling | TI SLOS346O | 2026-10-01 | stable | **verified from the PDF** |
+| **Consequence: 1 Mbit/s is fine on a 20 cm bench, and §5.3.1's rows can be validated after all** | The withdrawn row claimed this bench could never test the 500 kbit/s and 1 Mbit/s capacity analysis. False. Pick the rate from the bus budget — length, node count, loop delay against the sample point — never from a figure caption | derived | 2026-10-01 | stable | corrected |
+
+**The method failure, which matters more than the numbers.** The wrong claim did not come from the
+AliExpress listing. It came from fetching the TI datasheet through a tool that **summarises a PDF with
+a small model** and treating that prose as the datasheet. The model promoted a figure caption to a
+recommendation and invented a slew rate. The real PDF was saved to disk by the same call and went
+unread.
+
+**Rule, stated so it is reusable:** a fetched *summary* is a model reading a document; it is not the
+document. For any load-bearing spec claim — a rating, a limit, a threshold — extract and read the
+primary text. This is the fifth time in one day that a shortcut produced a confident false claim, and
+the other four were all variants of the same thing: trusting an instrument without checking it could
+see what was being asked of it.
+
+**Also worth recording: the challenge came from the other project, and it was right.** Powersuit
+flagged one thing it could not verify — *"that Rs is actually 10 kΩ on these modules — reported, not
+read off the board"* — and **our schematic verifies it.** Each project held the half the other was
+missing.
