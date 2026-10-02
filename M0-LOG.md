@@ -2625,3 +2625,124 @@ HELLO or HELLO_ACK from the peer. Those three are the only frames that call `pee
 (node.cpp:331/352/366), so the unicast probes do not keep a peer alive. The worst 10-second sample
 lost 14 of its 100 heartbeats. Zero deaths proves that no 600 ms window went without one of those
 three frames.
+
+## Session 13 — 2026-10-03, the 24-hour soak completes, and M0's accept line is met
+
+Run 2 began 2026-10-02 00:31:34. It was checked at 0.47 h (the smoke test, session 12) and again at
+15 h, and stopped at 01:03 on 2026-10-03 after **24.52 hours**. `tools\soak.ps1 -Stop` removed the
+three tasks and no capture process survived. The full report is committed as
+`captures/soak-2026-10-02-report.txt`. Geometry: three boards in a row at about 10 cm spacing, in the
+order **C B A**, all on the PC's USB ports, unmoved since one minute after the start.
+
+### Integrity
+
+| | 0x6300 (A) | 0x7368 (B) | 0x8160 (C) |
+|---|---|---|---|
+| observed | 24.52 h, 8,558 samples | 24.52 h, 8,558 | 24.52 h, 8,558 |
+| deaths / revivals / reboots seen | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
+| uptime went backwards | never | never | never |
+| longest silence in the capture | 10.0 s | 10.1 s | 10.1 s |
+| unparseable lines | 0 | 0 | 0 |
+
+The longest silence equals the sampling interval, so no capture paused at any point. The tool now
+checks content as well as size: run 1's failure would show up here as a silence, not merely as a file
+that stopped growing.
+
+### The delay histogram: 264,850 round trips pooled across six links
+
+| bucket | samples | share | cumulative |
+|---|---:|---:|---:|
+| 3–4 ms | 12,559 | 4.74 % | 4.74 % |
+| **4–6 ms** | **215,304** | **81.29 %** | 86.03 % |
+| 6–8 ms | 26,429 | 9.98 % | 96.01 % |
+| 8–11 ms | 5,512 | 2.08 % | 98.09 % |
+| 11–16 ms | 2,002 | 0.76 % | 98.85 % |
+| 16–22 ms | 1,274 | 0.48 % | 99.33 % |
+| 22–30 ms | 912 | 0.34 % | 99.68 % |
+| 30–42 ms | 522 | 0.20 % | 99.87 % |
+| 42–60 ms | 330 | 0.12 % | 100.00 % |
+| 60–85 ms | 6 | 0.002 % | 100.00 % |
+| 85 ms and above | **0** | — | — |
+
+p50 **4–6 ms**, p99 **16–22 ms**, p99.9 **42–60 ms**. Zero probe timeouts on all six links. The tail
+decays without a gap, so it is long but not bimodal, and the six samples in 60–85 ms sit in the
+bucket next to the last populated one. Worst p99 against L3's 500 ms deadline: a factor of 22 in hand.
+
+The 3–4 ms bucket held 0.01 % in run 1 and holds 4.74 % here, and the minimum fell from 3.95 ms to
+3.12 ms. Run 2's layout put B and C at −5 dBm. No cause is claimed. It is the fastest part of the
+distribution, not the slowest, and it does not change any acceptance figure.
+
+### PDR, both directions, measured
+
+| link | outbound frames | outbound PDR (MAC ACK) | inbound frames | inbound PDR (seq gaps) |
+|---|---:|---:|---:|---:|
+| A → B / A ← B | 131,539 | 100.0000 % | 1,054,992 | 100.0000 % |
+| B → A / B ← A | 131,768 | 100.0000 % | 1,055,345 | 100.0000 % |
+| A → C / A ← C | 131,647 | 100.0000 % | 1,056,335 | 100.0000 % |
+| C → A / C ← A | 131,772 | 100.0000 % | 1,055,523 | 100.0000 % |
+| B → C / B ← C | 132,310 | 100.0000 % | 1,057,846 | 100.0000 % |
+| C → B / C ← B | 132,288 | 100.0000 % | 1,057,716 | 100.0000 % |
+
+**791,324 unicast frames sent, 0 `cb_fail`, 0 `enqueue_err`. 6,337,757 received, 0 sequence gaps,
+0 `dropped_bad`.** These are the two figures M0-RUNBOOK §5 defines, and both are measured.
+
+Broadcast heartbeat delivery, reconstructed from uptime (valid here because the reboot check is
+clean): **99.69–99.84 % per link**, with 12,214 lost out of about 5.3 million sent. A heartbeat is
+sent once with no MAC acknowledgement, so this is the radio's raw single-shot loss, and every unicast
+frame above survived that same loss through retries. At the worst link's 0.31 %, six consecutive
+misses has a probability around 10⁻¹⁵. Observed false deaths: zero.
+
+### Static allocation, 24.52 hours
+
+`free_dram` started and ended on **exactly the same byte on all three nodes**. `largest_block` was
+204,800 B on every one of 25,674 samples. The −244 B step seen early in both runs returned. It was
+transient state, not a leak.
+
+### Duplicates
+
+Genuine duplicates inside the window: **3**, all on one link, out of 6.3 million received frames. The
+admission artefact (20 per earlier-booted peer) did not recur, as expected: these boards were
+admitted before run 1.
+
+### A third defect, found by the long run: a negative transmit-queue time
+
+`txq_max_us` reads **4,294,967,210 µs** on both B–C links. That is 2³² − 86, an unsigned subtraction
+that went 86 µs negative. Mechanism, from the code: the radio stamps `done_us` in its send callback
+(`espnow_port.cpp:109`), the stamp is queued, and the node task receives it later
+(`m0_main.cpp:223`). `Node::on_tx_done()` credits **any** successful completion to a peer's
+outstanding probe as long as `probe_sendcb_us` is still 0. It matches on destination MAC alone, not on
+which frame completed. A completion for an earlier frame to the same peer, stamped just before the
+probe's `probe_submit_us` but dequeued just after, is credited to the probe, and `sendcb − submit`
+wraps.
+
+Scope: this affects only the `txq_*` diagnostic. RTT is `recv_us − probe_submit_us` (node.cpp:379)
+and never touches `probe_sendcb_us`, so the histogram above is unaffected. Even without wrapping,
+`txq` can be understated whenever an earlier completion is credited. The fix belongs with the other
+post-soak firmware changes: ignore a completion stamped before `probe_submit_us`, or better, match
+completions to the probe by frame. Both occurrences are on the B–C pair, the strongest link in the
+cell. Why that pair is not established.
+
+### Where M0 stands
+
+**The accept line is met, item by item:**
+
+- 24-hour soak at a 100 ms heartbeat, uninterrupted: **24.52 h, three boards, zero gaps.**
+- Delay histogram, measured on this bench: **above, 264,850 samples.**
+- PDR measured on this bench in both directions: **above, 100.0000 % on both figures for all six links.**
+- Wi-Fi-stack DRAM measured: **32,264 B, closed 2026-10-01.**
+
+**M0 is accepted on its accept line.** The kill line is a different question. It asks whether a
+stable link exists *at the intended geometry*, and three boards 10 cm apart is not that geometry. The
+distance sweep answers it, and it remains the only test that can reopen the transport decision. This
+soak is now its control: the same firmware, with every figure the sweep will be compared against.
+
+### Firmware changes queued behind the sweep, not ahead of it
+
+1. Emit `rx_bcast_frames`, so heartbeat delivery is measured rather than reconstructed.
+2. Fix the `on_tx_done` probe-completion race above.
+3. The `reorder_dup` admission artefact.
+4. `peer_admitted` firing every `hello_interval_ms` for an admitted peer (over half the capture
+   volume).
+
+The sweep runs on the same binary as this soak (`095f21e`), so its numbers differ from the soak's
+only in geometry. The four changes come after it.

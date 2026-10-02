@@ -411,10 +411,14 @@ Copied from ARCHITECTURE.md §13. Tick each line with a number, not an impressio
 
 **Accept**
 
-- [ ] 24-hour soak at a 100 ms heartbeat, both boards, uninterrupted.
-- [ ] A **delay histogram** published, measured on this bench — not cited from ARCHITECTURE.md.
-- [ ] A **PDR figure** published, measured on this bench, in both directions.
-- [ ] **Wi-Fi-stack DRAM measured** (§6 **[MEASURE]**), and §6's ~40 KB trigger evaluated.
+- [x] 24-hour soak at a 100 ms heartbeat, both boards, uninterrupted. **24.52 h, three boards, no
+      capture gap longer than the 10 s sample interval, zero reboots** (2026-10-02/03, M0-LOG session 13).
+- [x] A **delay histogram** published, measured on this bench — not cited from ARCHITECTURE.md.
+      **264,850 round trips: p50 4–6 ms, p99 16–22 ms, p99.9 42–60 ms, none above 85 ms.**
+- [x] A **PDR figure** published, measured on this bench, in both directions. **100.0000 % outbound
+      (791,324 frames, 0 `cb_fail`) and inbound (6,337,757 frames, 0 seq gaps) on all six links.**
+- [x] **Wi-Fi-stack DRAM measured** (§6 **[MEASURE]**), and §6's ~40 KB trigger evaluated.
+      **32,264 B, under the trigger** (2026-10-01).
 
 Supporting evidence the overnight session already produced:
 
@@ -438,6 +442,11 @@ Concretely, on the geometry you actually intend to deploy at:
 - [ ] Is the p99 RTT inside a budget that L3's 500 ms deadline (§4) can live with?
 - [ ] Does the histogram show a long tail that is *bimodal* rather than merely long? §3's cliff
       between 56 m and 70 m appears as PDR oscillating between 100% and 0, not as gradual decay.
+
+**At desk geometry (10 cm, 2026-10-03) all three answers are the passing ones:** PDR 100 % both
+ways for 24.52 h; p99 16–22 ms against a 500 ms deadline; a tail that decays without a gap. They
+stay unticked because desk range is not the intended geometry. The distance sweep ticks them or
+fires the kill, and this soak is its control.
 
 If any answer is no, that is the kill criterion firing. **Stop and reopen the transport decision.**
 Do not start M1. §14 lists "scope expansion back toward the full matrix" as the highest-likelihood,

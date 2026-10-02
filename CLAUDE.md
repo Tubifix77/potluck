@@ -12,9 +12,10 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0 is not yet accepted** — §13-M0's acceptance table needs two boards and a radio.
+**M0's accept line is met (2026-10-03)** — a 24.52-hour soak on three boards; its kill line waits on
+the distance sweep.
 
-**THE HARDWARE HAS ARRIVED — 2026-10-01, and one board is up.** Ordered 2026-09-21 as a shared
+**THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
 Powersuit's Appendix A bench at once.
 
@@ -28,54 +29,35 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-**M0 is still not accepted.** Its acceptance needs a 24-hour soak, a delay histogram and a measured
-PDR.
-
-> ## A 24-HOUR SOAK IS RUNNING. CHECK BEFORE TOUCHING ANYTHING.
+> ## THE 24-HOUR SOAK IS DONE. M0'S ACCEPT LINE IS MET. NEXT: THE DISTANCE SWEEP.
 >
-> `tools\soak.ps1 -Status` — judges the capture **files**, not the tasks, because a task reported
-> Running whose file stopped growing is the failure that looks healthy from outside.
+> Run 2: 2026-10-02 00:31 to 2026-10-03 01:03, **24.52 h**, three boards in a row ~10 cm apart in
+> the order **C B A**, firmware `095f21e`. Report: `captures/soak-2026-10-02-report.txt`; write-up in
+> M0-LOG session 13. Tasks stopped and removed; nothing is capturing now.
 >
-> **A soak is not started until its first ten minutes have been read** with
-> `python tools\soak_report.py captures\soak-<label>-COM*.jsonl`. File size growing is not content
-> being right: run 2's smoke test found a since-boot histogram the size check could never have seen.
-> Run 2 passed it at 0.47 h (2026-10-02 00:59) — zero deaths, same histogram shape as run 1.
->
-> **Run 2 started 2026-10-02 00:31, completes 2026-10-03 00:31.** Three boards on the PC, one
-> scheduled task per port (`potluck-soak-COM3/4/5`).
->
-> **THREE CONSOLE WINDOWS ARE OPEN ON THE DESKTOP — one per capture. Closing a window kills that
-> capture. So does Ctrl-C in it.** They are minimised, not closed. Failure is now isolated per board:
-> if one dies the other two continue, and only that one needs restarting.
->
-> | survives | does not survive |
+> | | |
 > |---|---|
-> | the Claude app closing, updating or crashing | **logging off** (tasks are `Interactive`) |
-> | this session ending; the shell closing | PC shutdown or restart |
-> | screen lock | sleep (power settings prevent it) |
+> | integrity | zero gaps longer than the 10 s sample, zero reboots, zero deaths |
+> | PDR | **100.0000 %** outbound (791,324, MAC ACK) and inbound (6,337,757, seq gaps), all six links |
+> | delay | 264,850 RTTs: p50 4–6 ms, p99 16–22 ms, p99.9 42–60 ms, none above 85 ms, not bimodal |
+> | heartbeat | 99.69–99.84 % per link, *reconstructed* (the firmware never emits `rx_bcast_frames`) |
+> | memory | `free_dram` ends on the same byte it started on, all three nodes |
 >
-> **Why run 1 died, and why this is different.** Run 1 used `Start-Process` and lasted 3 h 27 m. The
-> processes were genuinely orphaned — their launching shell had exited and they survived it — but
-> *orphaned is not outside a job object*. Windows job membership is inherited down the creation
-> chain and does not care about parentage, so `app -> PowerShell -> python` left them inside the
-> app's job. When the app restarted at 22:43:09 the job closed and took all three. Task Scheduler
-> spawns from a service instead (`svchost` pid 2072, running since the PC booted and demonstrably
-> alive through that exact event), so the app is not in the chain at all.
+> **The sweep is the kill criterion** — the only test that can reopen the transport decision — and it
+> runs on **the same binary** as the soak, so the two differ only in geometry. Record orientation as
+> well as distance and hold orientation fixed (at 10 cm it outweighed distance). See
+> WHEN-THE-BOARDS-ARRIVE.md. **Smoke-test it:** read its first minutes with `tools\soak_report.py`
+> before trusting a long dwell.
 >
-> Run 1's data is kept as `captures/partial-3h27m-*.jsonl` — ~124,000 heartbeats per node. Not
-> acceptance, but real evidence on both open defects and the memory trend.
+> **Four firmware changes are queued behind the sweep, not ahead of it:** emit `rx_bcast_frames`;
+> the `on_tx_done` race that credits an earlier frame's completion to the probe (makes `txq_max_us`
+> wrap to ~4.29e9; RTT unaffected); the `reorder_dup` admission artefact (~20 per earlier-booted
+> peer, never recurs); and `peer_admitted` firing every `hello_interval_ms` for an admitted peer.
 >
-> **Already established on hardware, so do not re-measure:** zero deaths, revivals or reboots across
-> six continuous hours on three nodes; §6's Wi-Fi DRAM figure (31.5 KiB, closed); 100 % packet
-> delivery and a 4–6 ms round trip on all six links at desk range.
->
-> **Two open defects, both deterministic and neither RF-related.** `reorder_dup` reports ~20 spurious
-> duplicates for every peer that booted *before* the reporting node (a sequence-expectation artefact
-> at admission; it makes a healthy link look flaky for its first seconds). And `peer_admitted` fires
-> for an already-admitted peer at exactly `hello_interval_ms`, forever — over half the capture volume.
->
-> **After the soak comes the distance sweep, and that is the kill criterion** — the only test that
-> can reopen the transport decision. The soak is its control. See WHEN-THE-BOARDS-ARRIVE.md.
+> **Run 1 died at 3 h 27 m** because `Start-Process` left the captures inside the desktop app's job
+> object, and the app restarted. `tools\soak.ps1` now uses Task Scheduler. Survives the app and this
+> session; does **not** survive logging off, shutdown or sleep. Closing one of its console windows
+> kills that capture.
 
 Two entry points, depending on what is on the desk:
 
