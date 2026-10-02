@@ -43,16 +43,21 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > | heartbeat | 99.69–99.84 % per link, *reconstructed* (the firmware never emits `rx_bcast_frames`) |
 > | memory | `free_dram` ends on the same byte it started on, all three nodes |
 >
-> **The sweep is the kill criterion** — the only test that can reopen the transport decision — and it
-> runs on **the same binary** as the soak, so the two differ only in geometry. Record orientation as
+> **The sweep is the kill criterion** — the only test that can reopen the transport decision. All three
+> boards now run **`a652cab`** (ELF SHA `17437a55a…`), not the soak's `095f21e`: it adds a status LED
+> for the walking board, emits `bcast_frames` (the sweep power-cycles the walker, so heartbeat
+> delivery can no longer be reconstructed from uptime), and fixes the `on_tx_done` race. The sweep's
+> first spot, 1 m from the PC, is the control that ties the new binary back to the soak. Record orientation as
 > well as distance and hold orientation fixed (at 10 cm it outweighed distance). See
 > WHEN-THE-BOARDS-ARRIVE.md. **Smoke-test it:** read its first minutes with `tools\soak_report.py`
 > before trusting a long dwell.
 >
-> **Four firmware changes are queued behind the sweep, not ahead of it:** emit `rx_bcast_frames`;
-> the `on_tx_done` race that credits an earlier frame's completion to the probe (makes `txq_max_us`
-> wrap to ~4.29e9; RTT unaffected); the `reorder_dup` admission artefact (~20 per earlier-booted
-> peer, never recurs); and `peer_admitted` firing every `hello_interval_ms` for an admitted peer.
+> **Status LED** (each board's own receive view, updated once a second): blue = no peer yet, green =
+> all peers under 10 % heartbeat loss, yellow = worst 10–50 %, red = over 50 % or a peer dead. At
+> power-up it shows red, green, blue. Pin is GPIO48 or GPIO38 by board revision, so both are driven.
+>
+> **Still queued:** the `reorder_dup` admission artefact (~20 per earlier-booted peer, never
+> recurs) and `peer_admitted` firing every `hello_interval_ms` for an admitted peer.
 >
 > **Run 1 died at 3 h 27 m** because `Start-Process` left the captures inside the desktop app's job
 > object, and the app restarted. `tools\soak.ps1` now uses Task Scheduler. Survives the app and this

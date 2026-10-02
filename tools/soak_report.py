@@ -15,14 +15,15 @@ interval containing it because that is all a histogram knows, and an unmeasured 
 "unmeasured", never 0 and never 100. A number this tool cannot support is a number it does not
 print.
 
-THE BROADCAST DENOMINATOR IS RECONSTRUCTED, AND SAYS SO
+THE BROADCAST DENOMINATOR: MEASURED WHERE THE FIRMWARE GIVES IT, RECONSTRUCTED WHERE IT DOES NOT
 
-The firmware counts heartbeat loss in rx.hb_lost (a gap in the 32-bit hb_seq, so a real loss) but
-does not emit its denominator, rx_bcast_frames, in the stats line. The unicast PDR the firmware does
+The firmware counts heartbeat loss in rx.hb_lost (a gap in the 32-bit hb_seq, so a real loss).
+Before a652cab it did not emit its denominator, rx_bcast_frames, in the stats line. The unicast PDR the firmware does
 print covers the unicast class only -- so the traffic M0 is actually about, the 100 ms heartbeat, has
 its losses counted and its delivery ratio never stated.
 
-Until that field is emitted this tool reconstructs the denominator from elapsed uptime: a peer's
+Firmware from a652cab emits it as rx.bcast_frames, and the tool uses it whenever both ends of a
+window carry it. For older captures it reconstructs the denominator from elapsed uptime: a peer's
 heartbeat is a fixed-period timer, so over an interval it must have sent interval / period of them.
 That is sound only while the peer did not reboot, which is checked (reboots_seen and a constant
 epoch) and reported. Every figure derived this way is labelled RECONSTRUCTED. It is evidence, not
@@ -182,7 +183,15 @@ def main(argv):
             d_gap = l["rx"]["lost_seqgap"] - f["rx"]["lost_seqgap"]
             d_hb = l["rx"]["hb_lost"] - f["rx"]["hb_lost"]
             d_dup = l["rx"]["reorder_dup"] - f["rx"]["reorder_dup"]
-            hb_expected = int(hours * 3.6e6 / HB_PERIOD_MS)
+            # Firmware from a652cab on emits bcast_frames, hb_lost's real denominator. Use it when
+            # both ends of the window carry it; reconstruct from uptime only for older captures.
+            if "bcast_frames" in f["rx"] and "bcast_frames" in l["rx"]:
+                d_bcast = l["rx"]["bcast_frames"] - f["rx"]["bcast_frames"]
+                hb_expected = d_bcast + d_hb
+                hb_source = "measured"
+            else:
+                hb_expected = int(hours * 3.6e6 / HB_PERIOD_MS)
+                hb_source = "RECONSTRUCTED from uptime"
             # The firmware's histogram is cumulative since BOOT, not since the capture began -- a
             # board that was not reset carries every earlier run in it. Difference first and last
             # sample so the histogram describes this window and nothing else. min/max cannot be
@@ -198,7 +207,7 @@ def main(argv):
                 tx_pdr=l["tx"]["pdr_ppm"], rx_pdr=l["rx"]["pdr_ppm"],
                 d_tx=d_tx, d_rx=d_rx, d_gap=d_gap, d_hb=d_hb, d_dup=d_dup,
                 dup_total=l["rx"]["reorder_dup"], hb_total=l["rx"]["hb_lost"],
-                hb_expected=hb_expected, rtt=rtt,
+                hb_expected=hb_expected, hb_source=hb_source, rtt=rtt,
                 cb_fail=l["tx"]["cb_fail"], enq=l["tx"]["enqueue_err"],
                 bad=l["rx"]["dropped_bad"], misses=l["misses"], mtu=l["mtu"],
                 ver=l["espnow_ver"])
@@ -214,7 +223,7 @@ def main(argv):
                   f"enqueue_err {v['enq']}   unicast PDR {v['tx_pdr']/1e4:.4f}%")
             print(f"      inbound   {v['d_rx']:>9,} frames  seq gaps {v['d_gap']}  "
                   f"bad {v['bad']}   unicast PDR {v['rx_pdr']/1e4:.4f}%")
-            print(f"      heartbeat {v['hb_expected']:>9,} expected (RECONSTRUCTED from uptime)  "
+            print(f"      heartbeat {v['hb_expected']:>9,} expected ({v['hb_source']})  "
                   f"lost {v['d_hb']}   delivery {ratio(v['hb_expected'] - v['d_hb'], v['hb_expected'])}")
             print(f"      duplicates {v['dup_total']} total, {v['d_dup']} inside this window")
             r = v["rtt"]
@@ -252,8 +261,8 @@ def main(argv):
     print()
 
     print("-- what still needs a human " + "-" * 58)
-    print("  * The heartbeat denominator above is reconstructed from uptime, not measured.")
-    print("    Accept it only with the reboot check in the integrity section clean.")
+    print("  * A heartbeat denominator marked RECONSTRUCTED comes from uptime, not the firmware:")
+    print("    accept it only with the reboot check in the integrity section clean.")
     print("  * A PDR figure without a geometry is not a measurement (M0-RUNBOOK section 8).")
     print("    Record the physical arrangement next to these numbers.")
     return 0
