@@ -31,6 +31,7 @@
 #include "pot/stats_json.hpp"
 #include "pot/sys_resources.hpp"
 #include "driver/gpio.h"
+#include "driver/rmt_tx.h"
 #include "esp_app_desc.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -206,6 +207,173 @@ void bye_button_init() {}
 void bye_button_poll() {}
 #endif
 
+
+// ---------------------------------------------------------------------------------------------
+// The status LED -- a node's view of the cell, readable without a console.
+//
+// Built for the distance sweep, where one board walks the house on a mains charger and the person
+// carrying it needs to know, there and then, whether it still hears the others. The colour is
+// this node's *receive* view: the heartbeats it is getting from its peers. That is a field
+// indicator, not the measurement -- the measurement is the board on the PC, which sees both
+// directions of every link it has (inbound by sequence gaps, outbound by the MAC ACK).
+//
+//   blue    no peer heard since power-up
+//   green   every peer alive, heartbeat loss under 10 % over the last two seconds
+//   yellow  every peer alive, but the worst one losing 10-50 %
+//   red     some peer losing over 50 %, or declared dead
+//
+// Updated once a second. At power-up: red, green, blue, half a second each, so the pin and the
+// colour order can be checked by eye before the colours are trusted.
+//
+// The pixel is a WS2812-style part on GPIO48 (DevKitC-1 v1.0) or GPIO38 (v1.1), and listings do
+// not say which revision ships, so both pins are driven. Bit timings and the encoder shape follow
+// ESP-IDF's own examples/peripherals/rmt/led_strip_simple_encoder. The RMT driver allocates its
+// channel at boot, once, like the Wi-Fi stack does; nothing here allocates afterwards.
+// ---------------------------------------------------------------------------------------------
+namespace status_led {
+
+constexpr uint32_t kResolutionHz = 10000000;  // 0.1 us per RMT tick
+constexpr uint8_t kBrightness = 24;           // of 255: readable indoors, not a torch
+constexpr uint32_t kUpdateMs = 1000;
+
+rmt_symbol_word_t symbol(uint16_t high_ticks, uint16_t low_ticks) {
+    rmt_symbol_word_t s{};
+    s.level0 = 1;
+    s.duration0 = high_ticks;
+    s.level1 = 0;
+    s.duration1 = low_ticks;
+    return s;
+}
+
+size_t encode(const void* data, size_t data_size, size_t symbols_written, size_t symbols_free,
+              rmt_symbol_word_t* symbols, bool* done, void*) {
+    if (symbols_free < 8) return 0;
+    const size_t pos = symbols_written / 8;
+    const uint8_t* bytes = static_cast<const uint8_t*>(data);
+    if (pos < data_size) {
+        size_t n = 0;
+        for (int mask = 0x80; mask != 0; mask >>= 1) {
+            // 1: 0.9 us high, 0.3 us low.  0: 0.3 us high, 0.9 us low.
+            symbols[n++] = (bytes[pos] & mask) ? symbol(9, 3) : symbol(3, 9);
+        }
+        return n;
+    }
+    // Latch: 50 us low.
+    rmt_symbol_word_t reset{};
+    reset.duration0 = 250;
+    reset.duration1 = 250;
+    symbols[0] = reset;
+    *done = true;
+    return 1;
+}
+
+struct Channel {
+    rmt_channel_handle_t chan = nullptr;
+    uint8_t grb[3] = {};  // must outlive the transmission, so not on a stack
+};
+
+Channel g_ch[2];
+rmt_encoder_handle_t g_enc = nullptr;
+bool g_up = false;
+
+void open(Channel& c, int gpio) {
+    if (gpio < 0) return;
+    rmt_tx_channel_config_t cfg{};
+    cfg.gpio_num = static_cast<gpio_num_t>(gpio);
+    cfg.clk_src = RMT_CLK_SRC_DEFAULT;
+    cfg.resolution_hz = kResolutionHz;
+    cfg.mem_block_symbols = 48;
+    cfg.trans_queue_depth = 1;
+    if (rmt_new_tx_channel(&cfg, &c.chan) != ESP_OK || rmt_enable(c.chan) != ESP_OK) {
+        ESP_LOGW(kTag, "status LED: could not open GPIO%d", gpio);
+        c.chan = nullptr;
+    }
+}
+
+void show(uint8_t r, uint8_t g, uint8_t b) {
+    if (!g_up) return;
+    rmt_transmit_config_t tx{};
+    for (Channel& c : g_ch) {
+        if (c.chan == nullptr) continue;
+        rmt_tx_wait_all_done(c.chan, 5);  // never rewrite a buffer the RMT is still reading
+        c.grb[0] = g;
+        c.grb[1] = r;
+        c.grb[2] = b;
+        rmt_transmit(c.chan, g_enc, c.grb, sizeof(c.grb), &tx);
+    }
+}
+
+void init() {
+    rmt_simple_encoder_config_t ecfg{};
+    ecfg.callback = encode;
+    if (rmt_new_simple_encoder(&ecfg, &g_enc) != ESP_OK) {
+        ESP_LOGW(kTag, "status LED: no encoder, LED disabled");
+        return;
+    }
+    open(g_ch[0], CONFIG_POT_STATUS_LED_GPIO);
+    open(g_ch[1], CONFIG_POT_STATUS_LED_GPIO_ALT);
+    g_up = g_ch[0].chan != nullptr || g_ch[1].chan != nullptr;
+    ESP_LOGI(kTag, "status LED on GPIO%d and GPIO%d; self-test red, green, blue",
+             CONFIG_POT_STATUS_LED_GPIO, CONFIG_POT_STATUS_LED_GPIO_ALT);
+    show(kBrightness, 0, 0);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    show(0, kBrightness, 0);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    show(0, 0, kBrightness);
+    vTaskDelay(pdMS_TO_TICKS(500));
+}
+
+enum class Colour : uint8_t { Blue, Green, Yellow, Red };
+
+// Per peer slot: the (broadcast received, heartbeats lost) counters one and two seconds ago.
+struct Snap {
+    uint32_t bcast;
+    uint32_t lost;
+};
+Snap g_hist[kMaxPeers][2];
+
+// Called with g_mutex held: reads the peer table, touches nothing in it.
+Colour assess(const Node& n) {
+    bool any = false;
+    bool dead = false;
+    uint32_t worst_ppm = 0;
+    for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+        const PeerLink& p = n.peers().slot(i);
+        const Snap now{p.rx_bcast_frames, p.rx_hb_lost_seqgap};
+        const Snap old = g_hist[i][1];
+        g_hist[i][1] = g_hist[i][0];
+        g_hist[i][0] = now;
+        if (p.state == PeerState::Dead) {
+            any = true;
+            dead = true;
+            continue;
+        }
+        if (p.state != PeerState::Alive) continue;
+        any = true;
+        const uint32_t rx = now.bcast >= old.bcast ? now.bcast - old.bcast : 0;
+        const uint32_t lost = now.lost >= old.lost ? now.lost - old.lost : 0;
+        if (rx + lost == 0) continue;  // admitted too recently to judge
+        const uint32_t ppm =
+            static_cast<uint32_t>((static_cast<uint64_t>(lost) * 1000000u) / (rx + lost));
+        if (ppm > worst_ppm) worst_ppm = ppm;
+    }
+    if (!any) return Colour::Blue;
+    if (dead || worst_ppm > 500000) return Colour::Red;
+    if (worst_ppm >= 100000) return Colour::Yellow;
+    return Colour::Green;
+}
+
+void render(Colour c) {
+    switch (c) {
+        case Colour::Blue: show(0, 0, kBrightness); break;
+        case Colour::Green: show(0, kBrightness, 0); break;
+        case Colour::Yellow: show(kBrightness, kBrightness, 0); break;
+        case Colour::Red: show(kBrightness, 0, 0); break;
+    }
+}
+
+}  // namespace status_led
+
 // ---------------------------------------------------------------------------------------------
 // Tasks
 // ---------------------------------------------------------------------------------------------
@@ -213,6 +381,7 @@ void bye_button_poll() {}
 void link_task(void*) {
     g_node->start();
     uint32_t next_button_poll_ms = now_ms_();
+    uint32_t next_led_ms = now_ms_() + status_led::kUpdateMs;
 
     for (;;) {
         // Send completions first: cheap, and they carry the MAC-layer ACK an in-flight probe waits
@@ -292,6 +461,14 @@ void link_task(void*) {
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         g_node->tick(nt);
         xSemaphoreGive(g_mutex);
+
+        if (static_cast<int32_t>(nt - next_led_ms) >= 0) {
+            next_led_ms = nt + status_led::kUpdateMs;
+            xSemaphoreTake(g_mutex, portMAX_DELAY);
+            const status_led::Colour colour = status_led::assess(*g_node);
+            xSemaphoreGive(g_mutex);
+            status_led::render(colour);  // outside the lock: the RMT never holds up the node
+        }
 
         // Nothing above could have blocked, so yield explicitly. One tick minimum even when a
         // deadline has already passed: this task must never be able to spin, whatever the transports
@@ -648,6 +825,7 @@ extern "C" void app_main(void) {
 #endif
 
     bye_button_init();
+    status_led::init();
 
     // The broadcast address needs a peer entry before anything can be broadcast, and it consumes
     // one of §3's twenty slots — leaving nineteen for unicast.

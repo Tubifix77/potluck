@@ -31,6 +31,13 @@ struct TestCell {
     std::vector<TestNode> nodes;
     uint32_t now_us = 0;
     bool partitioned = false;  // when true, nothing is delivered
+    // Added to every send completion's timestamp. Negative models the radio's callback stamping a
+    // completion before the node task submitted the probe it is then credited to.
+    int32_t done_skew_us = 0;
+    // Signal the send completion before delivering the frame, as a real radio does: the MAC ACK
+    // returns before the peer's reply can. Off by default, where the reply arrives first and closes
+    // the probe before its completion is seen, so txq is never measured at all.
+    bool done_before_delivery = false;
     uint32_t frames_on_wire = 0;
 
     void build(size_t n, BeaconMode mode, uint32_t probe_ms = 1000) {
@@ -88,14 +95,17 @@ struct TestCell {
             return 0;  // accepted by the transport, never delivered — a real and important case
         }
         const bool bcast = std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0;
+        if (!bcast && c->done_before_delivery) {
+            from->node->on_tx_done(mac, true, c->now_us + static_cast<uint32_t>(c->done_skew_us));
+        }
         for (size_t i = 0; i < c->nodes.size(); ++i) {
             if (i == from->index) continue;
             if (bcast || std::memcmp(c->nodes[i].mac, mac, kMacLen) == 0) {
                 c->nodes[i].node->on_rx(from->mac, data, len, c->now_us, -50);
             }
         }
-        if (!bcast) {
-            from->node->on_tx_done(mac, true, c->now_us);
+        if (!bcast && !c->done_before_delivery) {
+            from->node->on_tx_done(mac, true, c->now_us + static_cast<uint32_t>(c->done_skew_us));
         }
         return 0;
     }
@@ -301,4 +311,36 @@ TEST(node, a_node_that_never_started_sends_nothing) {
     c.advance_ms(1000);
     CHECK_EQ(c.frames_on_wire, 0u);
     CHECK_EQ(c.nodes[0].node->tx_tally().beacons, 0u);
+}
+
+TEST(node, a_completion_stamped_before_the_probe_is_not_credited_to_it) {
+    // The 2026-10-02 soak recorded txq_max_us = 2^32 - 86 on two links: a completion stamped 86 us
+    // before the probe's submit was credited to it, and sendcb - submit wrapped.
+    //
+    // Two halves, so the test cannot pass vacuously. A completion stamped 50 us *after* submit must
+    // be credited (txq reads 50); one stamped 86 us *before* must not (txq stays 0, not ~4.29e9).
+    // RTT never reads the send callback and must be measured in both.
+    {
+        TestCell c;
+        c.build(2, BeaconMode::BroadcastBeacon, /*probe_ms=*/100);
+        c.done_before_delivery = true;
+        c.done_skew_us = 50;
+        c.start_all();
+        c.advance_ms(3000);
+        const PeerLink& p = c.nodes[0].node->peers().slot(0);
+        CHECK(p.rtt_samples > 0u);
+        CHECK_EQ(p.txq_max_us, 50u);
+    }
+    {
+        TestCell c;
+        c.build(2, BeaconMode::BroadcastBeacon, /*probe_ms=*/100);
+        c.done_before_delivery = true;
+        c.done_skew_us = -86;
+        c.start_all();
+        c.advance_ms(3000);
+        const PeerLink& p = c.nodes[0].node->peers().slot(0);
+        CHECK(p.rtt_samples > 0u);
+        CHECK_EQ(p.txq_max_us, 0u);
+        CHECK_EQ(p.txq_last_us, 0u);
+    }
 }

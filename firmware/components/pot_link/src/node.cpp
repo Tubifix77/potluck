@@ -953,7 +953,14 @@ void Node::on_tx_done(const uint8_t dst_mac[kMacLen], bool ok, uint32_t done_us)
     }
     if (ok) {
         ++p->tx_cb_ok;
-        if (p->probe_msg_id != 0 && p->probe_sendcb_us == 0) {
+        // A completion stamped *before* the probe was submitted belongs to an earlier frame to the
+        // same peer: done_us is taken in the radio's callback and reaches this task through a queue,
+        // so an older completion can be dequeued after a newer probe was submitted. Crediting it
+        // made sendcb - submit go negative and wrap; the 2026-10-02 soak recorded txq_max_us =
+        // 2^32 - 86 on both B-C links. The callback reports a MAC and a status, not which frame,
+        // so a completion stamped after submit is still trusted; that can only make txq read short.
+        if (p->probe_msg_id != 0 && p->probe_sendcb_us == 0 &&
+            static_cast<int32_t>(done_us - p->probe_submit_us) >= 0) {
             p->probe_sendcb_us = done_us;
         }
     } else {

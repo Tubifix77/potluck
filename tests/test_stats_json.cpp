@@ -44,6 +44,7 @@ PeerLink sample_peer() {
     p.rx_reorder_dup = 3;
     p.rx_dropped_bad = 1;
     p.rx_hb_lost_seqgap = 40;
+    p.rx_bcast_frames = 4000;
 
     p.rtt_samples = 4;
     p.rtt_min_us = 2600;
@@ -129,7 +130,7 @@ TEST(json, link_line_is_exactly_this) {
         "\"tx\":{\"frames\":1000,\"cb_ok\":990,\"cb_fail\":8,\"enqueue_err\":2,"
         "\"pdr_ppm\":991983},"
         "\"rx\":{\"frames\":950,\"lost_seqgap\":50,\"reorder_dup\":3,\"dropped_bad\":1,"
-        "\"hb_lost\":40,\"pdr_ppm\":950000},"
+        "\"hb_lost\":40,\"bcast_frames\":4000,\"pdr_ppm\":950000},"
         "\"rtt\":{\"samples\":4,\"min_us\":2600,\"max_us\":51000,\"timeouts\":2,"
         "\"txq_last_us\":900,\"txq_max_us\":1500,\"remote_turnaround_us\":320,"
         "\"remote_turnaround_max_us\":640,\"p50_us\":[2000,3000],\"p99_us\":[42000,60000],"

@@ -182,4 +182,30 @@ config POT_SELFTEST
 
         Use tools/run_selftest.ps1 rather than setting this by hand.
 
+config POT_STATUS_LED_GPIO
+    int "GPIO of the onboard RGB status LED (-1 disables)"
+    range -1 48
+    default 48
+    help
+        The DevKitC-1 RGB LED is a single WS2812-style pixel. Espressif moved it between board
+        revisions: GPIO48 on v1.0, GPIO38 on v1.1 (the ledger has both user guides), and listings
+        rarely say which revision ships. So the pin is a setting, never a literal, and the
+        firmware drives this pin AND POT_STATUS_LED_GPIO_ALT. On these boards nothing else is
+        attached to either, so the wrong one simply has no LED on it.
+
+        The colour is this node's own view of the cell, for reading without a console:
+          green   every peer heard, heartbeat loss under 10 % over the last two seconds
+          yellow  every peer heard, but some peer losing 10-50 %
+          red     some peer losing over 50 %, or declared dead
+          blue    no peer has been heard since power-up
+        At power-up it shows red, green, blue for half a second each, in that order. If the
+        order on the board differs, the LED's byte order is not GRB and the colours above lie.
+
+config POT_STATUS_LED_GPIO_ALT
+    int "Second GPIO driven as the RGB status LED (-1 disables)"
+    range -1 48
+    default 38
+    help
+        See POT_STATUS_LED_GPIO: the other board revision's LED pin.
+
 endmenu

@@ -234,6 +234,11 @@ size_t write_link_json(char* out, size_t cap, const LinkRecord& r) {
     s.comma();
     s.kv("hb_lost", p.rx_hb_lost_seqgap);
     s.comma();
+    // hb_lost's denominator. Without it a heartbeat delivery ratio could only be reconstructed
+    // from uptime, which is wrong for any peer that was ever powered off -- and a distance sweep
+    // power-cycles the moving board at every spot.
+    s.kv("bcast_frames", p.rx_bcast_frames);
+    s.comma();
     uint32_t rx_ppm = 0;
     const bool rx_ppm_known = p.pdr_rx_ppm(rx_ppm);
     s.kv_opt("pdr_ppm", rx_ppm_known, rx_ppm);
