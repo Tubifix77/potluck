@@ -476,3 +476,11 @@ see what was being asked of it.
 flagged one thing it could not verify — *"that Rs is actually 10 kΩ on these modules — reported, not
 read off the board"* — and **our schematic verifies it.** Each project held the half the other was
 missing.
+### The 24-hour soak, the status LED, and a recorder that rebooted what it recorded — 2026-10-03
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **M0's 24-hour soak, three ESP32-S3 at ~10 cm** | 24.52 h; unicast PDR 100.0000 % outbound (791,324, MAC ACK) and inbound (6,337,757, seq gaps) on all six links; 264,850 RTTs, p50 [4, 6] ms, p99 [16, 22] ms, p99.9 [42, 60] ms, none above 85 ms; heartbeat delivery 99.69–99.84 % (reconstructed); `free_dram` identical at start and end on all three | `captures/soak-2026-10-02-report.txt`, fw `095f21e`, layout C B A | 2026-10-03 | volatile | **measured** |
+| **The onboard RGB pixel takes GRB byte order and lights from the firmware's GPIO48/GPIO38 pair** | Power-up self-test sent red, green, blue in GRB order on both pins; the owner saw red, green, blue in that order, then blue, then green on joining the cell. Which of the two pins carries it on these boards is **not established** -- both are driven | owner's eyes on board B, fw `a652cab` | 2026-10-03 | stable | **measured** |
+| **Opening the console port with pyserial's defaults reboots these boards** | `serial.serial_for_url("COM3", 115200)` produced a `rst:0x1 (POWERON)` banner, a new boot epoch and ~12 s of uptime in the first record; opening with DTR and RTS deasserted before `open()` left the board running (239 s uptime, epoch unchanged). Both orders tried on the same board within minutes. Why run 2 of the soak, opened by the same code, did not reboot its boards is **not established** | bisected on board A, CH343 on COM3 | 2026-10-03 | stable | **measured** |
+| **RTT is unaffected by the `on_tx_done` race; only `txq_*` was** | RTT is `recv_us - probe_submit_us` (node.cpp) and never reads `probe_sendcb_us`; the race wrapped `txq_max_us` to 2^32 - 86 on both B–C links in the soak | code read, soak report | 2026-10-03 | stable | verified |

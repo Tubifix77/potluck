@@ -2746,3 +2746,67 @@ soak is now its control: the same firmware, with every figure the sweep will be 
 
 The sweep runs on the same binary as this soak (`095f21e`), so its numbers differ from the soak's
 only in geometry. The four changes come after it.
+
+## Session 14 — 2026-10-03, ready for the distance sweep: a light, a real count, and a split
+
+The owner asked the question the sweep plan had skipped: walking the house with board B, how does
+anyone *know* the link is dropping? The board on the PC knows, but nobody is at the PC. In session
+11 a status LED was declined because it would have changed the binary M0's memory figure was
+accepted against. That reason ended with the soak, and an LED is now the right tool.
+
+### Firmware `a652cab`, on all three boards
+
+All three boards run the same firmware, so any difference between links is down to geometry and not
+to a version mismatch. Verified on each board by app version (`first-silicon-17-ga652cab`) and ELF
+SHA (`17437a55a…`, matching the built file).
+
+- **A status LED**: the board's own receive view, refreshed once a second. Blue means no peer yet;
+  green means every peer under 10 % heartbeat loss over 2 s; yellow, worst 10–50 %; red, over 50 % or
+  a peer dead. A red/green/blue self-test runs at power-up. The pixel is on GPIO48 or GPIO38 depending
+  on board revision, so both are Kconfig values and both are driven. **Verified by the owner's eyes:**
+  red, green, blue in order, then blue, then green once the board joined. Cost: 341 B in libmain;
+  the RMT driver adds 1,887 B outside the core.
+- **`bcast_frames`** in the link record. Without it the sweep would have no heartbeat figure at all:
+  the uptime reconstruction assumes the peer never rebooted, and the sweep power-cycles the walker at
+  every spot.
+- **The soak's race, fixed.** A completion stamped before the probe's submit is no longer credited
+  to it. The first regression test passed **without** the fix: the test cell delivered the reply
+  before the completion, so `txq` was never measured at all. The rebuilt test has two halves (+50 µs
+  must be credited, −86 µs must not), and it fails without the fix and passes with it.
+
+### The recorder was rebooting what it recorded
+
+Board A reported 1.7 s of uptime in a capture started minutes after its last reset. A bisection on
+the same board settled it. Opening the port with pyserial's defaults asserts DTR and RTS, which
+drive the board's auto-reset circuit, and gives a `POWERON` banner and a new epoch every time.
+Opening with both deasserted leaves the board running. `potluck/source.py` now does the second. For
+the sweep this mattered directly: a recorder restart rebooting a fixed board would reset that
+board's counters in the middle of a spot. Why run 2 of the soak, opened by the same code, did not
+reboot its boards is not established. The fix makes the answer irrelevant, and the ledger says so
+rather than guessing.
+
+### `tools\sweep_report.py`: the capture splits itself
+
+Every power-up gives the walker a new epoch, and the fixed boards report that epoch in each link
+record, so one spot equals one walker epoch. Nobody has to note times for the split to work; notes
+are only needed for what each spot *was*. Per spot, from each fixed board, it reports heartbeat
+delivery (measured), outbound PDR by MAC ACK (did the walker receive), inbound PDR by sequence gaps,
+an RTT histogram, RSSI, deaths at the spot, and a one-character-per-10 s timeline that shows the
+cliff as oscillation (`##.##x#`) rather than averaging it away. A control line reports the unmoved
+fixed-to-fixed link over the same window, so a house event can be told apart from distance.
+
+Tested on the desk by resetting B twice through its own serial line, which reproduces an unplug
+without touching it. The split came out exactly: three spots, epochs 5, 6 and 7, and both fixed
+boards agreed on every one. **The test also caught a bug in the tool.** Each spot was baselined on
+the sample before it, which straddles the unplug, so every reset appeared in the *next* spot as one
+death, one un-ACKed frame and one probe timeout. Spots are now baselined on their own first sample.
+That costs up to 10 s of a spot of two minutes or more, and the desk spots now read zero deaths,
+zero un-ACKed and zero timeouts, which is correct.
+
+### The sweep, as it will run
+
+A (COM3) and C (COM5) stay on the PC and are captured; C is the unmoved control. B walks on the mains
+charger. The first spot is 1 m from the PC for 2 minutes. That is both the smoke test and the
+control that ties `a652cab` back to the soak's `095f21e`. After that the spots step outward through
+the house until the link starts dropping, with 5–10 minutes near the edge. Orientation is held
+fixed. The owner notes place, distance and walls per spot.

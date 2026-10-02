@@ -436,6 +436,25 @@ So, after the soak and needing no hardware beyond two boards and some space:
 >   **rebooted** rather than *revived* when it returns. Each relocation is a free live test of §8.2's
 >   machinery; `reboots_seen` climbing is the proof it fired.
 
+**How it runs, as of 2026-10-03 (firmware `a652cab` on all three boards):**
+
+```
+tools\soak.ps1 -Start -Ports COM3,COM5 -Label sweep-<date>
+python tools\sweep_report.py --walker 0x7368 captures\soak-sweep-<date>-COM3.jsonl captures\soak-sweep-<date>-COM5.jsonl
+tools\soak.ps1 -Stop
+```
+
+- **A (COM3) and C (COM5) stay on the PC and are captured. B (0x7368) walks** on the mains charger,
+  powered through the same socket it uses on the PC. C is the control: if A-C degrades while B is far
+  away, the cause was the house, not the distance.
+- **B's LED is the field indicator**: blue = not yet joined, green = hearing everyone (< 10 %
+  heartbeat loss over 2 s), yellow = 10-50 %, red = over 50 % or a peer dead. It is B's *receive*
+  view; the measurement is A's and C's captures, which see both directions.
+- **The capture splits itself.** Each plug-in is a new boot epoch, so one spot = one epoch. Notes
+  are still needed for what each spot *was*: place, metres, walls or floors in between.
+- **First spot: 1 m from the PC, 2 minutes**, read with `sweep_report.py` before going further. It
+  is the smoke test and the control that ties `a652cab` back to the soak's `095f21e`.
+
 1. **Sweep distance.** Put the boards at increasing separations — a corridor, a garden, a car park —
    and capture at each. §3 claims PDR above 99 % below 56 m and an oscillation between
    100 % and 0 from 56–70 m rather than a smooth roll-off. Find out where *your* cliff is, indoors,

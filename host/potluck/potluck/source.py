@@ -55,7 +55,16 @@ class SerialSource:
             ) from exc
         # A read timeout rather than a blocking read, so a silent node does not
         # look like a hung tool and the caller can still tick its display.
-        return serial.serial_for_url(self.port, baudrate=self.baud, timeout=1.0)
+        ser = serial.serial_for_url(self.port, baudrate=self.baud, timeout=1.0, do_not_open=True)
+        # DTR and RTS drive the board's auto-reset circuit (RTS -> EN, DTR -> IO0). pyserial's
+        # default asserts both on open, and on 2026-10-03 that rebooted two boards the moment a
+        # capture started -- both reported ~12 s of uptime in their first record. A recorder must
+        # not restart what it records: a reboot resets the node's own counters and, mid-sweep,
+        # would split one spot into two. Both lines deasserted is "run normally" on this circuit.
+        ser.dtr = False
+        ser.rts = False
+        ser.open()
+        return ser
 
     def lines(self) -> Iterator[str]:
         import time
