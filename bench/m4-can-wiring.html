@@ -93,9 +93,10 @@ records the result. Board A and its serial adapter are not part of this.</p>
 </div>
 </div>
 
-<div class="warn"><strong>The modules are drawn with the pin order you read off them</strong>: the
-four-pin header TX, RX, GND, 3.3V from the top, and the bus pins CANL then CANH. Which edge each header
-sits on is drawn for clarity, not measured. Match every wire by its printed label. The blue screw
+<div class="warn"><strong>Drawn as it sits on the bench:</strong> each board with its antenna up, USB
+down and header J1 on its left; each module to the left of its board, turned 180° so its four-pin header
+faces the board. Turned that way the module reads, top to bottom, 3.3V, GND, RX, TX, with CANH above CANL
+on the far side. Match every wire by its printed label. The blue screw
 terminal carries CANH and CANL in parallel with the pins; either works for the bus.</div>
 
 <h2>The wires, one table</h2>
@@ -143,62 +144,65 @@ way". Termination: the 120 Ω part marked <code>121</code> on each module. Firmw
   }
   var J1 = ["3V3","3V3","RST","4","5","6","7","15","16","17","18","8","3","46","9","10","11","12","13","14","5V","G"];
   var hot = {1: "w-pwr", 4: "w-tx", 5: "w-rx", 22: "w-gnd"};
-  var MOD = [["TX", "w-tx"], ["RX", "w-rx"], ["GND", "w-gnd"], ["3.3V", "w-pwr"]];
   var BOARDPIN = {"w-tx": 4, "w-rx": 5, "w-gnd": 22, "w-pwr": 1};
   var busPins = {};
 
+  var MOD = [["3.3V", "w-pwr"], ["GND", "w-gnd"], ["RX", "w-rx"], ["TX", "w-tx"]];  // module turned 180 deg
   function pair(gid, name, node, y0) {
     var g = document.getElementById(gid);
-    // board, header J1 down its right edge (as drawn here), pins 11 px apart
-    g.appendChild(el("rect", {x: 30, y: y0, width: 190, height: 262, rx: 8, fill: "var(--board)"}));
-    g.appendChild(el("text", {x: 40, y: y0 + 20, "class": "lbl-hl"}, "Board " + name + " (" + node + ")"));
-    g.appendChild(el("text", {x: 40, y: y0 + 36, "class": "lbl"}, "header J1"));
-    g.appendChild(el("text", {x: 40, y: y0 + 50, "class": "num"}, "3V3 end = antenna end"));
+    // board on the right: antenna at the top, USB at the bottom, header J1 down its LEFT edge
+    var bx = 360;
+    g.appendChild(el("rect", {x: bx, y: y0, width: 200, height: 270, rx: 8, fill: "var(--board)"}));
+    g.appendChild(el("text", {x: bx + 100, y: y0 + 16, "text-anchor": "middle", "class": "lbl-hl"}, "antenna"));
+    g.appendChild(el("text", {x: bx + 120, y: y0 + 120, "class": "lbl-hl"}, "Board " + name));
+    g.appendChild(el("text", {x: bx + 120, y: y0 + 136, "class": "lbl"}, node));
+    g.appendChild(el("text", {x: bx + 120, y: y0 + 152, "class": "num"}, "header J1 on the left"));
+    g.appendChild(el("rect", {x: bx + 60, y: y0 + 246, width: 32, height: 18, rx: 3, fill: "none", stroke: "var(--board-fg)"}));
+    g.appendChild(el("rect", {x: bx + 112, y: y0 + 246, width: 32, height: 18, rx: 3, fill: "none", stroke: "var(--board-fg)"}));
+    g.appendChild(el("text", {x: bx + 100, y: y0 + 240, "text-anchor": "middle", "class": "num"}, "USB"));
     var pinY = {};
     J1.forEach(function (lab, i) {
-      var n = i + 1, y = y0 + 16 + i * 11, isHot = !!hot[n];
+      var n = i + 1, y = y0 + 22 + i * 10.4, isHot = !!hot[n];
       pinY[n] = y;
-      g.appendChild(el("rect", {x: 196, y: y - 4, width: 9, height: 9, rx: 1.5,
+      g.appendChild(el("rect", {x: bx + 6, y: y - 4, width: 9, height: 9, rx: 1.5,
         fill: isHot ? "var(--pin)" : "var(--pin-off)", stroke: isHot ? "var(--fg)" : "none", "stroke-width": isHot ? 1.5 : 0}));
-      g.appendChild(el("text", {x: 190, y: y + 4, "text-anchor": "end", "class": isHot ? "lbl-hl" : "lbl"}, lab));
-      g.appendChild(el("text", {x: 210, y: y + 3, "class": "num"}, n));
+      g.appendChild(el("text", {x: bx + 22, y: y + 4, "class": isHot ? "lbl-hl" : "lbl"}, lab));
     });
-    // module: control pins on its left edge, bus pins on its right edge
-    var mx = 360, my = y0 + 70;
-    g.appendChild(el("rect", {x: mx, y: my, width: 170, height: 130, rx: 8, fill: "var(--module)"}));
-    g.appendChild(el("text", {x: mx + 85, y: my + 22, "text-anchor": "middle", "class": "mlbl"}, "SN65HVD230 " + name));
+    // module on the left, turned 180 degrees: control pins face the board, bus pins face away
+    var mx = 60, mw = 170, my = y0 + 60;
+    g.appendChild(el("rect", {x: mx, y: my, width: mw, height: 140, rx: 8, fill: "var(--module)"}));
+    g.appendChild(el("text", {x: mx + mw / 2, y: my + 20, "text-anchor": "middle", "class": "mlbl"}, "module " + name));
     var mY = {};
     MOD.forEach(function (m, i) {
-      var y = my + 46 + i * 20;
+      var y = my + 44 + i * 22;
       mY[m[1]] = y;
+      g.appendChild(el("rect", {x: mx + mw - 5, y: y - 5, width: 10, height: 10, rx: 2, fill: "var(--pin)"}));
+      g.appendChild(el("text", {x: mx + mw - 12, y: y + 4, "text-anchor": "end", "class": "mlbl"}, m[0]));
+    });
+    [["CANH", "w-h", 0], ["CANL", "w-l", 1]].forEach(function (b) {
+      var y = my + 60 + b[2] * 30;
       g.appendChild(el("rect", {x: mx - 5, y: y - 5, width: 10, height: 10, rx: 2, fill: "var(--pin)"}));
-      g.appendChild(el("text", {x: mx + 12, y: y + 4, "class": "mlbl"}, m[0]));
+      g.appendChild(el("text", {x: mx + 12, y: y + 4, "class": "mlbl"}, b[0]));
+      busPins[name + b[0]] = {x: mx - 5, y: y, color: b[1]};
     });
-    [["CANL", "w-l", 0], ["CANH", "w-h", 1]].forEach(function (b) {
-      var y = my + 56 + b[2] * 30;
-      g.appendChild(el("rect", {x: mx + 165, y: y - 5, width: 10, height: 10, rx: 2, fill: "var(--pin)"}));
-      g.appendChild(el("text", {x: mx + 158, y: y + 4, "text-anchor": "end", "class": "mlbl"}, b[0]));
-      busPins[name + b[0]] = {x: mx + 175, y: y, color: b[1]};
-    });
-    // four wires board -> module
+    // four wires module -> board
     MOD.forEach(function (m, i) {
-      var bp = BOARDPIN[m[1]], ys = pinY[bp], ye = mY[m[1]];
-      var midx = 260 + i * 18;
-      g.appendChild(el("path", {d: "M 206 " + ys + " L " + midx + " " + ys + " L " + midx + " " + ye + " L " + (mx - 5) + " " + ye,
+      var bp = BOARDPIN[m[1]], ys = mY[m[1]], ye = pinY[bp];
+      var midx = 262 + i * 20;
+      g.appendChild(el("path", {d: "M " + (mx + mw + 5) + " " + ys + " L " + midx + " " + ys + " L " + midx + " " + ye + " L " + (bx + 6) + " " + ye,
         fill: "none", stroke: "var(--" + m[1] + ")", "stroke-width": 2.5}));
     });
   }
-  pair("pairB", "B", "0x7368", 24);
+  pair("pairB", "B", "0x7368", 20);
   pair("pairC", "C", "0x8160", 318);
 
   var g = document.getElementById("bus");
   ["CANH", "CANL"].forEach(function (k, i) {
-    var a = busPins["B" + k], b = busPins["C" + k], x = 640 + i * 34;
+    var a = busPins["B" + k], b = busPins["C" + k], x = 36 - i * 18;
     g.appendChild(el("path", {d: "M " + a.x + " " + a.y + " L " + x + " " + a.y + " L " + x + " " + b.y + " L " + b.x + " " + b.y,
       fill: "none", stroke: "var(--" + a.color + ")", "stroke-width": 3}));
-    g.appendChild(el("text", {x: x + 6, y: (a.y + b.y) / 2, "class": "capb"}, k));
   });
-  g.appendChild(el("text", {x: 560, y: 300, "class": "cap"}, "the bus: H to H, L to L"));
+  g.appendChild(el("text", {x: 60, y: 302, "class": "cap"}, "the bus, on the far side: H to H, L to L"));
 })();
 </script>
 </body>
