@@ -133,6 +133,12 @@ class Bridge:
         self._msg_id = 0
         self._pending: dict[int, _Pending] = {}
         self._lock = threading.Lock()
+        # One frame on the wire at a time. Requests go out from the caller's thread and heartbeats from
+        # _hb_loop; unserialised, two writes overlapped. pyserial on Windows tracks writes through one
+        # shared OVERLAPPED, so one of them read back the other's byte count and raised "Write
+        # timeout" -- the first ten-minute M2 session on hardware died that way after 70 s
+        # (2026-10-04). Over TCP it only interleaved bytes, silently, which is no better.
+        self._tx_lock = threading.Lock()
         self._stop = threading.Event()
         self._reader: threading.Thread | None = None
         self._hb_thread: threading.Thread | None = None
@@ -210,12 +216,13 @@ class Bridge:
             ack_req=ack_req,
         )
         wire = write_serial_frame(raw)
-        try:
-            self.transport.write(wire)
-        except Exception as exc:
-            raise BridgeError(f"write to {self.transport.description} failed: {exc}") from exc
-        self.stats.tx_frames += 1
-        self.stats.tx_bytes += len(wire)
+        with self._tx_lock:
+            try:
+                self.transport.write(wire)
+            except Exception as exc:
+                raise BridgeError(f"write to {self.transport.description} failed: {exc}") from exc
+            self.stats.tx_frames += 1
+            self.stats.tx_bytes += len(wire)
         self._tee(raw, "tx")
 
     def _tee(self, raw: bytes, direction: str) -> None:
