@@ -2996,10 +2996,11 @@ the same replay can be re-run on hardware. After that comes M3, deploy and detac
 
 ## Session 17 — 2026-10-04, M2 accepted on hardware, and the race that killed the first try
 
-§13-M2: *"a captured 10-minute session replays and produces byte-identical namespace state."* Under
-emulation this was proven mechanically with sessions of tens of seconds; QEMU's one-connection serial
-port capped it, and session 6 deferred the literal ten minutes to hardware. Now it has been run on
-hardware.
+§13-M2: *"a captured 10-minute session replays and produces byte-identical namespace state."*
+**Already accepted under emulation in session 9** (a 13.7-minute session against the real firmware
+in QEMU, 11,444 frames). *An earlier draft of this entry said the ten minutes had been deferred to
+hardware. That was session 6's position, superseded by session 9, and I had read only session 6.*
+What is new here is real silicon over a real cable, three boards instead of one, and remote entries.
 
 **The session:** `potctl --port COM6 --node 6300 --capture … soak --seconds 600 --nodes
 6300,7368,8160`. That is the CP2102 frame link to board A, sweeping all three boards' built-in
