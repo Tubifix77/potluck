@@ -5,6 +5,14 @@ hardware is built, verified, and public, and the next line of work *requires* a 
 a USB cable. This file is the resumption path. It assumes months may have passed and nobody
 remembers anything.
 
+**State as of 2026-10-04: M0, M1, M2 and M3 are accepted on hardware.** Three boards ran a 24.5-hour
+soak and a distance sweep through a two-storey house (M0); the PC read one board's value through
+another and saw `UNAVAILABLE` when it was unplugged (M1); a ten-minute session replayed byte-identical
+(M2); and a signed package reached all three boards through one, survived detaching and a power cycle,
+and a broken one was reverted by every board on its own (M3). 27 test gates green. The frame-link
+wiring as built is [bench/m1-wiring.html](bench/m1-wiring.html). Session-by-session detail is in
+[M0-LOG.md](M0-LOG.md), sessions 12-18. What follows is the path that got here, kept as written.
+
 **State as of 2026-09-21:** 21 test gates green (172 C++ cases / 36,658 checks, 29 on-target checks
 under emulation, 154 Python). Firmware builds in place for esp32s3. **M2 is accepted** — a
 13.7-minute session replays to a byte-identical digest — and **half of M4 is accepted**: the
@@ -186,6 +194,11 @@ statistics stream `potluck-capture` records. No separate power supply is needed 
 
 Not flashing, and not power — both of those already arrive on the board's own USB cable. It exists to
 reach the **frame link**, and only that.
+
+> **As built (2026-10-04):** the HW-598A CP2102 module on COM6, three wires to board A — adapter
+> TXD→GPIO18, RXD→GPIO17, GND→G — straight, with nothing in line. Driver, pin order, the order to wire
+> in, and the commands that use it: [bench/m1-wiring.html](bench/m1-wiring.html). One rule learned the
+> hard way: never leave the adapter wired to a board while the adapter itself is unplugged.
 
 The board's built-in USB-UART bridge is wired to **UART0**, the console: log lines, the JSON
 statistics stream, and flashing. Potluck's frame link is **UART1 on GPIO 17/18** (`CONFIG_POT_SERIAL_TX_GPIO`

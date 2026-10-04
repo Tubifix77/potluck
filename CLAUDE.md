@@ -23,7 +23,7 @@ AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck'
 Powersuit's Appendix A bench at once.
 
 Board A — MAC `b8:1f:3f:da:63:00`, therefore **node 0x6300** — enumerated as **CH343 (COM3)**, and is
-**flashed with Potluck and running** (now fw `a652cab`, like B and C). Its factory image is backed up. The board
+**flashed with Potluck and running** (now fw `0dd9645`, M3, like B and C). Its factory image is backed up. The board
 register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
 
 > **§6's Wi-Fi DRAM [MEASURE] is CLOSED (2026-10-01): 32,264 B — 31.5 KiB, under the ~40 KB

@@ -59,17 +59,17 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 Work is organised as **nine falsifiable milestones, M0–M8** — every "M-number" in this README is one
 of them. Each has an acceptance test that can fail and a kill criterion (both spelled out in
 [ARCHITECTURE.md](ARCHITECTURE.md)); a milestone counts as *built* when the code exists, and
-*accepted* only when its test has passed. Where they stand as of **2026-10-01** — the day the boards
-arrived and the firmware first ran on real silicon:
+*accepted* only when its test has passed. Where they stand as of **2026-10-04**, after the first
+week on real hardware — three ESP32-S3 boards on a desk, then walked through a house:
 
 | milestone | in one line | state |
 |---|---|---|
 | **M0** — two boards, one heartbeat | the wire format; membership (who is in the cluster and alive); measured packet-delivery ratio and round-trip delay | **accepted, 2026-10-04.** A 24.5-hour *soak* (a long unattended measured run) on three ESP32-S3 boards: no gaps, no reboots, no node wrongly declared dead, **100 % of packets** delivered both ways on all six links, round trip **4–6 ms typical, 16–22 ms at the 99th percentile**, memory flat to the byte. Then the *kill criterion* (the test that could have sent the radio choice back to the drawing board): a distance sweep through a real two-storey house, up to about 16 m, through four walls, a floor and a fridge. The link held everywhere; the worst spot still delivered 99 % of packets with round trips under 42 ms. The radio choice stands |
 | **M1** — one remote read | the namespace; typed, staleness-checked reads | **accepted on hardware, 2026-10-04.** The PC, cabled to one board, read another board's value across the radio: value, unit, age and class. Unplug that board and the read says `UNAVAILABLE` with no number at all; plug it back in and it recovers by itself. Getting there found three bugs no emulator could show, including a value's age being measured from when it arrived rather than from when it was measured |
 | **M2** — host in the loop | `potctl`; recording sessions to a capture file and replaying them | **accepted**, first under emulation (a 13.7-minute session, 11,444 frames) and **on hardware, 2026-10-04**: a 10-minute session over the real serial cable, covering all three boards, was recorded as raw frames and replayed on its own into a namespace identical to the byte (checked by SHA-256, and a wrong checksum is refused). The first attempt crashed after 70 seconds on a real bug: the PC tool could write two messages to the cable at once |
-| **M3** — deploy and detach | A/B firmware slots (two copies, so a bad update falls back by itself); signed deployment manifests | **accepted on hardware, 2026-10-04.** A signed package sent once, to one board, reached all three: that board passed it on to the others over the radio. Every board changed behaviour (the status light's healthy colour), and kept the new behaviour after the PC was unplugged and all three were power-cycled on a mains charger. Then a deliberately broken package: each board crashed three times on it and went back to the previous version by itself |
+| **M3** — deploy and detach | A/B module slots (two copies, so a bad deployment falls back by itself); signed deployment packages | **accepted on hardware, 2026-10-04.** A signed package sent once, to one board, reached all three: that board passed it on to the others over the radio. Every board changed behaviour (the status light's healthy colour), and kept the new behaviour after the PC was unplugged and all three were power-cycled on a mains charger. Then a deliberately broken package: each board crashed three times on it and went back to the previous version by itself |
 | **M4** — locality contract enforced | the rule that tight control loops stay pinned to the node wired to the hardware, rejected at build time otherwise; plus [CAN](https://en.wikipedia.org/wiki/CAN_bus), the automotive wired bus | **half accepted.** The build-time half passes: a manifest that binds a tight loop to a sensor on another node is rejected with an error naming the actor, the resource and both nodes. The other half needs two boards, two [transceivers](https://en.wikipedia.org/wiki/Transceiver) and an [oscilloscope](https://en.wikipedia.org/wiki/Oscilloscope) |
-| **M5** — signed everything | a cluster certificate authority, node enrolment, authenticated frames | **host tooling built**: a cluster CA, deploy keys it authorises, signed deployment packages, and downgrade refusal. Signatures are [Ed25519](https://en.wikipedia.org/wiki/EdDSA) checked against [RFC 8032](https://www.rfc-editor.org/rfc/rfc8032.txt)'s own published test vectors. The node's side of it — verifying before it commits, enrolment, the counter in flash — is firmware, and queued behind M0 |
+| **M5** — signed everything | a cluster certificate authority, node enrolment, authenticated frames | **host tooling built**: a cluster CA, deploy keys it authorises, signed deployment packages, and downgrade refusal. Signatures are [Ed25519](https://en.wikipedia.org/wiki/EdDSA) checked against [RFC 8032](https://www.rfc-editor.org/rfc/rfc8032.txt)'s own published test vectors. Since M3 the boards keep the anti-downgrade counter in flash and refuse an older package themselves. Still to build: the board checking the signature itself before it commits, and enrolment |
 | **M6** — reconciler | failure-driven actor re-placement | not started; gated on M5 |
 | **M7** — [WebAssembly](https://webassembly.org/) tier | untrusted / hot-swappable code | gated: only if a named workload ever needs it |
 | *background compute* — not a milestone | a coordinator handing units of work to nodes that would otherwise sit idle, so a chip is not limited to watching one sensor. It is the answer to why an ESP32-S3 is worth clustering at all | **built, and measured in simulation**: 19 workers reach 18.99× the throughput of one, at 93–97% of a perfect scheduler with no dispatch cost, and killing a worker mid-job loses no work. Listed here because it is the point of the project rather than a numbered step toward it |
@@ -80,9 +80,9 @@ Beneath the milestones, the standing figures:
 | | |
 |---|---|
 | Architecture | decision-closed v1, with eight [Architecture Decision Records](https://adr.github.io/) and the trigger that would reopen each ([ARCHITECTURE.md](ARCHITECTURE.md)) |
-| Test gates | **21 green**: 172 C++ cases / 36,658 checks, 154 Python cases, **29 checks executed on real ESP32-S3 silicon**, three independent wire-format implementations agreeing byte-for-byte over generated corpora, [AddressSanitizer](https://github.com/google/sanitizers/wiki/AddressSanitizer), a strict-GCC portability gate, and the firmware build with its memory-budget check |
-| Static memory | **53,406 B** of the 64 KB core cap, measured per build |
-| Measured on hardware | Wi-Fi stack **31.5 KiB** of memory with [ESP-NOW](https://www.espressif.com/en/solutions/low-power-solutions/esp-now) active, of which the protocol itself is 152 bytes; round trip **4–6 ms**; **100 %** packet delivery across all six links of a three-node cell. Taken 2026-10-01 at desk range in a domestic environment thick with competing 2.4 GHz traffic — which makes them a floor, not a best case |
+| Test gates | **27 green** (2026-10-04): 191 C++ cases / 36,793 checks, run plain and under [AddressSanitizer](https://github.com/google/sanitizers/wiki/AddressSanitizer); 243 Python cases in 18 suites; three independent wire-format implementations agreeing byte-for-byte over generated corpora; a strict-GCC portability gate; the firmware build with its memory-budget check; and 29 on-target self-test checks |
+| Static memory | **54,964 B** of the 64 KB core cap, measured per build (M3's deploy runtime added 1.2 KB) |
+| Measured on hardware | A **24.5-hour** three-board soak: no reboots, no false deaths, **100 %** packet delivery on all six links, round trip **4–6 ms** typical and 16–22 ms at the 99th percentile, memory flat to the byte. A distance sweep through a two-storey house (up to ~16 m, four walls, a floor, a fridge): every spot held, the worst at 99 %. The Wi-Fi stack costs **31.5 KiB** with [ESP-NOW](https://www.espressif.com/en/solutions/low-power-solutions/esp-now) active. All in a home thick with competing 2.4 GHz traffic, so these are a floor, not a best case |
 
 Nothing above claims a measurement that was not made. Emulated runs stamp `"no_radio":1` on every
 statistics line precisely so they can never be mistaken for a measured one; the hardware figures come
@@ -184,7 +184,7 @@ exercised daily.
 
 ```powershell
 # The gates: C++ suite, AddressSanitizer, three differential corpora,
-# eleven Python suites, portability, firmware build + memory budget.
+# eighteen Python suites, portability, firmware build + memory budget.
 tools\run_all_tests.ps1 -Asan -Firmware
 
 # Boot the real firmware under QEMU with its frame link exposed as a TCP socket:
@@ -215,14 +215,31 @@ prints the digest command that verifies its own capture. One `potctl` per emulat
 socket serial accepts a single connection per VM lifetime ([M0-RUNBOOK.md](M0-RUNBOOK.md) has the
 details and the other emulator sharp edges).
 
-With boards on the bench, the same tool talks over `--port COM7` with none of those limits, and
-[M0-RUNBOOK.md](M0-RUNBOOK.md) is the step-by-step for the acceptance soak.
+## On real hardware
+
+The bench is three ESP32-S3-DevKitC-1 boards, each on its own USB cable for power and console, plus
+one USB-serial adapter wired to one board's GPIO 17, 18 and ground — the *frame link*, which is how
+the PC joins the cluster as a peer. That board reaches the others by radio.
+
+- **Wiring:** [bench/m1-wiring.html](bench/m1-wiring.html) — the adapter, the board's headers from
+  Espressif's own pin table, and the three wires step by step, as actually built. GitHub shows the
+  file as source; open it in a browser after cloning.
+- **Bring-up from nothing:** [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
+- **Soak and measurement procedure:** [M0-RUNBOOK.md](M0-RUNBOOK.md).
+
+Then, from `host/potluck/`, the same tool as above over the adapter's port:
+
+```
+python -m potluck.ctl --port COM6 --node 7368 watch sys/uptime        # M1: board B, read through board A
+python -m potluck.ctl --port COM6 --node 6300 deploy pkg.json --ca ca.pub   # M3: a signed package, whole cell
+```
 
 ## Reading order
 
 | file | what it is |
 |---|---|
-| [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md) | The resumption path. The project is paused until hardware arrives; this is hour one at the bench, with one board and with two |
+| [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md) | The bench guide: unboxing, the board register, first contact, the soak and the distance sweep, written for a reader who remembers nothing |
+| [bench/m1-wiring.html](bench/m1-wiring.html) | The frame-link wiring, as built: the USB-serial adapter to one board, step by step (open in a browser) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the eight decision records, and milestones M0–M8 with accept/kill criteria |
 | [M0-LOG.md](M0-LOG.md) | The decision log, newest session last — including the conclusions that were later **withdrawn**, kept struck-through rather than deleted. The QEMU sessions are a study in how a stale flash image manufactures false evidence |
 | [M0-RUNBOOK.md](M0-RUNBOOK.md) | Bench procedure: build, flash, emulate, soak, and the delay methodology to read *before quoting any number* |

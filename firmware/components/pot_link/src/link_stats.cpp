@@ -164,7 +164,7 @@ void EventRing::push(const Event& e) {
         // Overwrite-oldest, and count it. A full event ring must never be able to stall a
         // heartbeat, so there is no back-pressure here — but a silent overwrite would mean the
         // JSON stream lies about how many events happened.
-        tail_ = head_ - kEventRingSize;
+        tail_ = head_ - static_cast<uint32_t>(kEventRingSize);  // size_t is 64-bit on LP64 hosts
         ++dropped_;
     }
 }

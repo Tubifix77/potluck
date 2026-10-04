@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>M1 Adapter Wiring</title>
+<title>Frame Link Wiring</title>
 <style>
 :root {
   --bg: #f7f6f2; --card: #ffffff; --fg: #1d1d1b; --muted: #66645e; --border: #d9d6cc;
@@ -55,15 +55,27 @@ code, .k { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; back
   background: var(--bg); color: var(--fg); cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .dim { opacity: .35; }
+pre { background: var(--hl); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font-size: 0.88rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
 </style>
 </head>
 <body>
 <main>
-<h1>Wiring the CP2102 adapter to board A</h1>
-<p class="sub">For M1: the PC talks to board A through the adapter. B only needs power, and you unplug it during the test. Board A stays plugged into the PC by its own USB cable, which powers it.</p>
+<h1>The frame link: a CP2102 adapter on board A</h1>
+<p class="sub">As built and used on 2026-10-04 for M1, M2 and M3. The PC joins the cluster as a peer through
+this adapter, cabled to one board; that board reaches the others by radio. The board keeps its own USB
+cable for power and its console.</p>
 
-<div class="bad"><strong>Use the pins printed <span class="k">17</span>, <span class="k">18</span> and <span class="k">G</span>.</strong>
-Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on the other header: those are the console, already used by the USB cable. And <strong>never connect the adapter's <span class="k">3V3</span> or <span class="k">+5V</span> pins</strong> to anything.</div>
+<div class="bad">
+<strong>Four rules.</strong>
+<ul>
+<li>Use the board pins printed <span class="k">17</span>, <span class="k">18</span> and <span class="k">G</span>. Not the ones printed <span class="k">TX</span> / <span class="k">RX</span> on the other header: those are the console, already used by the board's USB cable.</li>
+<li>Never connect the adapter's <span class="k">3V3</span> or <span class="k">+5V</span> pins to anything.</li>
+<li>Never leave the adapter wired to a board while the adapter itself is unplugged. The board then partly powers the adapter through the signal wire; we saw its red LED light up.</li>
+<li>Wire with everything unplugged. Then plug the adapter and the board in back to back.</li>
+</ul>
+</div>
 
 <div class="card diagram">
 <div class="tabs" role="tablist" aria-label="Which step to show">
@@ -119,55 +131,73 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
   <path d="M 346 312 C 300 312, 300 350, 206 350" fill="none" stroke="var(--s2)" stroke-width="3"/>
   </g>
 
-  <!-- step 3: adapter TX -> resistor -> J1-11 "18" -->
+  <!-- step 3: adapter TXD -> J1-11 "18", direct -->
   <g id="w3">
-  <path d="M 206 320 L 226 320" fill="none" stroke="var(--s3)" stroke-width="3"/>
-  <polyline points="226,320 230,313 238,327 246,313 254,327 262,313 266,320" fill="none" stroke="var(--s3)" stroke-width="2.5"/>
-  <path d="M 266 320 C 300 320, 310 332, 346 332" fill="none" stroke="var(--s3)" stroke-width="3"/>
-  <text x="241" y="306" class="capb">R</text>
+  <path d="M 206 320 C 280 320, 300 332, 346 332" fill="none" stroke="var(--s3)" stroke-width="3"/>
   </g>
 </svg>
 <div class="legend">
   <span data-for="1"><span class="sw" style="background:var(--loop)"></span>step 1: one wire, TXD to RXD on the adapter. No wire to the board</span>
   <span data-for="2 3"><span class="sw" style="background:var(--gnd)"></span>ground</span>
   <span data-for="2 3"><span class="sw" style="background:var(--s2)"></span>board 17 → adapter RXD (safe)</span>
-  <span data-for="3"><span class="sw" style="background:var(--s3)"></span>adapter TXD → board 18 (R, a resistor, optional)</span>
+  <span data-for="3"><span class="sw" style="background:var(--s3)"></span>adapter TXD → board 18</span>
 </div>
 </div>
 
-<div class="warn"><strong>The adapter's pins are drawn in the order printed on yours</strong>, top to bottom: 3V3, TXD, RXD, GND, +5V. On the board, the positions follow Espressif's official table, and clone boards usually copy it. Still: <strong>find each pin by its printed label before you push a wire on</strong>.</div>
+<div class="warn"><strong>The adapter is the HW-598A module</strong>, pins printed top to bottom
+3V3, TXD, RXD, GND, +5V, and that is how it is drawn. The board positions follow Espressif's official
+header table, and on these boards the printed labels matched it pin for pin. Still: find each pin by its
+printed label before pushing a wire on.</div>
 
-<h2>The three steps, one at a time</h2>
+<h2>Setting it up</h2>
 <div class="steps">
   <div class="card step s1">
-    <h3>Step 1: test the adapter on its own</h3>
+    <h3>Step 1: the driver, then the adapter on its own</h3>
     <ul>
-      <li>Plug the adapter into the PC. Nothing connected to board A yet.</li>
-      <li>One jumper from the adapter's <span class="k">TXD</span> to its own <span class="k">RXD</span> (the two pins next to each other).</li>
-      <li>Tell me. I send bytes and check they come back, which proves the adapter and its driver.</li>
-      <li><strong>Remove that jumper afterwards.</strong></li>
+      <li>Windows needs Silicon Labs' <strong>CP210x Universal Windows Driver</strong> (v11.6.0 used). The
+      package's <span class="k">.bat</span> reported success but installed nothing; Device Manager showed
+      the adapter with code 28. What worked: Device Manager → <em>CP2102 USB to UART Bridge Controller</em>
+      → Update driver → Browse my computer → the unzipped folder. It then appears as
+      <em>Silicon Labs CP210x USB to UART Bridge (COMx)</em>; here, COM6.</li>
+      <li>Loopback: one jumper from the adapter's <span class="k">TXD</span> to its own <span class="k">RXD</span>.
+      Bytes written to the port must come back unchanged; 4,096 random bytes did, at 921,600 and 115,200 baud.</li>
+      <li>Remove the jumper.</li>
     </ul>
   </div>
   <div class="card step s2">
-    <h3>Step 2: two wires, board talking and adapter listening</h3>
+    <h3>Step 2: ground, and the board's transmit line</h3>
     <ul>
-      <li>Adapter <span class="k">GND</span> → board <span class="k">G</span> (J1, the bottom pin on the <span class="k">17</span>/<span class="k">18</span> side; any <span class="k">G</span> works).</li>
+      <li>Adapter <span class="k">GND</span> → board <span class="k">G</span> (J1's bottom pin, on the <span class="k">17</span>/<span class="k">18</span> side).</li>
       <li>Board <span class="k">17</span> → adapter <span class="k">RXD</span>.</li>
-      <li>Safe whatever the adapter's voltage is: the board sends 3.3 V into an input that accepts up to 5 V.</li>
-      <li>Tell me. I check A's frames arrive.</li>
+      <li>There is nothing to check yet, and silence is correct: a node only speaks to the host after the
+      host's HELLO, and the host cannot say it until step 3.</li>
     </ul>
   </div>
   <div class="card step s3">
-    <h3>Step 3: the last wire, adapter talking to the board</h3>
+    <h3>Step 3: the adapter's transmit line, wired directly</h3>
     <ul>
-      <li>Adapter <span class="k">TXD</span> → board <span class="k">18</span>. A 1–10 kΩ resistor in this wire is optional now (see below).</li>
-      <li>This is the only wire that could hurt the board, if the adapter drove 5 V. <strong>It can't:</strong> the CP2102 datasheet powers its serial pins from the chip's own 3.3 V supply (3.0–3.6 V), and your adapter reports itself as a CP2102. The only remaining risk is a counterfeit chip that copies the name and breaks its datasheet.</li>
-            <li>Tell me. Then the M1 test itself: A reads a value from B, you unplug B, and the read must answer <span class="k">UNAVAILABLE</span>.</li>
+      <li>Adapter <span class="k">TXD</span> → board <span class="k">18</span>, one plain jumper wire like the other two.</li>
+      <li>Why that is safe: the CP2102's serial pins run from the chip's own supply, VDD, which is
+      3.0–3.6 V, and its output high is at most VDD. It cannot drive 5 V into the board. The adapter
+      identifies itself to Windows as a CP2102. The residual risk is a counterfeit chip that copies
+      the name and not the datasheet.</li>
+      <li>Check: <code>python -m potluck.ctl --port COM6 info</code> must report
+      <em>node 0x6300 … admitted</em>. That proves both directions at once.</li>
     </ul>
   </div>
 </div>
 
-<p class="src">Board pinout: Espressif, <em>ESP32-S3-DevKitC-1 v1.1 user guide</em>, Header Block tables J1 and J3, read 2026-10-04. Frame link pins from the firmware's <code>CONFIG_POT_SERIAL_TX_GPIO=17</code> / <code>_RX_GPIO=18</code>. Adapter pin order: read off the owner's adapter, 2026-10-04. Its signal level: Silicon Labs CP2102 datasheet Rev. 1.2 (UART I/O powered from VDD, 3.0–3.6 V), plus Windows identifying the adapter as a CP2102.</p>
+<h2>What it is used for</h2>
+<table>
+<tr><th>milestone</th><th>command (from <code>host/potluck</code>)</th></tr>
+<tr><td>M1, read another board through A</td><td><code>python -m potluck.ctl --port COM6 --node 7368 watch sys/uptime</code></td></tr>
+<tr><td>M2, record a session and replay it</td><td><code>python -m potluck.ctl --port COM6 --node 6300 --capture s.jsonl soak --nodes 6300,7368,8160</code><br>then <code>python -m potluck --replay s.jsonl --expect-digest &lt;sha256&gt;</code></td></tr>
+<tr><td>M3, deploy a signed package to the whole cell</td><td><code>python -m potluck.ctl --port COM6 --node 6300 deploy pkg.json --ca ca.pub</code></td></tr>
+</table>
+<p>A freshly plugged adapter can refuse its first open or miss the first HELLO for a second or two
+while Windows sets it up. Retry before suspecting the wiring.</p>
+
+<p class="src">Board pinout: Espressif, <em>ESP32-S3-DevKitC-1 v1.1 user guide</em>, Header Block tables J1 and J3, read 2026-10-04. Frame link pins from the firmware's <code>CONFIG_POT_SERIAL_TX_GPIO=17</code> / <code>_RX_GPIO=18</code>. Adapter pin order: read off the owner's adapter, 2026-10-04. Its signal level: Silicon Labs CP2102 datasheet Rev. 1.2 (UART I/O powered from VDD, 3.0–3.6 V), plus Windows identifying the adapter as a CP2102. Session-by-session record: M0-LOG.md, sessions 16–18.</p>
 </main>
 
 <script>
@@ -203,8 +233,8 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
   header("j1", J1, 352, "L");
   var CAPS = {
     "1": "Step 1: the adapter alone. Board A is not wired; leave it as it is.",
-    "2": "Step 2: loop wire removed. Two wires to A, with A unplugged while wiring.",
-    "3": "Step 3: all three wires. This is the finished setup."
+    "2": "Step 2: loop wire removed. Two wires to A, wired with everything unplugged.",
+    "3": "Step 3: all three wires, TXD to 18 directly. The finished setup."
   };
   function show(n) {
     document.getElementById("w1").style.display = n === "1" ? "" : "none";
@@ -232,7 +262,7 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
   g.appendChild(el("text", { x: 395, y: top + 10 * step + 4, "class": "lbl" }, "← frame link RX"));
   g.appendChild(el("text", { x: 380, y: top + 21 * step + 4, "class": "lbl" }, "← ground"));
 
-  // adapter pins (by label; order is the seller's listing, unverified)
+  // adapter pins, in the order printed on the HW-598A module
   var A = [["3V3", 290, true], ["TXD", 320], ["RXD", 350], ["GND", 380], ["+5V", 410, true]];
   var ga = document.getElementById("adp");
   A.forEach(function (p) {
