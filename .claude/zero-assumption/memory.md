@@ -527,3 +527,13 @@ missing.
 | **M2 accepted on hardware** | A 10.05-min session over the CP2102 frame link, 3 boards / 18 entries (12 via replicas), 14,628 raw frames, 4,428 reads, 0 timeouts; replay → sha256 `bd735ccb…` matches (exit 0), wrong digest exit 6 | `captures/m2-hw-10min.jsonl`, M0-LOG session 17 | 2026-10-04 | volatile | **measured** |
 | **M3 accepted on hardware** | Purple (counter 2) deployed to 3 nodes through A, survived host unplug + power cycle on a mains charger; broken module (fault at 3 s, counter 3) -> each node 3 trial boots, then reverted to counter 2 by itself | `captures/m3-broken-revert-*.log`, M0-LOG session 18, fw `0dd9645` | 2026-10-04 | volatile | **measured** |
 | **The owner's SN65HVD230 modules: 4-pin header top→bottom TX, RX, GND, 3.3V; 2-pin CAN header top→bottom CANL, CANH** | Read off the modules by the owner, 2026-10-04. Agrees with the photo/schematic order (3.3V/GND/RX/TX) read from the other end. Module TX = CAN_TX = the transceiver's driver input D, RX = its receiver output R (schematic, row above): **ESP32 CAN-TX → module TX, CAN-RX → module RX, straight, not crossed** | owner, from the modules + the module schematic | 2026-10-04 | stable | **measured** |
+
+### M4 on two boards: CAN transmit order and SAFE_STATE latency — 2026-10-05
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **The ESP-IDF v6 TWAI driver transmits in FIFO order** | `twai_node_transmit()` pushes a frame pointer on `tx_mount_queue` (a FreeRTOS queue); `on_tx_done` pops the next in order | `esp_driver_twai/esp_twai_onchip.c`, local ESP-IDF v6 tree | 2026-10-04 | per IDF version | verified |
+| **The arbitration-lost interrupt is enabled by that driver on the S3** | `TWAI_LL_DRIVER_INTERRUPTS` includes `TWAI_LL_INTR_ALI`; the HAL maps it to `err_flags.arb_lost` | `esp_hal_twai/esp32s3/include/hal/twai_ll.h`, `twai_hal_v1.c` | 2026-10-04 | per IDF version | verified |
+| **Measured: FIFO transmit, SAFE_STATE 2,522–5,531 µs under flood** | B ~3,050 frames/s; C's SAFE_STATE queued behind its own 10-frame probe | `captures/m4-can-two-board-fifo-0x7368-0x8160.log` | 2026-10-04 | bench | measured |
+| **Measured: priority transmit, SAFE_STATE 335–683 µs under flood, worst 1,056 µs since boot** | B 3,072 frames/s for 5 min; 301 consecutive SAFE_STATEs received; B lost 44 arbitrations, C 0; zero bit/form/stuff errors | `captures/m4-can-two-board-priority-5min.log`, `-report.txt` | 2026-10-05 | bench | measured |
+| **[MEASURE] SAFE_STATE winning arbitration, on a scope or logic analyzer** | Open: no instrument on the bench | — | — | — | open |

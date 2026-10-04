@@ -3210,3 +3210,72 @@ With both boards wired and powered, read both consoles' `{"t":"can"}` lines for 
 
 Then put both back on the normal firmware (`tools\build_firmware.ps1 -Flash -Port COM4/COM5`),
 re-check the radio cell, and write up M4.
+
+## Session 20 — 2026-10-04/05, M4's CAN half on two boards: SAFE_STATE was slow, and the bus was not why
+
+B (`can-flood`) and C (`can-safe`, SAFE_STATE every 1000 ms) wired per `bench/m4-can-wiring.html`,
+read reset-free with `tools/can_capture.py`, summarised with `tools/can_report.py`.
+
+### First run: the bus worked, SAFE_STATE did not leave on time
+
+`captures/m4-can-two-board-fifo-0x7368-0x8160.log`, session 19's builds. B and C admitted each other
+by beacon; B received every SAFE_STATE (`ss_rx` tracked C's `ss_sent`, no gaps); zero bit, form and
+stuff errors; B flooded at ~3,050 frames/s. But SAFE_STATE took **2,522–5,531 µs** from submit to
+on-the-wire, against session 19's expectation of about 600 µs, and `arb_lost` read 0 on both boards.
+
+**Cause, from the driver source:** `twai_node_transmit()` puts frames on a FIFO queue
+(`esp_twai_onchip.c`). C sends a 48-byte probe every second, which is 10 CAN frames, on the same
+one-second rhythm as SAFE_STATE, so every SAFE_STATE queued behind its own node's probe. Ten frames,
+each alternating with one of B's, is the ~5 ms seen. The arbitration-lost interrupt *is* enabled
+(`TWAI_LL_DRIVER_INTERRUPTS` includes `ALI`), so the zero was real. The bus was never the
+bottleneck; the node's own queue was. Priority on the wire is worth nothing if the node serialises
+its traffic in arrival order before it gets there.
+
+### Fix: transmit in priority order, one frame at a time (`2b32274`)
+
+`CanTxQueue` (portable, in `can_profile`): lowest packed priority first, FIFO among equals. A single
+frame may go between another message's segments; a segmented message, once started, finishes before
+another segmented one starts, because `CanReassembler` keeps one message per sender. The port hands
+the driver exactly one frame and feeds the next from `on_tx_done`. Three host tests; the overtaking
+test fails when `before()` is reduced to FIFO, and passes with it. 215 C++ cases green.
+
+### Second run: accepted on the controllers' own evidence
+
+`captures/m4-can-two-board-priority-5min.log` and `-report.txt`, builds of `2b32274` (flood ELF
+`47bc7a637c47…`, safe ELF `c40af7e74853…`), five minutes:
+
+| | |
+|---|---|
+| flood | B 3,072 frames/s (890,749 sent, all ok) |
+| SAFE_STATE delivery | 301 consecutive counters (106..406) in B's event stream, no gaps |
+| SAFE_STATE latency on C | **335–683 µs** in every 10 s sample; 1,056 µs worst since boot (the first one) |
+| arbitration | B lost 44, C lost 0 across 10,196 frames |
+| errors | zero bit, form, stuff; zero tx failures; no peer deaths |
+
+So under a flood running at about 3,000 frames/s, SAFE_STATE leaves within about two frame times of
+the loopback baseline (~320 µs, one frame on an idle bus, session 19) and never loses arbitration.
+
+**What this is not:** the milestone sentence says "demonstrated on a scope". There is no scope or
+logic analyzer on the bench; the evidence is the TWAI controllers' own counters and C's own clock.
+The scope trace stays open as a **[MEASURE]** for when the owner has a USB logic analyzer (PulseView
+decodes CAN). Arbitration contests are also rare on a two-node bus (44 in five minutes); why the
+FIFO run saw none at all is not established. A third CAN node would make contests routine.
+
+### Findings that are not M4 failures
+
+- **C's receive queue overflowed** 220 times in 881,583 frames: the link task drains the ISR's
+  128-entry queue too slowly at ~3,000 frames/s. No message was lost (`rx_timeouts` and
+  `rx_out_of_order` both 0), so the dropped frames were flood frames, but a real CAN node under
+  load would need a faster drain or a hardware acceptance filter.
+- **B's flood starved B's own probes** 23 times (`tx_no_slot`): it leaves 16 queue slots free, and a
+  probe plus a probe reply need 20. Demo code only.
+- **`ss_rx_gaps` read 4294966709 on B**: C was reflashed under a running B, its counter restarted at
+  1, and the demo counted a negative gap. It never moved afterwards. `e8fd0d7` counts sender
+  restarts separately (`ss_rx_restarts`); compile-checked, not yet run on a board.
+
+### The bench afterwards
+
+All three boards back on the normal radio build of `e8fd0d7` (ELF `637eef762168…`), `esptool
+verify-flash` digest matched on each by MAC (`…:63:00`, `…:73:68`, `…:81:60`). The cell re-formed:
+two peers alive on every board, none dead. The CAN modules are still wired to B and C; the normal
+build does not touch GPIO4/5.

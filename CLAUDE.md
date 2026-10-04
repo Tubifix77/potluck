@@ -16,14 +16,15 @@ coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work l
 detach and power-cycle, and a broken module that all three nodes revert themselves (M0-LOG session 18). M2: a 10.05-minute three-board session over COM6
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
-board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **Next: M4's CAN half, then M5.**
+board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **M4's CAN half passed on two
+boards (2026-10-05), scope trace pending (M0-LOG session 20). Next: M5.**
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
 Powersuit's Appendix A bench at once.
 
 Board A — MAC `b8:1f:3f:da:63:00`, therefore **node 0x6300** — enumerated as **CH343 (COM3)**, and is
-**flashed with Potluck and running** (now fw `0dd9645`, M3, like B and C). Its factory image is backed up. The board
+**flashed with Potluck and running** (now fw `e8fd0d7`, like B and C). Its factory image is backed up. The board
 register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
 
 > **§6's Wi-Fi DRAM [MEASURE] is CLOSED (2026-10-01): 32,264 B — 31.5 KiB, under the ~40 KB
@@ -32,31 +33,29 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## M4 IN PROGRESS — READ THIS FIRST (handover, 2026-10-04)
+> ## M4 PASSED ON TWO BOARDS — READ THIS FIRST (handover, 2026-10-05)
 >
-> **Built and committed:** the 8-byte beacon, the CAN profile (`firmware/components/pot_can`), admission
-> by beacon, SAFE_STATE, the TWAI port, `build_firmware.ps1 -Variant`. TWAI loopback passed on board C.
-> Detail: M0-LOG session 19.
+> **Result** (M0-LOG session 20): B flooded a two-board CAN bus at 3,072 frames/s for 5 min while C sent
+> SAFE_STATE every second. 301 consecutive SAFE_STATEs arrived; each left C within **335–683 µs**; C never
+> lost arbitration (B lost 44); zero bit/form/stuff errors. The first run found SAFE_STATE queued 2.5–5.5 ms
+> behind its own node's probe (the TWAI driver is FIFO), so `pot_can` now transmits in priority order,
+> one frame at a time (`CanTxQueue`, `2b32274`). Evidence: `captures/m4-can-two-board-*`.
 >
-> **The bench right now:** B (COM4) runs variant `can-flood`, C (COM5) runs `can-safe` (SAFE_STATE every
-> 1000 ms); both are radio-off CAN builds, flashed and verified. The owner is wiring them to two
-> SN65HVD230 modules per `bench/m4-can-wiring.html` (GPIO4→TX, GPIO5→RX straight, 3V3→3.3V, G→GND;
-> CANH–CANH, CANL–CANL; each module's own 120 Ω terminates the bus). The page took three corrections from
-> the owner and is now right (`28df951`): boards with J1 on their left, modules **seen from above** with
-> TX upper right (right edge TX, RX, GND, 3.3V) and CANL above CANH on the left. **Ask whether the wiring
-> is done before reading the consoles.** A runs normal M3 firmware with the CP2102 on COM6.
+> **Still open:** the milestone says "on a scope" — that trace is a **[MEASURE]** for when the owner has
+> a USB logic analyzer. Also queued from this run: C's ISR receive queue overflows at ~3,000 frames/s
+> (220 of 881,583, no message lost); the flood demo starves its own probes (`tx_no_slot`);
+> `ss_rx_restarts` (`e8fd0d7`) is compile-checked only.
 >
-> **Next step:** read B's and C's `{"t":"can"}` console lines (reset-free read: pyserial with dtr=rts=False).
-> Expect B: `arb_lost` climbing, `ss_rx` = C's `ss_sent`, `ss_rx_gaps` 0, no bit/stuff/form errors. C:
-> `ss_max_us` under flood (loopback baseline ~320 us = one frame; expect ≲ 2 frames). That is M4's
-> scope-free evidence; the sentence says "on a scope", and the owner may buy a USB logic analyzer.
-> Afterwards reflash B and C with the normal build and confirm the radio cell.
+> **The bench now:** all three boards run the normal radio build of **`e8fd0d7`** (ELF `637eef762168…`),
+> verify-flash matched on each; the cell is up (two peers alive everywhere). The SN65HVD230 modules are
+> still wired to B and C (GPIO4/5; the normal build leaves those pins alone). CP2102 on COM6 for A.
 >
-> **Variant builds:** `tools\build_firmware.ps1 -Variant can-flood -Extra "CONFIG_POT_RADIO_DISABLE=y",
-> "CONFIG_POT_CAN=y","CONFIG_POT_M4_FLOOD=y" -Flash -Port COM4`; `can-safe` uses
-> `"CONFIG_POT_M4_SAFE_STATE_MS=1000"` instead of FLOOD. Always run builds from PowerShell directly.
+> **Tools:** `tools/can_capture.py` (reset-free read of COM4/COM5, needs the IDF Python for pyserial),
+> `tools/can_report.py <log>`. **Variant builds:** `tools\build_firmware.ps1 -Variant can-flood -Extra
+> "CONFIG_POT_RADIO_DISABLE=y","CONFIG_POT_CAN=y","CONFIG_POT_M4_FLOOD=y" -Flash -Port COM4`; `can-safe`
+> uses `"CONFIG_POT_M4_SAFE_STATE_MS=1000"` instead of FLOOD. Always run builds from PowerShell directly.
 >
-> ## M0-M3 ARE ACCEPTED. All three boards run `0dd9645` (ELF `4aa0c93f…`): M3's deploy firmware.
+> ## M0-M3 ARE ACCEPTED. (M3 was accepted on `0dd9645`; the boards have since moved to `e8fd0d7`.)
 >
 > **Deploy:** keys in `keys/` (gitignored: `ca.pub`, `deploy.key`, `deploy.cert`). Sign with
 > `python -m potluck.signing sign manifests/<m>.json --key keys/deploy.key --cert keys/deploy.cert
