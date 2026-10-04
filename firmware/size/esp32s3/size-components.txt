@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xb69e0 bytes. Smallest app partition is 0x100000 bytes. 0x49620 bytes (29%) free.
+potluck_m0.bin binary size 0xb6b30 bytes. Smallest app partition is 0x100000 bytes. 0x494d0 bytes (29%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -61,9 +61,9 @@ Executing "ninja size-components"...
 
 │ libesp_driver_uart.a            │      10824 │    0 │     0 │        0 │   361 │    33 │   328 │     0 │       9958 │   9958 │        505 │      0 │     505 │        0 │        0 │             0 │        0 │           0 │
 
-│ libheap.a                       │       9164 │ 1276 │  1276 │        0 │  4340 │     8 │     4 │  4328 │       2662 │   2662 │        886 │      0 │     886 │        0 │        0 │             0 │        0 │           0 │
+│ libpot_link.a                   │       9414 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       9320 │   9320 │         94 │      0 │      94 │        0 │        0 │             0 │        0 │           0 │
 
-│ libpot_link.a                   │       9089 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       8995 │   8995 │         94 │      0 │      94 │        0 │        0 │             0 │        0 │           0 │
+│ libheap.a                       │       9164 │ 1276 │  1276 │        0 │  4340 │     8 │     4 │  4328 │       2662 │   2662 │        886 │      0 │     886 │        0 │        0 │             0 │        0 │           0 │
 
 │ libesp_driver_rmt.a             │       8593 │  411 │   411 │        0 │  1887 │    12 │    77 │  1798 │       5834 │   5834 │        461 │      0 │     461 │        0 │        0 │             0 │        0 │           0 │
 
