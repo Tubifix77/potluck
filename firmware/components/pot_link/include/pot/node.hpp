@@ -296,6 +296,8 @@ class Node {
     void handle_heartbeat(PeerLink* p, const Frame& f, uint32_t recv_us, bool was_broadcast);
     void handle_bye(PeerLink* p, const Frame& f);
     void handle_read(PeerLink* p, const Frame& f);
+    // Declare a peer's built-in resource on first demand; see handle_read(). True if declared.
+    bool adopt_peer_sys_resource(uint32_t path_hash);
     void handle_write(PeerLink* p, const Frame& f);
     void handle_reply(PeerLink* p, const Frame& f);
     void handle_call(PeerLink* p, const Frame& f, bool wants_reply);

@@ -1,6 +1,7 @@
 // The Potluck node policy — see node.hpp.
 
 #include "pot/node.hpp"
+#include "pot/sys_resources.hpp"
 
 #include <cstring>
 
@@ -566,15 +567,55 @@ void Node::handle_read(PeerLink* p, const Frame& f) {
         return;
     }
 
+    // A read for something we hold no entry for may still be one of a peer's built-in resources:
+    // their paths are a contract derived from the node id (sys_resources.hpp), so the owner, type
+    // and unit are known without asking. This is how a host attached to one board reads another
+    // board's sys/* -- M1's acceptance on hardware -- without v2's frame forwarding (§4: v1 paths
+    // are single-hop). We hold a replica, fetched by our own single-hop READ, and answer from it
+    // with its true age. Declared on demand rather than at admission: six entries for each of 19
+    // peers would take 114 of §6's 128 namespace slots from the application.
+    if (ns_.find(req.path_hash) == nullptr) {
+        adopt_peer_sys_resource(req.path_hash);
+    }
+
+    // Node::read, not ns_.read(..., true): the owner's liveness must decide, and a replica of a dead
+    // node's resource is Unavailable however recently it was cached (§4 rule 2). Answering every
+    // read as if the owner were alive was harmless only while every entry was local.
     Reading r;
-    // Answering for a resource we own: our own clock, and alive by definition since we are running.
-    const NsError st = ns_.read(req.path_hash, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0, true, r);
+    bool local = true;
+    const NsError st = read(req.path_hash, r, &local);
 
     ReplyPayload rep{};
     reply_from_reading(rep, req.path_hash, r, st);
     if (send_frame(p, p->mac, kOpReply, &rep, sizeof(rep), false, f.hdr.msg_id, p->node_id, false)) {
         ++ns_counters_.reads_served;
     }
+
+    // Refresh the replica for the next read. The answer above is what we knew -- NoData the first
+    // time, or the cached value with its age -- and is never held back waiting on the owner, so a
+    // dead owner cannot stall the requester. Skipped when the requester owns the resource itself.
+    if (st == NsError::Ok && !local) {
+        const NsEntry* e = ns_.find(req.path_hash);
+        if (e != nullptr && e->owner_node != p->node_id) {
+            request_read(e->owner_node, req.path_hash);
+        }
+    }
+}
+
+bool Node::adopt_peer_sys_resource(uint32_t path_hash) {
+    for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+        const PeerLink& q = peers_.slot(i);
+        if (q.state == PeerState::Free) {
+            continue;
+        }
+        for (size_t k = 0; k < kSysResourceCount; ++k) {
+            const SysResource which = static_cast<SysResource>(k);
+            if (sys_resource_hash(q.node_id, which) == path_hash) {
+                return ns_.declare(sys_resource_decl(q.node_id, which)) == NsError::Ok;
+            }
+        }
+    }
+    return false;
 }
 
 void Node::handle_write(PeerLink* p, const Frame& f) {

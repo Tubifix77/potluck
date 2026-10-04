@@ -48,6 +48,11 @@ class SerialTransport:
         self.reconnect = reconnect
         self._ser = None
         self.reconnects = 0
+        # The same race TcpTransport's _connect_lock closes: the bridge's reader thread and the
+        # thread sending the HELLO both reach _ensure() at once. On Windows a COM port opens once,
+        # so the loser got "Access denied" and the bridge's first HELLO died -- the first time
+        # potctl met a real port, 2026-10-04. Emulation only ever used TcpTransport, so it hid this.
+        self._open_lock = threading.Lock()
 
     @property
     def description(self) -> str:
@@ -65,8 +70,11 @@ class SerialTransport:
         return serial.serial_for_url(self.port, baudrate=self.baud, timeout=self.timeout)
 
     def _ensure(self):
-        if self._ser is None:
-            self._ser = self._open()
+        if self._ser is not None:
+            return self._ser
+        with self._open_lock:
+            if self._ser is None:
+                self._ser = self._open()
         return self._ser
 
     def read(self, max_bytes: int = 4096) -> bytes:
