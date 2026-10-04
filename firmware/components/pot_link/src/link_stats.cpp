@@ -34,6 +34,7 @@ const char* event_kind_str(EventKind k) {
         case EventKind::ProbeTimeout: return "probe_timeout";
         case EventKind::VersionPinned: return "version_pinned";
         case EventKind::SafeStateRx: return "safe_state_rx";
+        case EventKind::PeerRefused: return "peer_refused";
     }
     return "unknown";
 }

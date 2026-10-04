@@ -151,6 +151,108 @@ bool Node::send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, c
     return true;
 }
 
+bool Node::is_trusted_link(const uint8_t mac[kMacLen]) const {
+    return cfg_.has_trusted_mac && std::memcmp(mac, cfg_.trusted_mac, kMacLen) == 0;
+}
+
+void Node::set_trust(const Identity* id, bool require) {
+    trust_ = id;
+    require_auth_ = require;
+    signed_hello_ok_[0] = signed_hello_ok_[1] = false;
+    for (PeerAuth& a : auth_) a = PeerAuth{};
+}
+
+const Node::PeerAuth* Node::peer_auth(const PeerLink* p) const {
+    if (p == nullptr) return nullptr;
+    const size_t i = peers_.index_of(p);
+    return (i < kMaxPeers) ? &auth_[i] : nullptr;
+}
+
+void Node::refuse(uint16_t claimed_id, HelloAuthError e, CertError ce) {
+    ++auth_counters_.refused;
+    const uint32_t now = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+    for (const Refusal& r : refusals_) {
+        if (r.at_ms != 0 && r.node_id == claimed_id && r.reason == static_cast<uint8_t>(e) && now - r.at_ms < 10000) {
+            return;  // counted; logged within the last 10 s already
+        }
+    }
+    Refusal& slot = refusals_[refusal_cursor_];
+    refusal_cursor_ = (refusal_cursor_ + 1) % (sizeof(refusals_) / sizeof(refusals_[0]));
+    slot.node_id = claimed_id;
+    slot.reason = static_cast<uint8_t>(e);
+    slot.at_ms = (now == 0) ? 1 : now;
+    Event ev{};
+    ev.at_ms = now;
+    ev.kind = EventKind::PeerRefused;
+    ev.node_id = claimed_id;
+    ev.peer_slot = 0xFF;
+    ev.detail_a = static_cast<uint32_t>(e);
+    ev.detail_b = static_cast<uint32_t>(ce);
+    events_.push(ev);
+    if (hal_.on_event != nullptr) {
+        hal_.on_event(hal_.ctx, ev);
+    }
+}
+
+Node::AuthOutcome Node::authenticate_hello(PeerLink* p, const uint8_t mac[kMacLen], const Frame& f,
+                                           const HelloPayload& h, PeerAuth& out) {
+    if (!trust_->enrolled) {
+        if (!require_auth_) return AuthOutcome::Legacy;
+        refuse(h.node_id, HelloAuthError::NotEnrolled, CertError::Ok);
+        return AuthOutcome::Refused;
+    }
+    if (f.payload_len == kHelloBaseLen) {
+        if (!require_auth_) return AuthOutcome::Legacy;
+        refuse(h.node_id, HelloAuthError::Unsigned, CertError::Ok);
+        return AuthOutcome::Refused;
+    }
+    const PeerAuth* known = peer_auth(p);
+    uint8_t dg[kHelloDigestLen];
+    hello_digest(mac, f.payload, f.payload_len, dg);
+    if (known != nullptr && known->verified) {
+        if (std::memcmp(dg, known->digest, kHelloDigestLen) == 0) {
+            ++auth_counters_.cache_hits;
+            return AuthOutcome::Cached;
+        }
+        if (h.boot_epoch < known->epoch) {
+            // An older incarnation's HELLO -- late, or replayed after the peer rebooted. Never let
+            // it roll the verified epoch, and the session key with it, backwards.
+            ++auth_counters_.stale_epoch;
+            return AuthOutcome::Ignore;
+        }
+    }
+    const uint32_t now = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+    if (verify_refill_ms_ == 0) verify_refill_ms_ = now;
+    while (now - verify_refill_ms_ >= kVerifyRefillMs) {
+        verify_refill_ms_ += kVerifyRefillMs;
+        if (verify_tokens_ < kVerifyBurst) ++verify_tokens_;
+    }
+    if (verify_tokens_ == 0) {
+        ++auth_counters_.rate_limited;
+        return AuthOutcome::Ignore;
+    }
+    --verify_tokens_;
+    const uint32_t t0 = hal_.now_us ? hal_.now_us(hal_.ctx) : 0;
+    const HelloAuth r = hello_verify(trust_->ca_pub, mac, f.payload, f.payload_len, f.hdr.src);
+    if (r.error != HelloAuthError::Ok) {
+        refuse(h.node_id, r.error, r.cert_error);
+        return AuthOutcome::Refused;
+    }
+    out = PeerAuth{};
+    if (!session_key(*trust_, cfg_.node_id, cfg_.boot_epoch, r.peer_pub, h.node_id, h.boot_epoch, out.key)) {
+        refuse(h.node_id, HelloAuthError::WeakKey, CertError::Ok);
+        return AuthOutcome::Refused;
+    }
+    out.verified = true;
+    out.epoch = h.boot_epoch;
+    std::memcpy(out.pub, r.peer_pub, kEdPubLen);
+    std::memcpy(out.digest, dg, kHelloDigestLen);
+    ++auth_counters_.verified;
+    const uint32_t took = (hal_.now_us ? hal_.now_us(hal_.ctx) : 0) - t0;
+    if (took > auth_counters_.verify_us_max) auth_counters_.verify_us_max = took;
+    return AuthOutcome::Fresh;
+}
+
 void Node::send_hello(bool want_ack) {
     HelloPayload h{};
     h.boot_epoch = cfg_.boot_epoch;
@@ -160,8 +262,23 @@ void Node::send_hello(bool want_ack) {
     h.hb_period_cs = static_cast<uint8_t>(cfg_.hb_period_ms / 10);
     h.hb_miss_limit = cfg_.hb_miss_limit;
     h.flags = want_ack ? kHelloFlagWantAck : 0;
-    // pubkey_fp stays zero until M5.
-    if (send_frame(nullptr, kBroadcastMacAddr, kOpHello, &h, sizeof(h), false, 0, kNodeBroadcast,
+    const void* payload = &h;
+    uint16_t plen = static_cast<uint16_t>(sizeof(h));
+    if (trust_ != nullptr && trust_->enrolled) {
+        // M5: the first 8 bytes of our key, then the certificate and a signature appended (200 B).
+        std::memcpy(h.pubkey_fp, trust_->pub, sizeof(h.pubkey_fp));
+        const size_t k = want_ack ? 1 : 0;
+        if (!signed_hello_ok_[k]) {
+            uint8_t base[kHelloBaseLen];
+            std::memcpy(base, &h, kHelloBaseLen);
+            signed_hello_ok_[k] = hello_sign(*trust_, cfg_.mac, base, signed_hello_[k]);
+        }
+        if (signed_hello_ok_[k]) {
+            payload = signed_hello_[k];
+            plen = static_cast<uint16_t>(kHelloSignedLen);
+        }
+    }
+    if (send_frame(nullptr, kBroadcastMacAddr, kOpHello, payload, plen, false, 0, kNodeBroadcast,
                    true)) {
         ++tally_.hellos;
     }
@@ -302,6 +419,15 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         return;
     }
 
+    PeerAuth fresh{};
+    AuthOutcome outcome = AuthOutcome::Legacy;
+    if (trust_ != nullptr && !is_trusted_link(src_mac)) {
+        outcome = authenticate_hello(p, src_mac, f, h, fresh);
+        if (outcome == AuthOutcome::Refused || outcome == AuthOutcome::Ignore) {
+            return;  // a refused stranger never gets a peer slot; a known peer's state is untouched
+        }
+    }
+
     if (p == nullptr) {
         const size_t in_use = kMaxPeers - peers_.count_in_state(PeerState::Free);
         if (in_use >= kMaxUnicastPeers) {
@@ -320,6 +446,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
             ++counters_.peer_table_full;
             return;
         }
+        auth_[peers_.index_of(p)] = PeerAuth{};  // a reused slot must not inherit its last tenant's key
         emit(EventKind::PeerDiscovered, p, h.boot_epoch);
         // on_rx only accounts a frame against a peer it already knew, so the HELLO that creates the
         // peer has to be accounted here or it is missing from rx_frames forever.
@@ -327,6 +454,9 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         p->last_rssi = rssi;
     }
 
+    if (outcome == AuthOutcome::Fresh) {
+        auth_[peers_.index_of(p)] = fresh;
+    }
     p->node_id = h.node_id;
     p->hb_period_ms = (h.hb_period_cs != 0) ? h.hb_period_cs * 10u : cfg_.hb_period_ms;
     p->miss_limit = (h.hb_miss_limit != 0) ? h.hb_miss_limit : cfg_.hb_miss_limit;
@@ -347,6 +477,14 @@ void Node::handle_hello_ack(PeerLink* p, const Frame& f) {
     if (!load_hello_ack(f.payload, f.payload_len, a)) {
         ++counters_.rx_short_payload;
         return;
+    }
+    if (trust_required() && !is_trusted_link(p->mac)) {
+        // HELLO_ACK is not signed. From a peer we have verified, for the epoch we verified, it is
+        // only a liveness hint; anything else would let an unsigned frame move an epoch.
+        const PeerAuth* pa = peer_auth(p);
+        if (pa == nullptr || !pa->verified || a.boot_epoch != pa->epoch) {
+            return;
+        }
     }
     p->node_id = a.node_id;
     p->hb_period_ms = (a.hb_period_cs != 0) ? a.hb_period_cs * 10u : cfg_.hb_period_ms;

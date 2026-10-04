@@ -20,6 +20,7 @@
 #include <cstdint>
 
 #include "pot/frame.hpp"
+#include "pot/hello_auth.hpp"
 #include "pot/link_stats.hpp"
 #include "pot/membership.hpp"
 #include "pot/namespace.hpp"
@@ -114,6 +115,13 @@ struct NodeConfig {
     // ESP-NOW version and must come first.
     bool admit_on_beacon = false;
 
+    // M5 (section 9.3): one link trusted because it is a cable rather than because it signed
+    // anything -- the serial frame link to the host, which is physically attached to this board. Its
+    // HELLO is admitted unsigned. Deploys over it still need a signed package (section 9.3's deploy
+    // key), so this trusts the cable's endpoint to be the operator, not to be the CA.
+    bool has_trusted_mac = false;
+    uint8_t trusted_mac[kMacLen] = {};
+
     // A namespace request nobody answered. Longer than probe_timeout_ms because a READ may
     // have to wait on the owner's own scheduling, not only on the link.
     uint32_t ns_request_timeout_ms = 2000;
@@ -146,6 +154,34 @@ class Node {
 
     // Milliseconds until tick() next has work to do, so a caller can sleep exactly that long.
     uint32_t next_deadline_in_ms(uint32_t now_ms) const;
+
+    // ---- M5: authenticated admission (section 9.3) -----------------------------------------
+    // Hand the node its identity -- a snapshot taken at boot; a later enrolment applies after a
+    // reboot, so nothing here ever races the console. With an enrolled identity every HELLO this node
+    // sends is signed. With `require` set, a HELLO is admitted only if it carries a certificate from
+    // our CA and a signature by the certified key over the sender's MAC; anything else is refused,
+    // counted and logged as a peer_refused event. With no identity the node behaves as before M5.
+    void set_trust(const Identity* id, bool require);
+    bool trust_required() const { return trust_ != nullptr && require_auth_; }
+
+    struct PeerAuth {
+        bool verified;
+        uint32_t epoch;  // the boot epoch the signature covered, and the session key was derived for
+        uint8_t pub[kEdPubLen];
+        uint8_t key[kSessionKeyLen];
+        uint8_t digest[kHelloDigestLen];  // of the exact HELLO verified, to skip identical repeats
+    };
+    const PeerAuth* peer_auth(const PeerLink* p) const;
+
+    struct AuthCounters {
+        uint32_t verified;       // HELLOs checked in full and accepted
+        uint32_t cache_hits;     // repeats of an accepted HELLO, recognised by digest
+        uint32_t refused;        // every refusal, including the ones not re-logged as events
+        uint32_t rate_limited;   // dropped unexamined: over the verification budget
+        uint32_t stale_epoch;    // signed or not, older than the epoch already verified
+        uint32_t verify_us_max;  // longest full check: certificate, signature, session key
+    };
+    const AuthCounters& auth_counters() const { return auth_counters_; }
 
     // Announce an intentional departure (§5.2) and stop participating. `rejoin()` undoes it.
     void depart();
@@ -403,6 +439,37 @@ class Node {
 
     bool departed_ = false;
     bool started_ = false;
+
+    // ---- M5 ---------------------------------------------------------------------------------
+    enum class AuthOutcome : uint8_t { Fresh, Cached, Legacy, Ignore, Refused };
+    AuthOutcome authenticate_hello(PeerLink* p, const uint8_t mac[kMacLen], const Frame& f,
+                                   const HelloPayload& h, PeerAuth& out);
+    void refuse(uint16_t claimed_id, HelloAuthError e, CertError ce);
+    bool is_trusted_link(const uint8_t mac[kMacLen]) const;
+
+    const Identity* trust_ = nullptr;
+    bool require_auth_ = false;
+    PeerAuth auth_[kMaxPeers]{};
+    AuthCounters auth_counters_{};
+    // Our own HELLO, signed once per boot for each value of the want-ack flag: Ed25519 signing is
+    // deterministic and the content is fixed for the boot, so re-signing every 2 s would be waste.
+    uint8_t signed_hello_[2][kHelloSignedLen]{};
+    bool signed_hello_ok_[2] = {false, false};
+    // Verification budget: each full check costs ~54 ms of this task (two Ed25519 verifies, M0-LOG
+    // session 21), so a flood of forged HELLOs must not be able to buy more than this.
+    static constexpr uint32_t kVerifyBurst = 4;
+    static constexpr uint32_t kVerifyRefillMs = 250;
+    uint32_t verify_tokens_ = kVerifyBurst;
+    uint32_t verify_refill_ms_ = 0;
+    // The last few refusals, so a refused node announcing itself every 2 s is one event per 10 s
+    // rather than a flood. Every refusal is still counted.
+    struct Refusal {
+        uint16_t node_id;
+        uint8_t reason;
+        uint32_t at_ms;
+    };
+    Refusal refusals_[4]{};
+    size_t refusal_cursor_ = 0;
 
     // One encode buffer, reused. §6 budgets a TX ring slot at one ESP-NOW v2 MTU and this is it;
     // the node is single-threaded by contract, so one is enough.
