@@ -1,14 +1,14 @@
 Executing action: size
-Running ninja in directory D:\Projects\potluck\firmware\build-crypto-bench
+Running ninja in directory D:\Projects\potluck\firmware\build-crypto-bench-perf
 Executing "ninja all"...
-[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-crypto-bench && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-crypto-bench/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-crypto-bench/potluck_m0.bin"
+[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-crypto-bench-perf && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-crypto-bench-perf/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-crypto-bench-perf/potluck_m0.bin"
 
-potluck_m0.bin binary size 0x44640 bytes. Smallest app partition is 0x100000 bytes. 0xbb9c0 bytes (73%) free.
+potluck_m0.bin binary size 0x4b6d0 bytes. Smallest app partition is 0x100000 bytes. 0xb4930 bytes (71%) free.
 
 
 [2/4] Performing build step for 'bootloader'
 
-[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-crypto-bench\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Projects/potluck/firmware/build-crypto-bench/bootloader/bootloader.bin"
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-crypto-bench-perf\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Projects/potluck/firmware/build-crypto-bench-perf/bootloader/bootloader.bin"
 
 
 Bootloader binary size 0x5240 bytes. 0x2dc0 bytes (36%) free.
@@ -19,9 +19,9 @@ Bootloader binary size 0x5240 bytes. 0x2dc0 bytes (36%) free.
 
 [4/4] Completed 'bootloader'
 
-Running ninja in directory D:\Projects\potluck\firmware\build-crypto-bench
+Running ninja in directory D:\Projects\potluck\firmware\build-crypto-bench-perf
 Executing "ninja size"...
-[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-crypto-bench && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D MAP_FILE=D:/Projects/potluck/firmware/build-crypto-bench/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
+[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-crypto-bench-perf && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D MAP_FILE=D:/Projects/potluck/firmware/build-crypto-bench-perf/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
 
                             Memory Type Usage Summary                             
 
@@ -31,25 +31,25 @@ Executing "ninja size"...
 
 ├─────────────────────┼──────────────┼──────────┼────────────────┼───────────────┤
 
-│ Flash Code          │       161212 │          │                │               │
+│ Flash Code          │       187240 │          │                │               │
 
-│    .text            │       161212 │          │                │               │
+│    .text            │       187240 │          │                │               │
 
-│ Flash Data          │        60032 │          │                │               │
+│ Flash Data          │        61752 │          │                │               │
 
-│    .rodata          │        59760 │          │                │               │
+│    .rodata          │        61480 │          │                │               │
 
 │    .appdesc         │          256 │          │                │               │
 
 │    .tdata           │           16 │          │                │               │
 
-│ DIRAM               │        46413 │    13.58 │         295347 │        341760 │
+│ DIRAM               │        46933 │    13.73 │         294827 │        341760 │
 
-│    .text            │        29775 │     8.71 │                │               │
+│    .text            │        30891 │     9.04 │                │               │
 
-│    .data            │        12566 │     3.68 │                │               │
+│    .data            │        12522 │     3.66 │                │               │
 
-│    .bss             │         4072 │     1.19 │                │               │
+│    .bss             │         3520 │     1.03 │                │               │
 
 │ IRAM                │        16384 │    100.0 │              0 │         16384 │
 
@@ -67,7 +67,7 @@ Executing "ninja size"...
 
 └─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
 
-Total image size: 280005 bytes (.bin may be padded larger)
+Total image size: 308825 bytes (.bin may be padded larger)
 
 Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
 

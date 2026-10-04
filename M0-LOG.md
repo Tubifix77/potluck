@@ -3288,3 +3288,62 @@ milestone's stated proof, and the bench has neither. Board A as a home-made anal
 and dropped, because tapping pins that already carry a wire needs a breadboard or male-female jumpers,
 and the bench has only female-female. The trace stays a [MEASURE]. Power was not part of M4 and has
 not been measured anywhere yet.
+
+## Session 21 — 2026-10-05, M5 begins: Ed25519 wins on the board, 27 ms against 442 ms
+
+M5 is "signed everything", and its acceptance list ends with a [MEASURE] that gates every other part:
+Ed25519 against P-256, on measured verify cost. Until now the node verified nothing; M3's package
+signature was checked on the host only.
+
+### What the toolchain has
+
+ESP-IDF v6.0.2 ships **mbedTLS 4.1.0**: P-256 ECDSA, P-256 ECDH and X25519, with hardware SHA, AES and
+MPI enabled in this build, but **no EdDSA** — the PSA constants exist and nothing implements them. The
+S3 has no ECC peripheral. So Ed25519 needed a library: **Monocypher 4.0.3**, small, audited, BSD or
+CC-0, fetched with the owner's permission and vendored unmodified with provenance, hashes and a NOTICE
+entry. Its optional module is RFC 8032 Ed25519 over SHA-512, the variant the host tooling already uses.
+
+**A provenance slip, caught before it mattered:** the first copy (`fd30b31`) came out of a Windows
+checkout, which had converted the files to CRLF, so "byte-identical to the tag" and the recorded hashes
+were both false. `2e69038` replaces them with `git show 4.0.3:<path>` and records git blob ids that
+equal upstream's.
+
+### The benchmark (`CONFIG_POT_CRYPTO_BENCH`, board B, then back to `e8fd0d7`)
+
+Known-answer checks first (RFC 8032 test 2 key, signature, verify, one-bit rejection; X25519 agreement
+between Monocypher and mbedTLS; P-256 verify of its own signature and rejection of another hash), then
+16 timed runs per operation, each in a fresh task for its own stack figure. At 160 MHz:
+
+| operation | -Os (shipped) | -O2 |
+|---|---|---|
+| **Ed25519 verify (Monocypher)** | **27.0 ms** | 39.0 ms |
+| **P-256 ECDSA verify (mbedTLS)** | **441.5 ms** | 325.9 ms |
+| Ed25519 sign | 9.3 ms | 12.7 ms |
+| P-256 sign | 222.8 ms | 164.5 ms |
+| X25519 shared secret (Monocypher) | 19.0 ms | 26.9 ms |
+| X25519 shared secret (mbedTLS) | 209.3 ms | 143.3 ms |
+| P-256 ECDH | 205.4 ms | 152.3 ms |
+| HMAC-SHA256, 64 bytes | 0.17 ms | 0.16 ms |
+
+**Decision: Ed25519 for signatures, X25519 for session keys, both from Monocypher.** 12× faster at each
+side's best configuration, one library for both jobs, and the host tooling already speaks it. Cost:
+16.9 KB flash, zero static RAM, ~2.3 KB stack per verify. The first run's watchdog warning (P-256 held
+core 1 for seven seconds) is gone since the benchmark yields between runs; it had inflated one P-256
+maximum to 476 ms.
+
+### What 27 ms means for the rest of M5
+
+- **`HELLO` is periodic** (every 2 s per peer). Verifying every repeat would cost a node with 17 peers
+  about a quarter of a core. A signed `HELLO` is verified on admission and on a new boot epoch, and a
+  verified (node, key, epoch) is cached.
+- **`SAFE_STATE`** gains ~9 ms at the sender and ~27 ms at each receiver if signed per §9.3, and a
+  64-byte signature does not fit M4's single CAN frame. Settled when that step is built.
+
+### M5's order from here
+
+1. ~~Measure, decide~~ — done: Ed25519 / X25519.
+2. Node identity and enrolment over USB: keypair generated on the board, certificate from the CA.
+3. Signed `HELLO` carrying the certificate; unenrolled nodes refused and logged; X25519 session keys.
+4. `auth_tag` (HMAC-SHA256/64) on data frames, and the replay window.
+5. Signed, epoch-fenced `SAFE_STATE` with its high-water mark in NVS.
+6. Package signatures verified on the node.

@@ -597,6 +597,10 @@ Three consequences:
 
 Hardware support: ESP-IDF's mbedTLS offers hardware AES, SHA, MPI (bignum/RSA) and ECC acceleration options ([ESP-IDF mbedTLS](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/protocols/mbedtls.html)). **[MEASURE]** Ed25519/Curve25519 is not mentioned on that page; confirm availability and per-verify cost on your target part at M5 before committing to Ed25519 over P-256.
 
+*Measured (M5, 2026-10-05) — the [MEASURE] is closed: **Ed25519.** ESP-IDF v6.0.2 ships mbedTLS 4.1.0, which has P-256 ECDSA and X25519 but no EdDSA, and the S3 has an MPI accelerator but no ECC peripheral. Ed25519 and X25519 therefore come from Monocypher 4.0.3, vendored unmodified (`firmware/components/monocypher`). On a board at 160 MHz, each implementation checked against a known answer first, 16 runs each: **Ed25519 verify 27.0 ms against P-256 ECDSA 441.5 ms** in the shipped size-optimised build, and 39.0 ms against 325.9 ms optimised for speed (which helps mbedTLS and hurts Monocypher) — 12× at each one's best. Sign 9.3 ms against 222.8 ms. X25519 shared secret 19.0 ms (Monocypher) against 209.3 ms (mbedTLS's X25519) and 205.4 ms (P-256 ECDH), so session keys use X25519 from the same library. HMAC-SHA256 over a 64-byte frame, hardware SHA: 0.17 ms. Cost: 16.9 KB of flash, no static RAM, about 2.3 KB of stack per verify. Evidence: `captures/m5-crypto-bench-*-2e69038.log`, M0-LOG session 21.*
+
+*Two consequences the trust model above has to absorb.* **27 ms per verify is cheap for a rare frame and expensive for a frequent one:** `HELLO` repeats every 2 s per peer, so a signed `HELLO` is verified when it admits a peer or announces a new epoch, not on every repeat. **A signed `SAFE_STATE` costs ~9 ms to send and ~27 ms to accept**, and its 64-byte signature cannot ride in M4's one CAN frame; how the safe-state path keeps its latency is settled where it is built (M5's signed-`SAFE_STATE` step), not here.
+
 ### 9.4 Threat table
 
 | Threat | Vector | Mitigation |

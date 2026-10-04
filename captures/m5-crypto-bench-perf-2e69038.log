@@ -1,0 +1,72 @@
+2�ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xda0
+load:0x403cb700,len:0x2f54
+entry 0x403c8908
+I (24) boot: ESP-IDF v6.0.2 2nd stage bootloader
+I (25) boot: compile time Oct  5 2026 00:51:25
+I (25) boot: Multicore bootloader
+I (25) boot: chip revision: v0.2
+I (28) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (35) boot.esp32s3: SPI Mode       : DIO
+I (39) boot.esp32s3: SPI Flash Size : 16MB
+I (43) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (50) boot: ## Label            Usage          Type ST Offset   Length
+I (56) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (63) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (69) boot:  2 factory          factory app      00 00 00010000 00100000
+I (76) boot:  3 modA             Unknown data     01 40 00110000 00010000
+I (82) boot:  4 modB             Unknown data     01 40 00120000 00010000
+I (89) boot: End of partition table
+I (92) esp_image: segment 0: paddr=00010020 vaddr=3c030020 size=0f138h ( 61752) map
+I (111) esp_image: segment 1: paddr=0001f160 vaddr=3fc8f900 size=00eb8h (  3768) load
+I (112) esp_image: segment 2: paddr=00020020 vaddr=42000020 size=2db68h (187240) map
+I (149) esp_image: segment 3: paddr=0004db90 vaddr=3fc907b8 size=02234h (  8756) load
+I (151) esp_image: segment 4: paddr=0004fdcc vaddr=40374000 size=0b8ach ( 47276) load
+I (163) esp_image: segment 5: paddr=0005b680 vaddr=50000000 size=00024h (    36) load
+I (169) boot: Loaded app from partition at offset 0x10000
+I (169) boot: Disabling RNG early entropy source...
+I (182) cpu_start: Multicore app
+I (190) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (191) cpu_start: Pro cpu start user code
+I (191) cpu_start: cpu freq: 160000000 Hz
+I (192) app_init: Application information:
+I (196) app_init: Project name:     potluck_m0
+I (200) app_init: App version:      deploy-and-detach-17-g2e69038-d
+I (206) app_init: Compile time:     Oct  5 2026 00:50:22
+I (211) app_init: ELF file SHA256:  a01a4ded1...
+I (216) app_init: ESP-IDF:          v6.0.2
+I (219) efuse_init: Min chip rev:     v0.0
+I (223) efuse_init: Max chip rev:     v0.99 
+I (227) efuse_init: Chip rev:         v0.2
+I (231) heap_init: Initializing. RAM available for dynamic allocation:
+I (237) heap_init: At 3FC937B0 len 00055F60 (343 KiB): RAM
+I (243) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (248) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (253) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (259) spi_flash: detected chip: generic
+I (262) spi_flash: flash io: dio
+I (265) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (271) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (278) main_task: Started on CPU0
+I (308) main_task: Calling app_main()
+{"t":"bench_cfg","cpu_mhz":160,"opt":"perf","runs":16}
+{"t":"bench_kat","failures":0}
+{"t":"bench","op":"verify","lib":"ed25519/monocypher","n":16,"min_us":38736,"med_us":38966,"max_us":39058,"stack_b":2740}
+{"t":"bench","op":"verify","lib":"p256-ecdsa/mbedtls","n":16,"min_us":325846,"med_us":325940,"max_us":325964,"stack_b":2308}
+{"t":"bench","op":"sign","lib":"ed25519/monocypher","n":16,"min_us":12534,"med_us":12663,"max_us":12667,"stack_b":2180}
+{"t":"bench","op":"sign","lib":"p256-ecdsa/mbedtls","n":16,"min_us":164130,"med_us":164534,"max_us":164809,"stack_b":2276}
+{"t":"bench","op":"keygen","lib":"ed25519/monocypher","n":16,"min_us":12142,"med_us":12154,"max_us":12729,"stack_b":2052}
+{"t":"bench","op":"shared_secret","lib":"x25519/monocypher","n":16,"min_us":26886,"med_us":26907,"max_us":26907,"stack_b":1652}
+{"t":"bench","op":"shared_secret","lib":"x25519/mbedtls","n":16,"min_us":141102,"med_us":143324,"max_us":144177,"stack_b":1684}
+{"t":"bench","op":"shared_secret","lib":"p256-ecdh/mbedtls","n":16,"min_us":152002,"med_us":152256,"max_us":152710,"stack_b":2084}
+{"t":"bench","op":"tag_64B","lib":"hmac-sha256/mbedtls","n":16,"min_us":160,"med_us":163,"max_us":479,"stack_b":1220}
+{"t":"bench_done","failures":0}
+I (16374) pot.m0: crypto bench finished with 0 failure(s)
+I (16379) main_task: Returned from app_main()

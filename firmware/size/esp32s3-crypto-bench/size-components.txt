@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build-crypto-bench
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-crypto-bench && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-crypto-bench/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-crypto-bench/potluck_m0.bin"
 
-potluck_m0.bin binary size 0x44630 bytes. Smallest app partition is 0x100000 bytes. 0xbb9d0 bytes (73%) free.
+potluck_m0.bin binary size 0x44640 bytes. Smallest app partition is 0x100000 bytes. 0xbb9c0 bytes (73%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -53,7 +53,7 @@ Executing "ninja size-components"...
 
 │ libesp_hal_mspi.a               │       5592 │ 2854 │  2854 │        0 │  2171 │    0 │    36 │  2135 │        567 │   567 │          0 │      0 │       0 │        0 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │       4376 │    0 │     0 │        0 │  1390 │ 1382 │     8 │     0 │       2982 │  2982 │          4 │      0 │       4 │        0 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │       4380 │    0 │     0 │        0 │  1390 │ 1382 │     8 │     0 │       2986 │  2986 │          4 │      0 │       4 │        0 │        0 │             0 │        0 │           0 │
 
 │ libesp_libc.a                   │       3732 │  874 │   874 │        0 │  1365 │  540 │   332 │   493 │       1341 │  1341 │        152 │     16 │     136 │        0 │        0 │             0 │        0 │           0 │
 

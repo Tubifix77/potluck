@@ -537,3 +537,12 @@ missing.
 | **Measured: FIFO transmit, SAFE_STATE 2,522–5,531 µs under flood** | B ~3,050 frames/s; C's SAFE_STATE queued behind its own 10-frame probe | `captures/m4-can-two-board-fifo-0x7368-0x8160.log` | 2026-10-04 | bench | measured |
 | **Measured: priority transmit, SAFE_STATE 335–683 µs under flood, worst 1,056 µs since boot** | B 3,072 frames/s for 5 min; 301 consecutive SAFE_STATEs received; B lost 44 arbitrations, C 0; zero bit/form/stuff errors | `captures/m4-can-two-board-priority-5min.log`, `-report.txt` | 2026-10-05 | bench | measured |
 | **[MEASURE] SAFE_STATE winning arbitration, on a scope or logic analyzer** | Open: no instrument on the bench | — | — | — | open |
+
+### M5: Ed25519 against P-256 on the board — 2026-10-05
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **mbedTLS 4.1.0 in ESP-IDF v6.0.2 implements no EdDSA** | Only the PSA constants (`PSA_ALG_PURE_EDDSA`, twisted-Edwards family) exist; no implementation file under `tf-psa-crypto/drivers` or `core` handles them. X25519 (Montgomery) and P-256 ECDSA/ECDH are implemented | local ESP-IDF v6.0.2 tree: `components/mbedtls/mbedtls/tf-psa-crypto` | 2026-10-05 | per IDF version | verified |
+| **The ESP32-S3 has an MPI (bignum) accelerator and no ECC/ECDSA peripheral** | `SOC_MPI_SUPPORTED 1`, `SOC_SHA_SUPPORTED 1`; no `SOC_ECDSA_SUPPORTED` / `SOC_ECC_SUPPORTED` | `components/soc/esp32s3/include/soc/soc_caps.h` | 2026-10-05 | per IDF version | verified |
+| **Monocypher 4.0.3: dual 2-clause BSD / CC-0; Ed25519 (RFC 8032, SHA-512) is the optional module** | Vendored byte-identical, blob ids recorded | `firmware/components/monocypher/PROVENANCE.md`, upstream tag 4.0.3 | 2026-10-05 | pinned | verified |
+| **Measured: Ed25519 verify 27.0 ms, P-256 ECDSA verify 441.5 ms (160 MHz, -Os); 39.0 / 325.9 ms with -O2** | Also sign 9.3 / 222.8 ms; X25519 19.0 ms (Monocypher) vs 209.3 ms (mbedTLS) vs P-256 ECDH 205.4 ms; HMAC-SHA256 64 B 0.17 ms; known-answer checks passed first | `captures/m5-crypto-bench-size-2e69038.log`, `-perf-` | 2026-10-05 | bench | measured |
