@@ -3143,3 +3143,70 @@ behaviour of §7.4 step 6.
 
 M4's remaining half, then M5 (the node verifies signatures; enrolment; the counter in flash is
 already there).
+
+## Session 19 — 2026-10-04, M4 built: the 8-byte beacon, the CAN profile, and a loopback that passes
+
+M4's remaining half: *"TWAI transport with segmentation. A `SAFE_STATE` frame wins CAN arbitration
+against saturating telemetry, demonstrated on a scope."* There is no oscilloscope and no logic
+analyzer on the bench (the owner may buy a cheap USB logic analyzer later; PulseView decodes CAN).
+Until then the evidence is the controller's own: TWAI reports every **lost arbitration**
+(`on_error`, `arb_lost`), and SAFE_STATE is timed from submission to on-the-wire.
+
+### Built (commits `946494c`, `f736ce4`, `b970e2f`)
+
+1. **The beacon is 8 bytes on every transport** (§5.3.1 names it M4's first task): `node_id`,
+   `hb_seq` (low 16 bits; the receiver extends it across the wrap), and `boot_epoch`, with header
+   seq/msg_id 0. Probes and replies keep the 48 bytes of statistics. Receivers tell the two apart by
+   length; the old 48-byte broadcast path is kept for mixed firmware.
+2. **The CAN profile codec** (`firmware/components/pot_can`, host-tested). Single frames carry the
+   header in the 29-bit ID with the **priority inverted**, so SAFE_STATE has the lowest ID and wins
+   by construction; a test sweeps every lower priority. Only frames with nothing the ID cannot carry
+   qualify, and the header is rebuilt with pot_frame's own encoder, so it is byte-identical by
+   construction. Everything else is segmented, 7 bytes per frame, up to 448 bytes. Aliases are
+   `node_id % 63`, learned from beacons, which name their sender.
+3. **Node:** `admit_on_beacon` (a bus with no HELLO; off on the radio) and **SAFE_STATE** (0x50):
+   priority 31, class L0, one frame, with an application handler. It is a delivery mechanism, not a
+   safety function; §12 stands.
+4. **The TWAI port** (`can_port.cpp`), written from facts read in the driver source: frames are
+   queued by **pointer**, so they live in a static pool freed in `on_tx_done`; frames can only be
+   read inside `on_rx_done`.
+5. **Firmware:** `CONFIG_POT_CAN` (GPIO 4/5, 500 kbit/s). CAN builds disable the radio, because v1
+   has no router to keep a node on two transports from appearing as two peers. Demonstration roles:
+   `CONFIG_POT_M4_FLOOD` (lowest-priority telemetry, always leaving room for the board's own beacons)
+   and `CONFIG_POT_M4_SAFE_STATE_MS`. A `{"t":"can"}` statistics line prints every 10 s.
+6. **`tools\build_firmware.ps1 -Variant <name> -Extra <Kconfig lines>`:** a named build in
+   `build-<name>`, its sdkconfig regenerated every time. The normal build is unchanged at 53.7 KB.
+
+Host tests: 212 C++ cases (15 CAN, among them two and three real Nodes on a simulated bus: admission
+by beacons, SAFE_STATE in exactly one frame to every node, a remote read over segmented CAN).
+
+### On silicon so far
+
+**Loopback self-test, board C** (`captures/m4-can-loopback-C-0x8160.log`): 294 CAN frames sent and
+confirmed with zero errors; 233 complete messages reassembled, segmented ones included, all
+recognised as the board's own; SAFE_STATE from submit to sent took **316–326 µs**, which is one
+8-byte extended frame at 500 kbit/s. **The first attempt failed:** with RX on its own floating pin,
+loopback read back noise, logged 17 bit errors and went bus-off. Espressif's own test puts RX on the
+TX pin "for test without transceiver", and so does this code now.
+
+### The bench, as wired for the test
+
+Boards B (COM4) and C (COM5), each with an SN65HVD230 module: 3V3→3.3V, G→GND, GPIO4→TX, GPIO5→RX
+(straight, not crossed, per the module schematic), with the modules joined CANH–CANH and CANL–CANL.
+Each module's own 120 Ω terminates the bus. The page is `bench/m4-can-wiring.html`, drawn as the
+boards sit on the bench. **B runs the `can-flood` variant and C the `can-safe` variant**
+(SAFE_STATE every 1000 ms), both verified from their build sdkconfig and flashed. Board A stays on
+the normal M3 firmware with the CP2102 adapter.
+
+### Next: the acceptance run
+
+With both boards wired and powered, read both consoles' `{"t":"can"}` lines for a few minutes:
+
+- **B:** `arb_lost` climbing (its telemetry losing to C's SAFE_STATE and beacons); `ss_rx` equal to
+  C's `ss_sent` with `ss_rx_gaps` 0; zero `bit_err`, `stuff_err` and `form_err`; peers alive 1.
+- **C:** `ss_min_us` / `ss_max_us` under saturation. The loopback baseline of ~320 µs is one frame
+  time. Arbitration is non-preemptive, so the worst case should be roughly one frame (B's frame
+  already on the wire) plus SAFE_STATE's own, about 600 µs.
+
+Then put both back on the normal firmware (`tools\build_firmware.ps1 -Flash -Port COM4/COM5`),
+re-check the radio cell, and write up M4.

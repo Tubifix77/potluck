@@ -32,6 +32,26 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## M4 IN PROGRESS — READ THIS FIRST (handover, 2026-10-04)
+>
+> **Built and committed:** the 8-byte beacon, the CAN profile (`firmware/components/pot_can`), admission
+> by beacon, SAFE_STATE, the TWAI port, `build_firmware.ps1 -Variant`. TWAI loopback passed on board C.
+> Detail: M0-LOG session 19.
+>
+> **The bench right now:** B (COM4) runs variant `can-flood`, C (COM5) runs `can-safe` (SAFE_STATE every
+> 1000 ms); both radio-off CAN builds, wired to SN65HVD230 modules per `bench/m4-can-wiring.html` (GPIO4→TX,
+> GPIO5→RX straight, 3V3, G; CANH–CANH, CANL–CANL). A runs normal M3 firmware with the CP2102 on COM6.
+>
+> **Next step:** read B's and C's `{"t":"can"}` console lines (reset-free read: pyserial with dtr=rts=False).
+> Expect B: `arb_lost` climbing, `ss_rx` = C's `ss_sent`, `ss_rx_gaps` 0, no bit/stuff/form errors. C:
+> `ss_max_us` under flood (loopback baseline ~320 us = one frame; expect ≲ 2 frames). That is M4's
+> scope-free evidence; the sentence says "on a scope", and the owner may buy a USB logic analyzer.
+> Afterwards reflash B and C with the normal build and confirm the radio cell.
+>
+> **Variant builds:** `toolsuild_firmware.ps1 -Variant can-flood -Extra "CONFIG_POT_RADIO_DISABLE=y",
+> "CONFIG_POT_CAN=y","CONFIG_POT_M4_FLOOD=y" -Flash -Port COM4`; `can-safe` uses
+> `"CONFIG_POT_M4_SAFE_STATE_MS=1000"` instead of FLOOD. Always run builds from PowerShell directly.
+>
 > ## M0-M3 ARE ACCEPTED. All three boards run `0dd9645` (ELF `4aa0c93f…`): M3's deploy firmware.
 >
 > **Deploy:** keys in `keys/` (gitignored: `ca.pub`, `deploy.key`, `deploy.cert`). Sign with
