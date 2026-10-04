@@ -374,3 +374,113 @@ TEST(can, without_admit_on_beacon_a_beacon_admits_nobody) {
     n.on_rx(mac, raw.data(), raw.size(), 0, 0);
     CHECK_EQ(n.peers().count_in_state(PeerState::Free), PeerTable::capacity());
 }
+
+// ---- Transmit order: found on the two-board bench, where a SAFE_STATE queued behind its own node's
+// ---- 10-frame probe took 2.5-5.5 ms to leave under flood. The driver sends in queue order.
+
+namespace {
+
+std::vector<CanFrame> to_can(const std::vector<uint8_t>& raw, uint16_t src, uint8_t dst_alias) {
+    CanFrame cf[kCanMaxSegments];
+    const size_t n = can_encode(raw.data(), raw.size(), can_alias_of(src), dst_alias, cf, kCanMaxSegments);
+    CHECK(n > 0);
+    return std::vector<CanFrame>(cf, cf + n);
+}
+
+std::vector<uint8_t> probe(uint16_t src, uint16_t dst, uint8_t priority, uint8_t fill) {
+    EncodeSpec s;
+    s.src = src;
+    s.dst = dst;
+    s.opcode = kOpHeartbeat;
+    s.priority = priority;
+    s.seq = 41;
+    s.msg_id = 9;
+    s.ack_req = true;
+    return frame(s, std::vector<uint8_t>(48, fill));  // 64 bytes encoded: 10 CAN frames
+}
+
+std::vector<uint8_t> safe_state(uint16_t src) {
+    EncodeSpec s;
+    s.src = src;
+    s.opcode = kOpSafeState;
+    s.lclass = kClassL0;
+    s.priority = 31;
+    return frame(s, {0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00});
+}
+
+bool push(CanTxQueue& q, const std::vector<CanFrame>& f) { return q.push(f.data(), f.size(), CanTxMeta{}); }
+
+}  // namespace
+
+TEST(can, safe_state_overtakes_its_own_nodes_queued_probe) {
+    CanTxQueue q;
+    const auto pr = to_can(probe(0x8160, 0x7368, 1, 0x11), 0x8160, can_alias_of(0x7368));
+    CHECK_EQ(pr.size(), static_cast<size_t>(10));
+    CHECK(push(q, pr));
+    CanTxItem it{};
+    CHECK(q.pop(it));  // the probe's first segment is in the controller
+    CHECK_EQ(it.f.id, pr[0].id);
+    CHECK(push(q, to_can(safe_state(0x8160), 0x8160, kCanBroadcastAlias)));
+    CHECK(q.pop(it));  // ... and SAFE_STATE is next, not eleventh
+    CHECK_EQ(static_cast<int>(can_id_unpack(it.f.id).opcode), static_cast<int>(kOpSafeState));
+    CHECK(it.last);
+    for (size_t i = 1; i < pr.size(); ++i) {
+        CHECK(q.pop(it));
+        CHECK(std::memcmp(it.f.data, pr[i].data, pr[i].dlc) == 0);
+        CHECK_EQ(it.last, i + 1 == pr.size());
+    }
+    CHECK(!q.pop(it));
+}
+
+TEST(can, a_started_segmented_message_finishes_before_a_higher_priority_one_starts) {
+    // A receiver reassembles one message per sender, so interleaving two would lose both. A single
+    // frame may cut in; another segmented message may not, whatever its priority.
+    CanTxQueue q;
+    const auto low = probe(0x8160, 0x7368, 1, 0x22);
+    const auto high = probe(0x8160, 0x7368, 20, 0x33);
+    CHECK(push(q, to_can(low, 0x8160, can_alias_of(0x7368))));
+    CanTxItem it{};
+    CHECK(q.pop(it));
+    CHECK(push(q, to_can(high, 0x8160, can_alias_of(0x7368))));
+
+    CanReassembler rx(can_alias_of(0x7368));
+    uint8_t out[kCanMaxMessage];
+    std::vector<std::vector<uint8_t>> got;
+    size_t m = rx.feed(it.f, 0, out, sizeof(out));
+    while (q.pop(it)) {
+        m = rx.feed(it.f, 0, out, sizeof(out));
+        if (m > 0) got.emplace_back(out, out + m);
+    }
+    CHECK_EQ(got.size(), static_cast<size_t>(2));
+    CHECK(got[0] == low);
+    CHECK(got[1] == high);
+    CHECK_EQ(rx.counters().out_of_order, 0u);
+}
+
+TEST(can, the_transmit_queue_orders_by_priority_then_fifo_and_takes_all_or_nothing) {
+    CanTxQueue q;
+    // Before anything is in flight, the higher-priority segmented message goes first.
+    const auto a = to_can(probe(0x8160, 0x7368, 1, 0x44), 0x8160, can_alias_of(0x7368));
+    const auto b = to_can(probe(0x8160, 0x7368, 5, 0x55), 0x8160, can_alias_of(0x7368));
+    const auto c = to_can(probe(0x8160, 0x7368, 5, 0x66), 0x8160, can_alias_of(0x7368));
+    CHECK(push(q, a));
+    CHECK(push(q, b));
+    CHECK(push(q, c));
+    CanTxItem it{};
+    for (const auto* want : {&b, &c, &a}) {
+        for (const CanFrame& f : *want) {
+            CHECK(q.pop(it));
+            CHECK_EQ(it.f.id, f.id);
+            CHECK(std::memcmp(it.f.data, f.data, f.dlc) == 0);
+        }
+    }
+    CHECK(!q.pop(it));
+
+    // Full: a message that does not fit is refused whole, and nothing of it is queued.
+    std::vector<CanFrame> big(kCanMaxSegments, a[1]);
+    CHECK(push(q, big));
+    CHECK_EQ(q.free(), CanTxQueue::kCapacity - kCanMaxSegments);
+    CHECK(!push(q, std::vector<CanFrame>(q.free() + 1, a[1])));
+    CHECK_EQ(q.free(), CanTxQueue::kCapacity - kCanMaxSegments);
+    CHECK(push(q, to_can(safe_state(0x8160), 0x8160, kCanBroadcastAlias)));
+}

@@ -90,6 +90,55 @@ class CanAliasTable {
     uint32_t conflicts_ = 0;
 };
 
+// Transmit order (M4 bench, 2026-10-04). The TWAI driver sends frames in the order they are queued,
+// so on the two-board bench a SAFE_STATE queued behind its own node's 10-frame probe took 2.5-5.5 ms
+// to leave under flood: the bus was never the bottleneck, the node's own queue was. A node therefore
+// hands the controller one frame at a time and picks it here:
+//  - lowest packed priority first (the ID's top five bits, as arbitration would), FIFO among equals;
+//  - a single frame may go between another message's segments (the receiver handles it apart);
+//  - a segmented message, once started, finishes before another segmented one starts, because a
+//    receiver reassembles one message per sender (CanReassembler).
+// So a SAFE_STATE waits for the frame already in the controller and whatever other nodes win, never
+// for the rest of its own node's queue.
+struct CanTxMeta {
+    uint32_t submit_us;
+    uint8_t dst_mac[6];
+};
+
+struct CanTxItem {
+    CanFrame f;
+    CanTxMeta meta;
+    bool last;  // the final CAN frame of its Potluck frame
+};
+
+class CanTxQueue {
+  public:
+    static constexpr size_t kCapacity = kCanMaxSegments + 8;  // one whole message plus a few singles
+
+    // Queue all of one Potluck frame's CAN frames, or none of them. False when they do not fit.
+    bool push(const CanFrame* f, size_t n, const CanTxMeta& meta);
+    // The frame to send next, removed from the queue. False when there is none.
+    bool pop(CanTxItem& out);
+    size_t free() const { return kCapacity - used_; }
+    size_t size() const { return used_; }
+
+  private:
+    struct Entry {
+        CanTxItem item;
+        uint32_t seq;  // message order
+        uint8_t part;  // index within its message
+        bool single;
+        bool used;
+    };
+    static bool before(const Entry& a, const Entry& b);
+
+    Entry e_[kCapacity] = {};
+    size_t used_ = 0;
+    uint32_t next_seq_ = 0;
+    bool in_progress_ = false;  // a segmented message has frames out and frames still queued
+    uint32_t in_progress_seq_ = 0;
+};
+
 struct CanRxCounters {
     uint32_t frames;
     uint32_t singles;

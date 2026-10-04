@@ -254,4 +254,59 @@ void CanReassembler::expire(uint32_t now_ms) {
     }
 }
 
+bool CanTxQueue::push(const CanFrame* f, size_t n, const CanTxMeta& meta) {
+    if (n == 0 || n > free()) {
+        return false;
+    }
+    const uint32_t seq = next_seq_++;
+    size_t part = 0;
+    for (Entry& e : e_) {
+        if (part == n) break;
+        if (e.used) continue;
+        e.item.f = f[part];
+        e.item.meta = meta;
+        e.item.last = (part + 1 == n);
+        e.seq = seq;
+        e.part = static_cast<uint8_t>(part);
+        e.single = can_id_unpack(f[part].id).single;
+        e.used = true;
+        ++used_;
+        ++part;
+    }
+    return true;
+}
+
+bool CanTxQueue::before(const Entry& a, const Entry& b) {
+    const uint32_t pa = (a.item.f.id >> 24) & 0x1Fu;
+    const uint32_t pb = (b.item.f.id >> 24) & 0x1Fu;
+    if (pa != pb) {
+        return pa < pb;
+    }
+    const int32_t d = static_cast<int32_t>(a.seq - b.seq);  // wrap-safe
+    if (d != 0) {
+        return d < 0;
+    }
+    return a.part < b.part;
+}
+
+bool CanTxQueue::pop(CanTxItem& out) {
+    Entry* best = nullptr;
+    for (Entry& e : e_) {
+        if (!e.used) continue;
+        if (!e.single && in_progress_ && e.seq != in_progress_seq_) continue;
+        if (best == nullptr || before(e, *best)) best = &e;
+    }
+    if (best == nullptr) {
+        return false;
+    }
+    out = best->item;
+    if (!best->single) {
+        in_progress_ = !best->item.last;
+        in_progress_seq_ = best->seq;
+    }
+    best->used = false;
+    --used_;
+    return true;
+}
+
 }  // namespace pot

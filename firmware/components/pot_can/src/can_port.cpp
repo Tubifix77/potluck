@@ -1,9 +1,14 @@
-// TWAI glue. Two facts from the ESP-IDF v6 driver shape everything here, both read from its source:
+// TWAI glue. Three facts from the ESP-IDF v6 driver shape everything here, all read from its source:
 //
 // 1. twai_node_transmit() queues a POINTER to the twai_frame_t, not a copy (esp_twai_onchip.c,
 //    _node_queue_tx: xQueueSend(tx_mount_queue, &frame, ...)). The frame and its data must stay
-//    valid until on_tx_done names it. So frames live in a static pool, freed from that callback.
-// 2. A received frame can only be read inside on_rx_done (twai_node_receive_from_isr refuses
+//    valid until on_tx_done names it.
+// 2. That queue is first-in, first-out. On the two-board bench a SAFE_STATE submitted behind its own
+//    node's 10-frame probe took 2.5-5.5 ms to leave under flood. So the driver is given ONE frame at a
+//    time, chosen by CanTxQueue (priority order), and the next is handed over from on_tx_done. While
+//    the callback runs the driver still counts itself busy, so that frame goes through its queue and
+//    is started as the callback returns.
+// 3. A received frame can only be read inside on_rx_done (twai_node_receive_from_isr refuses
 //    elsewhere). So the ISR copies it into a queue and the link task does the rest.
 //
 // Arbitration loss is reported through on_error's arb_lost flag; the controller retries such a frame
@@ -28,19 +33,8 @@ namespace pot {
 namespace {
 
 constexpr const char* kTag = "pot.can";
-constexpr size_t kPool = kCanMaxSegments + 8;  // one whole message plus a few single frames
 constexpr size_t kRxQueue = 128;
 constexpr size_t kDoneQueue = 16;
-
-struct TxSlot {
-    twai_frame_t f;
-    uint8_t data[8];
-    bool last;            // the final CAN frame of its Potluck frame
-    bool safe_state;      // a SAFE_STATE, timed from submit to done
-    uint32_t submit_us;
-    uint8_t dst_mac[6];
-    volatile bool busy;
-};
 
 struct RxItem {
     CanFrame f;
@@ -53,8 +47,13 @@ struct DoneItem {
     uint32_t us;
 };
 
-TxSlot g_pool[kPool];
-portMUX_TYPE g_pool_mux = portMUX_INITIALIZER_UNLOCKED;
+CanTxQueue g_txq;
+portMUX_TYPE g_tx_mux = portMUX_INITIALIZER_UNLOCKED;
+// The one frame the driver holds. Written only by whoever set g_in_flight, read back in on_tx_done.
+twai_frame_t g_cur{};
+uint8_t g_cur_data[8];
+CanTxItem g_cur_item{};
+bool g_in_flight = false;
 twai_node_handle_t g_node = nullptr;
 QueueHandle_t g_rxq = nullptr;
 QueueHandle_t g_doneq = nullptr;
@@ -65,36 +64,68 @@ uint8_t g_my_alias = 0;
 uint16_t g_my_node = 0;
 bool g_up = false;
 
+// Hand the driver the next frame in priority order, if it holds none. Called from the task (can_send)
+// and from on_tx_done, always with g_in_flight already claimed by the caller's pop.
+void IRAM_ATTR launch(bool from_isr) {
+    for (;;) {
+        std::memcpy(g_cur_data, g_cur_item.f.data, g_cur_item.f.dlc);
+        std::memset(&g_cur, 0, sizeof(g_cur));
+        g_cur.header.id = g_cur_item.f.id;
+        g_cur.header.ide = 1;
+        g_cur.header.dlc = g_cur_item.f.dlc;
+        g_cur.buffer = g_cur_data;
+        g_cur.buffer_len = g_cur_item.f.dlc;
+        if (twai_node_transmit(g_node, &g_cur, 0) == ESP_OK) {
+            ++g_stats.tx_frames;
+            return;
+        }
+        ++g_stats.tx_fail;
+        bool more;
+        if (from_isr) {
+            portENTER_CRITICAL_ISR(&g_tx_mux);
+            more = g_txq.pop(g_cur_item);
+            g_in_flight = more;
+            portEXIT_CRITICAL_ISR(&g_tx_mux);
+        } else {
+            portENTER_CRITICAL(&g_tx_mux);
+            more = g_txq.pop(g_cur_item);
+            g_in_flight = more;
+            portEXIT_CRITICAL(&g_tx_mux);
+        }
+        if (!more) return;
+    }
+}
+
 bool IRAM_ATTR on_tx_done(twai_node_handle_t, const twai_tx_done_event_data_t* e, void*) {
     BaseType_t woke = pdFALSE;
-    for (TxSlot& s : g_pool) {
-        if (&s.f == e->done_tx_frame) {
-            if (e->is_tx_success) {
-                ++g_stats.tx_ok;
-                if (s.safe_state) {
-                    const uint32_t lat = static_cast<uint32_t>(esp_timer_get_time()) - s.submit_us;
-                    ++g_stats.safe_state_sent;
-                    g_stats.safe_state_last_us = lat;
-                    if (lat > g_stats.safe_state_max_us) g_stats.safe_state_max_us = lat;
-                    if (g_stats.safe_state_min_us == 0 || lat < g_stats.safe_state_min_us) {
-                        g_stats.safe_state_min_us = lat;
-                    }
-                }
-            } else {
-                ++g_stats.tx_fail;
+    const uint32_t now = static_cast<uint32_t>(esp_timer_get_time());
+    if (e->is_tx_success) {
+        ++g_stats.tx_ok;
+        if (can_id_unpack(g_cur_item.f.id).opcode == 0x50) {  // kOpSafeState
+            const uint32_t lat = now - g_cur_item.meta.submit_us;
+            ++g_stats.safe_state_sent;
+            g_stats.safe_state_last_us = lat;
+            if (lat > g_stats.safe_state_max_us) g_stats.safe_state_max_us = lat;
+            if (g_stats.safe_state_min_us == 0 || lat < g_stats.safe_state_min_us) {
+                g_stats.safe_state_min_us = lat;
             }
-            if (s.last && g_doneq != nullptr) {
-                DoneItem d{};
-                std::memcpy(d.mac, s.dst_mac, 6);
-                d.ok = e->is_tx_success;
-                d.us = static_cast<uint32_t>(esp_timer_get_time());
-                xQueueSendFromISR(g_doneq, &d, &woke);
-            }
-            portENTER_CRITICAL_ISR(&g_pool_mux);
-            s.busy = false;
-            portEXIT_CRITICAL_ISR(&g_pool_mux);
-            break;
         }
+    } else {
+        ++g_stats.tx_fail;
+    }
+    if (g_cur_item.last && g_doneq != nullptr) {
+        DoneItem d{};
+        std::memcpy(d.mac, g_cur_item.meta.dst_mac, 6);
+        d.ok = e->is_tx_success;
+        d.us = now;
+        xQueueSendFromISR(g_doneq, &d, &woke);
+    }
+    portENTER_CRITICAL_ISR(&g_tx_mux);
+    const bool more = g_txq.pop(g_cur_item);
+    g_in_flight = more;
+    portEXIT_CRITICAL_ISR(&g_tx_mux);
+    if (more) {
+        launch(true);
     }
     return woke == pdTRUE;
 }
@@ -149,7 +180,7 @@ bool can_start(const CanPortConfig& cfg) {
     nc.io_cfg.quanta_clk_out = GPIO_NUM_NC;
     nc.io_cfg.bus_off_indicator = GPIO_NUM_NC;
     nc.bit_timing.bitrate = cfg.bitrate;
-    nc.tx_queue_depth = kPool;
+    nc.tx_queue_depth = 2;  // one frame at a time is handed over (see the top of this file)
     nc.fail_retry_cnt = -1;  // arbitration loss and errors: the controller keeps retrying
     nc.flags.enable_self_test = cfg.loopback ? 1 : 0;
     nc.flags.enable_loopback = cfg.loopback ? 1 : 0;
@@ -187,44 +218,23 @@ int32_t can_send(const uint8_t dst_mac[6], const uint8_t* frame, size_t len) {
     if (n == 0) {
         return -2;
     }
-    // Claim every slot the message needs before queueing any of it: half a message on the bus is
-    // a reassembly timeout at every receiver.
-    TxSlot* slots[kCanMaxSegments];
-    size_t got = 0;
-    portENTER_CRITICAL(&g_pool_mux);
-    for (TxSlot& s : g_pool) {
-        if (got == n) break;
-        if (!s.busy) {
-            s.busy = true;
-            slots[got++] = &s;
-        }
+    CanTxMeta meta{};
+    meta.submit_us = static_cast<uint32_t>(esp_timer_get_time());
+    std::memcpy(meta.dst_mac, dst_mac, 6);
+    bool start = false;
+    portENTER_CRITICAL(&g_tx_mux);
+    const bool queued = g_txq.push(cf, n, meta);
+    if (queued && !g_in_flight) {
+        start = g_txq.pop(g_cur_item);
+        g_in_flight = start;
     }
-    if (got < n) {
-        for (size_t i = 0; i < got; ++i) slots[i]->busy = false;
-        portEXIT_CRITICAL(&g_pool_mux);
+    portEXIT_CRITICAL(&g_tx_mux);
+    if (!queued) {
         ++g_stats.tx_no_slot;
         return -3;
     }
-    portEXIT_CRITICAL(&g_pool_mux);
-
-    for (size_t i = 0; i < n; ++i) {
-        TxSlot& s = *slots[i];
-        std::memcpy(s.data, cf[i].data, cf[i].dlc);
-        std::memset(&s.f, 0, sizeof(s.f));
-        s.f.header.id = cf[i].id;
-        s.f.header.ide = 1;
-        s.f.header.dlc = cf[i].dlc;
-        s.f.buffer = s.data;
-        s.f.buffer_len = cf[i].dlc;
-        s.last = (i + 1 == n);
-        s.safe_state = can_id_unpack(cf[i].id).opcode == 0x50;  // kOpSafeState
-        s.submit_us = static_cast<uint32_t>(esp_timer_get_time());
-        std::memcpy(s.dst_mac, dst_mac, 6);
-        if (twai_node_transmit(g_node, &s.f, 0) != ESP_OK) {
-            for (size_t k = i; k < n; ++k) slots[k]->busy = false;
-            return -4;
-        }
-        ++g_stats.tx_frames;
+    if (start) {
+        launch(false);  // nothing was in flight, so no on_tx_done can race this
     }
     return 0;
 }
@@ -270,12 +280,9 @@ bool can_tx_done_pop(uint8_t dst_mac[6], bool& ok, uint32_t& done_us) {
 CanPortStats can_stats() { return g_stats; }
 
 size_t can_tx_free() {
-    size_t n = 0;
-    portENTER_CRITICAL(&g_pool_mux);
-    for (const TxSlot& s : g_pool) {
-        if (!s.busy) ++n;
-    }
-    portEXIT_CRITICAL(&g_pool_mux);
+    portENTER_CRITICAL(&g_tx_mux);
+    const size_t n = g_txq.free();
+    portEXIT_CRITICAL(&g_tx_mux);
     return n;
 }
 
