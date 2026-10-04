@@ -99,6 +99,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--seconds", type=float, default=600.0,
                    help="how long to keep sweeping (default 600, M2's ten minutes)")
     s.add_argument("--interval", type=float, default=1.0, help="pause between sweeps")
+    s.add_argument("--nodes", default=None,
+                   help="comma-separated node ids to sweep, e.g. 6300,7368,8160 (default: --node). "
+                        "Nodes other than the cabled one are read through its replicas (M1)")
 
     sub.add_parser("info", help="say hello and report what the node announced")
 
@@ -277,7 +280,8 @@ def cmd_soak(bridge: Bridge, node_id: int, args) -> int:
     instead, so a long session exercises the whole namespace without needing a second connection --
     which matters, because QEMU's socket serial accepts exactly one per VM lifetime.
     """
-    paths = sys_paths_for(node_id)
+    nodes = [int(n, 16) for n in args.nodes.split(",")] if args.nodes else [node_id]
+    paths = [p for n in nodes for p in sys_paths_for(n)]
     width = max(len(describe(p)) for p in paths)
     deadline = time.monotonic() + args.seconds
     sweeps = reads = timeouts = unusable = 0
