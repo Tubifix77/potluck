@@ -106,13 +106,13 @@ void Node::pin_version(PeerLink& p, uint8_t peer_version) {
 
 bool Node::send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, const void* payload,
                       uint16_t payload_len, bool ack_req, uint16_t msg_id, uint16_t dst_override,
-                      bool broadcast, bool single_frame) {
+                      bool broadcast, bool single_frame, uint8_t lclass, uint8_t priority) {
     EncodeSpec spec;
     spec.src = cfg_.node_id;
     spec.dst = dst_override;
     spec.opcode = opcode;
-    spec.lclass = kClassL3;
-    spec.priority = kMembershipPriority;
+    spec.lclass = lclass;
+    spec.priority = priority;
     // §5.1: seq is per (src,dst). Broadcast is a distinct destination and keeps its own counter.
     spec.seq = single_frame ? 0 : broadcast ? seq_tx_bcast_++ : (p != nullptr ? p->seq_tx++ : 0);
     spec.msg_id = msg_id;
@@ -985,9 +985,15 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
 
     if (p == nullptr) {
         ++counters_.rx_unknown_peer;
-        // Only HELLO admits a stranger. Anything else from an unknown MAC is noise, or a node that
-        // believes it knows us; either way it introduces itself first.
-        if (f.hdr.opcode != kOpHello) {
+        // Only HELLO admits a stranger -- or, on a bus with no HELLO (CAN, M4), a valid beacon.
+        // Anything else from an unknown MAC is noise, or a node that believes it knows us; either
+        // way it introduces itself first.
+        if (f.hdr.opcode == kOpHeartbeat && cfg_.admit_on_beacon) {
+            p = admit_from_beacon(src_mac, f, rssi);
+            if (p == nullptr) {
+                return;
+            }
+        } else if (f.hdr.opcode != kOpHello) {
             return;
         }
     } else {
@@ -1018,6 +1024,7 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         case kOpDeployChunk:
         case kOpDeployCommit:
         case kOpDeployAbort: handle_deploy(p, f); break;
+        case kOpSafeState: handle_safe_state(p, f); break;
         default:
             ++counters_.rx_unknown_opcode;
             send_err(p, src_mac, kErrUnknownOpcode, f.hdr.msg_id);
@@ -1253,6 +1260,59 @@ uint16_t Node::send_deploy(uint16_t peer_node_id, uint8_t opcode, const uint8_t*
         return 0;
     }
     return msg_id;
+}
+
+// -------------------------------------------------------------------------------------------
+// M4: admission by beacon on a bus with no HELLO, and SAFE_STATE.
+// -------------------------------------------------------------------------------------------
+
+PeerLink* Node::admit_from_beacon(const uint8_t src_mac[kMacLen], const Frame& f, int8_t rssi) {
+    BeaconPayload b{};
+    if (!load_beacon(f.payload, f.payload_len, b) || b.node_id != f.hdr.src) {
+        return nullptr;  // only a well-formed beacon that names its own sender admits anyone
+    }
+    const size_t in_use = kMaxPeers - peers_.count_in_state(PeerState::Free);
+    if (in_use >= kMaxUnicastPeers) {
+        ++counters_.peer_table_full;
+        return nullptr;
+    }
+    if (hal_.add_peer != nullptr && !hal_.add_peer(hal_.ctx, src_mac)) {
+        ++counters_.peer_table_full;
+        return nullptr;
+    }
+    PeerLink* p = peers_.add(src_mac, b.node_id, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0,
+                             cfg_.hb_period_ms, cfg_.hb_miss_limit);
+    if (p == nullptr) {
+        ++counters_.peer_table_full;
+        return nullptr;
+    }
+    emit(EventKind::PeerDiscovered, p, b.boot_epoch);
+    ++p->rx_frames;
+    p->last_rssi = rssi;
+    return p;
+}
+
+uint32_t Node::send_safe_state(uint16_t reason) {
+    SafeStatePayload s{};
+    s.counter = ++safe_state_tx_;
+    s.reason = reason;
+    if (!send_frame(nullptr, kBroadcastMacAddr, kOpSafeState, &s, sizeof(s), false, 0, kNodeBroadcast,
+                    true, /*single_frame=*/true, kClassL0, kPriorityMax)) {
+        return 0;
+    }
+    return s.counter;
+}
+
+void Node::handle_safe_state(PeerLink* p, const Frame& f) {
+    SafeStatePayload s{};
+    if (!load_safe_state(f.payload, f.payload_len, s)) {
+        ++counters_.rx_short_payload;
+        return;
+    }
+    emit(EventKind::SafeStateRx, p, s.counter, s.reason);
+    if (safe_state_fn_ != nullptr) {
+        safe_state_fn_(safe_state_ctx_, f.hdr.src, s.counter, s.reason);
+    }
 }
 
 }  // namespace pot

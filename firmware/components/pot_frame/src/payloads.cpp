@@ -33,6 +33,10 @@ bool load_heartbeat(const uint8_t* payload, uint16_t len, HeartbeatPayload& out)
     return load_fixed(payload, len, out);
 }
 
+bool load_safe_state(const uint8_t* payload, uint16_t len, SafeStatePayload& out) {
+    return load_fixed(payload, len, out);
+}
+
 bool load_beacon(const uint8_t* payload, uint16_t len, BeaconPayload& out) {
     if (len != sizeof(BeaconPayload)) {
         return false;

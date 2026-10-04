@@ -151,6 +151,27 @@ static_assert(offsetof(BeaconPayload, node_id) == 0, "BEACON offset");
 static_assert(offsetof(BeaconPayload, hb_seq) == 2, "BEACON offset");
 static_assert(offsetof(BeaconPayload, boot_epoch) == 4, "BEACON offset");
 
+// ---------------------------------------------------------------------------------------------
+// SAFE_STATE -- §5.2: broadcast, priority 31, never fragmented, never ACKREQ. One CAN frame.
+//
+// What this is: a delivery mechanism -- a frame that wins the bus and reaches every node on it.
+// What it is not: a safety function. What a node does on receipt is the application's, and §12
+// stands: Potluck must never be the only thing between a motor and a person.
+//
+//  off  size  field     notes
+//   0     4   counter   the sender's SAFE_STATE count, so a receiver can see one it missed
+//   4     2   reason    application-defined
+//   6     2   reserved  zero
+// ---------------------------------------------------------------------------------------------
+
+struct SafeStatePayload {
+    uint32_t counter;
+    uint16_t reason;
+    uint16_t reserved;
+};
+
+static_assert(sizeof(SafeStatePayload) == 8, "SAFE_STATE fits one classic CAN frame");
+
 // Sentinel for "no sample yet" in the ÷8 quantised RTT fields. A real sample that would quantise
 // to this value is clamped to 0xFFFE instead, so the sentinel is never ambiguous.
 constexpr uint16_t kRttUnknownD8 = 0xFFFF;
@@ -262,6 +283,7 @@ bool load_hello_ack(const uint8_t* payload, uint16_t len, HelloAckPayload& out);
 bool load_heartbeat(const uint8_t* payload, uint16_t len, HeartbeatPayload& out);
 // Exactly 8 bytes: a longer HEARTBEAT is a probe or a reply, not a beacon with trailing bytes.
 bool load_beacon(const uint8_t* payload, uint16_t len, BeaconPayload& out);
+bool load_safe_state(const uint8_t* payload, uint16_t len, SafeStatePayload& out);
 bool load_bye(const uint8_t* payload, uint16_t len, ByePayload& out);
 bool load_err(const uint8_t* payload, uint16_t len, ErrPayload& out);
 

@@ -41,12 +41,14 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_ns/src/ns_payloads.cpp"
   "${POT_FIRMWARE}/components/pot_ns/src/sys_resources.cpp"
   "${POT_FIRMWARE}/components/pot_deploy/src/deploy.cpp"
+  "${POT_FIRMWARE}/components/pot_can/src/can_profile.cpp"
 )
 target_include_directories(pot_portable PUBLIC
   "${POT_FIRMWARE}/components/pot_frame/include"
   "${POT_FIRMWARE}/components/pot_link/include"
   "${POT_FIRMWARE}/components/pot_ns/include"
   "${POT_FIRMWARE}/components/pot_deploy/include"
+  "${POT_FIRMWARE}/components/pot_can/include"
 )
 
 add_executable(pot_tests
@@ -66,6 +68,7 @@ add_executable(pot_tests
   test_ns_wire.cpp
   test_work_units.cpp
   test_deploy.cpp
+  test_can.cpp
 )
 target_link_libraries(pot_tests PRIVATE pot_portable)
 target_include_directories(pot_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")

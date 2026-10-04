@@ -33,6 +33,7 @@ const char* event_kind_str(EventKind k) {
         case EventKind::TxError: return "tx_error";
         case EventKind::ProbeTimeout: return "probe_timeout";
         case EventKind::VersionPinned: return "version_pinned";
+        case EventKind::SafeStateRx: return "safe_state_rx";
     }
     return "unknown";
 }

@@ -109,6 +109,11 @@ struct NodeConfig {
     // written off.
     uint32_t probe_timeout_ms = 500;
 
+    // CAN (M4): a wired single-frame bus carries no HELLO, so a valid beacon -- its payload naming
+    // the same node as its header -- admits its sender. Off on the radio, where HELLO also pins the
+    // ESP-NOW version and must come first.
+    bool admit_on_beacon = false;
+
     // A namespace request nobody answered. Longer than probe_timeout_ms because a READ may
     // have to wait on the owner's own scheduling, not only on the link.
     uint32_t ns_request_timeout_ms = 2000;
@@ -226,6 +231,13 @@ class Node {
     // like a read (ns_request_timeout_ms): a deploy step is one round trip, not a work unit.
     uint16_t send_deploy(uint16_t peer_node_id, uint8_t opcode, const uint8_t* payload, uint16_t len);
 
+    // §5.2 SAFE_STATE: broadcast at priority 31, class L0, one CAN frame, no ACKREQ. Returns the
+    // counter it carried, or 0 if it was not sent. A delivery mechanism, not a safety function (§12).
+    uint32_t send_safe_state(uint16_t reason);
+    // Called once per SAFE_STATE received, with the sender's node id, counter and reason.
+    using SafeStateFn = void (*)(void* ctx, uint16_t from_node, uint32_t counter, uint16_t reason);
+    void set_safe_state_handler(SafeStateFn fn, void* ctx) { safe_state_fn_ = fn; safe_state_ctx_ = ctx; }
+
     // A REPLY with a raw payload, correlated to `msg_id`: the deferred answer above.
     bool send_reply_raw(uint16_t peer_node_id, uint16_t msg_id, const uint8_t* payload, uint16_t len);
 
@@ -305,7 +317,13 @@ class Node {
     // so its header carries seq 0 on every transport and decodes byte-identical from a CAN ID.
     bool send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, const void* payload,
                     uint16_t payload_len, bool ack_req, uint16_t msg_id, uint16_t dst_override,
-                    bool broadcast, bool single_frame = false);
+                    bool broadcast, bool single_frame = false, uint8_t lclass = kClassL3,
+                    uint8_t priority = 1);
+    PeerLink* admit_from_beacon(const uint8_t src_mac[kMacLen], const Frame& f, int8_t rssi);
+    void handle_safe_state(PeerLink* p, const Frame& f);
+    SafeStateFn safe_state_fn_ = nullptr;
+    void* safe_state_ctx_ = nullptr;
+    uint32_t safe_state_tx_ = 0;
     void send_hello(bool want_ack);
     void send_hello_ack(PeerLink& p, uint8_t decision, uint16_t ref_msg_id);
     void fill_heartbeat(HeartbeatPayload& hb, const PeerLink* p) const;

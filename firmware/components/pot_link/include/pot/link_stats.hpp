@@ -269,6 +269,7 @@ enum class EventKind : uint8_t {
     TxError = 9,
     ProbeTimeout = 10,
     VersionPinned = 11,
+    SafeStateRx = 12,  // a SAFE_STATE arrived; detail_a = the sender's counter, detail_b = reason
 };
 
 const char* event_kind_str(EventKind k);
