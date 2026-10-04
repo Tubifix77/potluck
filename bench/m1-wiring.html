@@ -58,7 +58,7 @@ code, .k { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; back
 <p class="sub">For M1: the PC talks to board A through the adapter. B only needs power, and you unplug it during the test. Board A stays plugged into the PC by its own USB cable, which powers it.</p>
 
 <div class="bad"><strong>Use the pins printed <span class="k">17</span>, <span class="k">18</span> and <span class="k">G</span>.</strong>
-Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on the other header: those are the console, already used by the USB cable. And <strong>never connect the adapter's <span class="k">3V3</span> or <span class="k">5V</span> pins</strong> to anything.</div>
+Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on the other header: those are the console, already used by the USB cable. And <strong>never connect the adapter's <span class="k">3V3</span> or <span class="k">+5V</span> pins</strong> to anything.</div>
 
 <div class="card diagram">
 <svg viewBox="0 0 760 610" role="img" aria-label="Board A's two pin headers, the CP2102 adapter, and the wires for steps 1, 2 and 3">
@@ -98,28 +98,28 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
 
   <!-- Wires -->
   <!-- step 1: loopback TX<->RX on the adapter -->
-  <path d="M 206 380 C 250 380, 250 410, 206 410" fill="none" stroke="var(--loop)" stroke-width="3" stroke-dasharray="6 4"/>
-  <text x="212" y="434" class="cap">step 1 only: TX looped to RX</text>
+  <path d="M 206 320 C 236 320, 236 350, 206 350" fill="none" stroke="var(--loop)" stroke-width="3" stroke-dasharray="6 4"/>
+  <text x="30" y="460" class="cap">step 1 only (dashed): TXD looped to RXD</text>
 
   <!-- step 2: GND -> J1-22 G ; J1-10 "17" -> adapter RX -->
-  <path d="M 206 350 C 280 350, 280 552, 346 552" fill="none" stroke="var(--gnd)" stroke-width="3"/>
-  <path d="M 346 312 C 280 312, 270 410, 206 410" fill="none" stroke="var(--s2)" stroke-width="3"/>
+  <path d="M 206 380 C 280 380, 280 552, 346 552" fill="none" stroke="var(--gnd)" stroke-width="3"/>
+  <path d="M 346 312 C 300 312, 300 350, 206 350" fill="none" stroke="var(--s2)" stroke-width="3"/>
 
   <!-- step 3: adapter TX -> resistor -> J1-11 "18" -->
-  <path d="M 206 380 L 232 380 L 232 345" fill="none" stroke="var(--s3)" stroke-width="3"/>
-  <polyline points="232,345 226,340 238,333 226,326 238,319 226,312 232,307" fill="none" stroke="var(--s3)" stroke-width="2.5"/>
-  <path d="M 232 307 L 232 300 C 260 300, 300 332, 346 332" fill="none" stroke="var(--s3)" stroke-width="3"/>
-  <text x="243" y="331" class="capb">R</text>
+  <path d="M 206 320 L 226 320" fill="none" stroke="var(--s3)" stroke-width="3"/>
+  <polyline points="226,320 230,313 238,327 246,313 254,327 262,313 266,320" fill="none" stroke="var(--s3)" stroke-width="2.5"/>
+  <path d="M 266 320 C 300 320, 310 332, 346 332" fill="none" stroke="var(--s3)" stroke-width="3"/>
+  <text x="241" y="306" class="capb">R</text>
 </svg>
 <div class="legend">
   <span><span class="sw" style="background:var(--loop)"></span>step 1: loopback, adapter only</span>
   <span><span class="sw" style="background:var(--gnd)"></span>step 2: ground</span>
-  <span><span class="sw" style="background:var(--s2)"></span>step 2: board 17 → adapter RX (safe)</span>
-  <span><span class="sw" style="background:var(--s3)"></span>step 3: adapter TX → R (1–10 kΩ resistor) → board 18, the risky one</span>
+  <span><span class="sw" style="background:var(--s2)"></span>step 2: board 17 → adapter RXD (safe)</span>
+  <span><span class="sw" style="background:var(--s3)"></span>step 3: adapter TXD → R (1–10 kΩ resistor) → board 18, the risky one</span>
 </div>
 </div>
 
-<div class="warn"><strong>Pin order on the adapter is a guess; its printed labels are not.</strong> The seller lists the pins as 3.3V, 5V, GND, TX, RX but not their order, so connect by the label on the adapter. On the board, the positions follow Espressif's official table, and clone boards usually copy it. Still: <strong>find each pin by its printed label before you push a wire on</strong>.</div>
+<div class="warn"><strong>The adapter's pins are drawn in the order printed on yours</strong>, top to bottom: 3V3, TXD, RXD, GND, +5V. On the board, the positions follow Espressif's official table, and clone boards usually copy it. Still: <strong>find each pin by its printed label before you push a wire on</strong>.</div>
 
 <h2>The three steps, one at a time</h2>
 <div class="steps">
@@ -127,7 +127,7 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
     <h3>Step 1: test the adapter on its own</h3>
     <ul>
       <li>Plug the adapter into the PC. Nothing connected to board A yet.</li>
-      <li>One jumper from the adapter's <span class="k">TX</span> to its own <span class="k">RX</span>.</li>
+      <li>One jumper from the adapter's <span class="k">TXD</span> to its own <span class="k">RXD</span> (the two pins next to each other).</li>
       <li>Tell me. I send bytes and check they come back, which proves the adapter and its driver.</li>
       <li><strong>Remove that jumper afterwards.</strong></li>
     </ul>
@@ -136,7 +136,7 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
     <h3>Step 2: two wires, board talking and adapter listening</h3>
     <ul>
       <li>Adapter <span class="k">GND</span> → board <span class="k">G</span> (J1, the bottom pin on the <span class="k">17</span>/<span class="k">18</span> side; any <span class="k">G</span> works).</li>
-      <li>Board <span class="k">17</span> → adapter <span class="k">RX</span>.</li>
+      <li>Board <span class="k">17</span> → adapter <span class="k">RXD</span>.</li>
       <li>Safe whatever the adapter's voltage is: the board sends 3.3 V into an input that accepts up to 5 V.</li>
       <li>Tell me. I check A's frames arrive.</li>
     </ul>
@@ -144,7 +144,7 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
   <div class="card step s3">
     <h3>Step 3: the last wire, adapter talking to the board</h3>
     <ul>
-      <li>Adapter <span class="k">TX</span> → <strong>resistor (1–10 kΩ)</strong> → board <span class="k">18</span>.</li>
+      <li>Adapter <span class="k">TXD</span> → <strong>resistor (1–10 kΩ)</strong> → board <span class="k">18</span>.</li>
       <li>This is the only wire that can hurt the board: if the adapter outputs 5 V instead of 3.3 V, a bare wire would push it into a pin rated for about 3.6 V. The resistor limits the current enough to protect the pin either way.</li>
       <li>No resistor? Some adapters have a small <span class="k">3V3 / 5V</span> jumper or switch; set it to 3V3. With neither, it comes down to trusting the seller's "3.3 V" claim, and that is your call.</li>
       <li>Tell me. Then the M1 test itself: A reads a value from B, you unplug B, and the read must answer <span class="k">UNAVAILABLE</span>.</li>
@@ -152,7 +152,7 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
   </div>
 </div>
 
-<p class="src">Board pinout: Espressif, <em>ESP32-S3-DevKitC-1 v1.1 user guide</em>, Header Block tables J1 and J3, read 2026-10-04. Frame link pins from the firmware's <code>CONFIG_POT_SERIAL_TX_GPIO=17</code> / <code>_RX_GPIO=18</code>. Adapter pins and the 3.3 V claim: the seller's description, unverified.</p>
+<p class="src">Board pinout: Espressif, <em>ESP32-S3-DevKitC-1 v1.1 user guide</em>, Header Block tables J1 and J3, read 2026-10-04. Frame link pins from the firmware's <code>CONFIG_POT_SERIAL_TX_GPIO=17</code> / <code>_RX_GPIO=18</code>. Adapter pin order: read off the owner's adapter, 2026-10-04. Its 3.3 V signal level: the seller's claim, unverified.</p>
 </main>
 
 <script>
@@ -194,7 +194,7 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
   g.appendChild(el("text", { x: 380, y: top + 21 * step + 4, "class": "lbl" }, "← ground"));
 
   // adapter pins (by label; order is the seller's listing, unverified)
-  var A = [["3V3", 290, true], ["5V", 320, true], ["GND", 350], ["TX", 380], ["RX", 410]];
+  var A = [["3V3", 290, true], ["TXD", 320], ["RXD", 350], ["GND", 380], ["+5V", 410, true]];
   var ga = document.getElementById("adp");
   A.forEach(function (p) {
     ga.appendChild(el("rect", { x: 194, y: p[1] - 6, width: 12, height: 12, rx: 2, fill: p[2] ? "var(--pin-off)" : "var(--pin)" }));
