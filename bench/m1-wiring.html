@@ -131,7 +131,7 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
   <span data-for="1"><span class="sw" style="background:var(--loop)"></span>step 1: one wire, TXD to RXD on the adapter. No wire to the board</span>
   <span data-for="2 3"><span class="sw" style="background:var(--gnd)"></span>ground</span>
   <span data-for="2 3"><span class="sw" style="background:var(--s2)"></span>board 17 → adapter RXD (safe)</span>
-  <span data-for="3"><span class="sw" style="background:var(--s3)"></span>adapter TXD → R (1–10 kΩ resistor) → board 18, the risky one</span>
+  <span data-for="3"><span class="sw" style="background:var(--s3)"></span>adapter TXD → board 18 (R, a resistor, optional)</span>
 </div>
 </div>
 
@@ -160,15 +160,14 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
   <div class="card step s3">
     <h3>Step 3: the last wire, adapter talking to the board</h3>
     <ul>
-      <li>Adapter <span class="k">TXD</span> → <strong>resistor (1–10 kΩ)</strong> → board <span class="k">18</span>.</li>
-      <li>This is the only wire that can hurt the board: if the adapter outputs 5 V instead of 3.3 V, a bare wire would push it into a pin rated for about 3.6 V. The resistor limits the current enough to protect the pin either way.</li>
-      <li>No resistor? Some adapters have a small <span class="k">3V3 / 5V</span> jumper or switch; set it to 3V3. With neither, it comes down to trusting the seller's "3.3 V" claim, and that is your call.</li>
-      <li>Tell me. Then the M1 test itself: A reads a value from B, you unplug B, and the read must answer <span class="k">UNAVAILABLE</span>.</li>
+      <li>Adapter <span class="k">TXD</span> → board <span class="k">18</span>. A 1–10 kΩ resistor in this wire is optional now (see below).</li>
+      <li>This is the only wire that could hurt the board, if the adapter drove 5 V. <strong>It can't:</strong> the CP2102 datasheet powers its serial pins from the chip's own 3.3 V supply (3.0–3.6 V), and your adapter reports itself as a CP2102. The only remaining risk is a counterfeit chip that copies the name and breaks its datasheet.</li>
+            <li>Tell me. Then the M1 test itself: A reads a value from B, you unplug B, and the read must answer <span class="k">UNAVAILABLE</span>.</li>
     </ul>
   </div>
 </div>
 
-<p class="src">Board pinout: Espressif, <em>ESP32-S3-DevKitC-1 v1.1 user guide</em>, Header Block tables J1 and J3, read 2026-10-04. Frame link pins from the firmware's <code>CONFIG_POT_SERIAL_TX_GPIO=17</code> / <code>_RX_GPIO=18</code>. Adapter pin order: read off the owner's adapter, 2026-10-04. Its 3.3 V signal level: the seller's claim, unverified.</p>
+<p class="src">Board pinout: Espressif, <em>ESP32-S3-DevKitC-1 v1.1 user guide</em>, Header Block tables J1 and J3, read 2026-10-04. Frame link pins from the firmware's <code>CONFIG_POT_SERIAL_TX_GPIO=17</code> / <code>_RX_GPIO=18</code>. Adapter pin order: read off the owner's adapter, 2026-10-04. Its signal level: Silicon Labs CP2102 datasheet Rev. 1.2 (UART I/O powered from VDD, 3.0–3.6 V), plus Windows identifying the adapter as a CP2102.</p>
 </main>
 
 <script>
