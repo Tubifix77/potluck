@@ -210,6 +210,23 @@ void account_rx_seq(PeerLink& p, uint16_t seq) {
     }
 }
 
+void account_rx_beacon_seq(PeerLink& p, uint16_t seq16) {
+    // The beacon carries 16 bits; hb_seq_last keeps an extended 32-bit count. The first beacon from
+    // an incarnation lands at 0x10000 + seq16, so the stored value is never 0 -- 0 still means "none
+    // yet", which is what a reboot resets it to. After that, a signed 16-bit delta extends it across
+    // the wrap, exactly as account_rx_seq does for the frame header's seq.
+    if (p.hb_seq_last == 0) {
+        p.hb_seq_last = 0x10000u + seq16;
+        return;
+    }
+    const int16_t delta = static_cast<int16_t>(static_cast<uint16_t>(seq16 - static_cast<uint16_t>(p.hb_seq_last)));
+    if (delta > 0) {
+        p.rx_hb_lost_seqgap += static_cast<uint32_t>(delta - 1);
+        p.hb_seq_last += static_cast<uint32_t>(delta);
+    }
+    // delta <= 0: a duplicate or a late beacon. Neither is a loss, and the counter does not move back.
+}
+
 void account_rx_hb_seq(PeerLink& p, uint32_t hb_seq) {
     // hb_seq is 32-bit and does not wrap within any plausible uptime (a 100 ms period reaches
     // 2^32 after 13.6 years), so the arithmetic is simpler than for seq.

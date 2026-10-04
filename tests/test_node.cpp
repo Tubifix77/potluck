@@ -344,3 +344,79 @@ TEST(node, a_completion_stamped_before_the_probe_is_not_credited_to_it) {
         CHECK_EQ(p.txq_last_us, 0u);
     }
 }
+
+TEST(node, the_beacon_is_eight_bytes_with_seq_zero_so_it_fits_one_can_frame) {
+    // §5.3.1 / M4. The broadcast beacon carries liveness only; header seq and msg_id are 0 on every
+    // transport so the CAN single-frame profile can reconstruct it byte-identical.
+    struct Capture {
+        std::vector<std::vector<uint8_t>> frames;
+    } cap;
+    NodeConfig cfg;
+    cfg.node_id = 0x0123;
+    cfg.boot_epoch = 7;
+    cfg.mac[0] = 0x02;
+    cfg.beacon_mode = BeaconMode::BroadcastBeacon;
+    NodeHal hal{};
+    hal.ctx = &cap;
+    hal.send = [](void* ctx, const uint8_t mac[kMacLen], const uint8_t* data, size_t len) -> int32_t {
+        if (std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0) {
+            static_cast<Capture*>(ctx)->frames.emplace_back(data, data + len);
+        }
+        return 0;
+    };
+    static uint32_t now = 0;
+    now = 0;
+    hal.now_ms = [](void*) { return now; };
+    hal.now_us = [](void*) { return now * 1000; };
+    Node n(cfg, hal);
+    n.start();
+    for (int k = 0; k < 350; ++k) {
+        ++now;
+        n.tick(now);
+    }
+    int beacons = 0;
+    for (const auto& raw : cap.frames) {
+        Frame f;
+        CHECK(parse(raw.data(), raw.size(), f) == FrameError::Ok);
+        if (f.hdr.opcode != kOpHeartbeat) continue;
+        ++beacons;
+        CHECK_EQ(f.payload_len, static_cast<uint16_t>(8));
+        CHECK_EQ(f.hdr.seq, static_cast<uint16_t>(0));
+        CHECK_EQ(f.hdr.msg_id, static_cast<uint16_t>(0));
+        BeaconPayload b{};
+        CHECK(load_beacon(f.payload, f.payload_len, b));
+        CHECK_EQ(b.node_id, static_cast<uint16_t>(0x0123));
+        CHECK_EQ(b.boot_epoch, 7u);
+        CHECK_EQ(b.hb_seq, static_cast<uint16_t>(beacons));
+    }
+    CHECK(beacons >= 3);
+}
+
+TEST(node, beacons_keep_a_peer_alive_and_a_lying_beacon_is_refused) {
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon, /*probe_ms=*/100000);  // probes off: beacons only
+    c.start_all();
+    c.advance_ms(300);
+    CHECK_EQ(alive_peers(*c.nodes[0].node), static_cast<size_t>(1));
+    c.advance_ms(5000);  // far past the 600 ms death window: only beacons can have kept it alive
+    CHECK_EQ(alive_peers(*c.nodes[0].node), static_cast<size_t>(1));
+    const PeerLink& p = c.nodes[0].node->peers().slot(0);
+    CHECK(p.rx_bcast_frames >= 50u);
+    CHECK_EQ(p.rx_hb_lost_seqgap, 0u);
+
+    // A beacon whose payload names another node is malformed, whoever sent it.
+    BeaconPayload liar{};
+    liar.node_id = 0x0999;
+    liar.hb_seq = 1;
+    liar.boot_epoch = 1;
+    EncodeSpec spec;
+    spec.src = c.nodes[1].node->config().node_id;
+    spec.dst = kNodeBroadcast;
+    spec.opcode = kOpHeartbeat;
+    uint8_t buf[64];
+    size_t n = 0;
+    CHECK(encode(spec, reinterpret_cast<const uint8_t*>(&liar), sizeof(liar), buf, sizeof(buf), n) == FrameError::Ok);
+    const uint32_t before = p.rx_bcast_frames;
+    c.nodes[0].node->on_rx(c.nodes[1].mac, buf, n, c.now_us, -50);
+    CHECK_EQ(p.rx_bcast_frames, before);
+}

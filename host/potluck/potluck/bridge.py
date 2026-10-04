@@ -39,7 +39,8 @@ from . import frame as fr
 from .capture import CaptureWriter
 from .ns_payloads import REPLY_TO_READ, REPLY_TO_WRITE, Read, Reply, Write
 from .paths import path_hash
-from .payloads import HELLO_FLAG_WANT_ACK, Bye, Heartbeat, Hello, HelloAck, decode_payload
+from .payloads import (HELLO_FLAG_WANT_ACK, Beacon, Bye, Heartbeat, Hello, HelloAck, decode_payload,
+                       parse_heartbeat)
 from .serial_framing import SerialReassembler, write_serial_frame
 from .transport import Transport, open_transport
 from .value import NsError, Quality, Reading, Value
@@ -129,7 +130,7 @@ class Bridge:
         self.peer_boot_epoch: int | None = None
         self.peer_hb_period_ms: int | None = None
         self.peer_hb_miss_limit: int | None = None
-        self.last_heartbeat: Heartbeat | None = None
+        self.last_heartbeat: Heartbeat | Beacon | None = None
         self.last_heartbeat_at: float | None = None
 
         self._started = time.monotonic()
@@ -479,7 +480,7 @@ class Bridge:
     def _on_heartbeat(self, f: fr.Frame) -> None:
         self.stats.heartbeats_rx += 1
         try:
-            hb = Heartbeat.parse(f.payload)
+            hb = parse_heartbeat(f.payload)
         except ValueError:
             self.stats.bad_frames += 1
             return

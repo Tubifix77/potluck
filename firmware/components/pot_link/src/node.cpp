@@ -106,7 +106,7 @@ void Node::pin_version(PeerLink& p, uint8_t peer_version) {
 
 bool Node::send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, const void* payload,
                       uint16_t payload_len, bool ack_req, uint16_t msg_id, uint16_t dst_override,
-                      bool broadcast) {
+                      bool broadcast, bool single_frame) {
     EncodeSpec spec;
     spec.src = cfg_.node_id;
     spec.dst = dst_override;
@@ -114,7 +114,7 @@ bool Node::send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, c
     spec.lclass = kClassL3;
     spec.priority = kMembershipPriority;
     // §5.1: seq is per (src,dst). Broadcast is a distinct destination and keeps its own counter.
-    spec.seq = broadcast ? seq_tx_bcast_++ : (p != nullptr ? p->seq_tx++ : 0);
+    spec.seq = single_frame ? 0 : broadcast ? seq_tx_bcast_++ : (p != nullptr ? p->seq_tx++ : 0);
     spec.msg_id = msg_id;
     spec.ack_req = ack_req;
     // AUTH stays clear until M5. §14 reserves the eight bytes in §5.3's MTU arithmetic from day
@@ -204,14 +204,16 @@ void Node::fill_heartbeat(HeartbeatPayload& hb, const PeerLink* p) const {
 }
 
 void Node::send_beacon() {
-    HeartbeatPayload hb{};
-    fill_heartbeat(hb, nullptr);
-    hb.hb_seq = ++hb_seq_bcast_;
-    hb.hb_flags = 0;
+    // §5.3.1 / M4: liveness only, 8 bytes, one CAN frame. The link statistics travel in probes.
+    BeaconPayload b{};
+    b.node_id = cfg_.node_id;
+    b.hb_seq = static_cast<uint16_t>(++hb_seq_bcast_);
+    b.boot_epoch = cfg_.boot_epoch;
     // No ACKREQ: a broadcast gets no MAC-layer ACK, and asking N peers to reply would reintroduce
-    // exactly the O(N²) cost this mode exists to remove.
-    if (send_frame(nullptr, kBroadcastMacAddr, kOpHeartbeat, &hb, sizeof(hb), false, 0,
-                   kNodeBroadcast, true)) {
+    // exactly the O(N²) cost this mode exists to remove. Header seq and msg_id are 0, because the
+    // CAN single-frame profile has no room for them and the frame must decode byte-identical there.
+    if (send_frame(nullptr, kBroadcastMacAddr, kOpHeartbeat, &b, sizeof(b), false, 0,
+                   kNodeBroadcast, true, /*single_frame=*/true)) {
         ++tally_.beacons;
     }
 }
@@ -355,6 +357,18 @@ void Node::handle_hello_ack(PeerLink* p, const Frame& f) {
 
 void Node::handle_heartbeat(PeerLink* p, const Frame& f, uint32_t recv_us, bool was_broadcast) {
     if (p == nullptr) {
+        return;
+    }
+    // The 8-byte beacon: liveness and the loss count, nothing else.
+    BeaconPayload b{};
+    if (load_beacon(f.payload, f.payload_len, b)) {
+        if (b.node_id != p->node_id) {
+            ++counters_.rx_short_payload;  // a beacon naming someone other than its sender is malformed
+            return;
+        }
+        note(peer_on_frame(*p, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0, b.boot_epoch), p);
+        ++p->rx_bcast_frames;
+        account_rx_beacon_seq(*p, b.hb_seq);
         return;
     }
     HeartbeatPayload hb{};

@@ -293,6 +293,39 @@ class Err:
 #: Built by merging in the namespace payloads rather than importing them at module scope, because
 #: ns_payloads imports value.py and this module is the one the frame decoder pulls in first. The
 #: import lives inside the merge so a circular import cannot appear later by accident.
+@dataclass(frozen=True, slots=True)
+class Beacon:
+    """The 8-byte HEARTBEAT: liveness only (M4, section 5.3.1). pot::BeaconPayload.
+
+    A broadcast beacon carries the sender's full node id (on CAN the header's src is a 6-bit alias),
+    the low 16 bits of its beacon counter, and its boot epoch. Link statistics are not here: they
+    travel in the 48-byte probes and replies, which parse as Heartbeat.
+    """
+
+    node_id: int
+    hb_seq: int
+    boot_epoch: int
+
+    SIZE = 8
+
+    @classmethod
+    def parse(cls, payload: bytes) -> "Beacon":
+        if len(payload) != cls.SIZE:
+            raise ValueError(f"BEACON is {cls.SIZE} bytes, got {len(payload)}")
+        node_id, hb_seq, boot_epoch = struct.unpack_from("<HHI", payload)
+        return cls(node_id, hb_seq, boot_epoch)
+
+    def encode(self) -> bytes:
+        return struct.pack("<HHI", self.node_id, self.hb_seq, self.boot_epoch)
+
+
+def parse_heartbeat(payload: bytes) -> "Heartbeat | Beacon":
+    """A HEARTBEAT is a beacon at exactly 8 bytes, and a probe or reply at 48 or more."""
+    if len(payload) == Beacon.SIZE:
+        return Beacon.parse(payload)
+    return Heartbeat.parse(payload)
+
+
 PAYLOAD_BY_OPCODE = {
     0x01: Hello,
     0x02: HelloAck,
@@ -317,6 +350,8 @@ _register_ns_payloads()
 
 def decode_payload(opcode: int, payload: bytes):
     """Decode a frame body, or return None for an opcode this tool does not implement."""
+    if opcode == 0x03:
+        return parse_heartbeat(payload)
     cls = PAYLOAD_BY_OPCODE.get(opcode)
     if cls is None:
         return None

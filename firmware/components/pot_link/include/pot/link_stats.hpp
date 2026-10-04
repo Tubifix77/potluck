@@ -329,6 +329,8 @@ void account_rx_seq(PeerLink& p, uint16_t seq);
 
 // Fold a heartbeat's hb_seq in the same way, into the heartbeat-specific counter.
 void account_rx_hb_seq(PeerLink& p, uint32_t hb_seq);
+// The 8-byte beacon's 16-bit counter, extended across its wrap.
+void account_rx_beacon_seq(PeerLink& p, uint16_t seq16);
 
 // Record a completed RTT measurement. `histogram` may be null when a peer has no histogram slot.
 void account_rtt(PeerLink& p, RttHistogram* histogram, uint32_t rtt_us);

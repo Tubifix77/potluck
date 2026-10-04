@@ -398,3 +398,42 @@ TEST(budget, wire_payloads_fit_the_v1_profile_unfragmented) {
     // And the whole frame fits an ESP-NOW v1 transmission with the auth tag reserved.
     CHECK(kHeaderSize + sizeof(HeartbeatPayload) + kAuthTagSize <= kEspNowV1LinkMtu);
 }
+
+// ---- M4: the 8-byte beacon's 16-bit counter --------------------------------------------------------
+
+TEST(stats, the_first_beacon_sets_a_baseline_and_counts_nothing) {
+    PeerLink p = fresh_peer();
+    account_rx_beacon_seq(p, 500);
+    CHECK_EQ(p.rx_hb_lost_seqgap, 0u);
+    CHECK(p.hb_seq_last != 0u);  // 0 must stay the "none yet" sentinel
+    account_rx_beacon_seq(p, 501);
+    CHECK_EQ(p.rx_hb_lost_seqgap, 0u);
+}
+
+TEST(stats, a_beacon_counter_of_zero_is_a_real_beacon_not_the_sentinel) {
+    PeerLink p = fresh_peer();
+    account_rx_beacon_seq(p, 0);
+    account_rx_beacon_seq(p, 2);
+    CHECK_EQ(p.rx_hb_lost_seqgap, 1u);
+}
+
+TEST(stats, beacon_loss_is_counted_across_the_16_bit_wrap) {
+    // At a 20 ms wired heartbeat the 16-bit counter wraps every 22 minutes, so this is routine, not
+    // an edge case: 0xFFFE, 0xFFFF, [0x0000 lost], 0x0001, [0x0002, 0x0003 lost], 0x0004.
+    PeerLink p = fresh_peer();
+    account_rx_beacon_seq(p, 0xFFFE);
+    account_rx_beacon_seq(p, 0xFFFF);
+    account_rx_beacon_seq(p, 0x0001);
+    account_rx_beacon_seq(p, 0x0004);
+    CHECK_EQ(p.rx_hb_lost_seqgap, 3u);
+}
+
+TEST(stats, a_duplicate_or_late_beacon_is_not_a_loss_and_does_not_rewind) {
+    PeerLink p = fresh_peer();
+    account_rx_beacon_seq(p, 100);
+    account_rx_beacon_seq(p, 101);
+    account_rx_beacon_seq(p, 101);
+    account_rx_beacon_seq(p, 99);
+    account_rx_beacon_seq(p, 102);
+    CHECK_EQ(p.rx_hb_lost_seqgap, 0u);
+}

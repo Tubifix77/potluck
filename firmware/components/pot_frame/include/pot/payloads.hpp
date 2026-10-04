@@ -125,6 +125,32 @@ static_assert(offsetof(HelloAckPayload, reserved0) == 10, "HELLO_ACK offset");
 
 constexpr uint8_t kHbFlagIsReply = 1u << 0;
 
+// ---------------------------------------------------------------------------------------------
+// BEACON -- a HEARTBEAT whose payload is exactly 8 bytes. §5.3.1 / M4: "a liveness signal is not a
+// measurement channel". The broadcast beacon carries liveness only, and fits one classic CAN frame
+// on every transport; probes and replies keep the 48-byte HeartbeatPayload above, with the link
+// statistics, and segment on CAN like any other bulk message. The receiver tells the two apart by
+// length: 8 is a beacon, 48 or more is a probe or a reply.
+//
+//  off  size  field        notes
+//   0     2   node_id      the sender's full id. On CAN the frame header's src travels as a 6-bit
+//                          alias; this is how a receiver learns which node an alias belongs to
+//   2     2   hb_seq       the sender's beacon counter, low 16 bits. Wraps every 109 min at 100 ms
+//                          and every 22 min at 20 ms; the receiver extends it (link_stats.cpp)
+//   4     4   boot_epoch   the sender's incarnation
+// ---------------------------------------------------------------------------------------------
+
+struct BeaconPayload {
+    uint16_t node_id;
+    uint16_t hb_seq;
+    uint32_t boot_epoch;
+};
+
+static_assert(sizeof(BeaconPayload) == 8, "BEACON fits one classic CAN frame");
+static_assert(offsetof(BeaconPayload, node_id) == 0, "BEACON offset");
+static_assert(offsetof(BeaconPayload, hb_seq) == 2, "BEACON offset");
+static_assert(offsetof(BeaconPayload, boot_epoch) == 4, "BEACON offset");
+
 // Sentinel for "no sample yet" in the ÷8 quantised RTT fields. A real sample that would quantise
 // to this value is clamped to 0xFFFE instead, so the sentinel is never ambiguous.
 constexpr uint16_t kRttUnknownD8 = 0xFFFF;
@@ -234,6 +260,8 @@ static_assert(sizeof(ErrPayload) + kErrDetailMax <= kMaxPayloadV1, "ERR must fit
 bool load_hello(const uint8_t* payload, uint16_t len, HelloPayload& out);
 bool load_hello_ack(const uint8_t* payload, uint16_t len, HelloAckPayload& out);
 bool load_heartbeat(const uint8_t* payload, uint16_t len, HeartbeatPayload& out);
+// Exactly 8 bytes: a longer HEARTBEAT is a probe or a reply, not a beacon with trailing bytes.
+bool load_beacon(const uint8_t* payload, uint16_t len, BeaconPayload& out);
 bool load_bye(const uint8_t* payload, uint16_t len, ByePayload& out);
 bool load_err(const uint8_t* payload, uint16_t len, ErrPayload& out);
 

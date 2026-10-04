@@ -301,9 +301,11 @@ class Node {
     void note(MembershipChange c, PeerLink* p);
     void pin_version(PeerLink& p, uint8_t peer_version);
 
+    // single_frame: the message is one of §5.3.1's single-frame-on-CAN kinds (beacon, SAFE_STATE),
+    // so its header carries seq 0 on every transport and decodes byte-identical from a CAN ID.
     bool send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, const void* payload,
                     uint16_t payload_len, bool ack_req, uint16_t msg_id, uint16_t dst_override,
-                    bool broadcast);
+                    bool broadcast, bool single_frame = false);
     void send_hello(bool want_ack);
     void send_hello_ack(PeerLink& p, uint8_t decision, uint16_t ref_msg_id);
     void fill_heartbeat(HeartbeatPayload& hb, const PeerLink* p) const;

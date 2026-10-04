@@ -390,6 +390,25 @@ def test_bye_and_err_payloads():
     assert e.code == 2 and e.ref_msg_id == 0x1234 and e.detail == "bad_magic"
 
 
+def test_an_eight_byte_heartbeat_is_a_beacon():
+    """M4: the 8-byte HEARTBEAT (pot::BeaconPayload), told apart from a probe by its length."""
+    raw = pl.Beacon(node_id=0x6300, hb_seq=0xFFFF, boot_epoch=21).encode()
+    assert raw == bytes.fromhex("0063ffff15000000")
+    b = pl.decode_payload(0x03, raw)
+    assert isinstance(b, pl.Beacon)
+    assert (b.node_id, b.hb_seq, b.boot_epoch) == (0x6300, 0xFFFF, 21)
+    assert isinstance(pl.parse_heartbeat(bytes(48)), pl.Heartbeat)
+
+
+def test_any_other_short_heartbeat_is_refused():
+    for n in (0, 7, 9, 47):
+        try:
+            pl.parse_heartbeat(bytes(n))
+        except ValueError:
+            continue
+        raise AssertionError(f"a {n}-byte HEARTBEAT was accepted")
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in sorted(globals().items()):
@@ -402,3 +421,4 @@ if __name__ == "__main__":
                 print(f"FAIL {name}: {exc}")
     print(f"\n{failures} failure(s)")
     sys.exit(1 if failures else 0)
+
