@@ -16,8 +16,8 @@ coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work l
 detach and power-cycle, and a broken module that all three nodes revert themselves (M0-LOG session 18). M2: a 10.05-minute three-board session over COM6
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
-board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **M4's CAN half passed on two
-boards (2026-10-05), scope trace pending (M0-LOG session 20). Next: M5.**
+board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **M4 is ACCEPTED (2026-10-05)**, with
+one caveat: the arbitration was not recorded by an instrument outside the boards (M0-LOG session 20). **Next: M5.**
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
@@ -33,7 +33,7 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## M4 PASSED ON TWO BOARDS — READ THIS FIRST (handover, 2026-10-05)
+> ## M4 ACCEPTED ON TWO BOARDS — READ THIS FIRST (handover, 2026-10-05)
 >
 > **Result** (M0-LOG session 20): B flooded a two-board CAN bus at 3,072 frames/s for 5 min while C sent
 > SAFE_STATE every second. 301 consecutive SAFE_STATEs arrived; each left C within **335–683 µs**; C never
@@ -41,8 +41,9 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > behind its own node's probe (the TWAI driver is FIFO), so `pot_can` now transmits in priority order,
 > one frame at a time (`CanTxQueue`, `2b32274`). Evidence: `captures/m4-can-two-board-*`.
 >
-> **Still open:** the milestone says "on a scope" — that trace is a **[MEASURE]** for when the owner has
-> a USB logic analyzer. Also queued from this run: C's ISR receive queue overflows at ~3,000 frames/s
+> **Accepted by the owner with one caveat:** the milestone says "on a scope"; the bench has no scope or
+> logic analyzer and only female-female jumpers (so board A cannot tap the lines either). The trace stays
+> a **[MEASURE]** for if a USB logic analyzer turns up. Also queued from this run: C's ISR receive queue overflows at ~3,000 frames/s
 > (220 of 881,583, no message lost); the flood demo starves its own probes (`tx_no_slot`);
 > `ss_rx_restarts` (`e8fd0d7`) is compile-checked only.
 >

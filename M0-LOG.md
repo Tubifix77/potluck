@@ -3279,3 +3279,12 @@ All three boards back on the normal radio build of `e8fd0d7` (ELF `637eef762168�
 verify-flash` digest matched on each by MAC (`…:63:00`, `…:73:68`, `…:81:60`). The cell re-formed:
 two peers alive on every board, none dead. The CAN modules are still wired to B and C; the normal
 build does not touch GPIO4/5.
+
+### Accepted (2026-10-05)
+
+The owner accepted M4 on this evidence. The one caveat is written down rather than waived: **no
+instrument independent of B and C has recorded the arbitration**. A scope or logic analyzer was the
+milestone's stated proof, and the bench has neither. Board A as a home-made analyzer was considered
+and dropped, because tapping pins that already carry a wire needs a breadboard or male-female jumpers,
+and the bench has only female-female. The trace stays a [MEASURE]. Power was not part of M4 and has
+not been measured anywhere yet.
