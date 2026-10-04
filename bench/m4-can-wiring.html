@@ -95,8 +95,8 @@ records the result. Board A and its serial adapter are not part of this.</p>
 
 <div class="warn"><strong>Drawn as it sits on the bench:</strong> each board with its antenna up, USB
 down and header J1 on its left; each module to the left of its board, turned 180° so its four-pin header
-faces the board. Turned that way the module reads, top to bottom, 3.3V, GND, RX, TX, with CANH above CANL
-on the far side. Match every wire by its printed label. The blue screw
+faces the board. Seen from above, the module's right edge reads top to bottom TX, RX, GND, 3.3V, and
+its far side CANL above CANH (owner's correction of the first drawing, which showed it from below). Match every wire by its printed label. The blue screw
 terminal carries CANH and CANL in parallel with the pins; either works for the bus.</div>
 
 <h2>The wires, one table</h2>
@@ -147,7 +147,7 @@ way". Termination: the 120 Ω part marked <code>121</code> on each module. Firmw
   var BOARDPIN = {"w-tx": 4, "w-rx": 5, "w-gnd": 22, "w-pwr": 1};
   var busPins = {};
 
-  var MOD = [["3.3V", "w-pwr"], ["GND", "w-gnd"], ["RX", "w-rx"], ["TX", "w-tx"]];  // module turned 180 deg
+  var MOD = [["TX", "w-tx"], ["RX", "w-rx"], ["GND", "w-gnd"], ["3.3V", "w-pwr"]];  // as seen from above, pins facing the board
   function pair(gid, name, node, y0) {
     var g = document.getElementById(gid);
     // board on the right: antenna at the top, USB at the bottom, header J1 down its LEFT edge
@@ -179,7 +179,7 @@ way". Termination: the 120 Ω part marked <code>121</code> on each module. Firmw
       g.appendChild(el("rect", {x: mx + mw - 5, y: y - 5, width: 10, height: 10, rx: 2, fill: "var(--pin)"}));
       g.appendChild(el("text", {x: mx + mw - 12, y: y + 4, "text-anchor": "end", "class": "mlbl"}, m[0]));
     });
-    [["CANH", "w-h", 0], ["CANL", "w-l", 1]].forEach(function (b) {
+    [["CANL", "w-l", 0], ["CANH", "w-h", 1]].forEach(function (b) {
       var y = my + 60 + b[2] * 30;
       g.appendChild(el("rect", {x: mx - 5, y: y - 5, width: 10, height: 10, rx: 2, fill: "var(--pin)"}));
       g.appendChild(el("text", {x: mx + 12, y: y + 4, "class": "mlbl"}, b[0]));
