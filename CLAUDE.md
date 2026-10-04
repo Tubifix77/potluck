@@ -39,8 +39,12 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > Detail: M0-LOG session 19.
 >
 > **The bench right now:** B (COM4) runs variant `can-flood`, C (COM5) runs `can-safe` (SAFE_STATE every
-> 1000 ms); both radio-off CAN builds, wired to SN65HVD230 modules per `bench/m4-can-wiring.html` (GPIO4→TX,
-> GPIO5→RX straight, 3V3, G; CANH–CANH, CANL–CANL). A runs normal M3 firmware with the CP2102 on COM6.
+> 1000 ms); both are radio-off CAN builds, flashed and verified. The owner is wiring them to two
+> SN65HVD230 modules per `bench/m4-can-wiring.html` (GPIO4→TX, GPIO5→RX straight, 3V3→3.3V, G→GND;
+> CANH–CANH, CANL–CANL; each module's own 120 Ω terminates the bus). The page took three corrections from
+> the owner and is now right (`28df951`): boards with J1 on their left, modules **seen from above** with
+> TX upper right (right edge TX, RX, GND, 3.3V) and CANL above CANH on the left. **Ask whether the wiring
+> is done before reading the consoles.** A runs normal M3 firmware with the CP2102 on COM6.
 >
 > **Next step:** read B's and C's `{"t":"can"}` console lines (reset-free read: pyserial with dtr=rts=False).
 > Expect B: `arb_lost` climbing, `ss_rx` = C's `ss_sent`, `ss_rx_gaps` 0, no bit/stuff/form errors. C:
@@ -48,7 +52,7 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > scope-free evidence; the sentence says "on a scope", and the owner may buy a USB logic analyzer.
 > Afterwards reflash B and C with the normal build and confirm the radio cell.
 >
-> **Variant builds:** `toolsuild_firmware.ps1 -Variant can-flood -Extra "CONFIG_POT_RADIO_DISABLE=y",
+> **Variant builds:** `tools\build_firmware.ps1 -Variant can-flood -Extra "CONFIG_POT_RADIO_DISABLE=y",
 > "CONFIG_POT_CAN=y","CONFIG_POT_M4_FLOOD=y" -Flash -Port COM4`; `can-safe` uses
 > `"CONFIG_POT_M4_SAFE_STATE_MS=1000"` instead of FLOOD. Always run builds from PowerShell directly.
 >
