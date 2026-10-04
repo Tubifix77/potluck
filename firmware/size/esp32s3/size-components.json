@@ -1471,15 +1471,15 @@
     },
     "esp-idf/pot_link/libpot_link.a": {
         "abbrev_name": "libpot_link.a",
-        "size": 9414,
+        "size": 9420,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 9320,
+                "size": 9326,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 9320,
+                        "size": 9326,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -2941,15 +2941,15 @@
     },
     "esp-idf/pot_ns/libpot_ns.a": {
         "abbrev_name": "libpot_ns.a",
-        "size": 2718,
+        "size": 2717,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 2624,
+                "size": 2623,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 2624,
+                        "size": 2623,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
