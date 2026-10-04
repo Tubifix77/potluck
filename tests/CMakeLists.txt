@@ -13,7 +13,7 @@
 # Or just run tools/run_host_tests.ps1, which does the above and finds a compiler first.
 
 cmake_minimum_required(VERSION 3.20)
-project(pot_host_tests CXX)
+project(pot_host_tests C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,6 +27,14 @@ set(POT_FIRMWARE "${CMAKE_CURRENT_SOURCE_DIR}/../firmware")
 
 option(POT_ASAN "Build the tests with AddressSanitizer" OFF)
 option(POT_WERROR "Treat warnings as errors" ON)
+
+# Monocypher (vendored, unmodified; firmware/components/monocypher/PROVENANCE.md). Third-party C, so
+# it gets its own library without this project's strict warning set: its code is not ours to edit.
+add_library(monocypher STATIC
+  "${POT_FIRMWARE}/components/monocypher/monocypher.c"
+  "${POT_FIRMWARE}/components/monocypher/monocypher-ed25519.c"
+)
+target_include_directories(monocypher PUBLIC "${POT_FIRMWARE}/components/monocypher")
 
 add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_frame/src/frame.cpp"
@@ -42,13 +50,16 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_ns/src/sys_resources.cpp"
   "${POT_FIRMWARE}/components/pot_deploy/src/deploy.cpp"
   "${POT_FIRMWARE}/components/pot_can/src/can_profile.cpp"
+  "${POT_FIRMWARE}/components/pot_trust/src/trust.cpp"
 )
+target_link_libraries(pot_portable PUBLIC monocypher)
 target_include_directories(pot_portable PUBLIC
   "${POT_FIRMWARE}/components/pot_frame/include"
   "${POT_FIRMWARE}/components/pot_link/include"
   "${POT_FIRMWARE}/components/pot_ns/include"
   "${POT_FIRMWARE}/components/pot_deploy/include"
   "${POT_FIRMWARE}/components/pot_can/include"
+  "${POT_FIRMWARE}/components/pot_trust/include"
 )
 
 add_executable(pot_tests
@@ -69,6 +80,7 @@ add_executable(pot_tests
   test_work_units.cpp
   test_deploy.cpp
   test_can.cpp
+  test_trust.cpp
 )
 target_link_libraries(pot_tests PRIVATE pot_portable)
 target_include_directories(pot_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")

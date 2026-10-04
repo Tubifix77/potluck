@@ -38,8 +38,12 @@
 #include "pot/serial_port.hpp"
 #include "pot/stats_json.hpp"
 #include "pot/sys_resources.hpp"
+#include "pot/trust.hpp"
+#include "pot/trust_store.hpp"
 #include "driver/gpio.h"
 #include "driver/rmt_tx.h"
+#include "driver/uart.h"
+#include "driver/uart_vfs.h"
 #include "esp_app_desc.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -1158,6 +1162,119 @@ void stats_task(void*) {
     }
 }
 
+
+// ---- Section 9.3, M5: node identity and enrolment ----
+//
+// Every board makes its own Ed25519 key the first time it boots this firmware, from the hardware RNG
+// with the radio already running (true random, per esp_random.h), and keeps it in NVS. Enrolment is
+// physical: potluck.enrol talks to the board over its own USB console, and the board installs a
+// certificate only if the CA it is handed signed it for this node id and this key. What the cell
+// does with an enrolled or unenrolled peer is the next step; this one only gives every node a
+// provable name.
+namespace trust_rt {
+
+Identity g_id;
+uint16_t g_node_id = 0;
+StaticTask_t g_console_tcb;
+// 4 KB: an Ed25519 verify measured 2.3 KB of stack on this board (M0-LOG session 21), and every
+// certificate reply reports the high-water mark, so the margin stays a measurement.
+StackType_t g_console_stack[4096];
+
+void print_id() {
+    char line[200];
+    if (format_enrol_id(g_id, g_node_id, line, sizeof(line)) > 0) {
+        std::printf("%s\n", line);
+    }
+}
+
+void print_stack_margin() {
+    std::printf("{\"t\":\"console\",\"stack_free_min_b\":%u,\"stack_b\":%u}\n",
+                static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)),
+                static_cast<unsigned>(sizeof(g_console_stack)));
+}
+
+void boot(uint16_t node_id, bool radio_running) {
+    g_node_id = node_id;
+    if (!trust_load(g_id)) {
+        uint8_t seed[kEdSeedLen];
+        trust_random_seed(seed, radio_running);
+        identity_from_seed(g_id, seed);
+        std::memset(seed, 0, sizeof(seed));
+        if (trust_save(g_id)) {
+            ESP_LOGI(kTag, "identity: generated this node's key (radio %s)", radio_running ? "up" : "off");
+        }
+    }
+    print_id();
+}
+
+void handle(const char* line, size_t len) {
+    const EnrolRequest r = parse_enrol_line(line, len);
+    char out[200];
+    switch (r.cmd) {
+        case EnrolCmd::None:
+            return;
+        case EnrolCmd::Id:
+            print_id();
+            return;
+        case EnrolCmd::Cert: {
+            Identity next = g_id;
+            const CertError e = identity_install_cert(next, g_node_id, r.ca_pub, r.cert, kNodeCertLen);
+            const char* result = cert_error_name(e);
+            if (e == CertError::Ok) {
+                if (trust_save(next)) {
+                    g_id = next;
+                    ESP_LOGI(kTag, "identity: enrolled");
+                } else {
+                    result = "save_failed";
+                }
+            } else {
+                ESP_LOGW(kTag, "identity: certificate refused (%s)", result);
+            }
+            if (format_enrol_result(result, out, sizeof(out)) > 0) std::printf("%s\n", out);
+            print_stack_margin();  // only the console task reaches here
+            return;
+        }
+        case EnrolCmd::Bad:
+            if (format_enrol_result("bad_command", out, sizeof(out)) > 0) std::printf("%s\n", out);
+            return;
+    }
+}
+
+// Reads the console UART a byte at a time and hands each line to handle(). Lines that are not
+// "POT! " commands are ignored, so typing into a monitor does nothing.
+void console_task(void*) {
+    const int uart = CONFIG_ESP_CONSOLE_UART_NUM;
+    if (uart_driver_install(static_cast<uart_port_t>(uart), 1024, 0, 0, nullptr, 0) != ESP_OK) {
+        ESP_LOGW(kTag, "console commands unavailable: UART%d driver did not install", uart);
+        vTaskDelete(nullptr);
+        return;
+    }
+    uart_vfs_dev_use_driver(uart);  // printf now goes through the same driver, so the two never race
+    static char line[400];
+    size_t n = 0;
+    bool overflow = false;
+    for (;;) {
+        uint8_t c = 0;
+        if (uart_read_bytes(static_cast<uart_port_t>(uart), &c, 1, portMAX_DELAY) != 1) continue;
+        if (c == '\n') {
+            if (!overflow) handle(line, n);
+            n = 0;
+            overflow = false;
+        } else if (n < sizeof(line)) {
+            line[n++] = static_cast<char>(c);
+        } else {
+            overflow = true;  // longer than any command: drop the whole line, never a prefix of it
+        }
+    }
+}
+
+void start_console(BaseType_t core) {
+    xTaskCreateStaticPinnedToCore(console_task, "pot_console", sizeof(g_console_stack) / sizeof(StackType_t),
+                                  nullptr, 2, g_console_stack, &g_console_tcb, core);
+}
+
+}  // namespace trust_rt
+
 }  // namespace
 }  // namespace pot
 
@@ -1321,6 +1438,7 @@ extern "C" void app_main(void) {
     // §7.4: decide which slot this boot runs, persist the trial count, apply the actors -- all
     // before any task starts, so the first heartbeat already comes from the deployed behaviour.
     deploy_rt::boot(cfg.node_id);
+    trust_rt::boot(cfg.node_id, espnow_up());
 #if CONFIG_POT_CAN
     {
         CanPortConfig cc;
@@ -1365,4 +1483,5 @@ extern "C" void app_main(void) {
     xTaskCreateStaticPinnedToCore(stats_task, "pot_stats",
                                   sizeof(g_stats_stack) / sizeof(StackType_t), nullptr, 3,
                                   g_stats_stack, &g_stats_tcb, kStatsCore);
+    trust_rt::start_console(kStatsCore);
 }
