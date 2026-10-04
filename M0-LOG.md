@@ -2810,3 +2810,90 @@ charger. The first spot is 1 m from the PC for 2 minutes. That is both the smoke
 control that ties `a652cab` back to the soak's `095f21e`. After that the spots step outward through
 the house until the link starts dropping, with 5–10 minutes near the edge. Orientation is held
 fixed. The owner notes place, distance and walls per spot.
+
+## Session 15 — 2026-10-04, the distance sweep: the kill criterion does not fire, and M0 is accepted
+
+The sweep ran 13:38–19:20 in the owner's house (about 10 × 20 m, two storeys). A (0x6300) and C
+(0x8160) sat beside the PC, unmoved and captured; B (0x7368) walked on mains power. Firmware
+`a652cab` on all three. The capture split itself by B's boot epoch exactly as designed, including
+around an accidental early visit and a run of power-bank reboots. Full report:
+`captures/sweep-2026-10-04-report.txt`; field notes and geometry: `captures/sweep-2026-10-04-notes.md`.
+
+**Geometry note that governs every figure below:** A faced toward B's spots, C faced the wall. The
+owner spotted this during the body test, and it shows up consistently: C is the weaker observer
+wherever the link is marginal.
+
+### Per spot, A's view | C's view
+
+| spot | distance | in the way | dwell | RSSI median (A) | heartbeat delivery A / C | unicast un-ACKed A / C | inbound missing A / C | p99 RTT A / C | deaths A / C |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 2.5 m | nothing | 6.9 min | −48 | 99.71 / 99.71 % | 0 / 0 | 0 / 0 | 8–11 / 11–16 ms | 0 / 0 |
+| 2 | 7.9 m | nothing | 28.4 min | −46 | 99.28 / 99.30 % | 0 / 0 | 0 / 0 | 11–16 / 11–16 | 0 / 0 |
+| 3 | 5.0 m | 2 walls | 8.6 min | −63 | 99.44 / 99.53 % | 0 / 0 | 0 / 0 | 8–11 / 8–11 | 0 / 0 |
+| 4 | 7.8 m | 3 walls | **110 min** | −73 | 98.68 / 99.20 % | 1 / 0 | 3 / 0 | 11–16 / 11–16 | 2 / 0 |
+| 5 | 9.9 m | 2 walls | **121 min** | −56 | 99.18 / 98.97 % | 0 / 0 | 0 / 0 | 11–16 / 11–16 | 0 / 0 |
+| 6 | 12.8 m | 3 walls, a tumble dryer, the fridge | 13.9 min | −76 | 97.79 / **93.86 %** | 0 / **10** | 0 / **19** | 16–22 / 22–30 | 0 / **9** |
+| 6, upstairs | ~13.3 m | the floor, walls | 22.2 min | −78 | 97.52 / 98.30 % | 1 / 3 | 3 / 11 | 22–30 / 11–16 | 2 / 4 |
+| 8 | ~16 m | ~4 walls | 10.3 min | −77 | 97.05 / 99.25 % | 0 / 0 | 0 / 0 | 8–11 / 30–42 | 0 / 0 |
+
+Dwells are what the capture recorded, not what was called live. The owner left B in place until
+the next move, so spots 4 and 5 became two-hour runs, which makes them far stronger evidence than
+planned. The unmoved A↔C control link stayed at 99.92–100 % heartbeat delivery throughout, so no
+spot's figures are the house misbehaving.
+
+### The three kill questions, answered on the geometry that matters
+
+M0-RUNBOOK asks them "on the geometry you actually intend to deploy at". For a home cluster, that is
+this house.
+
+1. **Is PDR stable in both directions?** Yes. Unicast delivery was 100 % at six of the eight spots in
+   both directions. The worst, C at spot 6, was 99.17 % outbound and 99.80 % inbound. Across the two
+   two-hour dwells, 41,000 unicast frames went out and one was un-ACKed.
+2. **Is p99 RTT inside what L3's 500 ms deadline can live with?** Yes. The worst p99 bucket anywhere
+   was 30–42 ms, more than a factor of 11 inside.
+3. **Is the tail bimodal?** No. No spot's p99 left the tens of milliseconds, and probe timeouts were
+   in single digits per spot. The edge in this house does not look like §3's open-field cliff, where
+   delivery flips between 100 % and zero. It looks like **brief membership dropouts**: C declared B
+   dead 9 times in 14 minutes at spot 6 and revived it each time within seconds, while unicast still
+   delivered 99 %.
+
+**The kill criterion does not fire. M0 is accepted.** ESP-NOW reaches every spot in a two-storey
+house, through up to four walls, a floor, and a dryer-and-fridge shadow. The transport decision
+stands.
+
+### What the edge looks like, for whoever places nodes
+
+- **Deaths appeared only where the median RSSI was −73 dBm or weaker** (spot 4 A, spot 6 C, upstairs
+  A and C). Every spot with a median of −63 dBm or better had none. Spot 8 at −77 had none either, so
+  −73 marks where deaths become *possible*, not where they become certain.
+- **Orientation and obstacles outweigh distance indoors**, which the desk soak already suggested.
+  Spot 8 is the farthest point and was clean, while spot 6, 3 m closer behind the appliances, was the
+  worst. C facing the wall made it the weaker observer at every marginal spot.
+- **Every death was a revival, never a reboot.** §8.2's machinery distinguished a link dropout from a
+  restarted node correctly on a real link, under real conditions, every time.
+- Two deaths at spot 4 (A, about 16:23) and the cluster in the first 11 s upstairs line up with the
+  owner handling the board, but that is not established.
+
+### Corrections made during the sweep
+
+- **I told the owner B was "never declared dead" at spot 6. It was, 9 times, on C.** The live
+  checks read the link state once per 10 s sample, and every dropout recovered between samples. The
+  event stream counts every one, and `sweep_report.py` uses it. Lesson for the live tooling: report
+  deaths from the events, never from the sampled state.
+- The minute spent standing between B and the PC was framed to the owner as evidence for the
+  passive-sensor project. It is in Potluck's own plan as "does a person in the path break the link",
+  and that framing was corrected. Answer: no, about 6 dB, and the link stayed green.
+- B on a power bank rebooted every 20–30 s. That was the power bank, and those epochs are excluded.
+
+### Not covered
+
+Outdoor spots: no power outside the house. §3's open-field cliff therefore remains cited, not
+measured here. That does not affect the verdict, because the intended geometry is indoors.
+
+### Next
+
+- **Re-run `pot_sim --sweep` against these measured points** instead of §3's borrowed farmland
+  figures. That is step 3 of the post-soak plan, and it now has a real channel to use.
+- The two cosmetic firmware defects still queued (`reorder_dup` at admission, `peer_admitted` every
+  `hello_interval_ms`).
+- **M1, one remote read**, is now the milestone that matters.

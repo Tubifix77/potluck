@@ -12,15 +12,15 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0's accept line is met (2026-10-03)** — a 24.52-hour soak on three boards; its kill line waits on
-the distance sweep.
+**M0 is ACCEPTED (2026-10-04)** — a 24.52-hour soak, then a distance sweep through the owner's
+two-storey house in which the kill criterion did not fire. **M1 is the next milestone.**
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
 Powersuit's Appendix A bench at once.
 
 Board A — MAC `b8:1f:3f:da:63:00`, therefore **node 0x6300** — enumerated as **CH343 (COM3)**, and is
-**flashed with Potluck and running** (fw `095f21e`). Its factory image is backed up. The board
+**flashed with Potluck and running** (now fw `a652cab`, like B and C). Its factory image is backed up. The board
 register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
 
 > **§6's Wi-Fi DRAM [MEASURE] is CLOSED (2026-10-01): 32,264 B — 31.5 KiB, under the ~40 KB
@@ -29,40 +29,31 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## THE 24-HOUR SOAK IS DONE. M0'S ACCEPT LINE IS MET. NEXT: THE DISTANCE SWEEP.
+> ## M0 IS ACCEPTED. NEXT: M1, ONE REMOTE READ.
 >
-> Run 2: 2026-10-02 00:31 to 2026-10-03 01:03, **24.52 h**, three boards in a row ~10 cm apart in
-> the order **C B A**, firmware `095f21e`. Report: `captures/soak-2026-10-02-report.txt`; write-up in
-> M0-LOG session 13. Tasks stopped and removed; nothing is capturing now.
+> **The soak** (2026-10-02/03, fw `095f21e`, 24.52 h, three boards ~10 cm apart): zero gaps, reboots or
+> deaths; unicast PDR 100.0000 % both ways on all six links; 264,850 RTTs, p50 4–6 ms, p99 16–22 ms,
+> none above 85 ms; `free_dram` flat to the byte. M0-LOG session 13, `captures/soak-2026-10-02-report.txt`.
 >
-> | | |
-> |---|---|
-> | integrity | zero gaps longer than the 10 s sample, zero reboots, zero deaths |
-> | PDR | **100.0000 %** outbound (791,324, MAC ACK) and inbound (6,337,757, seq gaps), all six links |
-> | delay | 264,850 RTTs: p50 4–6 ms, p99 16–22 ms, p99.9 42–60 ms, none above 85 ms, not bimodal |
-> | heartbeat | 99.69–99.84 % per link, *reconstructed* (the firmware never emits `rx_bcast_frames`) |
-> | memory | `free_dram` ends on the same byte it started on, all three nodes |
+> **The sweep** (2026-10-04, fw `a652cab`, A and C fixed at the PC, B walking on mains power): eight
+> spots through a ~10 × 20 m two-storey house, up to ~16 m, four walls, a floor, a dryer-and-fridge
+> shadow. Unicast 100 % at six spots, worst 99.17 % / 99.80 %; worst p99 RTT 30–42 ms; no cliff. The
+> indoor edge is **brief membership dropouts** (9 revivals in 14 min at the worst spot), and deaths
+> only appeared where median RSSI was −73 dBm or weaker. **Orientation and obstacles outweigh
+> distance**: the farthest spot was clean, the one behind the appliances was the worst. M0-LOG
+> session 15, `captures/sweep-2026-10-04-report.txt` and `-notes.md`.
 >
-> **The sweep is the kill criterion** — the only test that can reopen the transport decision. All three
-> boards now run **`a652cab`** (ELF SHA `17437a55a…`), not the soak's `095f21e`: it adds a status LED
-> for the walking board, emits `bcast_frames` (the sweep power-cycles the walker, so heartbeat
-> delivery can no longer be reconstructed from uptime), and fixes the `on_tx_done` race. The sweep's
-> first spot, 1 m from the PC, is the control that ties the new binary back to the soak. Record orientation as
-> well as distance and hold orientation fixed (at 10 cm it outweighed distance). See
-> WHEN-THE-BOARDS-ARRIVE.md. **Smoke-test it:** read its first minutes with `tools\soak_report.py`
-> before trusting a long dwell.
+> **All three boards run `a652cab`** (ELF SHA `17437a55a…`): status LED (blue = no peer, green < 10 %
+> heartbeat loss, yellow 10–50 %, red > 50 % or a peer dead; red/green/blue self-test at power-up),
+> `bcast_frames` in the link record, and the `on_tx_done` race fixed. Nothing is capturing now.
 >
-> **Status LED** (each board's own receive view, updated once a second): blue = no peer yet, green =
-> all peers under 10 % heartbeat loss, yellow = worst 10–50 %, red = over 50 % or a peer dead. At
-> power-up it shows red, green, blue. Pin is GPIO48 or GPIO38 by board revision, so both are driven.
+> **Tools:** `tools\soak.ps1` (Task Scheduler captures; survives the app, not logoff/shutdown/sleep),
+> `tools\soak_report.py`, `tools\sweep_report.py --walker <id>`. **Smoke-test any long run** by reading
+> its first ten minutes with the report tool. **Live checks must count deaths from the event stream,
+> never from the 10 s sampled state** — during the sweep that mistake hid 9 deaths.
 >
-> **Still queued:** the `reorder_dup` admission artefact (~20 per earlier-booted peer, never
-> recurs) and `peer_admitted` firing every `hello_interval_ms` for an admitted peer.
->
-> **Run 1 died at 3 h 27 m** because `Start-Process` left the captures inside the desktop app's job
-> object, and the app restarted. `tools\soak.ps1` now uses Task Scheduler. Survives the app and this
-> session; does **not** survive logging off, shutdown or sleep. Closing one of its console windows
-> kills that capture.
+> **Queued:** re-run `pot_sim --sweep` on these measured points instead of §3's borrowed farmland
+> figures; the `reorder_dup` admission artefact; `peer_admitted` firing every `hello_interval_ms`.
 
 Two entry points, depending on what is on the desk:
 

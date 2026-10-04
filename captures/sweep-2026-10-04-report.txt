@@ -1,0 +1,376 @@
+================================================================================================
+0x6300's view of the walker 0x7368   (captures/soak-sweep-2026-10-04-COM3.jsonl)
+================================================================================================
+
+ spot 1   13:38:42 - 13:45:14    6.5 min   walker epoch 7
+   heartbeat    3,924 sent,      3 lost   delivery 99.92%
+   outbound       586 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound      4,703 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 42-60 ms   197 samples, 0 timeouts
+   RSSI       -20 / -19 / -19 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 39 samples dead)
+   timeline   #####+################################
+   then       5 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 99.95%
+
+ spot 2   13:46:16 - 13:46:58    0.7 min   walker epoch 8
+   heartbeat      413 sent,      2 lost   delivery 99.52%
+   outbound        62 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound        493 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 16-22 ms   20 samples, 0 timeouts
+   RSSI       -54 / -50 / -47 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 5 samples dead)
+   timeline   ####
+   then       3 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 100.00%
+
+ spot 3   13:47:39 - 13:48:51    1.2 min   walker epoch 9
+   heartbeat      723 sent,      0 lost   delivery 100.00%
+   outbound       108 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound        867 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 6-8 ms   36 samples, 0 timeouts
+   RSSI       -57 / -37 / -37 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 8 samples dead)
+   timeline   #######
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 100.00%
+
+ spot 4   13:49:02 - 13:49:02    0.0 min   walker epoch 10
+   heartbeat        0 sent,      0 lost   delivery unmeasured
+   outbound         0 unicast,     0 un-ACKed  PDR unmeasured   (did the walker receive)
+   inbound          0 unicast,     0 missing  PDR unmeasured
+   RTT        p50 unmeasured   p99 unmeasured   0 samples, 0 timeouts
+   RSSI       -46 / -46 / -46 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 1 samples dead)
+   timeline   
+   then       1 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery unmeasured
+
+ spot 5   13:49:22 - 13:49:22    0.0 min   walker epoch 11
+   heartbeat        0 sent,      0 lost   delivery unmeasured
+   outbound         0 unicast,     0 un-ACKed  PDR unmeasured   (did the walker receive)
+   inbound          0 unicast,     0 missing  PDR unmeasured
+   RTT        p50 unmeasured   p99 unmeasured   0 samples, 0 timeouts
+   RSSI       -46 / -46 / -46 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 1 samples dead)
+   timeline   
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery unmeasured
+
+ spot 6   13:49:33 - 13:49:33    0.0 min   walker epoch 12
+   heartbeat        0 sent,      0 lost   delivery unmeasured
+   outbound         0 unicast,     0 un-ACKed  PDR unmeasured   (did the walker receive)
+   inbound          0 unicast,     0 missing  PDR unmeasured
+   RTT        p50 unmeasured   p99 unmeasured   0 samples, 0 timeouts
+   RSSI       -47 / -47 / -47 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 1 samples dead)
+   timeline   
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery unmeasured
+
+ spot 7   13:49:43 - 13:49:53    0.2 min   walker epoch 13
+   heartbeat      104 sent,      1 lost   delivery 99.04%
+   outbound        15 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound        123 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 6-8 ms   5 samples, 0 timeouts
+   RSSI       -46 / -46 / -46 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 2 samples dead)
+   timeline   #
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 100.00%
+
+ spot 8   13:50:04 - 13:51:16    1.2 min   walker epoch 14
+   heartbeat      722 sent,      1 lost   delivery 99.86%
+   outbound       108 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound        864 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 6-8 ms   36 samples, 0 timeouts
+   RSSI       -51 / -37 / -36 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 8 samples dead)
+   timeline   #######
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 100.00%
+
+ spot 9   13:51:26 - 13:51:26    0.0 min   walker epoch 15
+   heartbeat        0 sent,      0 lost   delivery unmeasured
+   outbound         0 unicast,     0 un-ACKed  PDR unmeasured   (did the walker receive)
+   inbound          0 unicast,     0 missing  PDR unmeasured
+   RTT        p50 unmeasured   p99 unmeasured   0 samples, 0 timeouts
+   RSSI       -47 / -47 / -47 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 1 samples dead)
+   timeline   
+   then       2 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery unmeasured
+
+ spot 10   13:51:57 - 13:58:50    6.9 min   walker epoch 16
+   heartbeat    4,130 sent,     12 lost   delivery 99.71%
+   outbound       615 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound      4,938 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 8-11 ms   207 samples, 0 timeouts
+   RSSI       -56 / -48 / -44 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 41 samples dead)
+   timeline   #########################+##############
+   then       3 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 99.98%
+
+ spot 11   13:59:32 - 14:27:55   28.4 min   walker epoch 17
+   heartbeat   17,035 sent,    122 lost   delivery 99.28%
+   outbound     2,550 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound     20,308 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 11-16 ms   852 samples, 0 timeouts
+   RSSI       -50 / -46 / -44 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 166 samples dead)
+   timeline   #+##+++##++###+##+####+###++#+##+#+#####+#+#+##+##++##+####+#+##########################+###########################++####+##########################################
+   then       2 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 99.95%
+
+ spot 12   14:28:26 - 14:37:02    8.6 min   walker epoch 18
+   heartbeat    5,161 sent,     29 lost   delivery 99.44%
+   outbound       749 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound      6,136 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 8-11 ms   258 samples, 0 timeouts
+   RSSI       -70 / -63 / -53 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 51 samples dead)
+   timeline   ########################+#+########+####++#+######
+   then       2 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 99.38%
+
+ spot 13   14:37:33 - 16:27:31   110.0 min   walker epoch 19
+   heartbeat   65,977 sent,    873 lost   delivery 98.68%
+   outbound     9,839 unicast,     1 un-ACKed  PDR 99.99%   (did the walker receive)
+   inbound     78,203 unicast,     3 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 11-16 ms   3,298 samples, 1 timeouts
+   RSSI       -80 / -73 / -65 dBm (min / median / max)
+   deaths     2 at this spot   (0 of 640 samples dead)
+   timeline   #+++-+++#--+++++-+++-+-+++++++#++#+##############+##+##+##+###+##########+++############+##+#+#+++##+++#++#+##+##+##+###+##+##++#+##+##########+#+##+###+#+#++#+#+####+####+###+########+###+####+####+##++#+####++####+###########+#+###+#####+#+######+######+##############+#+#+##################+############+#####+##########+##################+##+#++##+######+##################################+##+#+####+########+##+#########+######+###+#########+###################+######+##############++##++############+############+#+#+###++#+#####+##############+#++#####+++#++#+#######+#########+##+++-+++##+++--+++-#+#++---#######++##++++###+#+####
+   then       13 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 99.97%
+
+ spot 14   16:29:56 - 16:29:56    0.0 min   walker epoch 20
+   heartbeat        0 sent,      0 lost   delivery unmeasured
+   outbound         0 unicast,     0 un-ACKed  PDR unmeasured   (did the walker receive)
+   inbound          0 unicast,     0 missing  PDR unmeasured
+   RTT        p50 unmeasured   p99 unmeasured   0 samples, 0 timeouts
+   RSSI       -21 / -21 / -21 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 1 samples dead)
+   timeline   
+   then       1 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery unmeasured
+
+ spot 15   16:30:16 - 18:31:15   121.0 min   walker epoch 21
+   heartbeat   72,586 sent,    592 lost   delivery 99.18%
+   outbound    10,828 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound     86,414 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 11-16 ms   3,628 samples, 1 timeouts
+   RSSI       -69 / -56 / -51 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 704 samples dead)
+   timeline   #####+#######################+########+#######################################################+##########+#########################+##########+#####+#################++###################################+#########################+###################+#######+###+########+###########################################++#++###########+#########+#####+############################+########+#############+######+#######+###+#####+##########+#######+##########+##+##+#################+#######+###+##++################+###+###+#+#######++#####++++##+#+#+#+++#+#++++#+###++++#+##++++++++###++++++++++-++##+++++#+#++++++####++#+++##+++##+++++++++##+++++#####+++#+#++###++###+#++###++#+##+#############+#######+###
+   then       3 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 99.97%
+
+ spot 16   18:31:56 - 18:45:52   13.9 min   walker epoch 22
+   heartbeat    8,363 sent,    185 lost   delivery 97.79%
+   outbound     1,236 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound      9,827 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 16-22 ms   418 samples, 0 timeouts
+   RSSI       -80 / -76 / -72 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 82 samples dead)
+   timeline   -+++#+#+#++#++++++++++++++##+#++###+#+#+##########++#++#+#++++#+##+#+###+#+##+#++
+   then       4 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 99.95%
+
+ spot 17   18:46:44 - 19:08:56   22.2 min   walker epoch 23
+   heartbeat   13,320 sent,    331 lost   delivery 97.52%
+   outbound     1,983 unicast,     1 un-ACKed  PDR 99.95%   (did the walker receive)
+   inbound     15,628 unicast,     3 missing  PDR 99.98%
+   RTT        p50 4-6 ms   p99 22-30 ms   664 samples, 2 timeouts
+   RSSI       -83 / -78 / -75 dBm (min / median / max)
+   deaths     2 at this spot   (0 of 130 samples dead)
+   timeline   -+++#+++##++++--#++###++++###++##++##+#+#++++++#+++#++#+#+++++++++##+++++#+++#++####++++++######+++##+++++#++#+##+#++#++##++##++#
+   then       4 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 99.92%
+
+ spot 18   19:09:48 - 19:20:07   10.3 min   walker epoch 24
+   heartbeat    6,195 sent,    183 lost   delivery 97.05%
+   outbound       924 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound      7,242 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 8-11 ms   309 samples, 0 timeouts
+   RSSI       -80 / -77 / -72 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 61 samples dead)
+   timeline   +#++#+++++#+###+++#++#+##++++#++++#+#+-+++#+##+++-+#+++++#+#
+   control    0x6300 <- 0x8160 (unmoved) heartbeat delivery 99.97%
+
+================================================================================================
+0x8160's view of the walker 0x7368   (captures/soak-sweep-2026-10-04-COM5.jsonl)
+================================================================================================
+
+ spot 1   13:38:36 - 13:45:09    6.5 min   walker epoch 7
+   heartbeat    3,923 sent,      5 lost   delivery 99.87%
+   outbound       584 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound      4,698 unicast,     0 missing  PDR 100.00%
+   RTT        p50 3-4 ms   p99 8-11 ms   196 samples, 0 timeouts
+   RSSI       -14 / -12 / -12 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 39 samples dead)
+   timeline   +#####+###############################
+   then       5 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 99.95%
+
+ spot 2   13:46:11 - 13:47:02    0.9 min   walker epoch 8
+   heartbeat      516 sent,      2 lost   delivery 99.61%
+   outbound        76 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound        614 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 8-11 ms   25 samples, 1 timeouts
+   RSSI       -52 / -51 / -45 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 6 samples dead)
+   timeline   #####
+   then       3 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 100.00%
+
+ spot 3   13:47:44 - 13:48:46    1.0 min   walker epoch 9
+   heartbeat      620 sent,      0 lost   delivery 100.00%
+   outbound        93 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound        744 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 22-30 ms   31 samples, 0 timeouts
+   RSSI       -44 / -43 / -40 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 7 samples dead)
+   timeline   ######
+   then       1 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 100.00%
+
+ spot 4   13:49:06 - 13:49:06    0.0 min   walker epoch 10
+   heartbeat        0 sent,      0 lost   delivery unmeasured
+   outbound         0 unicast,     0 un-ACKed  PDR unmeasured   (did the walker receive)
+   inbound          0 unicast,     0 missing  PDR unmeasured
+   RTT        p50 unmeasured   p99 unmeasured   0 samples, 0 timeouts
+   RSSI       -39 / -39 / -39 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 1 samples dead)
+   timeline   
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery unmeasured
+
+ spot 5   13:49:17 - 13:49:27    0.2 min   walker epoch 11
+   heartbeat      103 sent,      0 lost   delivery 100.00%
+   outbound        16 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound        124 unicast,     0 missing  PDR 100.00%
+   RTT        p50 3-4 ms   p99 4-6 ms   5 samples, 0 timeouts
+   RSSI       -40 / -39.5 / -39 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 2 samples dead)
+   timeline   #
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 100.00%
+
+ spot 6: walker epoch 12 -- never alive in a sample; skipped
+
+ spot 7   13:49:48 - 13:49:48    0.0 min   walker epoch 13
+   heartbeat        0 sent,      0 lost   delivery unmeasured
+   outbound         0 unicast,     0 un-ACKed  PDR unmeasured   (did the walker receive)
+   inbound          0 unicast,     0 missing  PDR unmeasured
+   RTT        p50 unmeasured   p99 unmeasured   0 samples, 0 timeouts
+   RSSI       -40 / -40 / -40 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 1 samples dead)
+   timeline   
+   then       1 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery unmeasured
+
+ spot 8   13:50:08 - 13:51:21    1.2 min   walker epoch 14
+   heartbeat      723 sent,      1 lost   delivery 99.86%
+   outbound       108 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound        866 unicast,     0 missing  PDR 100.00%
+   RTT        p50 3-4 ms   p99 6-8 ms   36 samples, 0 timeouts
+   RSSI       -51 / -47 / -39 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 8 samples dead)
+   timeline   #######
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 100.00%
+
+ spot 9   13:51:31 - 13:51:31    0.0 min   walker epoch 15
+   heartbeat        0 sent,      0 lost   delivery unmeasured
+   outbound         0 unicast,     0 un-ACKed  PDR unmeasured   (did the walker receive)
+   inbound          0 unicast,     0 missing  PDR unmeasured
+   RTT        p50 unmeasured   p99 unmeasured   0 samples, 0 timeouts
+   RSSI       -44 / -44 / -44 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 1 samples dead)
+   timeline   
+   then       1 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery unmeasured
+
+ spot 10   13:51:52 - 13:58:45    6.9 min   walker epoch 16
+   heartbeat    4,130 sent,     12 lost   delivery 99.71%
+   outbound       613 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound      4,930 unicast,     0 missing  PDR 100.00%
+   RTT        p50 3-4 ms   p99 11-16 ms   206 samples, 0 timeouts
+   RSSI       -62 / -47 / -37 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 41 samples dead)
+   timeline   ########################################
+   then       3 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 99.98%
+
+ spot 11   13:59:26 - 14:27:50   28.4 min   walker epoch 17
+   heartbeat   17,038 sent,    120 lost   delivery 99.30%
+   outbound     2,550 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound     20,317 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 11-16 ms   852 samples, 0 timeouts
+   RSSI       -58 / -42 / -40 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 166 samples dead)
+   timeline   #+###+++##++##+#+#++##+#+##+##+##+#######+#+###+##+++#+###+#+###+######################++############################+#####+#########################################
+   then       3 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 99.96%
+
+ spot 12   14:28:31 - 14:37:07    8.6 min   walker epoch 18
+   heartbeat    5,161 sent,     24 lost   delivery 99.53%
+   outbound       749 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound      6,144 unicast,     0 missing  PDR 100.00%
+   RTT        p50 3-4 ms   p99 8-11 ms   258 samples, 0 timeouts
+   RSSI       -59 / -56 / -50 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 51 samples dead)
+   timeline   ###################################+####+#++######
+   then       1 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 99.96%
+
+ spot 13   14:37:28 - 16:27:36   110.1 min   walker epoch 19
+   heartbeat   66,082 sent,    531 lost   delivery 99.20%
+   outbound     9,859 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound     78,711 unicast,     0 missing  PDR 100.00%
+   RTT        p50 3-4 ms   p99 11-16 ms   3,304 samples, 0 timeouts
+   RSSI       -76 / -71 / -66 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 641 samples dead)
+   timeline   ##+#++####+###+#++++++++#+++#+##+#################+#+################+##+#+#+###########+###+#######+####+###+######+###+###+#####+++#######+#++##+#####++###########################+###+#####+#############+####++####+#+#+####+###+######################++#########+######+##+#######################++#+##########+########################################+####+###########+###+#################+#+#+#####+##+#################+##++#########################+########+####+###+###########+#######+####+#######++###############+#+#+###++##+######+#############+++########+#########+######+####+#++#--++##+#+++#+#++###++#+++############+###########
+   then       13 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 99.98%
+
+ spot 14: walker epoch 20 -- never alive in a sample; skipped
+
+ spot 15   16:30:21 - 18:31:10   120.8 min   walker epoch 21
+   heartbeat   72,488 sent,    749 lost   delivery 98.97%
+   outbound    10,801 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound     86,158 unicast,     0 missing  PDR 100.00%
+   RTT        p50 4-6 ms   p99 11-16 ms   3,624 samples, 0 timeouts
+   RSSI       -73 / -56 / -49 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 703 samples dead)
+   timeline   ######################################################################################################################################++######+##################+####################################+###++############+############+#######+##########+############+###################################################+++#++####################+#####+#####+######################+######################+###+##+##+++#######+####+#######+######+###++++####+###+#+#+#+###+##+##+######++++#+######+##+++###++#+#########+##++##+#+++#+#+#++#+####+++##+##++#+#+#++++++++###++++#++#++++++++++#+++#++++++-+++++++++++++++++++###++++++++#+++#++#++++++###+-++##+++++++++++#++++##+#+++####++++#+++###########+###########
+   then       4 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 99.95%
+
+ spot 16   18:32:01 - 18:45:58   13.9 min   walker epoch 22
+   heartbeat    8,359 sent,    513 lost   delivery 93.86%
+   outbound     1,212 unicast,    10 un-ACKed  PDR 99.17%   (did the walker receive)
+   inbound      9,477 unicast,    19 missing  PDR 99.80%
+   RTT        p50 3-4 ms   p99 22-30 ms   409 samples, 9 timeouts
+   RSSI       -85 / -79 / -72 dBm (min / median / max)
+   deaths     9 at this spot   (0 of 82 samples dead)
+   timeline   ++-------------++++++++++###+++####++++++++#++#+##+#+##+++#++####++#++#++###++##+
+   then       3 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 99.94%
+
+ spot 17   18:46:39 - 19:09:01   22.4 min   walker epoch 23
+   heartbeat   13,424 sent,    228 lost   delivery 98.30%
+   outbound     1,989 unicast,     3 un-ACKed  PDR 99.85%   (did the walker receive)
+   inbound     15,859 unicast,    11 missing  PDR 99.93%
+   RTT        p50 3-4 ms   p99 11-16 ms   667 samples, 5 timeouts
+   RSSI       -80 / -73 / -70 dBm (min / median / max)
+   deaths     4 at this spot   (1 of 131 samples dead)
+   timeline   x-####+#+##+#++++######+##+#######++#+######++#+###+#######+##++++######+#####+++####+#+++########+#####+###+#######+##+###++##++#
+   then       3 dead sample(s) until the next power-up -- the walk, or a lost link
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 99.95%
+
+ spot 18   19:09:43 - 19:20:13   10.5 min   walker epoch 24
+   heartbeat    6,300 sent,     47 lost   delivery 99.25%
+   outbound       940 unicast,     0 un-ACKed  PDR 100.00%   (did the walker receive)
+   inbound      7,506 unicast,     0 missing  PDR 100.00%
+   RTT        p50 3-4 ms   p99 30-42 ms   314 samples, 1 timeouts
+   RSSI       -66 / -63 / -61 dBm (min / median / max)
+   deaths     0 at this spot   (0 of 62 samples dead)
+   timeline   ###################+++#####++#####+###++##########+########+#
+   control    0x8160 <- 0x6300 (unmoved) heartbeat delivery 100.00%
+

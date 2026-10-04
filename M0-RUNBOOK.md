@@ -438,15 +438,18 @@ Supporting evidence the overnight session already produced:
 
 Concretely, on the geometry you actually intend to deploy at:
 
-- [ ] Is PDR stable, in **both** directions, over 24 hours?
-- [ ] Is the p99 RTT inside a budget that L3's 500 ms deadline (§4) can live with?
-- [ ] Does the histogram show a long tail that is *bimodal* rather than merely long? §3's cliff
+- [x] Is PDR stable, in **both** directions, over 24 hours? **Yes: 24.52 h at desk range; across the
+      house, worst spot 99.17 % out / 99.80 % in, 100 % at six of eight spots (2026-10-04).**
+- [x] Is the p99 RTT inside a budget that L3's 500 ms deadline (§4) can live with? **Yes: worst p99
+      bucket anywhere in the house 30–42 ms.**
+- [x] Does the histogram show a long tail that is *bimodal* rather than merely long? §3's cliff
       between 56 m and 70 m appears as PDR oscillating between 100% and 0, not as gradual decay.
+      **No. The indoor edge appears as brief membership dropouts, not a cliff: 9 revivals in 14 min
+      at the worst spot while unicast still delivered 99 %.**
 
-**At desk geometry (10 cm, 2026-10-03) all three answers are the passing ones:** PDR 100 % both
-ways for 24.52 h; p99 16–22 ms against a 500 ms deadline; a tail that decays without a gap. They
-stay unticked because desk range is not the intended geometry. The distance sweep ticks them or
-fires the kill, and this soak is its control.
+**Answered on the intended geometry, 2026-10-04: the kill criterion does not fire.** The distance
+sweep covered a two-storey house, up to ~16 m, four walls, a floor, and a dryer-and-fridge shadow.
+M0 is accepted. Per-spot figures are in M0-LOG session 15 and `captures/sweep-2026-10-04-report.txt`.
 
 If any answer is no, that is the kill criterion firing. **Stop and reopen the transport decision.**
 Do not start M1. §14 lists "scope expansion back toward the full matrix" as the highest-likelihood,
