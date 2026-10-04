@@ -19,14 +19,18 @@
 //                            manufacture the very misses §8.2 counts. It holds the mutex only long
 //                            enough to copy a peer, then formats from the copy.
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <new>  // placement new, for constructing the Node into static storage
 
 #include "pot/boot_epoch.hpp"
+#include "pot/deploy.hpp"
+#include "pot/deploy_esp.hpp"
 #include "pot/dram_probe.hpp"
 #include "pot/espnow_port.hpp"
 #include "pot/node.hpp"
+#include "pot/opcodes.hpp"
 #include "pot/serial_port.hpp"
 #include "pot/stats_json.hpp"
 #include "pot/sys_resources.hpp"
@@ -35,6 +39,7 @@
 #include "esp_app_desc.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -234,7 +239,18 @@ namespace status_led {
 
 constexpr uint32_t kResolutionHz = 10000000;  // 0.1 us per RMT tick
 constexpr uint8_t kBrightness = 24;           // of 255: readable indoors, not a torch
-constexpr uint32_t kUpdateMs = 1000;
+constexpr uint32_t kUpdateMs = 1000;  // how often the colour is reassessed
+constexpr uint32_t kRenderMs = 100;   // how often it is drawn, so a deployed blink can blink
+
+// What "healthy" looks like. Built-in: steady green. A deployed Led actor (M3) replaces it; blue,
+// yellow and red keep their diagnostic meaning whatever is deployed, so no deployment can make a
+// failing link look healthy.
+LedConfig g_healthy{0, 255, 0, 0, 1000};
+bool g_custom = false;
+void set_healthy(const LedConfig& c) {
+    g_healthy = c;
+    g_custom = true;
+}
 
 rmt_symbol_word_t symbol(uint16_t high_ticks, uint16_t low_ticks) {
     rmt_symbol_word_t s{};
@@ -292,6 +308,11 @@ void open(Channel& c, int gpio) {
 
 void show(uint8_t r, uint8_t g, uint8_t b) {
     if (!g_up) return;
+    // Drawn every 100 ms now; only touch the RMT when the colour actually changes.
+    static int last = -1;
+    const int now = (r << 16) | (g << 8) | b;
+    if (now == last) return;
+    last = now;
     rmt_transmit_config_t tx{};
     for (Channel& c : g_ch) {
         if (c.chan == nullptr) continue;
@@ -363,16 +384,317 @@ Colour assess(const Node& n) {
     return Colour::Green;
 }
 
-void render(Colour c) {
+uint8_t scaled(uint8_t v) {
+    if (v == 0) return 0;
+    const uint32_t s = static_cast<uint32_t>(v) * kBrightness / 255u;
+    return static_cast<uint8_t>(s == 0 ? 1 : s);
+}
+
+void render(Colour c, uint32_t now_ms) {
     switch (c) {
         case Colour::Blue: show(0, 0, kBrightness); break;
-        case Colour::Green: show(0, kBrightness, 0); break;
+        case Colour::Green:
+            if (!g_custom) {
+                show(0, kBrightness, 0);
+            } else if (g_healthy.blink && (now_ms % g_healthy.period_ms) >= g_healthy.period_ms / 2) {
+                show(0, 0, 0);
+            } else {
+                show(scaled(g_healthy.r), scaled(g_healthy.g), scaled(g_healthy.b));
+            }
+            break;
         case Colour::Yellow: show(kBrightness, kBrightness, 0); break;
         case Colour::Red: show(kBrightness, 0, 0); break;
     }
 }
 
 }  // namespace status_led
+
+
+// ---------------------------------------------------------------------------------------------
+// Deploy and detach (§7.4, M3). The image is a list of built-in actors and their configuration
+// (ADR-003 Tier 0); pot_deploy holds the format, the A/B state machine and the receiver.
+// ---------------------------------------------------------------------------------------------
+namespace deploy_rt {
+
+constexpr uint8_t kMaxTrialBoots = CONFIG_POT_TRIAL_MAX_BOOTS;
+constexpr uint32_t kTrialHeartbeats = CONFIG_POT_TRIAL_HEARTBEATS;
+constexpr uint32_t kRebootDelayMs = 1500;  // long enough for the REPLY to leave first
+
+EspSlotStore g_store;
+DeployState g_state{};
+BootOutcome g_outcome = BootOutcome::NoDeployment;
+// One buffer, used twice: by boot() to load the active slot before any frame can arrive, then by
+// the receiver. Nothing keeps pointers into it after boot -- the actors' settings are copied out.
+uint8_t g_rx_buf[kMaxImageLen];
+uint8_t* const g_image = g_rx_buf;
+DeployReceiver g_rx(g_store, g_rx_buf, sizeof(g_rx_buf));
+bool g_trial = false;            // running a pending slot, not yet confirmed
+uint32_t g_fault_at_ms = 0;      // 0 = no fault actor armed
+uint32_t g_reboot_at_ms = 0;     // 0 = no reboot scheduled
+uint16_t g_node_id = 0;
+
+const char* slot_name(uint8_t s) { return s == kSlotA ? "A" : s == kSlotB ? "B" : "none"; }
+
+void save() {
+    if (!g_store.save_state(g_state)) {
+        ESP_LOGE(kTag, "deploy: could not persist the A/B state");
+    }
+}
+
+// Read the active slot, validate every actor meant for this node, and only then apply them: a
+// half-applied image is worse than either whole one.
+bool load_and_apply(const char** why) {
+    size_t len = 0;
+    if (!g_store.read_slot(g_state.active, g_image, kMaxImageLen, len)) {
+        *why = "slot unreadable or fails its CRC";
+        return false;
+    }
+    DeployImage img{};
+    if (!parse_image(g_image, len, img, why)) {
+        return false;
+    }
+    const uint32_t trial_ms = kTrialHeartbeats * static_cast<uint32_t>(CONFIG_POT_HB_PERIOD_MS);
+    bool have_led = false;
+    LedConfig led{};
+    uint32_t fault_at = 0;
+    for (uint8_t i = 0; i < img.actor_count; ++i) {
+        const ActorDecl& a = img.actors[i];
+        if (a.node_id != g_node_id && a.node_id != kEveryNode) {
+            continue;
+        }
+        if (a.type == ActorType::Led) {
+            if (!led_config(a, led)) {
+                *why = "led actor config out of range";
+                return false;
+            }
+            have_led = true;
+        } else if (a.type == ActorType::Fault) {
+            FaultConfig fc{};
+            if (!fault_config(a, fc) || fc.panic_after_ms >= trial_ms) {
+                // A fault that fires after the trial window would let the node confirm a module
+                // that then crashes for ever, with no fallback slot left. Refused as invalid.
+                *why = "fault actor must fire inside the trial window";
+                return false;
+            }
+            fault_at = fc.panic_after_ms;
+        }
+    }
+    if (have_led) {
+        status_led::set_healthy(led);
+    }
+    g_fault_at_ms = fault_at;
+    ESP_LOGI(kTag, "deploy: image counter %u, digest %02x%02x%02x%02x..., %u actor(s) in the image",
+             static_cast<unsigned>(img.rollback_counter), img.package_digest[0],
+             img.package_digest[1], img.package_digest[2], img.package_digest[3],
+             static_cast<unsigned>(img.actor_count));
+    return true;
+}
+
+// Before any task starts. The trial counter is persisted *before* the slot runs, so a module that
+// crashes the node has already been counted when it does.
+void boot(uint16_t node_id) {
+    g_node_id = node_id;
+    if (!g_store.init()) {
+        return;
+    }
+    g_store.load_state(g_state);
+    g_outcome = decide_boot(g_state, kMaxTrialBoots);
+    save();
+    for (int attempt = 0; attempt < 2 && g_state.active != kSlotNone; ++attempt) {
+        const char* why = "?";
+        if (load_and_apply(&why)) {
+            break;
+        }
+        if (g_state.pending != 0) {
+            ESP_LOGE(kTag, "deploy: slot %s cannot run (%s) - reverting now", slot_name(g_state.active), why);
+            revert_now(g_state);
+            save();
+            g_outcome = BootOutcome::Reverted;
+            continue;
+        }
+        ESP_LOGE(kTag, "deploy: confirmed slot %s cannot run (%s) - built-in behaviour",
+                 slot_name(g_state.active), why);
+        break;
+    }
+    g_trial = g_state.pending != 0;
+    ESP_LOGI(kTag, "deploy: boot %s, running slot %s%s, trial boot %u/%u, counter %u",
+             boot_outcome_str(g_outcome), slot_name(g_state.active), g_trial ? " ON TRIAL" : "",
+             static_cast<unsigned>(g_state.trial_boots), static_cast<unsigned>(kMaxTrialBoots),
+             static_cast<unsigned>(g_state.counter));
+}
+
+// ---- passing a committed image on to the peers (A's half of "one artifact per system") ----------
+struct Push {
+    bool active = false;
+    uint16_t peers[kMaxPeers];
+    size_t count = 0;
+    size_t idx = 0;
+    uint32_t offset = 0;
+    uint16_t awaiting = 0;
+    uint8_t ok = 0;
+    uint8_t failed = 0;
+    uint16_t requester = 0;
+    uint16_t requester_msg = 0;
+    DeployBegin begin{};
+};
+Push g_push;
+
+void schedule_reboot() { g_reboot_at_ms = now_ms_() + kRebootDelayMs; }
+
+void push_next_peer();
+
+void push_send(uint8_t op, const uint8_t* payload, size_t len) {
+    const uint16_t msg = g_node->send_deploy(g_push.peers[g_push.idx], op, payload, static_cast<uint16_t>(len));
+    if (msg == 0) {
+        ESP_LOGW(kTag, "deploy: could not send to peer 0x%04x", g_push.peers[g_push.idx]);
+        ++g_push.failed;
+        ++g_push.idx;
+        push_next_peer();
+        return;
+    }
+    g_push.awaiting = msg;
+}
+
+void push_begin() {
+    uint8_t wire[kDeployBeginLen];
+    const size_t n = store_deploy_begin(g_push.begin, wire, sizeof(wire));
+    g_push.offset = 0;
+    push_send(kOpDeployBegin, wire, n);
+}
+
+void push_chunk() {
+    const uint32_t len = g_push.begin.image_len;
+    const uint16_t n = static_cast<uint16_t>(std::min<uint32_t>(kDeployChunkMax, len - g_push.offset));
+    static uint8_t wire[kDeployChunkHeaderLen + kDeployChunkMax];
+    const size_t w = store_deploy_chunk(g_push.offset, g_rx.image() + g_push.offset, n, wire, sizeof(wire));
+    g_push.offset += n;
+    push_send(kOpDeployChunk, wire, w);
+}
+
+void push_finish() {
+    g_push.active = false;
+    DeployReply r{};
+    r.status = DeployStatus::Ok;
+    r.slot = g_state.active;
+    r.pending = 1;
+    r.received = g_push.begin.image_len;
+    r.counter = g_push.begin.rollback_counter;
+    r.peers_ok = g_push.ok;
+    r.peers_failed = g_push.failed;
+    uint8_t wire[kDeployReplyLen];
+    store_deploy_reply(r, wire, sizeof(wire));
+    g_node->send_reply_raw(g_push.requester, g_push.requester_msg, wire, sizeof(wire));
+    ESP_LOGI(kTag, "deploy: passed on to %u peer(s), %u failed; rebooting into slot %s",
+             static_cast<unsigned>(g_push.ok), static_cast<unsigned>(g_push.failed),
+             slot_name(g_state.active));
+    schedule_reboot();
+}
+
+void push_next_peer() {
+    if (g_push.idx >= g_push.count) {
+        push_finish();
+        return;
+    }
+    push_begin();
+}
+
+void on_result(void*, uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, const uint8_t* p,
+               uint16_t len) {
+    if (!g_push.active || g_push.idx >= g_push.count || peer != g_push.peers[g_push.idx] ||
+        msg != g_push.awaiting) {
+        return;
+    }
+    DeployReply r{};
+    const bool ok = !timed_out && load_deploy_reply(p, len, r) && r.status == DeployStatus::Ok;
+    if (!ok) {
+        ESP_LOGW(kTag, "deploy: peer 0x%04x %s at step 0x%02x", peer,
+                 timed_out ? "timed out" : deploy_status_str(r.status), op);
+        ++g_push.failed;
+        ++g_push.idx;
+        push_next_peer();
+        return;
+    }
+    if (op == kOpDeployBegin || (op == kOpDeployChunk && g_push.offset < g_push.begin.image_len)) {
+        push_chunk();
+    } else if (op == kOpDeployChunk) {
+        uint8_t wire[kDeployCommitLen];
+        push_send(kOpDeployCommit, wire, store_deploy_commit(g_push.begin.image_crc, wire, sizeof(wire)));
+    } else if (op == kOpDeployCommit) {
+        ESP_LOGI(kTag, "deploy: peer 0x%04x committed", peer);
+        ++g_push.ok;
+        ++g_push.idx;
+        push_next_peer();
+    }
+}
+
+// ---- the server, called from Node::on_rx with g_mutex held ---------------------------------------
+size_t on_deploy(void*, uint16_t from, uint16_t msg_id, uint8_t op, const uint8_t* p, uint16_t len,
+                 uint8_t* reply, size_t cap) {
+    DeployReply r{};
+    r.status = DeployStatus::Malformed;
+    if (!g_store.ready()) {
+        r.status = DeployStatus::StoreFailed;
+    } else if (g_push.active || g_reboot_at_ms != 0) {
+        r.status = DeployStatus::Busy;
+    } else if (op == kOpDeployBegin) {
+        DeployBegin b{};
+        if (load_deploy_begin(p, len, b)) r = g_rx.begin(b);
+    } else if (op == kOpDeployChunk) {
+        DeployChunk c{};
+        if (load_deploy_chunk(p, len, c)) r = g_rx.chunk(c);
+    } else if (op == kOpDeployCommit) {
+        uint32_t crc = 0;
+        if (load_deploy_commit(p, len, crc)) r = g_rx.commit(crc);
+        if (r.status == DeployStatus::Ok) {
+            g_store.load_state(g_state);
+            ESP_LOGI(kTag, "deploy: committed counter %u to slot %s, on trial from the next boot",
+                     static_cast<unsigned>(g_rx.header().rollback_counter), slot_name(g_state.active));
+            if (g_rx.distribute()) {
+                g_push = Push{};
+                g_push.begin = g_rx.header();
+                g_push.begin.flags &= static_cast<uint8_t>(~kDeployFlagDistribute);  // one hop, no echo
+                g_push.requester = from;
+                g_push.requester_msg = msg_id;
+                for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+                    const PeerLink& q = g_node->peers().slot(i);
+                    if (q.state == PeerState::Alive && q.node_id != from) {
+                        g_push.peers[g_push.count++] = q.node_id;
+                    }
+                }
+                g_push.active = true;
+                ESP_LOGI(kTag, "deploy: passing it on to %u peer(s)", static_cast<unsigned>(g_push.count));
+                push_next_peer();
+                return 0;  // answered by push_finish(), once the peers have committed
+            }
+            schedule_reboot();
+        }
+    } else if (op == kOpDeployAbort) {
+        g_rx.abort();
+        r.status = DeployStatus::Ok;
+    }
+    return store_deploy_reply(r, reply, cap);
+}
+
+// From link_task, every pass.
+void tick(uint32_t now) {
+    if (g_fault_at_ms != 0 && now >= g_fault_at_ms) {
+        ESP_LOGE(kTag, "deploy: fault actor firing at %u ms, as configured", static_cast<unsigned>(now));
+        abort();
+    }
+    if (g_trial && g_node->tx_tally().beacons >= kTrialHeartbeats) {
+        confirm(g_state);
+        save();
+        g_trial = false;
+        ESP_LOGI(kTag, "deploy: trial passed after %u heartbeats - slot %s CONFIRMED",
+                 static_cast<unsigned>(kTrialHeartbeats), slot_name(g_state.active));
+    }
+    if (g_reboot_at_ms != 0 && now >= g_reboot_at_ms) {
+        ESP_LOGW(kTag, "deploy: rebooting into the new slot");
+        esp_restart();
+    }
+}
+
+}  // namespace deploy_rt
 
 // ---------------------------------------------------------------------------------------------
 // Tasks
@@ -381,7 +703,9 @@ void render(Colour c) {
 void link_task(void*) {
     g_node->start();
     uint32_t next_button_poll_ms = now_ms_();
-    uint32_t next_led_ms = now_ms_() + status_led::kUpdateMs;
+    uint32_t next_led_ms = now_ms_() + status_led::kRenderMs;
+    uint32_t next_assess_ms = now_ms_() + status_led::kUpdateMs;
+    status_led::Colour colour = status_led::Colour::Blue;
 
     for (;;) {
         // Send completions first: cheap, and they carry the MAC-layer ACK an in-flight probe waits
@@ -462,13 +786,20 @@ void link_task(void*) {
         g_node->tick(nt);
         xSemaphoreGive(g_mutex);
 
-        if (static_cast<int32_t>(nt - next_led_ms) >= 0) {
-            next_led_ms = nt + status_led::kUpdateMs;
+        if (static_cast<int32_t>(nt - next_assess_ms) >= 0) {
+            next_assess_ms = nt + status_led::kUpdateMs;
             xSemaphoreTake(g_mutex, portMAX_DELAY);
-            const status_led::Colour colour = status_led::assess(*g_node);
+            colour = status_led::assess(*g_node);
             xSemaphoreGive(g_mutex);
-            status_led::render(colour);  // outside the lock: the RMT never holds up the node
         }
+        if (static_cast<int32_t>(nt - next_led_ms) >= 0) {
+            next_led_ms = nt + status_led::kRenderMs;
+            status_led::render(colour, nt);  // outside the lock: the RMT never holds up the node
+        }
+
+        xSemaphoreTake(g_mutex, portMAX_DELAY);
+        deploy_rt::tick(nt);
+        xSemaphoreGive(g_mutex);
 
         // Nothing above could have blocked, so yield explicitly. One tick minimum even when a
         // deadline has already passed: this task must never be able to spin, whatever the transports
@@ -826,6 +1157,12 @@ extern "C" void app_main(void) {
 
     bye_button_init();
     status_led::init();
+
+    // §7.4: decide which slot this boot runs, persist the trial count, apply the actors -- all
+    // before any task starts, so the first heartbeat already comes from the deployed behaviour.
+    deploy_rt::boot(cfg.node_id);
+    g_node->set_deploy_server(&deploy_rt::on_deploy, nullptr);
+    g_node->set_deploy_result(&deploy_rt::on_result, nullptr);
 
     // The broadcast address needs a peer entry before anything can be broadcast, and it consumes
     // one of §3's twenty slots — leaving nineteen for unicast.

@@ -201,6 +201,10 @@ class ActorSpec:
     #: A hand-written override. Section 7.4: "hand-written node pins remain available as overrides,
     #: not as the norm."
     pin: int | None = None
+    #: ADR-003 Tier 0: a module is a built-in native actor, and this is what makes it behave
+    #: differently -- the "signed configuration" half of "a signed configuration and a state
+    #: machine". Part of the canonical bytes, so the signature covers it.
+    config: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -314,6 +318,9 @@ class Manifest:
                     "priority": a.priority,
                     **({} if a.on_host_loss is None else {"on_host_loss": a.on_host_loss}),
                     **({} if a.pin is None else {"pin": a.pin}),
+                    # Only when present, so a manifest without configuration keeps the digest it
+                    # had before this field existed, and every package already signed stays valid.
+                    **({} if not a.config else {"config": dict(a.config)}),
                 }
                 for a in self.actors
             ],
@@ -424,7 +431,7 @@ _RESOURCE_KEYS = ("path", "unit", "kind", "access", "latency_class", "staleness_
                   "staleness_policy")
 _NODE_KEYS = ("node_id", "label", "power", "headroom_bytes", "allow_background", "owns")
 _ACTOR_KEYS = ("name", "module", "latency_class", "needs", "headroom_bytes", "priority",
-               "on_host_loss", "pin")
+               "on_host_loss", "pin", "config")
 _TOP_KEYS = ("schema", "system", "min_core_version", "nodes", "actors", "bindings", "links",
             "placement")
 _LINK_KEYS = ("a", "b", "transport")
@@ -509,10 +516,24 @@ def _parse_actor(d: Any, where: str, errors: list[ManifestError]) -> ActorSpec |
             if p is not None:
                 needs.append(p)
 
+    config_raw = d.get("config", {})
+    config: dict[str, Any] = {}
+    if not isinstance(config_raw, dict):
+        errors.append(ManifestError(f"{where}.config", "must be an object"))
+    else:
+        for k, v in config_raw.items():
+            # Plain scalars only: an actor's configuration is a handful of numbers and switches,
+            # and anything richer would need a schema the node does not have.
+            if not isinstance(k, str) or not isinstance(v, (bool, int)):
+                errors.append(ManifestError(f"{where}.config.{k}", "must be an integer or a boolean"))
+            else:
+                config[k] = v
+
     if name is None or module is None or cls is None or headroom is None or priority is None:
         return None
     return ActorSpec(name=name, module=module, latency_class=cls, needs=tuple(needs),
-                     headroom_bytes=headroom, priority=priority, on_host_loss=on_host_loss, pin=pin)
+                     headroom_bytes=headroom, priority=priority, on_host_loss=on_host_loss, pin=pin,
+                     config=config)
 
 
 def parse(doc: Any, *, require_placement: bool = False) -> Manifest:

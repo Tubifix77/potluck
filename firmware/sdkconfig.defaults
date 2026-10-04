@@ -56,3 +56,10 @@ CONFIG_ESP_CONSOLE_UART_BAUDRATE=921600
 # Keep the log level at INFO: membership transitions are logged there and they are the human-
 # readable half of the M0 acceptance evidence.
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# --- Partition table: the stock single-app layout plus section 7.4's A/B module slots (M3) ------
+# A Kconfig choice: this takes effect when sdkconfig is generated (tools\build_firmware.ps1 -Clean
+# regenerates it). Verify the built table, not this line: the ledger records a choice member that
+# was silently ignored from an overlay.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"

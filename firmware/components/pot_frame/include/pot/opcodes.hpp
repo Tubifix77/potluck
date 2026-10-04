@@ -43,10 +43,13 @@ constexpr uint8_t kOpReply = 0x21;
 constexpr uint8_t kOpCast = 0x22;
 
 // ---- Lifecycle (M3 / M6) ----
-// constexpr uint8_t kOpDeployBegin    = 0x30;
-// constexpr uint8_t kOpDeployChunk    = 0x31;
-// constexpr uint8_t kOpDeployCommit   = 0x32;
-// constexpr uint8_t kOpDeployAbort    = 0x33;
+// §7.4. Each is answered with REPLY carrying a deploy status (pot_deploy's DeployReply), not a
+// namespace reading: the requester tells the two apart by the opcode it sent.
+constexpr uint8_t kOpDeployBegin = 0x30;
+constexpr uint8_t kOpDeployChunk = 0x31;
+constexpr uint8_t kOpDeployCommit = 0x32;
+constexpr uint8_t kOpDeployAbort = 0x33;
+inline bool is_deploy_opcode(uint8_t op) { return op >= kOpDeployBegin && op <= kOpDeployAbort; }
 // constexpr uint8_t kOpMigratePrepare = 0x40;
 // constexpr uint8_t kOpMigrateCommit  = 0x41;
 

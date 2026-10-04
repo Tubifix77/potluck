@@ -1,0 +1,13 @@
+# Potluck partition table. The first three entries are ESP-IDF's stock single-app table
+# (components/partition_table/partitions_singleapp.csv) at the offsets it resolves to, written out
+# explicitly so that adding the module slots can never move NVS: every board's boot epoch and
+# deploy state live there, and a moved NVS would silently start both again from zero.
+#
+# modA / modB: section 7.4's A/B module slots (M3). Raw data partitions, subtype 0x40, one image
+# each -- see firmware/components/pot_deploy/include/pot/deploy.hpp for why not LittleFS.
+# Name,   Type, SubType, Offset,   Size,    Flags
+nvs,      data, nvs,     0x9000,   0x6000,
+phy_init, data, phy,     0xf000,   0x1000,
+factory,  app,  factory, 0x10000,  1M,
+modA,     data, 0x40,    0x110000, 0x10000,
+modB,     data, 0x40,    0x120000, 0x10000,

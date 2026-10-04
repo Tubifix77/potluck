@@ -64,6 +64,10 @@ class Op(IntEnum):
     CALL = 0x20
     REPLY = 0x21
     CAST = 0x22
+    DEPLOY_BEGIN = 0x30
+    DEPLOY_CHUNK = 0x31
+    DEPLOY_COMMIT = 0x32
+    DEPLOY_ABORT = 0x33
     SAFE_STATE = 0x50
     ERR = 0x7F
 

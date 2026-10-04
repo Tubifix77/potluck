@@ -105,6 +105,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("info", help="say hello and report what the node announced")
 
+    s = sub.add_parser("deploy", help="verify a signed package and deploy it (section 7.4, M3)")
+    s.add_argument("package", help="a signed package from `python -m potluck.signing sign`")
+    s.add_argument("--ca", required=True, help="the cluster CA's public key (.pub)")
+    s.add_argument("--min-counter", type=int, default=0,
+                   help="refuse packages below this rollback counter (the node refuses them too)")
+    s.add_argument("--local-only", action="store_true",
+                   help="deploy to the cabled node only, rather than to the whole cell through it")
+
     return p
 
 
@@ -171,6 +179,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_watch(bridge, canonical(args.path, node_id), args)
         if args.cmd == "soak":
             return cmd_soak(bridge, node_id, args)
+        if args.cmd == "deploy":
+            return cmd_deploy(bridge, node_id, args)
         return 2
     finally:
         try:
@@ -270,6 +280,61 @@ def cmd_watch(bridge: Bridge, path: str, args) -> int:
     except KeyboardInterrupt:
         print("\n# interrupted", file=sys.stderr)
     return 0
+
+
+def cmd_deploy(bridge: Bridge, node_id: int, args) -> int:
+    """Verify a signed package, compile it to a node image, and send it (section 7.4, M3).
+
+    Verified on the host first: the package's certificate chains to the cluster CA, its signature
+    covers the manifest and the counter, and the manifest is re-validated. The node then checks the
+    image's integrity and the anti-downgrade counter itself; verifying the signature on the node is
+    M5's half.
+    """
+    from . import deploy as dp
+    from .signing import SigningError, load_package, read_key, verify_package
+
+    try:
+        ca = read_key(args.ca)
+        v = verify_package(load_package(args.package), ca.public, min_counter=args.min_counter)
+        img = dp.compile_image(v.manifest, v.rollback_counter)
+    except (SigningError, dp.DeployError, OSError) as exc:
+        print(f"REFUSED before sending: {exc}")
+        return 4
+    print(f"package '{v.manifest.system}' counter {v.rollback_counter}, signed by {v.signer.id} "
+          f"('{v.signer.label}')")
+    print(f"node image {len(img)} B, crc {dp.crc32(img):08x}, "
+          f"{len(v.manifest.actors)} actor(s), manifest {v.manifest.digest()[:16]}")
+    distribute = not args.local_only
+
+    def step(name: str, op: int, payload: bytes, timeout: float) -> dp.DeployReply:
+        rep = dp.DeployReply.parse(bridge.deploy_step(op, payload, timeout=timeout, dst=node_id))
+        print(f"  {name:<7} {rep.status_name}  (slot {dp.SLOT_NAMES.get(rep.slot, rep.slot)}, "
+              f"{rep.received} B received)")
+        if not rep.ok:
+            raise dp.DeployError(f"{name} refused by 0x{node_id:04x}: {rep.status_name}")
+        return rep
+
+    try:
+        step("BEGIN", fr.Op.DEPLOY_BEGIN,
+             dp.begin_payload(img, v.rollback_counter, dp.package_digest8(v.manifest),
+                              distribute=distribute), args.timeout + 1.0)
+        for off in range(0, len(img), dp.CHUNK_MAX):
+            step("CHUNK", fr.Op.DEPLOY_CHUNK, dp.chunk_payload(off, img[off:off + dp.CHUNK_MAX]),
+                 args.timeout + 1.0)
+        # With distribution the node answers COMMIT only after its peers have committed: allow for
+        # a few round trips per peer rather than one.
+        rep = step("COMMIT", fr.Op.DEPLOY_COMMIT, dp.commit_payload(img),
+                   15.0 if distribute else args.timeout + 1.0)
+    except (dp.DeployError, RequestTimeout, BridgeError) as exc:
+        print(f"FAILED: {exc}")
+        return 5
+    if distribute:
+        print(f"committed on 0x{node_id:04x} and passed on: {rep.peers_ok} peer(s) committed, "
+              f"{rep.peers_failed} failed")
+    else:
+        print(f"committed on 0x{node_id:04x}")
+    print("every committed node now reboots into the new slot and runs it on trial")
+    return 0 if rep.peers_failed == 0 else 1
 
 
 def cmd_soak(bridge: Bridge, node_id: int, args) -> int:

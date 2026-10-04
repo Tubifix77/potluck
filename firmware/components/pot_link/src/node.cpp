@@ -452,7 +452,14 @@ void Node::pending_expire(uint32_t now_ms) {
             // stuck requests would block every subsequent read, which is the same wedging failure
             // §5.4's reassembly cap has, arrived at from a different direction.
             ++ns_counters_.read_timeouts;
+            const uint16_t msg_id = q.msg_id;
+            const uint16_t peer = q.peer_node;
+            const uint8_t op = q.op;
             q.msg_id = 0;
+            if (is_deploy_opcode(op) && deploy_result_ != nullptr) {
+                // A deploy client is waiting on this step; tell it rather than let it hang.
+                deploy_result_(deploy_result_ctx_, peer, msg_id, op, true, nullptr, 0);
+            }
         }
     }
 }
@@ -650,6 +657,21 @@ void Node::handle_write(PeerLink* p, const Frame& f) {
 void Node::handle_reply(PeerLink* p, const Frame& f) {
     if (p == nullptr) {
         return;
+    }
+    // A REPLY's payload depends on what it answers, so the request is looked up before the
+    // payload is parsed: a deploy status is not a namespace reading and would fail to load as one.
+    {
+        PendingNs* dq = pending_find(f.hdr.msg_id, p->node_id);
+        if (dq != nullptr && is_deploy_opcode(dq->op)) {
+            const uint8_t op = dq->op;
+            dq->msg_id = 0;
+            ++ns_counters_.replies_matched;
+            if (deploy_result_ != nullptr) {
+                deploy_result_(deploy_result_ctx_, p->node_id, f.hdr.msg_id, op, false, f.payload,
+                               f.payload_len);
+            }
+            return;
+        }
     }
     ReplyPayload rep{};
     if (!load_reply(f.payload, f.payload_len, rep)) {
@@ -978,6 +1000,10 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         case kOpCall: handle_call(p, f, true); break;
         case kOpCast: handle_call(p, f, false); break;
         case kOpErr: handle_err(p, f); break;
+        case kOpDeployBegin:
+        case kOpDeployChunk:
+        case kOpDeployCommit:
+        case kOpDeployAbort: handle_deploy(p, f); break;
         default:
             ++counters_.rx_unknown_opcode;
             send_err(p, src_mac, kErrUnknownOpcode, f.hdr.msg_id);
@@ -1150,6 +1176,69 @@ void Node::rejoin() {
     }
     departed_ = false;
     send_hello(true);
+}
+
+// -------------------------------------------------------------------------------------------
+// §7.4 deploy: routing only. Formats and storage are pot_deploy's.
+// -------------------------------------------------------------------------------------------
+
+void Node::handle_deploy(PeerLink* p, const Frame& f) {
+    if (p == nullptr) {
+        return;
+    }
+    if (deploy_server_ == nullptr) {
+        // A node built without deploy support says so, rather than leaving the host to time out.
+        ++counters_.rx_unknown_opcode;
+        send_err(p, p->mac, kErrUnknownOpcode, f.hdr.msg_id);
+        return;
+    }
+    uint8_t reply[64];
+    const size_t n = deploy_server_(deploy_server_ctx_, p->node_id, f.hdr.msg_id, f.hdr.opcode,
+                                    f.payload, f.payload_len, reply, sizeof(reply));
+    if (n > 0) {
+        send_frame(p, p->mac, kOpReply, reply, static_cast<uint16_t>(n), false, f.hdr.msg_id,
+                   p->node_id, false);
+    }
+}
+
+bool Node::send_reply_raw(uint16_t peer_node_id, uint16_t msg_id, const uint8_t* payload,
+                          uint16_t len) {
+    PeerLink* p = peers_.find_by_node_id(peer_node_id);
+    if (p == nullptr) {
+        return false;
+    }
+    return send_frame(p, p->mac, kOpReply, payload, len, false, msg_id, peer_node_id, false);
+}
+
+uint16_t Node::send_deploy(uint16_t peer_node_id, uint8_t opcode, const uint8_t* payload,
+                           uint16_t len) {
+    if (!is_deploy_opcode(opcode)) {
+        return 0;
+    }
+    PeerLink* p = peers_.find_by_node_id(peer_node_id);
+    if (p == nullptr || p->state != PeerState::Alive || departed_) {
+        return 0;
+    }
+    PendingNs* q = pending_claim();
+    if (q == nullptr) {
+        return 0;
+    }
+    uint16_t msg_id = p->msg_id_next++;
+    if (msg_id == 0) {
+        msg_id = p->msg_id_next++;
+    }
+    // Registered before sending, for the reason request_read() gives: a transport can deliver the
+    // reply before send() returns.
+    q->msg_id = msg_id;
+    q->peer_node = peer_node_id;
+    q->path_hash = 0;
+    q->op = opcode;
+    q->sent_ms = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+    if (!send_frame(p, p->mac, opcode, payload, len, true, msg_id, peer_node_id, false)) {
+        q->msg_id = 0;
+        return 0;
+    }
+    return msg_id;
 }
 
 }  // namespace pot

@@ -208,4 +208,21 @@ config POT_STATUS_LED_GPIO_ALT
     help
         See POT_STATUS_LED_GPIO: the other board revision's LED pin.
 
+config POT_TRIAL_HEARTBEATS
+    int "Heartbeats a newly deployed slot must send before it is confirmed (section 7.4)"
+    range 10 10000
+    default 100
+    help
+        Section 7.4 step 4 says N heartbeats, default 10. At a 100 ms heartbeat that is one second,
+        which would confirm a module that fails a few seconds in. 100 heartbeats is ten seconds of
+        running before a slot becomes the fallback for the next deployment.
+
+config POT_TRIAL_MAX_BOOTS
+    int "Boots a slot on trial may use before it is reverted"
+    range 1 10
+    default 3
+    help
+        A module that crashes its node is retried this many times, then the node goes back to its
+        previous slot by itself.
+
 endmenu

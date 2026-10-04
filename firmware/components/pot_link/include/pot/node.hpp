@@ -207,6 +207,28 @@ class Node {
     void set_call_handler(CallHandler fn, void* ctx) { call_handler_ = fn; call_ctx_ = ctx; }
     void set_call_result(CallResultFn fn, void* ctx) { call_result_ = fn; result_ctx_ = ctx; }
 
+    // §7.4 deploy. The node core only routes: the payload formats and the storage live in
+    // pot_deploy, which this component does not depend on.
+    //
+    // Server side: a DEPLOY_* frame arrived. Write the REPLY payload into `reply` and return its
+    // length; the node sends it as a REPLY with the request's msg_id. Return 0 to answer later
+    // with send_reply_raw(from_node, msg_id, ...) -- a COMMIT that is first passed on to peers.
+    using DeployServerFn = size_t (*)(void* ctx, uint16_t from_node, uint16_t msg_id,
+                                      uint8_t opcode, const uint8_t* payload, uint16_t len,
+                                      uint8_t* reply, size_t reply_cap);
+    // Client side: the answer to a send_deploy(), or its timeout (timed_out, no payload).
+    using DeployResultFn = void (*)(void* ctx, uint16_t peer_node, uint16_t msg_id, uint8_t opcode,
+                                    bool timed_out, const uint8_t* reply, uint16_t len);
+    void set_deploy_server(DeployServerFn fn, void* ctx) { deploy_server_ = fn; deploy_server_ctx_ = ctx; }
+    void set_deploy_result(DeployResultFn fn, void* ctx) { deploy_result_ = fn; deploy_result_ctx_ = ctx; }
+
+    // Send one DEPLOY_* request to a peer. Returns the msg_id, or 0 if nothing was sent. Times out
+    // like a read (ns_request_timeout_ms): a deploy step is one round trip, not a work unit.
+    uint16_t send_deploy(uint16_t peer_node_id, uint8_t opcode, const uint8_t* payload, uint16_t len);
+
+    // A REPLY with a raw payload, correlated to `msg_id`: the deferred answer above.
+    bool send_reply_raw(uint16_t peer_node_id, uint16_t msg_id, const uint8_t* payload, uint16_t len);
+
     // Send a unit of work. Returns the msg_id, or 0 if it could not be sent -- no peer, no free
     // slot, or the transport refused. 0 is not a failure of the job: nothing was dispatched, so
     // the caller still owns the work.
@@ -345,6 +367,11 @@ class Node {
     void* call_ctx_ = nullptr;
     CallResultFn call_result_ = nullptr;
     void* result_ctx_ = nullptr;
+    DeployServerFn deploy_server_ = nullptr;
+    void* deploy_server_ctx_ = nullptr;
+    DeployResultFn deploy_result_ = nullptr;
+    void* deploy_result_ctx_ = nullptr;
+    void handle_deploy(PeerLink* p, const Frame& f);
 
     uint16_t seq_tx_bcast_ = 0;
     uint32_t hb_seq_bcast_ = 0;

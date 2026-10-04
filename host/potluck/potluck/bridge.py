@@ -33,7 +33,7 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable
 
 from . import frame as fr
 from .capture import CaptureWriter
@@ -43,6 +43,10 @@ from .payloads import HELLO_FLAG_WANT_ACK, Bye, Heartbeat, Hello, HelloAck, deco
 from .serial_framing import SerialReassembler, write_serial_frame
 from .transport import Transport, open_transport
 from .value import NsError, Quality, Reading, Value
+
+#: Requests whose REPLY carries a deploy status rather than a namespace reading.
+_DEPLOY_OPS = frozenset({fr.Op.DEPLOY_BEGIN, fr.Op.DEPLOY_CHUNK, fr.Op.DEPLOY_COMMIT,
+                         fr.Op.DEPLOY_ABORT})
 
 #: The reserved MAC the firmware routes to the UART -- pot::kHostMac in serial_port.cpp.
 HOST_MAC = bytes((0x02, 0x00, 0x00, 0x00, 0x00, 0xFE))
@@ -311,8 +315,15 @@ class Bridge:
         return self._request(fr.Op.WRITE, Write(path_hash=h, value=value).encode(), h,
                              timeout=timeout, dst=dst)
 
+    def deploy_step(self, opcode: int, payload: bytes, *, timeout: float = 2.0,
+                    dst: int | None = None) -> bytes:
+        """One DEPLOY_* request; returns the REPLY's raw payload (see potluck.deploy to read it)."""
+        if opcode not in _DEPLOY_OPS:
+            raise BridgeError(f"{fr.Op.name_of(opcode)} is not a deploy opcode")
+        return self._request(opcode, payload, 0, timeout=timeout, dst=dst)
+
     def _request(self, opcode: int, payload: bytes, path_h: int, *, timeout: float,
-                 dst: int | None) -> Reply:
+                 dst: int | None) -> Any:
         target = dst if dst is not None else self.peer_node_id
         if target is None:
             raise BridgeError(
@@ -410,11 +421,19 @@ class Bridge:
             return
 
     def _on_reply(self, f: fr.Frame) -> None:
-        try:
-            rep = Reply.parse(f.payload)
-        except ValueError:
-            self.stats.bad_frames += 1
-            return
+        # The request decides how its REPLY is read: a deploy step is answered with a deploy status,
+        # not a namespace reading, and would fail to parse as one. So look the request up first.
+        with self._lock:
+            pend = self._pending.get(f.msg_id)
+            raw = pend is not None and pend.op in _DEPLOY_OPS
+        if raw:
+            rep: Any = bytes(f.payload)
+        else:
+            try:
+                rep = Reply.parse(f.payload)
+            except ValueError:
+                self.stats.bad_frames += 1
+                return
         with self._lock:
             pend = self._pending.pop(f.msg_id, None)
         if pend is None:
