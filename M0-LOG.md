@@ -2897,3 +2897,99 @@ measured here. That does not affect the verdict, because the intended geometry i
 - The two cosmetic firmware defects still queued (`reorder_dup` at admission, `peer_admitted` every
   `hello_interval_ms`).
 - **M1, one remote read**, is now the milestone that matters.
+
+## Session 16 — 2026-10-04, M1 accepted on hardware, and three bugs only hardware could show
+
+M1's acceptance, as ARCHITECTURE.md words it: `potctl read` of node 2's resource returns value,
+unit, age and class; unplug node 2, and the read returns `UNAVAILABLE`, never a cached number
+presented as fresh. Run with potctl on a CP2102 adapter cabled to board A (0x6300), reading board B
+(0x7368), all three boards on firmware `12ab64d` (stamp `0b422c7`, which adds only size reports; ELF
+SHA `919f4daa…`, verified on each board).
+
+```
+20:37:20  3508 s  [GOOD, age 5737 ms, ts 3508404, class L4]     B alive: value + unit + age + class
+20:38:46  UNAVAILABLE (age 81121 ms, class L4)                  B unplugged: no number at all
+20:39:36  3518 s  [STALE, age 131887 ms, ts 3518753, class L4]  B back: the old copy, labelled STALE
+20:39:37  11 s  [GOOD, age 9547 ms, ts 11753, class L4]         ...then B's fresh value
+```
+
+**M1 is accepted.** The same read through A works for C.
+
+### The adapter, first
+
+The HW-598A CP2102 module needed Silicon Labs' *CP210x Universal Windows Driver*. Its bundled
+`.bat` reported success but left no driver in the store (device code 28); Device Manager's "browse
+for driver" installed it, and the adapter appeared as COM6. Loopback: 4,096 random bytes returned
+identical at 921,600 and 115,200 baud. The owner checked both ends' printed labels against
+`bench/m1-wiring.html` (built from Espressif's DevKitC-1 v1.1 header tables), and the board matched
+the official table.
+
+**The 5 V question was settled by the datasheet, not by risk.** The ledger's caution, that "a
+CP2102's logic level is set by its VIO pin (1.8–5 V)", is wrong for this chip. The original CP2102
+has no VIO pin; its UART runs from VDD, 3.0–3.6 V. Windows identifies the adapter as a CP2102, so
+its TXD cannot exceed 3.6 V, and it went onto GPIO18 directly. Also corrected: the bring-up plan's
+"receive-only step 2 verifies the adapter's level" (it cannot, since it tests the board's output)
+and "step 2 can be checked by listening" (it cannot, since a node speaks to the host only after the
+host's HELLO).
+
+### Bug 1 — potctl could not open a real serial port
+
+`could not open port 'COM6': Access denied`, every time, while a plain open worked. `SerialTransport`
+had the same unguarded lazy open that `TcpTransport` had been fixed for: the bridge's reader thread
+and the HELLO both reach `_ensure()` at once, and Windows opens a COM port once. Emulation only ever
+used TCP, so it hid the bug. It is fixed with the same double-checked lock, and a regression test
+reproduces the race (3 of 3 failing without the lock, 3 of 3 passing with it).
+
+### Bug 2 — a host on one board could not read another board
+
+With the port open, A answered its own reads perfectly and answered B's uptime `UNAVAILABLE` while B
+was alive. `handle_read` served only A's own namespace. Nothing ever declared B's resources on A,
+and v1 deliberately has no frame forwarding (§4: single-hop paths). The node-to-node machinery
+(`request_read`, replicas with ages, owner-liveness) existed and was tested; the host-facing step
+did not.
+
+Now a read for a hash A holds no entry for is checked against its peers' **built-in** paths. Those
+paths are a contract derived from the node id, so the owner, type and unit are known without asking.
+The entry is adopted **on demand**: six entries per peer up front would take 114 of §6's 128
+namespace slots in a full cell. A answers from its replica, `NO_DATA` the first time, and refreshes
+it with its own single-hop READ to the owner, never holding the reply back. `handle_read` also
+stopped passing `owner_alive = true` for every entry, which was harmless only while every entry was
+local. Tests cover the exact hardware shape (the host never hears B; first read `NO_DATA`, second
+`GOOD`, B unplugged gives `UNAVAILABLE`) and confirm that a path no peer owns is never adopted. They
+gave 6 failures on the old code and 0 on the fix.
+
+### Bug 3 — a replica's age started at arrival
+
+The first successful remote reads gave B's uptime as "age ~1080 ms" three times in a row while B's
+own timestamp on the sample never moved. `apply_remote()` started a replica's age at its arrival on
+A, and its comment called that "conservative: never younger than the truth". It was the opposite:
+whenever the owner's sample was already old, the replica claimed to be young. Because age drives the
+staleness rule, a value already stale on its owner could be served as `GOOD`, which is §4 rule 2's
+exact failure. The REPLY already carried the owner's age as a duration, and durations survive
+unsynchronised clocks. `apply_remote()` now takes it (required, not defaulted) and backdates the
+arrival by it. The test fails on the old logic and passes on the fix. On hardware the age now rises
+and falls as it should: 5.7 s, 6.8 s … 11.2 s, then back to 1.9 s when B publishes a fresh uptime.
+
+### Method notes
+
+- **A build started through `bash → powershell -File` silently did nothing**, twice. Both times the
+  stamp still read the previous commit, which is how it was caught. Builds now go through PowerShell
+  directly, and every flash is verified by app version **and** ELF SHA on the board.
+- **ESP-IDF stamps the version at configure time**, so an incremental build after a commit carries
+  the *previous* commit's id. `build_firmware.ps1 -Clean` re-stamps it.
+- Every new test was run against the old code first and shown to fail. One bisection did not
+  compile, because an unused parameter is an error under `/WX`, so it proved nothing and was redone
+  until it did.
+
+### Open, noted rather than changed
+
+After B rebooted, A's first read served B's *previous incarnation's* uptime as `STALE` with its
+true age (132 s). That is within the contract: an old value is only ever shown as STALE with its
+exact age. But a reboot is the moment §8.2 says the node "lost its state", and dropping that peer's
+replicas on `Rebooted` (so the read goes `NO_DATA`) would be cleaner. This is a semantics decision
+for when M3+ makes replicas matter beyond sys/*.
+
+### Next
+
+M2 (host in the loop, and replay) was accepted under emulation. The real frame link now exists, so
+the same replay can be re-run on hardware. After that comes M3, deploy and detach.

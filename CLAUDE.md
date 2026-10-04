@@ -12,8 +12,10 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0 is ACCEPTED (2026-10-04)** — a 24.52-hour soak, then a distance sweep through the owner's
-two-storey house in which the kill criterion did not fire. **M1 is the next milestone.**
+**M0 and M1 are ACCEPTED on hardware (2026-10-04).** M0: a 24.52-hour soak, then a distance sweep through
+the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
+board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **Next: M2's replay
+re-run on the real frame link, then M3.**
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
@@ -29,7 +31,14 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## M0 IS ACCEPTED. NEXT: M1, ONE REMOTE READ.
+> ## M0 AND M1 ARE ACCEPTED. All three boards run `12ab64d` (stamp `0b422c7`, ELF `919f4daa…`).
+>
+> **The frame link:** CP2102 (HW-598A) on **COM6**, wired adapter TXD→A's GPIO18, RXD→A's GPIO17,
+> GND→G (`bench/m1-wiring.html`). `python -m potluck.ctl --port COM6 --node <id> watch sys/uptime`.
+> **Build from PowerShell directly** (through bash it silently did nothing), `-Clean` after a commit
+> to re-stamp the version, and verify app version + ELF SHA on every flashed board.
+>
+> ## How M0 was accepted
 >
 > **The soak** (2026-10-02/03, fw `095f21e`, 24.52 h, three boards ~10 cm apart): zero gaps, reboots or
 > deaths; unicast PDR 100.0000 % both ways on all six links; 264,850 RTTs, p50 4–6 ms, p99 16–22 ms,
