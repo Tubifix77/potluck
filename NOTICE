@@ -11,3 +11,10 @@ acknowledgement travels with it.
 Measured ESP-NOW link figures cited in ARCHITECTURE.md come from:
   Becker, Oberli, Zobel, Steinmetz & Meuser,
   "ESP-NOW Performance in Outdoor Environments", IEEE/IFIP WONS 2025.
+
+Third-party code included in the firmware:
+  Monocypher 4.0.3 (firmware/components/monocypher), used under its 2-clause BSD licence:
+    Copyright (c) 2017-2023, Loup Vaillant
+    Copyright (c) 2017-2019, Michael Savage
+    Copyright (c) 2017-2023, Fabio Scotoni
+  The full licence text is firmware/components/monocypher/LICENCE.md.

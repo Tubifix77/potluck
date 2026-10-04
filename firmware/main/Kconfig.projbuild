@@ -166,6 +166,15 @@ config POT_FRAME_TEE
         about 150 bytes, and the console UART's cost would land inside the very timing the soak is
         measuring. Turn it on to debug the wire, off to measure the link.
 
+config POT_CRYPTO_BENCH
+    bool "Run the M5 signature/key-exchange benchmark instead of the node"
+    default n
+    help
+        M5's open [MEASURE]: Ed25519 against P-256 on measured verify cost. Runs known-answer checks
+        for every implementation, then times signature verify and sign, X25519 and P-256 ECDH, and an
+        HMAC-SHA256 frame tag, printing one {"t":"bench"} line each, and stops. Starts no radio and no
+        serial link. Unlike the self-test its figures ARE measurements -- on a board, never under QEMU.
+
 config POT_SELFTEST
     bool "Run the on-target self-test instead of the node"
     default n

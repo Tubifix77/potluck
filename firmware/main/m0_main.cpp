@@ -1164,9 +1164,19 @@ void stats_task(void*) {
 #if CONFIG_POT_SELFTEST
 extern "C" int pot_selftest_run(void);
 #endif
+#if CONFIG_POT_CRYPTO_BENCH
+#include "crypto_bench.hpp"
+#endif
 
 extern "C" void app_main(void) {
     using namespace pot;
+
+#if CONFIG_POT_CRYPTO_BENCH
+    // M5's measurement, alone on the machine for the same reason as the self-test below.
+    const int bench_failed = pot_crypto_bench_run();
+    ESP_LOGI(kTag, "crypto bench finished with %d failure(s)", bench_failed);
+    return;
+#endif
 
 #if CONFIG_POT_SELFTEST
     // First, and then nothing else. The self-test starts no radio, no serial link and no tasks of
