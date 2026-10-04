@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M1 Adapter Wiring</title>
+<style>
+:root {
+  --bg: #f7f6f2; --card: #ffffff; --fg: #1d1d1b; --muted: #66645e; --border: #d9d6cc;
+  --board: #1f5f3f; --board-fg: #e8f3ec; --pin: #c9b26a; --pin-off: #8a8a80;
+  --gnd: #3a3a3a; --s2: #1d6fd1; --s3: #d9480f; --loop: #7a7a7a;
+  --warn-bg: #fff1e6; --warn-fg: #8a2d00; --bad: #c92a2a; --bad-bg: #ffe8e8;
+  --hl: #fff3bf;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161614; --card: #21211e; --fg: #ecebe6; --muted: #a9a79f; --border: #3a3935;
+    --board: #1c4a33; --board-fg: #dcefe3; --pin: #d8c27a; --pin-off: #6e6e66;
+    --gnd: #cfcfc8; --s2: #5aa2ff; --s3: #ff8a4c; --loop: #9a9a92;
+    --warn-bg: #3a2414; --warn-fg: #ffc59e; --bad: #ff6b6b; --bad-bg: #3a1a1a; --hl: #4a4220;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161614; --card: #21211e; --fg: #ecebe6; --muted: #a9a79f; --border: #3a3935;
+  --board: #1c4a33; --board-fg: #dcefe3; --pin: #d8c27a; --pin-off: #6e6e66;
+  --gnd: #cfcfc8; --s2: #5aa2ff; --s3: #ff8a4c; --loop: #9a9a92;
+  --warn-bg: #3a2414; --warn-fg: #ffc59e; --bad: #ff6b6b; --bad-bg: #3a1a1a; --hl: #4a4220;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; }
+h2 { font-size: 1.15rem; margin: 28px 0 8px; }
+p.sub { color: var(--muted); margin: 0 0 20px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.diagram { overflow-x: auto; }
+svg { display: block; width: 100%; height: auto; min-width: 640px; }
+svg text { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.warn { background: var(--warn-bg); color: var(--warn-fg); border-radius: 10px; padding: 12px 16px; margin: 16px 0; }
+.bad { background: var(--bad-bg); color: var(--bad); border-radius: 10px; padding: 12px 16px; margin: 16px 0; }
+.steps { display: grid; gap: 12px; }
+.step { border-left: 6px solid var(--border); }
+.step.s1 { border-left-color: var(--loop); }
+.step.s2 { border-left-color: var(--s2); }
+.step.s3 { border-left-color: var(--s3); }
+.step h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.step ul { margin: 6px 0 0; padding-left: 20px; }
+code, .k { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--hl); padding: 0 4px; border-radius: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; color: var(--muted); font-size: 0.9rem; }
+.sw { display: inline-block; width: 22px; height: 4px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.src { color: var(--muted); font-size: 0.85rem; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Wiring the CP2102 adapter to board A</h1>
+<p class="sub">For M1: the PC talks to board A through the adapter. B only needs power, and you unplug it during the test. Board A stays plugged into the PC by its own USB cable, which powers it.</p>
+
+<div class="bad"><strong>Use the pins printed <span class="k">17</span>, <span class="k">18</span> and <span class="k">G</span>.</strong>
+Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on the other header: those are the console, already used by the USB cable. And <strong>never connect the adapter's <span class="k">3V3</span> or <span class="k">5V</span> pins</strong> to anything.</div>
+
+<div class="card diagram">
+<svg viewBox="0 0 760 610" role="img" aria-label="Board A's two pin headers, the CP2102 adapter, and the wires for steps 1, 2 and 3">
+  <defs>
+    <style>
+      .lbl { font-size: 12px; fill: var(--board-fg); }
+      .lbl-hl { font-size: 13px; font-weight: 700; fill: var(--board-fg); }
+      .num { font-size: 9px; fill: var(--board-fg); opacity: .6; }
+      .cap { font-size: 12px; fill: var(--muted); }
+      .capb { font-size: 13px; font-weight: 700; fill: var(--fg); }
+    </style>
+  </defs>
+
+  <!-- Board -->
+  <rect x="330" y="30" width="260" height="560" rx="10" fill="var(--board)"/>
+  <rect x="380" y="38" width="160" height="56" rx="4" fill="none" stroke="var(--board-fg)" stroke-opacity=".5"/>
+  <text x="460" y="62" text-anchor="middle" class="lbl">module + antenna</text>
+  <text x="460" y="80" text-anchor="middle" class="num">(this end up)</text>
+  <rect x="395" y="558" width="50" height="26" rx="4" fill="none" stroke="var(--board-fg)" stroke-opacity=".7"/>
+  <rect x="475" y="558" width="50" height="26" rx="4" fill="none" stroke="var(--board-fg)" stroke-opacity=".7"/>
+  <text x="460" y="550" text-anchor="middle" class="num">two USB-C sockets</text>
+  <text x="460" y="22" text-anchor="middle" class="capb">Board A (0x6300), seen from the top</text>
+
+  <text x="352" y="108" class="num">J1</text>
+  <text x="560" y="108" class="num">J3</text>
+
+  <!-- J1 (left header): pins drawn by script below -->
+  <g id="j1"></g>
+  <g id="j3"></g>
+
+  <!-- Adapter -->
+  <rect x="30" y="230" width="170" height="210" rx="8" fill="var(--card)" stroke="var(--fg)" stroke-width="1.5"/>
+  <text x="115" y="252" text-anchor="middle" class="capb">CP2102 adapter</text>
+  <text x="115" y="268" text-anchor="middle" class="cap">USB to the PC</text>
+  <rect x="10" y="320" width="22" height="40" rx="3" fill="var(--pin-off)"/>
+  <g id="adp"></g>
+
+  <!-- Wires -->
+  <!-- step 1: loopback TX<->RX on the adapter -->
+  <path d="M 206 380 C 250 380, 250 410, 206 410" fill="none" stroke="var(--loop)" stroke-width="3" stroke-dasharray="6 4"/>
+  <text x="212" y="434" class="cap">step 1 only: TX looped to RX</text>
+
+  <!-- step 2: GND -> J1-22 G ; J1-10 "17" -> adapter RX -->
+  <path d="M 206 350 C 280 350, 280 552, 346 552" fill="none" stroke="var(--gnd)" stroke-width="3"/>
+  <path d="M 346 312 C 280 312, 270 410, 206 410" fill="none" stroke="var(--s2)" stroke-width="3"/>
+
+  <!-- step 3: adapter TX -> resistor -> J1-11 "18" -->
+  <path d="M 206 380 L 232 380 L 232 345" fill="none" stroke="var(--s3)" stroke-width="3"/>
+  <polyline points="232,345 226,340 238,333 226,326 238,319 226,312 232,307" fill="none" stroke="var(--s3)" stroke-width="2.5"/>
+  <path d="M 232 307 L 232 300 C 260 300, 300 332, 346 332" fill="none" stroke="var(--s3)" stroke-width="3"/>
+  <text x="243" y="331" class="capb">R</text>
+</svg>
+<div class="legend">
+  <span><span class="sw" style="background:var(--loop)"></span>step 1: loopback, adapter only</span>
+  <span><span class="sw" style="background:var(--gnd)"></span>step 2: ground</span>
+  <span><span class="sw" style="background:var(--s2)"></span>step 2: board 17 → adapter RX (safe)</span>
+  <span><span class="sw" style="background:var(--s3)"></span>step 3: adapter TX → R (1–10 kΩ resistor) → board 18, the risky one</span>
+</div>
+</div>
+
+<div class="warn"><strong>Pin order on the adapter is a guess; its printed labels are not.</strong> The seller lists the pins as 3.3V, 5V, GND, TX, RX but not their order, so connect by the label on the adapter. On the board, the positions follow Espressif's official table, and clone boards usually copy it. Still: <strong>find each pin by its printed label before you push a wire on</strong>.</div>
+
+<h2>The three steps, one at a time</h2>
+<div class="steps">
+  <div class="card step s1">
+    <h3>Step 1: test the adapter on its own</h3>
+    <ul>
+      <li>Plug the adapter into the PC. Nothing connected to board A yet.</li>
+      <li>One jumper from the adapter's <span class="k">TX</span> to its own <span class="k">RX</span>.</li>
+      <li>Tell me. I send bytes and check they come back, which proves the adapter and its driver.</li>
+      <li><strong>Remove that jumper afterwards.</strong></li>
+    </ul>
+  </div>
+  <div class="card step s2">
+    <h3>Step 2: two wires, board talking and adapter listening</h3>
+    <ul>
+      <li>Adapter <span class="k">GND</span> → board <span class="k">G</span> (J1, the bottom pin on the <span class="k">17</span>/<span class="k">18</span> side; any <span class="k">G</span> works).</li>
+      <li>Board <span class="k">17</span> → adapter <span class="k">RX</span>.</li>
+      <li>Safe whatever the adapter's voltage is: the board sends 3.3 V into an input that accepts up to 5 V.</li>
+      <li>Tell me. I check A's frames arrive.</li>
+    </ul>
+  </div>
+  <div class="card step s3">
+    <h3>Step 3: the last wire, adapter talking to the board</h3>
+    <ul>
+      <li>Adapter <span class="k">TX</span> → <strong>resistor (1–10 kΩ)</strong> → board <span class="k">18</span>.</li>
+      <li>This is the only wire that can hurt the board: if the adapter outputs 5 V instead of 3.3 V, a bare wire would push it into a pin rated for about 3.6 V. The resistor limits the current enough to protect the pin either way.</li>
+      <li>No resistor? Some adapters have a small <span class="k">3V3 / 5V</span> jumper or switch; set it to 3V3. With neither, it comes down to trusting the seller's "3.3 V" claim, and that is your call.</li>
+      <li>Tell me. Then the M1 test itself: A reads a value from B, you unplug B, and the read must answer <span class="k">UNAVAILABLE</span>.</li>
+    </ul>
+  </div>
+</div>
+
+<p class="src">Board pinout: Espressif, <em>ESP32-S3-DevKitC-1 v1.1 user guide</em>, Header Block tables J1 and J3, read 2026-10-04. Frame link pins from the firmware's <code>CONFIG_POT_SERIAL_TX_GPIO=17</code> / <code>_RX_GPIO=18</code>. Adapter pins and the 3.3 V claim: the seller's description, unverified.</p>
+</main>
+
+<script>
+(function () {
+  var NS = "http://www.w3.org/2000/svg";
+  var J1 = ["3V3","3V3","RST","4","5","6","7","15","16","17","18","8","3","46","9","10","11","12","13","14","5V","G"];
+  var J3 = ["G","TX","RX","1","2","42","41","40","39","38","37","36","35","0","45","48","47","21","20","19","G","G"];
+  var top = 132, step = 20;
+  function el(tag, attrs, text) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function header(gid, labels, x, side) {
+    var g = document.getElementById(gid);
+    labels.forEach(function (name, i) {
+      var y = top + i * step, n = i + 1;
+      var hot = gid === "j1" && (n === 10 || n === 11 || n === 22);
+      var badUart = gid === "j3" && (n === 2 || n === 3);
+      var psram = gid === "j3" && (n >= 11 && n <= 13);
+      g.appendChild(el("rect", { x: x - 6, y: y - 6, width: 12, height: 12, rx: 2,
+        fill: hot ? "var(--pin)" : "var(--pin-off)",
+        stroke: hot ? "var(--fg)" : "none", "stroke-width": hot ? 2 : 0 }));
+      var tx = side === "L" ? x + 14 : x - 14, anchor = side === "L" ? "start" : "end";
+      g.appendChild(el("text", { x: tx, y: y + 4, "text-anchor": anchor, "class": hot ? "lbl-hl" : "lbl" }, name));
+      var nx = side === "L" ? x - 12 : x + 12, na = side === "L" ? "end" : "start";
+      g.appendChild(el("text", { x: nx, y: y + 3, "text-anchor": na, "class": "num" }, n));
+      if (badUart) g.appendChild(el("text", { x: x + 22, y: y + 4, "class": "cap", fill: "var(--bad)" }, n === 2 ? "← console: NOT these" : ""));
+      if (psram && n === 12) g.appendChild(el("text", { x: x + 22, y: y + 4, "class": "cap" }, "35–37: PSRAM, never use"));
+    });
+  }
+  header("j1", J1, 352, "L");
+  header("j3", J3, 568, "R");
+  // highlight callouts for 17 and 18
+  var g = document.getElementById("j1");
+  g.appendChild(el("text", { x: 395, y: top + 9 * step + 4, "class": "lbl" }, "← frame link TX"));
+  g.appendChild(el("text", { x: 395, y: top + 10 * step + 4, "class": "lbl" }, "← frame link RX"));
+  g.appendChild(el("text", { x: 380, y: top + 21 * step + 4, "class": "lbl" }, "← ground"));
+
+  // adapter pins (by label; order is the seller's listing, unverified)
+  var A = [["3V3", 290, true], ["5V", 320, true], ["GND", 350], ["TX", 380], ["RX", 410]];
+  var ga = document.getElementById("adp");
+  A.forEach(function (p) {
+    ga.appendChild(el("rect", { x: 194, y: p[1] - 6, width: 12, height: 12, rx: 2, fill: p[2] ? "var(--pin-off)" : "var(--pin)" }));
+    ga.appendChild(el("text", { x: 186, y: p[1] + 4, "text-anchor": "end", "class": "capb" }, p[0]));
+    if (p[2]) ga.appendChild(el("text", { x: 50, y: p[1] + 4, "class": "cap", fill: "var(--bad)" }, "don't connect"));
+  });
+})();
+</script>
+</body>
+</html>

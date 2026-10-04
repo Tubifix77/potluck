@@ -502,3 +502,11 @@ missing.
 | **The indoor edge is brief membership dropouts, not a delivery cliff** | Worst spot: 9 deaths in 13.9 min on the wall-facing observer, each revived within seconds, unicast still 99 %. Deaths only where median RSSI ≤ −73 dBm; none at −63 dBm or better; −77 dBm at the farthest spot had none, so −73 is where they become possible, not certain | same | 2026-10-04 | volatile | **measured** |
 | **Orientation and obstacles outweigh distance indoors** | Farthest spot (~16 m) clean; a spot 3 m closer behind the appliances was the worst. The wall-facing fixed board was the weaker observer at every marginal spot | same | 2026-10-04 | volatile | **measured** |
 | **Sampled link state hides short dropouts** | Every one of the 9 deaths at the worst spot recovered between two 10 s samples, so `state` read `alive` throughout. Count deaths from the event stream | same, compared against the live checks | 2026-10-04 | stable | **measured** |
+
+### ESP32-S3-DevKitC-1 headers, for wiring the frame link — 2026-10-04
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **J1 pin 10 is labelled `17` (GPIO17, U1TXD); J1 pin 11 is `18` (GPIO18, U1RXD); J1 pin 22 is `G`** | The frame link's TX and RX (`CONFIG_POT_SERIAL_TX_GPIO=17`, `_RX_GPIO=18`) and a ground on the same header | [DevKitC-1 v1.1 user guide](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html), Header Block tables, read from the page's HTML rather than a summary | 2026-10-04 | stable | verified |
+| **J3 pins 2 and 3 are labelled `TX` / `RX`, but they are UART0 (GPIO43/44), the console** | Wiring the adapter there would put it on the console, which the CH343 already drives — not the frame link | same | 2026-10-04 | stable | verified |
+| **Full header order, J1 1→22:** 3V3, 3V3, RST, 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, 5V, G. **J3 1→22:** G, TX, RX, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, G, G | Clone boards usually copy this, but a pin is identified by its **printed label**, never by counting positions | same | 2026-10-04 | stable | verified |
