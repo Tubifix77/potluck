@@ -66,3 +66,7 @@ keys/
 
 # Signed packages are build output: they are reproducible from a manifest, a key and a counter.
 *.potpkg.json
+
+# build_firmware.ps1 -Variant: generated defaults fragments and per-variant build trees
+firmware/sdkconfig.variant.*
+firmware/build-*/

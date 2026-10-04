@@ -25,6 +25,10 @@
 #include <new>  // placement new, for constructing the Node into static storage
 
 #include "pot/boot_epoch.hpp"
+#if CONFIG_POT_CAN
+#include "pot/can_port.hpp"
+#include "pot/frame.hpp"
+#endif
 #include "pot/deploy.hpp"
 #include "pot/deploy_esp.hpp"
 #include "pot/dram_probe.hpp"
@@ -122,6 +126,17 @@ void tee_frame(const char*, const uint8_t*, int8_t, const uint8_t*, size_t) {}
 // it, and keeping the decision in one function is what stops "is this the host?" from spreading.
 int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
     tee_frame("tx", mac, 0, data, len);
+#if CONFIG_POT_CAN
+    // A CAN peer's address, or a broadcast: the bus. In a CAN build broadcasts go to CAN only --
+    // v1 has no router that could keep one node reachable on two transports from appearing as two
+    // peers (§7.0), so a CAN node is a CAN node. M4 builds these with the radio disabled.
+    {
+        uint16_t can_node = 0;
+        if (can_mac_node(mac, can_node) || std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0) {
+            return can_send(mac, data, len);
+        }
+    }
+#endif
 #if CONFIG_POT_SERIAL_LINK
     if (std::memcmp(mac, kHostMac, kMacLen) == 0) {
         return serial_port_send(data, len);
@@ -131,6 +146,14 @@ int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t 
 }
 
 bool hal_add_peer(void*, const uint8_t mac[kMacLen]) {
+#if CONFIG_POT_CAN
+    {
+        uint16_t can_node = 0;
+        if (can_mac_node(mac, can_node)) {
+            return can_up();  // the bus has no peer list to join
+        }
+    }
+#endif
 #if CONFIG_POT_SERIAL_LINK
     if (std::memcmp(mac, kHostMac, kMacLen) == 0) {
         // The UART has no peer list to join; the link either exists or it does not.
@@ -696,6 +719,97 @@ void tick(uint32_t now) {
 
 }  // namespace deploy_rt
 
+
+// ---------------------------------------------------------------------------------------------
+// M4's demonstration: SAFE_STATE wins arbitration against saturating telemetry (§13-M4). Both
+// roles are off unless a build asks for them, and neither exists outside a CAN build.
+// ---------------------------------------------------------------------------------------------
+#if CONFIG_POT_CAN
+namespace m4 {
+
+uint32_t g_flood_sent = 0;
+uint32_t g_safe_rx = 0;
+uint32_t g_safe_rx_last = 0;
+uint32_t g_safe_rx_gaps = 0;
+uint32_t g_next_safe_ms = 0;
+
+// Lowest-priority telemetry, as fast as the transmit pool allows -- but always leaving room, so this
+// board's own beacons are never starved by its own flood. Addressed to node 0x003E, whose alias
+// (62) no board on the bench has: every node still ACKs each frame, as CAN requires, and then drops
+// it as not-for-us, so the bus saturates without anyone doing work.
+void flood() {
+#if CONFIG_POT_M4_FLOOD
+    while (can_tx_free() > 16) {
+        EncodeSpec spec;
+        spec.src = g_node->config().node_id;
+        spec.dst = 0x003E;
+        spec.opcode = kOpCast;
+        spec.lclass = kClassL4;
+        spec.priority = 0;
+        uint8_t payload[8];
+        std::memcpy(payload, &g_flood_sent, sizeof(g_flood_sent));
+        std::memset(payload + 4, 0xA5, 4);
+        uint8_t buf[32];
+        size_t n = 0;
+        if (encode(spec, payload, sizeof(payload), buf, sizeof(buf), n) != FrameError::Ok) return;
+        uint8_t mac[kMacLen];
+        can_mac_of(0x003E, mac);
+        if (can_send(mac, buf, n) != 0) return;
+        ++g_flood_sent;
+    }
+#endif
+}
+
+void on_safe_state(void*, uint16_t from, uint32_t counter, uint16_t reason) {
+    ++g_safe_rx;
+    if (g_safe_rx_last != 0 && counter != g_safe_rx_last + 1) {
+        g_safe_rx_gaps += counter - g_safe_rx_last - 1;
+    }
+    g_safe_rx_last = counter;
+    ESP_LOGI(kTag, "SAFE_STATE #%u from 0x%04x, reason %u", static_cast<unsigned>(counter), from,
+             static_cast<unsigned>(reason));
+}
+
+void tick(uint32_t now) {
+    flood();
+#if CONFIG_POT_M4_SAFE_STATE_MS > 0
+    if (static_cast<int32_t>(now - g_next_safe_ms) >= 0) {
+        g_next_safe_ms = now + CONFIG_POT_M4_SAFE_STATE_MS;
+        g_node->send_safe_state(1);
+    }
+#else
+    (void)now;
+#endif
+}
+
+void print_stats() {
+    const CanPortStats c = can_stats();
+    const CanRxCounters& r = can_rx_counters();
+    std::printf("{\"t\":\"can\",\"node\":%u,\"up_ms\":%u,\"tx_frames\":%u,\"tx_ok\":%u,\"tx_fail\":%u,"
+                "\"tx_no_slot\":%u,\"arb_lost\":%u,\"bit_err\":%u,\"form_err\":%u,\"stuff_err\":%u,"
+                "\"ack_err\":%u,\"rx_frames\":%u,\"rx_overflow\":%u,\"rx_own\":%u,\"rx_messages\":%u,"
+                "\"rx_not_for_us\":%u,\"rx_unknown_alias\":%u,\"rx_out_of_order\":%u,\"rx_timeouts\":%u,"
+                "\"rx_malformed\":%u,\"flood_sent\":%u,\"ss_sent\":%u,\"ss_last_us\":%u,\"ss_min_us\":%u,"
+                "\"ss_max_us\":%u,\"ss_rx\":%u,\"ss_rx_gaps\":%u}\n",
+                static_cast<unsigned>(g_node->config().node_id), static_cast<unsigned>(now_ms_()),
+                static_cast<unsigned>(c.tx_frames), static_cast<unsigned>(c.tx_ok),
+                static_cast<unsigned>(c.tx_fail), static_cast<unsigned>(c.tx_no_slot),
+                static_cast<unsigned>(c.arb_lost), static_cast<unsigned>(c.bit_err),
+                static_cast<unsigned>(c.form_err), static_cast<unsigned>(c.stuff_err),
+                static_cast<unsigned>(c.ack_err), static_cast<unsigned>(c.rx_frames),
+                static_cast<unsigned>(c.rx_overflow), static_cast<unsigned>(c.rx_own),
+                static_cast<unsigned>(r.messages), static_cast<unsigned>(r.not_for_us),
+                static_cast<unsigned>(r.unknown_alias), static_cast<unsigned>(r.out_of_order),
+                static_cast<unsigned>(r.timeouts), static_cast<unsigned>(r.malformed),
+                static_cast<unsigned>(g_flood_sent), static_cast<unsigned>(c.safe_state_sent),
+                static_cast<unsigned>(c.safe_state_last_us), static_cast<unsigned>(c.safe_state_min_us),
+                static_cast<unsigned>(c.safe_state_max_us), static_cast<unsigned>(g_safe_rx),
+                static_cast<unsigned>(g_safe_rx_gaps));
+}
+
+}  // namespace m4
+#endif
+
 // ---------------------------------------------------------------------------------------------
 // Tasks
 // ---------------------------------------------------------------------------------------------
@@ -716,6 +830,29 @@ void link_task(void*) {
             g_node->on_tx_done(done.dst_mac, done.ok != 0, done.done_us);
             xSemaphoreGive(g_mutex);
         }
+#if CONFIG_POT_CAN
+        {
+            uint8_t cmac[kMacLen];
+            bool cok = false;
+            uint32_t cus = 0;
+            while (can_tx_done_pop(cmac, cok, cus)) {
+                xSemaphoreTake(g_mutex, portMAX_DELAY);
+                g_node->on_tx_done(cmac, cok, cus);
+                xSemaphoreGive(g_mutex);
+            }
+            static uint8_t cbuf[kCanMaxMessage];
+            size_t clen = 0;
+            for (int k = 0; k < 32 && can_rx_pop(cbuf, sizeof(cbuf), clen, cmac, cus); ++k) {
+                xSemaphoreTake(g_mutex, portMAX_DELAY);
+                tee_frame("rx", cmac, 0, cbuf, clen);
+                g_node->on_rx(cmac, cbuf, clen, cus, 0);
+                xSemaphoreGive(g_mutex);
+            }
+            xSemaphoreTake(g_mutex, portMAX_DELAY);
+            m4::tick(now_ms_());
+            xSemaphoreGive(g_mutex);
+        }
+#endif
 
         const uint32_t t = now_ms_();
         uint32_t wait_ms = g_node->next_deadline_in_ms(t);
@@ -978,6 +1115,11 @@ void stats_task(void*) {
             }
         }
 
+#if CONFIG_POT_CAN
+        xSemaphoreTake(g_mutex, portMAX_DELAY);
+        m4::print_stats();
+        xSemaphoreGive(g_mutex);
+#endif
         NodeCounters counters;
         size_t alive = 0, dead = 0;
         uint32_t events_dropped = 0;
@@ -1085,6 +1227,9 @@ extern "C" void app_main(void) {
     cfg.hb_period_ms = CONFIG_POT_HB_PERIOD_MS;
     cfg.hb_miss_limit = CONFIG_POT_HB_MISS_LIMIT;
     cfg.hello_interval_ms = CONFIG_POT_HELLO_INTERVAL_MS;
+#if CONFIG_POT_CAN
+    cfg.admit_on_beacon = true;  // a CAN bus carries no HELLO (§5.3.1)
+#endif
     // Polarity is "opt in to the bad one", because the knob is a plain bool rather than the Kconfig
     // `choice` it wants to be — a choice member cannot be set from an sdkconfig.defaults overlay and
     // fails *silently*, which for a knob whose only purpose is a scripted A/B measurement would mean
@@ -1161,6 +1306,22 @@ extern "C" void app_main(void) {
     // §7.4: decide which slot this boot runs, persist the trial count, apply the actors -- all
     // before any task starts, so the first heartbeat already comes from the deployed behaviour.
     deploy_rt::boot(cfg.node_id);
+#if CONFIG_POT_CAN
+    {
+        CanPortConfig cc;
+        cc.tx_gpio = CONFIG_POT_CAN_TX_GPIO;
+        cc.rx_gpio = CONFIG_POT_CAN_RX_GPIO;
+        cc.bitrate = CONFIG_POT_CAN_BITRATE;
+#ifdef CONFIG_POT_CAN_LOOPBACK
+        cc.loopback = true;  // an unset Kconfig bool is undefined in C, not 0
+#endif
+        cc.node_id = cfg.node_id;
+        if (!can_start(cc)) {
+            ESP_LOGE(kTag, "CAN transport failed to start");
+        }
+        g_node->set_safe_state_handler(&m4::on_safe_state, nullptr);
+    }
+#endif
     g_node->set_deploy_server(&deploy_rt::on_deploy, nullptr);
     g_node->set_deploy_result(&deploy_rt::on_result, nullptr);
 

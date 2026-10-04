@@ -225,4 +225,47 @@ config POT_TRIAL_MAX_BOOTS
         A module that crashes its node is retried this many times, then the node goes back to its
         previous slot by itself.
 
+config POT_CAN
+    bool "CAN (TWAI) transport, section 5.3.1 (M4)"
+    default n
+    help
+        Classic CAN through the ESP32's TWAI controller and an SN65HVD230 transceiver. A beacon admits
+        its sender (no HELLO on CAN), SAFE_STATE travels as one frame, everything else segments. In a
+        CAN build broadcasts go to CAN only: v1 has no router to keep a node reachable on two
+        transports from appearing as two peers, so M4's boards also set POT_RADIO_DISABLE.
+
+config POT_CAN_TX_GPIO
+    int "GPIO to the transceiver's TX pin (its driver input D)"
+    depends on POT_CAN
+    range 0 48
+    default 4
+
+config POT_CAN_RX_GPIO
+    int "GPIO to the transceiver's RX pin (its receiver output R)"
+    depends on POT_CAN
+    range 0 48
+    default 5
+
+config POT_CAN_BITRATE
+    int "CAN bit rate, bit/s"
+    depends on POT_CAN
+    range 10000 1000000
+    default 500000
+
+config POT_CAN_LOOPBACK
+    bool "TWAI loopback self-test: hear our own frames, need no ACK, no transceiver"
+    depends on POT_CAN
+    default n
+
+config POT_M4_FLOOD
+    bool "M4 demonstration: saturate the bus with lowest-priority telemetry"
+    depends on POT_CAN
+    default n
+
+config POT_M4_SAFE_STATE_MS
+    int "M4 demonstration: send SAFE_STATE every N ms (0 = never)"
+    depends on POT_CAN
+    range 0 60000
+    default 0
+
 endmenu

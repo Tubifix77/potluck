@@ -1,0 +1,7 @@
+# M4 step 2b: TWAI loopback self-test on board C (0x8160), no transceiver, 2026-10-04.
+# Firmware: variant can-loop (CONFIG_POT_RADIO_DISABLE, CONFIG_POT_CAN, CONFIG_POT_CAN_LOOPBACK,
+# CONFIG_POT_M4_SAFE_STATE_MS=1000), RX on the TX pin as Espressif's own test does.
+# The first attempt, with RX on its own floating pin, logged 17 bit errors and "node is bus off".
+I (1854) pot.can: TWAI up: tx GPIO4 rx GPIO5, 500000 bit/s, alias 45, LOOPBACK self-test
+{"t":"can","node":33120,"up_ms":11659,"tx_frames":153,"tx_ok":153,"tx_fail":0,"tx_no_slot":0,"arb_lost":0,"bit_err":0,"form_err":0,"stuff_err":0,"ack_err":0,"rx_frames":153,"rx_overflow":0,"rx_own":117,"rx_messages":117,"rx_not_for_us":0,"rx_unknown_alias":1,"rx_out_of_order":0,"rx_timeouts":0,"rx_malformed":0,"flood_sent":0,"ss_sent":11,"ss_last_us":324,"ss_min_us":316,"ss_max_us":2056,"ss_rx":0,"ss_rx_gaps":0}
+{"t":"can","node":33120,"up_ms":21811,"tx_frames":294,"tx_ok":294,"tx_fail":0,"tx_no_slot":0,"arb_lost":0,"bit_err":0,"form_err":0,"stuff_err":0,"ack_err":0,"rx_frames":294,"rx_overflow":0,"rx_own":233,"rx_messages":233,"rx_not_for_us":0,"rx_unknown_alias":1,"rx_out_of_order":0,"rx_timeouts":0,"rx_malformed":0,"flood_sent":0,"ss_sent":21,"ss_last_us":326,"ss_min_us":316,"ss_max_us":2056,"ss_rx":0,"ss_rx_gaps":0}
