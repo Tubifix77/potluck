@@ -731,6 +731,7 @@ uint32_t g_flood_sent = 0;
 uint32_t g_safe_rx = 0;
 uint32_t g_safe_rx_last = 0;
 uint32_t g_safe_rx_gaps = 0;
+uint32_t g_safe_rx_restarts = 0;
 uint32_t g_next_safe_ms = 0;
 
 // Lowest-priority telemetry, as fast as the transmit pool allows -- but always leaving room, so this
@@ -762,7 +763,11 @@ void flood() {
 
 void on_safe_state(void*, uint16_t from, uint32_t counter, uint16_t reason) {
     ++g_safe_rx;
-    if (g_safe_rx_last != 0 && counter != g_safe_rx_last + 1) {
+    // A counter that goes backwards is the sender restarting (the first M4 run reflashed C under a
+    // running B and this went "negative" to 4294966709): count the restart, not a gap.
+    if (g_safe_rx_last != 0 && counter <= g_safe_rx_last) {
+        ++g_safe_rx_restarts;
+    } else if (g_safe_rx_last != 0 && counter != g_safe_rx_last + 1) {
         g_safe_rx_gaps += counter - g_safe_rx_last - 1;
     }
     g_safe_rx_last = counter;
@@ -790,7 +795,7 @@ void print_stats() {
                 "\"ack_err\":%u,\"rx_frames\":%u,\"rx_overflow\":%u,\"rx_own\":%u,\"rx_messages\":%u,"
                 "\"rx_not_for_us\":%u,\"rx_unknown_alias\":%u,\"rx_out_of_order\":%u,\"rx_timeouts\":%u,"
                 "\"rx_malformed\":%u,\"flood_sent\":%u,\"ss_sent\":%u,\"ss_last_us\":%u,\"ss_min_us\":%u,"
-                "\"ss_max_us\":%u,\"ss_rx\":%u,\"ss_rx_gaps\":%u}\n",
+                "\"ss_max_us\":%u,\"ss_rx\":%u,\"ss_rx_gaps\":%u,\"ss_rx_restarts\":%u}\n",
                 static_cast<unsigned>(g_node->config().node_id), static_cast<unsigned>(now_ms_()),
                 static_cast<unsigned>(c.tx_frames), static_cast<unsigned>(c.tx_ok),
                 static_cast<unsigned>(c.tx_fail), static_cast<unsigned>(c.tx_no_slot),
@@ -804,7 +809,7 @@ void print_stats() {
                 static_cast<unsigned>(g_flood_sent), static_cast<unsigned>(c.safe_state_sent),
                 static_cast<unsigned>(c.safe_state_last_us), static_cast<unsigned>(c.safe_state_min_us),
                 static_cast<unsigned>(c.safe_state_max_us), static_cast<unsigned>(g_safe_rx),
-                static_cast<unsigned>(g_safe_rx_gaps));
+                static_cast<unsigned>(g_safe_rx_gaps), static_cast<unsigned>(g_safe_rx_restarts));
 }
 
 }  // namespace m4

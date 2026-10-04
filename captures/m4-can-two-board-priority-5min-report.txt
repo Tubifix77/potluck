@@ -1,0 +1,9 @@
+B node 0x7368: 29 samples, 290 s window, up 530 s
+  deltas: {'tx_frames': 890749, 'tx_ok': 890749, 'tx_no_slot': 23, 'arb_lost': 23, 'rx_frames': 10305, 'rx_messages': 4036, 'flood_sent': 220185, 'ss_rx': 290}
+  tx frames/s 3072, rx frames/s 36
+  end: {'ss_sent': 0, 'ss_rx': 524, 'ss_rx_gaps': 4294966709, 'arb_lost': 44, 'bit_err': 0, 'form_err': 0, 'stuff_err': 0, 'rx_overflow': 0, 'rx_timeouts': 0, 'rx_out_of_order': 0, 'tx_fail': 0}
+C node 0x8160: 29 samples, 287 s window, up 401 s
+  deltas: {'tx_frames': 10196, 'tx_ok': 10196, 'rx_frames': 881583, 'rx_overflow': 220, 'rx_messages': 3707, 'rx_not_for_us': 871467, 'ss_sent': 287}
+  tx frames/s 36, rx frames/s 3073
+  ss_last samples: min 335 max 683 us; cumulative since boot min 335 max 1056 us
+  end: {'ss_sent': 400, 'ss_rx': 0, 'ss_rx_gaps': 0, 'arb_lost': 0, 'bit_err': 0, 'form_err': 0, 'stuff_err': 0, 'rx_overflow': 254, 'rx_timeouts': 0, 'rx_out_of_order': 0, 'tx_fail': 0}

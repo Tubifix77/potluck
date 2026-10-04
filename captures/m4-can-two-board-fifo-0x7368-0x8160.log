@@ -1,0 +1,165 @@
+23:50:39 B I (38063) pot.m0: SAFE_STATE #39 from 0x8160, reason 1
+23:50:40 B I (39060) pot.m0: SAFE_STATE #40 from 0x8160, reason 1
+23:50:41 B I (40047) pot.m0: SAFE_STATE #41 from 0x8160, reason 1
+23:50:42 B I (41058) pot.m0: SAFE_STATE #42 from 0x8160, reason 1
+23:50:42 C {"t":"event","at_ms":33493,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:50:42 C {"t":"event","at_ms":35493,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:50:42 C {"t":"event","at_ms":37493,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:50:42 C {"t":"event","at_ms":39493,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:50:42 C {"t":"event","at_ms":41493,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:50:42 C {"t":"link","up_ms":42458,"node":33120,"peer":29544,"mac":"02:ca:00:00:73:68","state":"alive","epoch":39,"espnow_ver":0,"mtu":226,"misses":0,"rssi":0,"tx":{"frames":98,"cb_ok":98,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":510,"lost_seqgap":0,"reorder_dup":1,"dropped_bad":0,"hb_lost":0,"bcast_frames":390,"pdr_ppm":1000000},"rtt":{"samples":39,"min_us":7831,"max_us":25915,"timeouts":0,"txq_last_us":3082,"txq_max_us":6024,"remote_turnaround_us":407,"remote_turnaround_max_us":18775,"p50_us":[16000,22000],"p99_us":[22000,30000],"hist":[0,0,0,0,0,2,4,11,11,11,0,0,0,0,0,0]}}
+23:50:42 C {"t":"can","node":33120,"up_ms":42510,"tx_frames":1445,"tx_ok":1445,"tx_fail":0,"tx_no_slot":0,"arb_lost":0,"bit_err":0,"form_err":0,"stuff_err":0,"ack_err":5801,"rx_frames":119099,"rx_overflow":22,"rx_own":0,"rx_messages":511,"rx_not_for_us":117682,"rx_unknown_alias":0,"rx_out_of_order":0,"rx_timeouts":0,"rx_malformed":0,"flood_sent":0,"ss_sent":41,"ss_last_us":2573,"ss_min_us":2573,"ss_max_us":1812123,"ss_rx":0,"ss_rx_gaps":0}
+23:50:42 C {"t":"node","up_ms":42547,"node":33120,"epoch":22,"peers_alive":1,"peers_dead":0,"no_radio":1,"free_dram":325708,"largest_block":270336,"rx":{"total":511,"bad_frame":0,"unknown_peer":1,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":570,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+23:50:42 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":157,"ts":42426,"updates":4,"value":1}
+23:50:42 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":172,"ts":42426,"updates":4,"value":270336}
+23:50:42 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":187,"ts":42426,"updates":4,"value":22}
+23:50:42 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":202,"ts":42426,"updates":4,"value":42}
+23:50:42 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":217,"ts":42426,"updates":4,"value":0}
+23:50:42 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":232,"ts":42426,"updates":4,"value":325708}
+23:50:43 B I (42051) pot.m0: SAFE_STATE #43 from 0x8160, reason 1
+23:50:44 B {"t":"event","at_ms":32798,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":34,"b":1}
+23:50:44 B {"t":"event","at_ms":33807,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":35,"b":1}
+23:50:44 B {"t":"event","at_ms":33807,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:50:44 B {"t":"event","at_ms":34801,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":36,"b":1}
+23:50:44 B {"t":"event","at_ms":35814,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":37,"b":1}
+23:50:44 B {"t":"event","at_ms":35814,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:50:44 B {"t":"event","at_ms":36802,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":38,"b":1}
+23:50:44 B {"t":"event","at_ms":37811,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":39,"b":1}
+23:50:44 B {"t":"event","at_ms":37811,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:50:44 B {"t":"event","at_ms":38808,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":40,"b":1}
+23:50:44 B {"t":"event","at_ms":39795,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":41,"b":1}
+23:50:44 B I (43066) pot.m0: SAFE_STATE #44 from 0x8160, reason 1
+23:50:44 B {"t":"event","at_ms":39802,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:50:44 B {"t":"event","at_ms":40806,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":42,"b":1}
+23:50:44 B {"t":"event","at_ms":41799,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":43,"b":1}
+23:50:44 B {"t":"event","at_ms":41813,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:50:44 B {"t":"event","at_ms":42814,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":44,"b":1}
+23:50:44 B {"t":"link","up_ms":42861,"node":29544,"peer":33120,"mac":"02:ca:00:00:81:60","state":"alive","epoch":22,"espnow_ver":0,"mtu":226,"misses":0,"rssi":0,"tx":{"frames":106,"cb_ok":104,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":601,"lost_seqgap":0,"reorder_dup":1,"dropped_bad":0,"hb_lost":0,"bcast_frames":430,"pdr_ppm":1000000},"rtt":{"samples":41,"min_us":22305,"max_us":41051,"timeouts":0,"txq_last_us":17873,"txq_max_us":18975,"remote_turnaround_us":17733,"remote_turnaround_max_us":17733,"p50_us":[30000,42000],"p99_us":[30000,42000],"hist":[0,0,0,0,0,0,0,0,0,3,38,0,0,0,0,0]}}
+23:50:44 B {"t":"can","node":29544,"up_ms":42914,"tx_frames":125955,"tx_ok":125898,"tx_fail":0,"tx_no_slot":0,"arb_lost":0,"bit_err":0,"form_err":0,"stuff_err":0,"ack_err":0,"rx_frames":1531,"rx_overflow":0,"rx_own":0,"rx_messages":602,"rx_not_for_us":0,"rx_unknown_alias":1,"rx_out_of_order":0,"rx_timeouts":0,"rx_malformed":0,"flood_sent":31122,"ss_sent":0,"ss_last_us":0,"ss_min_us":0,"ss_max_us":0,"ss_rx":43,"ss_rx_gaps":0}
+23:50:44 B {"t":"node","up_ms":42950,"node":29544,"epoch":39,"peers_alive":1,"peers_dead":0,"no_radio":1,"free_dram":325708,"largest_block":270336,"rx":{"total":602,"bad_frame":0,"unknown_peer":1,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":541,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+23:50:44 B {"t":"ns","node":29544,"hash":96177158,"owner":29544,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":256,"ts":42729,"updates":4,"value":0}
+23:50:44 B {"t":"ns","node":29544,"hash":1162973580,"owner":29544,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":271,"ts":42729,"updates":4,"value":325708}
+23:50:44 B {"t":"ns","node":29544,"hash":4013525678,"owner":29544,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":287,"ts":42729,"updates":4,"value":270336}
+23:50:44 B {"t":"ns","node":29544,"hash":1303338069,"owner":29544,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":302,"ts":42729,"updates":4,"value":39}
+23:50:44 B {"t":"ns","node":29544,"hash":288706273,"owner":29544,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":317,"ts":42729,"updates":4,"value":42}
+23:50:44 B {"t":"ns","node":29544,"hash":2548334194,"owner":29544,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":332,"ts":42729,"updates":4,"value":1}
+23:50:45 B I (44055) pot.m0: SAFE_STATE #45 from 0x8160, reason 1
+23:50:46 B I (45064) pot.m0: SAFE_STATE #46 from 0x8160, reason 1
+23:50:47 B I (46061) pot.m0: SAFE_STATE #47 from 0x8160, reason 1
+23:50:48 B I (47049) pot.m0: SAFE_STATE #48 from 0x8160, reason 1
+23:50:49 B I (48059) pot.m0: SAFE_STATE #49 from 0x8160, reason 1
+23:50:50 B I (49053) pot.m0: SAFE_STATE #50 from 0x8160, reason 1
+23:50:51 B I (50066) pot.m0: SAFE_STATE #51 from 0x8160, reason 1
+23:50:52 B I (51054) pot.m0: SAFE_STATE #52 from 0x8160, reason 1
+23:50:52 C {"t":"event","at_ms":43494,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:50:52 C {"t":"event","at_ms":45494,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:50:52 C {"t":"event","at_ms":47494,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:50:52 C {"t":"event","at_ms":49494,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:50:52 C {"t":"event","at_ms":51494,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:50:52 C {"t":"link","up_ms":52706,"node":33120,"peer":29544,"mac":"02:ca:00:00:73:68","state":"alive","epoch":39,"espnow_ver":0,"mtu":226,"misses":0,"rssi":0,"tx":{"frames":125,"cb_ok":125,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":644,"lost_seqgap":0,"reorder_dup":1,"dropped_bad":0,"hb_lost":0,"bcast_frames":492,"pdr_ppm":1000000},"rtt":{"samples":50,"min_us":7831,"max_us":25915,"timeouts":0,"txq_last_us":5743,"txq_max_us":6024,"remote_turnaround_us":4737,"remote_turnaround_max_us":18775,"p50_us":[16000,22000],"p99_us":[22000,30000],"hist":[0,0,0,0,0,2,5,15,14,14,0,0,0,0,0,0]}}
+23:50:52 C {"t":"can","node":33120,"up_ms":52758,"tx_frames":1819,"tx_ok":1819,"tx_fail":0,"tx_no_slot":0,"arb_lost":0,"bit_err":0,"form_err":0,"stuff_err":0,"ack_err":5801,"rx_frames":150331,"rx_overflow":22,"rx_own":0,"rx_messages":645,"rx_not_for_us":148561,"rx_unknown_alias":0,"rx_out_of_order":0,"rx_timeouts":0,"rx_malformed":0,"flood_sent":0,"ss_sent":52,"ss_last_us":5521,"ss_min_us":2573,"ss_max_us":1812123,"ss_rx":0,"ss_rx_gaps":0}
+23:50:52 C {"t":"node","up_ms":52796,"node":33120,"epoch":22,"peers_alive":1,"peers_dead":0,"no_radio":1,"free_dram":325708,"largest_block":270336,"rx":{"total":645,"bad_frame":0,"unknown_peer":1,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":715,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+23:50:52 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":157,"ts":52674,"updates":5,"value":1}
+23:50:52 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":172,"ts":52674,"updates":5,"value":270336}
+23:50:52 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":188,"ts":52674,"updates":5,"value":22}
+23:50:52 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":202,"ts":52674,"updates":5,"value":52}
+23:50:52 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":218,"ts":52674,"updates":5,"value":0}
+23:50:52 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":233,"ts":52674,"updates":5,"value":325708}
+23:50:53 B I (52063) pot.m0: SAFE_STATE #53 from 0x8160, reason 1
+23:50:55 B I (53060) pot.m0: SAFE_STATE #54 from 0x8160, reason 1
+23:50:55 B {"t":"event","at_ms":43803,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":45,"b":1}
+23:50:55 B {"t":"event","at_ms":43803,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:50:55 B {"t":"event","at_ms":44812,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":46,"b":1}
+23:50:55 B {"t":"event","at_ms":45809,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":47,"b":1}
+23:50:55 B {"t":"event","at_ms":45809,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:50:55 B {"t":"event","at_ms":46797,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":48,"b":1}
+23:50:55 B {"t":"event","at_ms":47807,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":49,"b":1}
+23:50:55 B {"t":"event","at_ms":47807,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:50:55 B {"t":"event","at_ms":48801,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":50,"b":1}
+23:50:55 B {"t":"event","at_ms":49814,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":51,"b":1}
+23:50:55 B {"t":"event","at_ms":49814,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:50:55 B {"t":"event","at_ms":50802,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":52,"b":1}
+23:50:55 B {"t":"event","at_ms":51811,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":53,"b":1}
+23:50:55 B {"t":"event","at_ms":51811,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:50:55 B {"t":"event","at_ms":52808,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":54,"b":1}
+23:50:55 B {"t":"link","up_ms":53196,"node":29544,"peer":33120,"mac":"02:ca:00:00:81:60","state":"alive","epoch":22,"espnow_ver":0,"mtu":226,"misses":0,"rssi":0,"tx":{"frames":131,"cb_ok":128,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":745,"lost_seqgap":0,"reorder_dup":1,"dropped_bad":0,"hb_lost":0,"bcast_frames":534,"pdr_ppm":1000000},"rtt":{"samples":51,"min_us":22305,"max_us":41921,"timeouts":0,"txq_last_us":18059,"txq_max_us":18975,"remote_turnaround_us":19073,"remote_turnaround_max_us":19073,"p50_us":[30000,42000],"p99_us":[30000,42000],"hist":[0,0,0,0,0,0,0,0,0,3,48,0,0,0,0,0]}}
+23:50:55 B {"t":"can","node":29544,"up_ms":53248,"tx_frames":157428,"tx_ok":157386,"tx_fail":0,"tx_no_slot":0,"arb_lost":0,"bit_err":0,"form_err":0,"stuff_err":0,"ack_err":0,"rx_frames":1894,"rx_overflow":0,"rx_own":0,"rx_messages":745,"rx_not_for_us":0,"rx_unknown_alias":1,"rx_out_of_order":0,"rx_timeouts":0,"rx_malformed":0,"flood_sent":38902,"ss_sent":0,"ss_last_us":0,"ss_min_us":0,"ss_max_us":0,"ss_rx":53,"ss_rx_gaps":0}
+23:50:55 B {"t":"node","up_ms":53284,"node":29544,"epoch":39,"peers_alive":1,"peers_dead":0,"no_radio":1,"free_dram":325708,"largest_block":270336,"rx":{"total":745,"bad_frame":0,"unknown_peer":1,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":674,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+23:50:55 B {"t":"ns","node":29544,"hash":96177158,"owner":29544,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":243,"ts":53077,"updates":5,"value":0}
+23:50:55 B {"t":"ns","node":29544,"hash":1162973580,"owner":29544,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":257,"ts":53077,"updates":5,"value":325708}
+23:50:55 B {"t":"ns","node":29544,"hash":4013525678,"owner":29544,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":273,"ts":53077,"updates":5,"value":270336}
+23:50:55 B {"t":"ns","node":29544,"hash":1303338069,"owner":29544,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":289,"ts":53077,"updates":5,"value":39}
+23:50:55 B {"t":"ns","node":29544,"hash":288706273,"owner":29544,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":303,"ts":53077,"updates":5,"value":53}
+23:50:55 B {"t":"ns","node":29544,"hash":2548334194,"owner":29544,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":319,"ts":53077,"updates":5,"value":1}
+23:50:55 B I (54047) pot.m0: SAFE_STATE #55 from 0x8160, reason 1
+23:50:56 B I (55058) pot.m0: SAFE_STATE #56 from 0x8160, reason 1
+23:50:57 B I (56051) pot.m0: SAFE_STATE #57 from 0x8160, reason 1
+23:50:58 B I (57066) pot.m0: SAFE_STATE #58 from 0x8160, reason 1
+23:50:59 B I (58054) pot.m0: SAFE_STATE #59 from 0x8160, reason 1
+23:51:00 B I (59063) pot.m0: SAFE_STATE #60 from 0x8160, reason 1
+23:51:01 B I (60059) pot.m0: SAFE_STATE #61 from 0x8160, reason 1
+23:51:02 B I (61054) pot.m0: SAFE_STATE #62 from 0x8160, reason 1
+23:51:03 C {"t":"event","at_ms":53495,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:51:03 C {"t":"event","at_ms":55496,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:51:03 C {"t":"event","at_ms":57496,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:51:03 C {"t":"event","at_ms":59496,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:51:03 C {"t":"event","at_ms":61496,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:51:03 C {"t":"link","up_ms":62955,"node":33120,"peer":29544,"mac":"02:ca:00:00:73:68","state":"alive","epoch":39,"espnow_ver":0,"mtu":226,"misses":0,"rssi":0,"tx":{"frames":150,"cb_ok":150,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":776,"lost_seqgap":0,"reorder_dup":1,"dropped_bad":0,"hb_lost":0,"bcast_frames":594,"pdr_ppm":1000000},"rtt":{"samples":60,"min_us":7815,"max_us":25915,"timeouts":0,"txq_last_us":4412,"txq_max_us":6024,"remote_turnaround_us":5999,"remote_turnaround_max_us":18775,"p50_us":[16000,22000],"p99_us":[22000,30000],"hist":[0,0,0,0,0,3,5,17,17,18,0,0,0,0,0,0]}}
+23:51:03 C {"t":"can","node":33120,"up_ms":63007,"tx_frames":2181,"tx_ok":2181,"tx_fail":0,"tx_no_slot":0,"arb_lost":0,"bit_err":0,"form_err":0,"stuff_err":0,"ack_err":5801,"rx_frames":181594,"rx_overflow":22,"rx_own":0,"rx_messages":777,"rx_not_for_us":179470,"rx_unknown_alias":0,"rx_out_of_order":0,"rx_timeouts":0,"rx_malformed":0,"flood_sent":0,"ss_sent":62,"ss_last_us":4115,"ss_min_us":2522,"ss_max_us":1812123,"ss_rx":0,"ss_rx_gaps":0}
+23:51:03 C {"t":"node","up_ms":63045,"node":33120,"epoch":22,"peers_alive":1,"peers_dead":0,"no_radio":1,"free_dram":325708,"largest_block":270336,"rx":{"total":777,"bad_frame":0,"unknown_peer":1,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":857,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+23:51:03 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":157,"ts":62923,"updates":6,"value":1}
+23:51:03 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":172,"ts":62923,"updates":6,"value":270336}
+23:51:03 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":188,"ts":62923,"updates":6,"value":22}
+23:51:03 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":202,"ts":62923,"updates":6,"value":62}
+23:51:03 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":218,"ts":62923,"updates":6,"value":0}
+23:51:03 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":233,"ts":62923,"updates":6,"value":325708}
+23:51:03 B I (62057) pot.m0: SAFE_STATE #63 from 0x8160, reason 1
+23:51:04 B I (63067) pot.m0: SAFE_STATE #64 from 0x8160, reason 1
+23:51:05 B {"t":"event","at_ms":53795,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":55,"b":1}
+23:51:05 B {"t":"event","at_ms":53802,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:51:05 B {"t":"event","at_ms":54806,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":56,"b":1}
+23:51:05 B {"t":"event","at_ms":55799,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":57,"b":1}
+23:51:05 B {"t":"event","at_ms":55813,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:51:05 B {"t":"event","at_ms":56814,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":58,"b":1}
+23:51:05 B {"t":"event","at_ms":57802,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":59,"b":1}
+23:51:05 B {"t":"event","at_ms":57802,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:51:05 B {"t":"event","at_ms":58811,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":60,"b":1}
+23:51:05 B {"t":"event","at_ms":59807,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":61,"b":1}
+23:51:05 B {"t":"event","at_ms":59807,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:51:05 B {"t":"event","at_ms":60801,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":62,"b":1}
+23:51:05 B {"t":"event","at_ms":61805,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":63,"b":1}
+23:51:05 B {"t":"event","at_ms":61805,"node":29544,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+23:51:05 B {"t":"event","at_ms":62815,"node":29544,"kind":"safe_state_rx","peer":33120,"slot":0,"a":64,"b":1}
+23:51:05 B {"t":"link","up_ms":63530,"node":29544,"peer":33120,"mac":"02:ca:00:00:81:60","state":"alive","epoch":22,"espnow_ver":0,"mtu":226,"misses":0,"rssi":0,"tx":{"frames":156,"cb_ok":152,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":888,"lost_seqgap":0,"reorder_dup":1,"dropped_bad":0,"hb_lost":0,"bcast_frames":637,"pdr_ppm":1000000},"rtt":{"samples":61,"min_us":22305,"max_us":43382,"timeouts":0,"txq_last_us":17795,"txq_max_us":18975,"remote_turnaround_us":19728,"remote_turnaround_max_us":19728,"p50_us":[30000,42000],"p99_us":[42000,60000],"hist":[0,0,0,0,0,0,0,0,0,3,49,9,0,0,0,0]}}
+23:51:05 B {"t":"can","node":29544,"up_ms":63582,"tx_frames":188941,"tx_ok":188894,"tx_fail":0,"tx_no_slot":0,"arb_lost":0,"bit_err":0,"form_err":0,"stuff_err":0,"ack_err":0,"rx_frames":2257,"rx_overflow":0,"rx_own":0,"rx_messages":888,"rx_not_for_us":0,"rx_unknown_alias":1,"rx_out_of_order":0,"rx_timeouts":0,"rx_malformed":0,"flood_sent":46692,"ss_sent":0,"ss_last_us":0,"ss_min_us":0,"ss_max_us":0,"ss_rx":63,"ss_rx_gaps":0}
+23:51:05 B {"t":"node","up_ms":63618,"node":29544,"epoch":39,"peers_alive":1,"peers_dead":0,"no_radio":1,"free_dram":325708,"largest_block":270336,"rx":{"total":888,"bad_frame":0,"unknown_peer":1,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":807,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+23:51:05 B {"t":"ns","node":29544,"hash":96177158,"owner":29544,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":243,"ts":63411,"updates":6,"value":0}
+23:51:05 B {"t":"ns","node":29544,"hash":1162973580,"owner":29544,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":257,"ts":63411,"updates":6,"value":325708}
+23:51:05 B {"t":"ns","node":29544,"hash":4013525678,"owner":29544,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":273,"ts":63411,"updates":6,"value":270336}
+23:51:05 B {"t":"ns","node":29544,"hash":1303338069,"owner":29544,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":289,"ts":63411,"updates":6,"value":39}
+23:51:05 B {"t":"ns","node":29544,"hash":288706273,"owner":29544,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":304,"ts":63411,"updates":6,"value":63}
+23:51:05 B {"t":"ns","node":29544,"hash":2548334194,"owner":29544,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":319,"ts":63411,"updates":6,"value":1}
+23:51:05 B I (64065) pot.m0: SAFE_STATE #65 from 0x8160, reason 1
+23:51:06 B I (65062) pot.m0: SAFE_STATE #66 from 0x8160, reason 1
+23:51:07 B I (66050) pot.m0: SAFE_STATE #67 from 0x8160, reason 1
+23:51:08 B I (67059) pot.m0: SAFE_STATE #68 from 0x8160, reason 1
+23:51:09 B I (68052) pot.m0: SAFE_STATE #69 from 0x8160, reason 1
+23:51:10 B I (69066) pot.m0: SAFE_STATE #70 from 0x8160, reason 1
+23:51:11 B I (70055) pot.m0: SAFE_STATE #71 from 0x8160, reason 1
+23:51:12 B I (71063) pot.m0: SAFE_STATE #72 from 0x8160, reason 1
+23:51:13 C {"t":"event","at_ms":63496,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:51:13 C {"t":"event","at_ms":65496,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:51:13 C {"t":"event","at_ms":67497,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:51:13 C {"t":"event","at_ms":69497,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:51:13 C {"t":"event","at_ms":71497,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+23:51:13 C {"t":"link","up_ms":73204,"node":33120,"peer":29544,"mac":"02:ca:00:00:73:68","state":"alive","epoch":39,"espnow_ver":0,"mtu":226,"misses":0,"rssi":0,"tx":{"frames":175,"cb_ok":175,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":909,"lost_seqgap":0,"reorder_dup":1,"dropped_bad":0,"hb_lost":0,"bcast_frames":697,"pdr_ppm":1000000},"rtt":{"samples":70,"min_us":7815,"max_us":26355,"timeouts":0,"txq_last_us":5866,"txq_max_us":6024,"remote_turnaround_us":13741,"remote_turnaround_max_us":19817,"p50_us":[16000,22000],"p99_us":[22000,30000],"hist":[0,0,0,0,0,3,6,19,20,22,0,0,0,0,0,0]}}
+23:51:13 C {"t":"can","node":33120,"up_ms":73256,"tx_frames":2544,"tx_ok":2544,"tx_fail":0,"tx_no_slot":0,"arb_lost":0,"bit_err":0,"form_err":0,"stuff_err":0,"ack_err":5801,"rx_frames":212917,"rx_overflow":22,"rx_own":0,"rx_messages":910,"rx_not_for_us":210440,"rx_unknown_alias":0,"rx_out_of_order":0,"rx_timeouts":0,"rx_malformed":0,"flood_sent":0,"ss_sent":72,"ss_last_us":5531,"ss_min_us":2522,"ss_max_us":1812123,"ss_rx":0,"ss_rx_gaps":0}
+23:51:13 C {"t":"node","up_ms":73294,"node":33120,"epoch":22,"peers_alive":1,"peers_dead":0,"no_radio":1,"free_dram":325708,"largest_block":270336,"rx":{"total":910,"bad_frame":0,"unknown_peer":1,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":1000,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+23:51:13 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":157,"ts":73172,"updates":7,"value":1}
+23:51:13 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":172,"ts":73172,"updates":7,"value":270336}
+23:51:13 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":188,"ts":73172,"updates":7,"value":22}
+23:51:13 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":203,"ts":73172,"updates":7,"value":73}
+23:51:13 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":218,"ts":73172,"updates":7,"value":0}
+23:51:13 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":233,"ts":73172,"updates":7,"value":325708}
+23:51:13 B I (72059) pot.m0: SAFE_STATE #73 from 0x8160, reason 1
+23:51:14 B I (73053) pot.m0: SAFE_STATE #74 from 0x8160, reason 1
