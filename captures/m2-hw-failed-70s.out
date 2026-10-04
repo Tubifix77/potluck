@@ -1,0 +1,66 @@
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 14 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 14, death window 100 ms x 6 = 600 ms
+20:46:27  sweep 1: 18 read, 0 timed out, 0 unusable
+20:46:30  sweep 2: 36 read, 0 timed out, 0 unusable
+20:46:32  sweep 3: 54 read, 0 timed out, 0 unusable
+20:46:35  sweep 4: 72 read, 0 timed out, 0 unusable
+20:46:37  sweep 5: 90 read, 0 timed out, 0 unusable
+20:46:39  sweep 6: 108 read, 0 timed out, 0 unusable
+20:46:42  sweep 7: 126 read, 0 timed out, 0 unusable
+20:46:44  sweep 8: 144 read, 0 timed out, 0 unusable
+20:46:46  sweep 9: 162 read, 0 timed out, 0 unusable
+20:46:49  sweep 10: 180 read, 0 timed out, 0 unusable
+20:46:51  sweep 11: 198 read, 0 timed out, 0 unusable
+20:46:54  sweep 12: 216 read, 0 timed out, 0 unusable
+20:46:56  sweep 13: 234 read, 0 timed out, 0 unusable
+20:46:59  sweep 14: 252 read, 0 timed out, 0 unusable
+20:47:01  sweep 15: 270 read, 0 timed out, 0 unusable
+20:47:03  sweep 16: 288 read, 0 timed out, 0 unusable
+20:47:06  sweep 17: 306 read, 0 timed out, 0 unusable
+20:47:08  sweep 18: 324 read, 0 timed out, 0 unusable
+20:47:10  sweep 19: 342 read, 0 timed out, 0 unusable
+20:47:13  sweep 20: 360 read, 0 timed out, 0 unusable
+20:47:15  sweep 21: 378 read, 0 timed out, 0 unusable
+20:47:18  sweep 22: 396 read, 0 timed out, 0 unusable
+20:47:20  sweep 23: 414 read, 0 timed out, 0 unusable
+20:47:22  sweep 24: 432 read, 0 timed out, 0 unusable
+20:47:25  sweep 25: 450 read, 0 timed out, 0 unusable
+20:47:27  sweep 26: 468 read, 0 timed out, 0 unusable
+20:47:30  sweep 27: 486 read, 0 timed out, 0 unusable
+20:47:32  sweep 28: 504 read, 0 timed out, 0 unusable
+20:47:35  sweep 29: 522 read, 0 timed out, 0 unusable
+# capture -> ..\..\captures\m2-hw-10min.jsonl  (18 namespace entries observed)
+# verify:  python -m potluck --replay ..\..\captures\m2-hw-10min.jsonl --expect-digest cff1a24fffacce4323d9429448e2f425c693ed6069d6c52e21dfb17fba2205e4
+Traceback (most recent call last):
+  File "D:\Projects\potluck\host\potluck\potluck\bridge.py", line 214, in send_frame
+    self.transport.write(wire)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "D:\Projects\potluck\host\potluck\potluck\transport.py", line 101, in write
+    return ser.write(data) or 0
+           ~~~~~~~~~^^^^^^
+  File "C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Lib\site-packages\serial\serialwin32.py", line 325, in write
+    raise SerialTimeoutException('Write timeout')
+serial.serialutil.SerialTimeoutException: Write timeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\Projects\potluck\host\potluck\potluck\ctl.py", line 326, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "D:\Projects\potluck\host\potluck\potluck\ctl.py", line 173, in main
+    return cmd_soak(bridge, node_id, args)
+  File "D:\Projects\potluck\host\potluck\potluck\ctl.py", line 292, in cmd_soak
+    r = bridge.read(p, timeout=args.timeout)
+  File "D:\Projects\potluck\host\potluck\potluck\bridge.py", line 292, in read
+    rep = self._request(fr.Op.READ, Read(path_hash=h).encode(), h, timeout=timeout, dst=dst)
+  File "D:\Projects\potluck\host\potluck\potluck\bridge.py", line 324, in _request
+    self.send_frame(opcode, payload, dst=target, msg_id=msg_id, ack_req=True)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\potluck\host\potluck\potluck\bridge.py", line 216, in send_frame
+    raise BridgeError(f"write to {self.transport.description} failed: {exc}") from exc
+potluck.bridge.BridgeError: write to serial COM6 @ 921600 failed: Write timeout
+potctl exit 1

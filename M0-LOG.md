@@ -2993,3 +2993,73 @@ for when M3+ makes replicas matter beyond sys/*.
 
 M2 (host in the loop, and replay) was accepted under emulation. The real frame link now exists, so
 the same replay can be re-run on hardware. After that comes M3, deploy and detach.
+
+## Session 17 — 2026-10-04, M2 accepted on hardware, and the race that killed the first try
+
+§13-M2: *"a captured 10-minute session replays and produces byte-identical namespace state."* Under
+emulation this was proven mechanically with sessions of tens of seconds; QEMU's one-connection serial
+port capped it, and session 6 deferred the literal ten minutes to hardware. Now it has been run on
+hardware.
+
+**The session:** `potctl --port COM6 --node 6300 --capture … soak --seconds 600 --nodes
+6300,7368,8160`. That is the CP2102 frame link to board A, sweeping all three boards' built-in
+resources: 18 entries, 12 of them read *through* A's replicas of B and C (M1's path). A new `--nodes`
+option on `soak` makes the sweep cover several boards. All three boards ran firmware `12ab64d`.
+
+| | |
+|---|---|
+| duration, from the capture's own timestamps | **10.05 min** |
+| capture | 14,628 raw frames, nothing else (`captures/m2-hw-10min.jsonl`, committed) |
+| reads | 4,428 in 246 sweeps, **0 timeouts** |
+| replay | **18 entries, sha256 `bd735ccb8f8070b97039d073589315367438555d51e0ceb552f729a0ba2d73f6`, matches → exit 0** |
+| control | the same replay against a wrong digest → **exit 6** |
+
+**M2 is accepted.** Reproduce with:
+
+```
+python -m potluck --replay captures/m2-hw-10min.jsonl --expect-digest bd735ccb8f8070b97039d073589315367438555d51e0ceb552f729a0ba2d73f6
+```
+
+### The first attempt died at 70 seconds, and the cause was not the hardware
+
+`write to serial COM6 @ 921600 failed: Write timeout`, after 29 sweeps. COM6 stayed healthy,
+Windows logged no USB event, and no read failure came first. pyserial's own Windows code (read from
+the installed library) sets **no** write timeout in this configuration. It raises "Write timeout"
+whenever a completed write's byte count differs from the request, and it tracks every write through
+**one shared OVERLAPPED structure**. `Bridge.send_frame()` had no lock, yet requests went out from the
+caller's thread while heartbeats went out from `_hb_loop`. Two writes in flight read back each other's
+counts. Over TCP, which is all emulation ever used, the same race only interleaved bytes on the wire,
+silently.
+
+The fix is a `_tx_lock` around the write. A test pushes two threads × 150 frames through a transport
+that writes in two halves; it detects overlapping writes and checks that every frame reassembles and
+parses. It failed 3 of 3 before the fix (two writes in progress at once) and passes 3 of 3 after. The
+failed run is kept as `captures/m2-hw-failed-70s.jsonl` / `.out`.
+
+That makes four bugs found by the first contact between the host tools and real hardware, none of
+which emulation could show: the serial open race, the missing replica path, the arrival-based age,
+and this one. Each was a bug in shipping code, not in the bench.
+
+### Method failures of mine, recorded so they are not repeated
+
+- **The background job reported success for a run that had failed.** The command ended with `echo
+  "potctl exit $?"`, so the job's status was the echo's. The owner noticed the session was short
+  before I did. Background jobs now exit with the tool's own code.
+- **The rerun never started.** Relative paths resolved from a different folder in the background
+  shell, so the first `mv` failed and the chain stopped. I briefly read that run's *old* output as
+  new. Background jobs now use absolute paths.
+- Skipped this time and should not have been: the 20-second smoke test before the rerun. The first
+  attempt had been preceded by one, which passed; that run still crashed, because a 70-second race is
+  not something a 20-second smoke test reliably catches. A smoke test proves the pipe; only duration
+  proves the soak.
+
+### Side observations, not M2 issues
+
+- A's `peers alive` reads **3** with two other boards present, because the host counts as a peer. It
+  is accurate (the host *is* a peer in the table), but anyone reading it as "boards" will be off by
+  one.
+- `peers alive` and `worst peer RSSI` on a remote board regularly read **STALE** at about 10 s of age.
+  Verified in the source: their bound is **5,000 ms** (`sys_resources.cpp`), while `stats_task`
+  republishes all sys/* only every `CONFIG_POT_STATS_INTERVAL_MS` = **10,000 ms**, so both are STALE
+  for half of every cycle on every board, by construction. The quality is honest; the bound and the
+  publish interval disagree, and one of them should change.

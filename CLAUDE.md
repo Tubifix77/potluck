@@ -12,10 +12,10 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0 and M1 are ACCEPTED on hardware (2026-10-04).** M0: a 24.52-hour soak, then a distance sweep through
+**M0, M1 and M2 are ACCEPTED on hardware (2026-10-04).** M2: a 10.05-minute three-board session over COM6
+replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
-board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **Next: M2's replay
-re-run on the real frame link, then M3.**
+board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **Next: M3, deploy and detach.**
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
