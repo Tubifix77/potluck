@@ -491,15 +491,15 @@
     },
     "esp-idf/esp_stdio/libesp_stdio.a": {
         "abbrev_name": "libesp_stdio.a",
-        "size": 60036,
+        "size": 60088,
         "size_diff": 0,
         "memory_types": {
             "Flash Data": {
-                "size": 59626,
+                "size": 59678,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 59626,
+                        "size": 59678,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -589,15 +589,15 @@
     },
     "esp-idf/main/libmain.a": {
         "abbrev_name": "libmain.a",
-        "size": 38711,
+        "size": 36690,
         "size_diff": 0,
         "memory_types": {
             "DIRAM": {
-                "size": 31454,
+                "size": 29406,
                 "size_diff": 0,
                 "sections": {
                     ".dram0.bss": {
-                        "size": 31436,
+                        "size": 29388,
                         "size_diff": 0,
                         "abbrev_name": ".bss"
                     },
@@ -614,11 +614,11 @@
                 }
             },
             "Flash Code": {
-                "size": 7161,
+                "size": 7188,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 7161,
+                        "size": 7188,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -1079,15 +1079,15 @@
     },
     "esp-idf/freertos/libfreertos.a": {
         "abbrev_name": "libfreertos.a",
-        "size": 20554,
+        "size": 20589,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 9753,
+                "size": 9788,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 9753,
+                        "size": 9788,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }

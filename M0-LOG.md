@@ -3347,3 +3347,24 @@ maximum to 476 ms.
 4. `auth_tag` (HMAC-SHA256/64) on data frames, and the replay window.
 5. Signed, epoch-fenced `SAFE_STATE` with its high-water mark in NVS.
 6. Package signatures verified on the node.
+
+### Step 2 — enrolment, on board C (`75c84c6`)
+
+Each board makes its own Ed25519 key the first time it boots M5 firmware (hardware RNG with the
+radio up, so true random by `esp_random.h`'s own statement; `bootloader_random_enable()` around it
+when the radio is off), stores it in NVS as one blob, and re-derives the public key from the seed on
+every load rather than trusting the stored copy. **The node certificate** is 112 bytes, defined in
+`host/potluck/potluck/enrol.py` and checked by `pot_trust`: node id, the node's key, a 4-byte CA
+fingerprint, an issue time, and the CA's Ed25519 signature under a domain string, so no other CA
+signature can pass as one. A golden certificate is built by `test_enrol.py` and verified by
+`test_trust.cpp`; flipping any of its 112 bytes fails both suites.
+
+**Enrolment is physical**, over the board's own USB console: `POT! id` and `POT! cert <ca> <cert>`.
+On board C (`captures/m5-enrol-C-75c84c6.log`): a genuine certificate for another node was refused
+`wrong_node`; one claiming the real CA but signed by an impostor, `bad_signature`; one for C's id but
+another key, `wrong_key`; a malformed line, `bad_command`; C stayed unenrolled through all four. Then
+`python -m potluck.enrol --port COM5 --ca-key keys/ca.key` enrolled it, and after a reset it kept the
+same key and its enrolment. The console task's 4 KB stack had 1,020 bytes left after a certificate
+check. Static DRAM 58.4 KB of the 64 KB cap.
+
+A and B still run `e8fd0d7`; nothing yet *uses* an identity on the radio. That is step 3.

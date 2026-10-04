@@ -1,0 +1,30 @@
+# M5 step 2 on board C (COM5, node 0x8160), firmware 75c84c6, 2026-10-05.
+# Console output, verbatim. Lines starting "#" are annotations.
+
+# First boot of 75c84c6: no identity in NVS, key generated with the radio up.
+I (287) app_init: App version:      deploy-and-detach-19-g75c84c6
+I (2078) pot.m0: identity: generated this node's key (radio up)
+{"t":"enrol","node":33120,"pub":"0392ff6cd7890c311c0b048061f7b78a8a4c8f2363360d5bc3a19d91996afe04","enrolled":0,"ca_fp":""}
+
+# Refusals (scratchpad enrol_neg.py): each must leave the node unenrolled.
+# cert for another node (genuine CA signature, node id 0x8160 ^ 0x0101)
+{"t":"enrol","result":"wrong_node"}
+# right node and key, real CA fingerprint, signed by an impostor CA
+{"t":"enrol","result":"bad_signature"}
+# right node, real CA signature, somebody else's public key
+{"t":"enrol","result":"wrong_key"}
+# "POT! cert 1234 zz"
+{"t":"enrol","result":"bad_command"}
+{"t":"enrol","node":33120,"pub":"0392ff6cd7890c311c0b048061f7b78a8a4c8f2363360d5bc3a19d91996afe04","enrolled":0,"ca_fp":""}
+
+# python -m potluck.enrol --port COM5 --ca-key keys/ca.key
+enrolled node 0x8160 on COM5 under CA dece916c48141a2c
+certificate 504e433101016081ef76cc2ed9dbc26a0392ff6cd7890c311c0b048061f7b78a8a4c8f2363360d5bc3a19d91996afe043ce9ec2687b0df426477f1284069239f2e748ad44bbbd1955963459515307b2bf69ca7b303b098c84c8c77d7140fb146399c20704e5c641b85201976a4258d03
+
+# After a reset: same key (not regenerated), still enrolled, CA fingerprint ef76cc2e.
+I (287) app_init: App version:      deploy-and-detach-19-g75c84c6
+{"t":"enrol","node":33120,"pub":"0392ff6cd7890c311c0b048061f7b78a8a4c8f2363360d5bc3a19d91996afe04","enrolled":1,"ca_fp":"ef76cc2e"}
+
+# Console task stack after an Ed25519 certificate check
+{"t":"enrol","result":"wrong_node"}
+{"t":"console","stack_free_min_b":1020,"stack_b":4096}

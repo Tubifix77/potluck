@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xbdb10 bytes. Smallest app partition is 0x100000 bytes. 0x424f0 bytes (26%) free.
+potluck_m0.bin binary size 0xbdb80 bytes. Smallest app partition is 0x100000 bytes. 0x42480 bytes (26%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -41,9 +41,9 @@ Executing "ninja size-components"...
 
 │ liblwip.a                       │      64913 │    0 │     0 │        0 │  2482 │  2470 │    12 │     0 │      59535 │  59535 │       2896 │      0 │    2896 │        0 │        0 │             0 │        0 │           0 │
 
-│ libesp_stdio.a                  │      60036 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      59626 │      0 │   59626 │        0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      60088 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      59678 │      0 │   59678 │        0 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      38711 │    0 │     0 │        0 │ 31454 │ 31436 │    18 │     0 │       7161 │   7161 │         96 │      0 │      96 │        0 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      36690 │    0 │     0 │        0 │ 29406 │ 29388 │    18 │     0 │       7188 │   7188 │         96 │      0 │      96 │        0 │        0 │             0 │        0 │           0 │
 
 │ libphy.a                        │      34375 │ 1516 │  1516 │        0 │  5005 │    86 │  1277 │  3642 │      27854 │  27854 │          0 │      0 │       0 │        0 │        0 │             0 │        0 │           0 │
 
@@ -53,7 +53,7 @@ Executing "ninja size-components"...
 
 │ libspi_flash.a                  │      21069 │ 1274 │  1274 │        0 │ 17389 │    24 │  8080 │  9285 │       1264 │   1264 │       1142 │      0 │    1142 │        0 │        0 │             0 │        0 │           0 │
 
-│ libfreertos.a                   │      20554 │  340 │   340 │        0 │  8828 │   764 │  3108 │  4956 │       9753 │   9753 │       1633 │      0 │    1633 │        0 │        0 │             0 │        0 │           0 │
+│ libfreertos.a                   │      20589 │  340 │   340 │        0 │  8828 │   764 │  3108 │  4956 │       9788 │   9788 │       1633 │      0 │    1633 │        0 │        0 │             0 │        0 │           0 │
 
 │ libmonocypher.a                 │      16229 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      12425 │  12425 │       3804 │      0 │    3804 │        0 │        0 │             0 │        0 │           0 │
 
