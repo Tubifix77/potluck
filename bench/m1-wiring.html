@@ -50,6 +50,11 @@ code, .k { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; back
 .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; color: var(--muted); font-size: 0.9rem; }
 .sw { display: inline-block; width: 22px; height: 4px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
 .src { color: var(--muted); font-size: 0.85rem; margin-top: 24px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.tabs button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--fg); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.dim { opacity: .35; }
 </style>
 </head>
 <body>
@@ -61,6 +66,11 @@ code, .k { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; back
 Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on the other header: those are the console, already used by the USB cable. And <strong>never connect the adapter's <span class="k">3V3</span> or <span class="k">+5V</span> pins</strong> to anything.</div>
 
 <div class="card diagram">
+<div class="tabs" role="tablist" aria-label="Which step to show">
+  <button data-step="1" role="tab">Step 1</button>
+  <button data-step="2" role="tab">Step 2</button>
+  <button data-step="3" role="tab">Step 3 (finished)</button>
+</div>
 <svg viewBox="0 0 760 610" role="img" aria-label="Board A's two pin headers, the CP2102 adapter, and the wires for steps 1, 2 and 3">
   <defs>
     <style>
@@ -97,25 +107,31 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
   <g id="adp"></g>
 
   <!-- Wires -->
-  <!-- step 1: loopback TX<->RX on the adapter -->
+  <!-- step 1: loopback TXD<->RXD on the adapter -->
+  <g id="w1">
   <path d="M 206 320 C 236 320, 236 350, 206 350" fill="none" stroke="var(--loop)" stroke-width="3" stroke-dasharray="6 4"/>
-  <text x="30" y="460" class="cap">step 1 only (dashed): TXD looped to RXD</text>
+  </g>
+  <text id="stepcap" x="30" y="470" class="capb"></text>
 
   <!-- step 2: GND -> J1-22 G ; J1-10 "17" -> adapter RX -->
+  <g id="w2">
   <path d="M 206 380 C 280 380, 280 552, 346 552" fill="none" stroke="var(--gnd)" stroke-width="3"/>
   <path d="M 346 312 C 300 312, 300 350, 206 350" fill="none" stroke="var(--s2)" stroke-width="3"/>
+  </g>
 
   <!-- step 3: adapter TX -> resistor -> J1-11 "18" -->
+  <g id="w3">
   <path d="M 206 320 L 226 320" fill="none" stroke="var(--s3)" stroke-width="3"/>
   <polyline points="226,320 230,313 238,327 246,313 254,327 262,313 266,320" fill="none" stroke="var(--s3)" stroke-width="2.5"/>
   <path d="M 266 320 C 300 320, 310 332, 346 332" fill="none" stroke="var(--s3)" stroke-width="3"/>
   <text x="241" y="306" class="capb">R</text>
+  </g>
 </svg>
 <div class="legend">
-  <span><span class="sw" style="background:var(--loop)"></span>step 1: loopback, adapter only</span>
-  <span><span class="sw" style="background:var(--gnd)"></span>step 2: ground</span>
-  <span><span class="sw" style="background:var(--s2)"></span>step 2: board 17 → adapter RXD (safe)</span>
-  <span><span class="sw" style="background:var(--s3)"></span>step 3: adapter TXD → R (1–10 kΩ resistor) → board 18, the risky one</span>
+  <span data-for="1"><span class="sw" style="background:var(--loop)"></span>step 1: one wire, TXD to RXD on the adapter. No wire to the board</span>
+  <span data-for="2 3"><span class="sw" style="background:var(--gnd)"></span>ground</span>
+  <span data-for="2 3"><span class="sw" style="background:var(--s2)"></span>board 17 → adapter RXD (safe)</span>
+  <span data-for="3"><span class="sw" style="background:var(--s3)"></span>adapter TXD → R (1–10 kΩ resistor) → board 18, the risky one</span>
 </div>
 </div>
 
@@ -186,6 +202,30 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
     });
   }
   header("j1", J1, 352, "L");
+  var CAPS = {
+    "1": "Step 1: the adapter alone. Board A is not wired; leave it as it is.",
+    "2": "Step 2: loop wire removed. Two wires to A, with A unplugged while wiring.",
+    "3": "Step 3: all three wires. This is the finished setup."
+  };
+  function show(n) {
+    document.getElementById("w1").style.display = n === "1" ? "" : "none";
+    document.getElementById("w2").style.display = n === "1" ? "none" : "";
+    document.getElementById("w3").style.display = n === "3" ? "" : "none";
+    document.getElementById("stepcap").textContent = CAPS[n];
+    document.querySelectorAll(".tabs button").forEach(function (b) {
+      b.setAttribute("aria-selected", b.getAttribute("data-step") === n ? "true" : "false");
+    });
+    document.querySelectorAll(".legend [data-for]").forEach(function (sp) {
+      sp.style.display = sp.getAttribute("data-for").split(" ").indexOf(n) >= 0 ? "" : "none";
+    });
+    document.querySelectorAll(".step").forEach(function (c, i) {
+      c.classList.toggle("dim", String(i + 1) !== n);
+    });
+    try { localStorage.setItem("m1-wiring-step", n); } catch (e) {}
+  }
+  document.querySelectorAll(".tabs button").forEach(function (b) {
+    b.addEventListener("click", function () { show(b.getAttribute("data-step")); });
+  });
   header("j3", J3, 568, "R");
   // highlight callouts for 17 and 18
   var g = document.getElementById("j1");
@@ -201,6 +241,9 @@ Not the pins printed <span class="k">TX</span> / <span class="k">RX</span> on th
     ga.appendChild(el("text", { x: 186, y: p[1] + 4, "text-anchor": "end", "class": "capb" }, p[0]));
     if (p[2]) ga.appendChild(el("text", { x: 50, y: p[1] + 4, "class": "cap", fill: "var(--bad)" }, "don't connect"));
   });
+  var start = "1";
+  try { start = localStorage.getItem("m1-wiring-step") || "1"; } catch (e) {}
+  show(start);
 })();
 </script>
 </body>
