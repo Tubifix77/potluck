@@ -1,0 +1,32 @@
+I (144801) pot.m0: deploy: committed counter 3 to slot B, on trial from the next boot
+W (146316) pot.m0: deploy: rebooting into the new slot
+rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+I (288) app_init: App version:      first-silicon-39-g0dd9645
+I (554) pot.epoch: boot epoch 13
+I (2076) pot.m0: deploy: image counter 3, digest 543fbed0..., 6 actor(s) in the image
+I (2076) pot.m0: deploy: boot trial, running slot B ON TRIAL, trial boot 1/3, counter 3
+I (2080) pot.m0: Potluck M0 node 0x8160 epoch 13, heartbeat 100 ms x 6 misses = 600 ms
+E (3348) pot.m0: deploy: fault actor firing at 3002 ms, as configured
+abort() was called at PC 0x4200e837 on core 0
+rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+I (288) app_init: App version:      first-silicon-39-g0dd9645
+I (551) pot.epoch: boot epoch 14
+I (2073) pot.m0: deploy: image counter 3, digest 543fbed0..., 6 actor(s) in the image
+I (2073) pot.m0: deploy: boot trial, running slot B ON TRIAL, trial boot 2/3, counter 3
+I (2077) pot.m0: Potluck M0 node 0x8160 epoch 14, heartbeat 100 ms x 6 misses = 600 ms
+E (3348) pot.m0: deploy: fault actor firing at 3002 ms, as configured
+abort() was called at PC 0x4200e837 on core 0
+rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+I (288) app_init: App version:      first-silicon-39-g0dd9645
+I (556) pot.epoch: boot epoch 15
+I (2078) pot.m0: deploy: image counter 3, digest 543fbed0..., 6 actor(s) in the image
+I (2078) pot.m0: deploy: boot trial, running slot B ON TRIAL, trial boot 3/3, counter 3
+I (2082) pot.m0: Potluck M0 node 0x8160 epoch 15, heartbeat 100 ms x 6 misses = 600 ms
+E (3353) pot.m0: deploy: fault actor firing at 3007 ms, as configured
+abort() was called at PC 0x4200e837 on core 0
+rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+I (288) app_init: App version:      first-silicon-39-g0dd9645
+I (557) pot.epoch: boot epoch 16
+I (2079) pot.m0: deploy: image counter 2, digest 07759479..., 3 actor(s) in the image
+I (2079) pot.m0: deploy: boot reverted, running slot A, trial boot 0/3, counter 3
+I (2083) pot.m0: Potluck M0 node 0x8160 epoch 16, heartbeat 100 ms x 6 misses = 600 ms

@@ -3064,3 +3064,82 @@ and this one. Each was a bug in shipping code, not in the bench.
   republishes all sys/* only every `CONFIG_POT_STATS_INTERVAL_MS` = **10,000 ms**, so both are STALE
   for half of every cycle on every board, by construction. The quality is honest; the bound and the
   publish interval disagree, and one of them should change.
+
+## Session 18 — 2026-10-04, M3 accepted on hardware: deploy, detach, and three nodes reverting themselves
+
+§13-M3: *"deploy a behaviour change to 3 nodes, unplug the host, power-cycle the whole mesh, and it
+comes up doing the new thing. Then deploy a deliberately broken module and watch all 3 nodes revert
+themselves."* Both halves have been run on the three boards, on firmware `0dd9645` (ELF `4aa0c93f…`,
+verified on each board).
+
+### What was built (commit `0dd9645`)
+
+**A module is a built-in native actor plus its configuration** (ADR-003 Tier 0). A deployment changes
+what a node does, not what it runs. Two built-ins: `led`, the status LED's healthy appearance (blue,
+yellow and red keep their diagnostic meaning, so no deployment can make a failing link look
+healthy), and `fault`, a test actor that aborts the node after a delay so that revert can be
+exercised.
+
+- **A/B slots** in two raw 64 KB data partitions, `modA` and `modB`. §7.4 says LittleFS, but a slot
+  holds one blob of at most 512 B and LittleFS is not part of ESP-IDF, so §7.4 now carries a note to
+  that effect. `partitions.csv` writes the stock entries at their explicit offsets so NVS cannot
+  move, which was verified on the built table and then on hardware: the boot epochs continued across
+  the reflash.
+- **The trial.** A new slot boots `PENDING`. The trial count is persisted *before* the slot runs, so
+  a crash has already been counted when it happens. Three failed boots revert the slot; a slot that
+  will not load reverts at once; 100 heartbeats (10 s) confirm it. §7.4 says 10 heartbeats, which at
+  100 ms is one second and would confirm a module that fails a few seconds in. `CONFIG_POT_TRIAL_HEARTBEATS`
+  records the reason.
+- **Refusals.** No deployment is accepted while a trial is in progress, because it would overwrite
+  the trial's fallback. A lower rollback counter is refused (anti-downgrade).
+- **One artifact per system.** The host is cabled to A alone. A commits the package, passes it to
+  every peer it can reach over one hop each, answers the host once they have committed, and reboots.
+  The whole cell is reached from one connection without v2 frame forwarding.
+- **Signatures.** The package is signed and verified on the host; the node carries the manifest
+  digest and the counter. Verifying the signature on the node is M5's, as the README already scoped.
+- **Cost:** 1.2 KB of core static DRAM (52.5 → 53.7 KB of 64). The first cut was 4.7 KB, from two
+  2 KB buffers for an image whose maximum is 184 B.
+- **Tests:** 15 C++ and 10 Python, plus a golden image compiled by the host and parsed by the node
+  tests. 191 C++ and 243 Python cases pass.
+
+### The acceptance, as it ran
+
+| step | what happened |
+|---|---|
+| A alone first | Cyan deployed to A only (`--local-only`, counter 1). A rebooted, ran it on trial, and logged `trial passed after 100 heartbeats - slot A CONFIRMED`. That was the owner's rule (prove one board before the others), and B and C were flashed after it. |
+| **behaviour change to 3 nodes** | Purple (counter 2) sent once, to A. `committed on 0x6300 and passed on: 2 peer(s) committed, 0 failed`. All three logged `trial passed … CONFIRMED`, A in slot B and B and C in slot A. All three blinked purple. |
+| **unplug the host, power-cycle the mesh** | The owner unplugged everything from the PC (adapter and all three boards) and moved all three to a mains charger. All three came up **blinking purple**: the deployed behaviour, cold-booted, with no host anywhere. |
+| **deliberately broken module** | Orange + `fault` at 3,000 ms (counter 3), sent to A and passed on: `2 peer(s) committed, 0 failed`. On **each** board: trial boot 1/3, fault at ~3.0 s, abort; 2/3, abort; 3/3, abort; then `boot reverted`, running the counter-2 image (digest `07759479…`) again. **All three reverted themselves, independently, with no host involved in the recovery.** Console logs: `captures/m3-broken-revert-{A,B,C}-*.log`. |
+
+**M3 is accepted.**
+
+One consequence worth stating: after the revert each node runs the counter-2 image but has
+*committed* counter 3, so its anti-downgrade floor is 3. Re-sending the purple package would now be
+refused as a downgrade. A fixed version has to be signed at counter 4 or above. That is the intended
+behaviour of §7.4 step 6.
+
+### Things I got wrong on the way, corrected
+
+- **The adapter left wired to a board without its own USB power is partly powered through the
+  signal wire.** I said it was harmless; the adapter's red LED came on and showed otherwise. It is
+  unlikely to damage anything at that current, but it is not acceptable practice. The rule now: the
+  adapter is never wired to a board unless the adapter itself is plugged in.
+- **The first broken-module attempt sent nothing.** potctl's HELLO went unanswered (exit 3), most
+  likely because the adapter had been plugged in seconds earlier, the same transient seen when it
+  was first installed. My output filter hid potctl's own explanation, because its diagnostics start
+  with `#`. The retry, with those lines shown, worked.
+- **Board identity after replugging** was checked, not assumed. Windows ties each COM number to the
+  CH343's serial number, and each board's console reported its node id: COM3 = A, COM4 = B, COM5 = C,
+  unchanged.
+
+### Open
+
+- The Python suite has shown one warning intermittently: three times in about fifteen runs, never on
+  demand, and with no summary captured. It is not explained.
+- The two cosmetic firmware defects (admission `reorder_dup`, `peer_admitted` every hello) and the
+  sys/* bound vs publish-interval mismatch from session 17 are still queued.
+
+### Next
+
+M4's remaining half, then M5 (the node verifies signatures; enrolment; the counter in flash is
+already there).

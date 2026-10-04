@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "system": "m3-bench",
+  "min_core_version": 1,
+  "nodes": [
+    {
+      "node_id": 25344,
+      "label": "A"
+    },
+    {
+      "node_id": 29544,
+      "label": "B"
+    },
+    {
+      "node_id": 33120,
+      "label": "C"
+    }
+  ],
+  "actors": [
+    {
+      "name": "led_a",
+      "module": "builtin:led",
+      "latency_class": 4,
+      "pin": 25344,
+      "config": {
+        "r": 160,
+        "g": 0,
+        "b": 200,
+        "blink": true,
+        "period_ms": 1500
+      }
+    },
+    {
+      "name": "led_b",
+      "module": "builtin:led",
+      "latency_class": 4,
+      "pin": 29544,
+      "config": {
+        "r": 160,
+        "g": 0,
+        "b": 200,
+        "blink": true,
+        "period_ms": 1500
+      }
+    },
+    {
+      "name": "led_c",
+      "module": "builtin:led",
+      "latency_class": 4,
+      "pin": 33120,
+      "config": {
+        "r": 160,
+        "g": 0,
+        "b": 200,
+        "blink": true,
+        "period_ms": 1500
+      }
+    }
+  ]
+}

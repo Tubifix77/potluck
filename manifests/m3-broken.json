@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "system": "m3-bench",
+  "min_core_version": 1,
+  "nodes": [
+    {
+      "node_id": 25344,
+      "label": "A"
+    },
+    {
+      "node_id": 29544,
+      "label": "B"
+    },
+    {
+      "node_id": 33120,
+      "label": "C"
+    }
+  ],
+  "actors": [
+    {
+      "name": "led_a",
+      "module": "builtin:led",
+      "latency_class": 4,
+      "pin": 25344,
+      "config": {
+        "r": 255,
+        "g": 80,
+        "b": 0,
+        "blink": false,
+        "period_ms": 1000
+      }
+    },
+    {
+      "name": "led_b",
+      "module": "builtin:led",
+      "latency_class": 4,
+      "pin": 29544,
+      "config": {
+        "r": 255,
+        "g": 80,
+        "b": 0,
+        "blink": false,
+        "period_ms": 1000
+      }
+    },
+    {
+      "name": "led_c",
+      "module": "builtin:led",
+      "latency_class": 4,
+      "pin": 33120,
+      "config": {
+        "r": 255,
+        "g": 80,
+        "b": 0,
+        "blink": false,
+        "period_ms": 1000
+      }
+    },
+    {
+      "name": "fault_a",
+      "module": "builtin:fault",
+      "latency_class": 4,
+      "pin": 25344,
+      "config": {
+        "panic_after_ms": 3000
+      }
+    },
+    {
+      "name": "fault_b",
+      "module": "builtin:fault",
+      "latency_class": 4,
+      "pin": 29544,
+      "config": {
+        "panic_after_ms": 3000
+      }
+    },
+    {
+      "name": "fault_c",
+      "module": "builtin:fault",
+      "latency_class": 4,
+      "pin": 33120,
+      "config": {
+        "panic_after_ms": 3000
+      }
+    }
+  ]
+}

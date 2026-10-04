@@ -1,0 +1,36 @@
+I (166495) pot.m0: deploy: committed counter 3 to slot A, on trial from the next boot
+I (166495) pot.m0: deploy: passing it on to 2 peer(s)
+I (166541) pot.m0: deploy: peer 0x8160 committed
+I (166589) pot.m0: deploy: peer 0x7368 committed
+I (166589) pot.m0: deploy: passed on to 2 peer(s), 0 failed; rebooting into slot A
+W (168098) pot.m0: deploy: rebooting into the new slot
+rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+I (288) app_init: App version:      first-silicon-39-g0dd9645
+I (545) pot.epoch: boot epoch 21
+I (2066) pot.m0: deploy: image counter 3, digest 543fbed0..., 6 actor(s) in the image
+I (2066) pot.m0: deploy: boot trial, running slot A ON TRIAL, trial boot 1/3, counter 3
+I (2070) pot.m0: Potluck M0 node 0x6300 epoch 21, heartbeat 100 ms x 6 misses = 600 ms
+E (3361) pot.m0: deploy: fault actor firing at 3015 ms, as configured
+abort() was called at PC 0x4200e837 on core 0
+rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+I (288) app_init: App version:      first-silicon-39-g0dd9645
+I (543) pot.epoch: boot epoch 22
+I (2065) pot.m0: deploy: image counter 3, digest 543fbed0..., 6 actor(s) in the image
+I (2065) pot.m0: deploy: boot trial, running slot A ON TRIAL, trial boot 2/3, counter 3
+I (2069) pot.m0: Potluck M0 node 0x6300 epoch 22, heartbeat 100 ms x 6 misses = 600 ms
+E (3347) pot.m0: deploy: fault actor firing at 3001 ms, as configured
+abort() was called at PC 0x4200e837 on core 0
+rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+I (288) app_init: App version:      first-silicon-39-g0dd9645
+I (546) pot.epoch: boot epoch 23
+I (2068) pot.m0: deploy: image counter 3, digest 543fbed0..., 6 actor(s) in the image
+I (2068) pot.m0: deploy: boot trial, running slot A ON TRIAL, trial boot 3/3, counter 3
+I (2072) pot.m0: Potluck M0 node 0x6300 epoch 23, heartbeat 100 ms x 6 misses = 600 ms
+E (3358) pot.m0: deploy: fault actor firing at 3012 ms, as configured
+abort() was called at PC 0x4200e837 on core 0
+rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+I (288) app_init: App version:      first-silicon-39-g0dd9645
+I (543) pot.epoch: boot epoch 24
+I (2066) pot.m0: deploy: image counter 2, digest 07759479..., 3 actor(s) in the image
+I (2066) pot.m0: deploy: boot reverted, running slot B, trial boot 0/3, counter 3
+I (2070) pot.m0: Potluck M0 node 0x6300 epoch 24, heartbeat 100 ms x 6 misses = 600 ms

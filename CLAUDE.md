@@ -12,10 +12,11 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0, M1 and M2 are ACCEPTED on hardware (2026-10-04).** M2: a 10.05-minute three-board session over COM6
+**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04).** M3: deploy to the cell through one board,
+detach and power-cycle, and a broken module that all three nodes revert themselves (M0-LOG session 18). M2: a 10.05-minute three-board session over COM6
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
-board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **Next: M3, deploy and detach.**
+board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **Next: M4's CAN half, then M5.**
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
@@ -31,7 +32,13 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## M0 AND M1 ARE ACCEPTED. All three boards run `12ab64d` (stamp `0b422c7`, ELF `919f4daa…`).
+> ## M0-M3 ARE ACCEPTED. All three boards run `0dd9645` (ELF `4aa0c93f…`): M3's deploy firmware.
+>
+> **Deploy:** keys in `keys/` (gitignored: `ca.pub`, `deploy.key`, `deploy.cert`). Sign with
+> `python -m potluck.signing sign manifests/<m>.json --key keys/deploy.key --cert keys/deploy.cert
+> --counter N --out keys/<m>.pkg.json`; deploy with `python -m potluck.ctl --port COM6 --node 6300 deploy
+> keys/<m>.pkg.json --ca keys/ca.pub`. **The boards' anti-downgrade floor is counter 3**: sign the next
+> package at 4+. **Never leave the CP2102 wired to a board unless the adapter is itself plugged in.**
 >
 > **The frame link:** CP2102 (HW-598A) on **COM6**, wired adapter TXD→A's GPIO18, RXD→A's GPIO17,
 > GND→G (`bench/m1-wiring.html`). `python -m potluck.ctl --port COM6 --node <id> watch sys/uptime`.

@@ -417,6 +417,10 @@ The lifecycle from Vision Document 3 is retained. The storage design changes, be
 
 - **NVS** — node identity, cluster public key, role, bind table, rollback counter, active slot pointer. Small values, exactly what NVS is for.
 - **LittleFS partition** — module images and manifests, in **A/B slots**.
+  *As built (M3, 2026-10-04): two raw data partitions, `modA` and `modB`, one image each, with a header
+  carrying length and CRC. Under ADR-003 Tier 0 an image is a list of built-in actors and their
+  configuration, at most 512 B, so a filesystem bought nothing; and LittleFS is not part of ESP-IDF.
+  Revisit when a package carries more than one file per node.*
 
 **The deploy unit is the cluster application package — one artifact per system, not per node.** "You make a singular software package for the whole car" is the vision sentence this section implements. The package holds every actor, binding, policy and asset for the system; developers declare *constraints* (this actor needs `/car/lights/rear/left`, which pins it; this one needs ≥40 KB headroom and class L4), and the build tool resolves placement — pinned actors to the nodes physics dictates, portable actors via the same deterministic assignment function the reconciler uses (§7.7) — then **freezes the resolution into the signed manifest**, so what-runs-where is inspectable and reproducible, never improvised at runtime. Hand-written node pins remain available as overrides, not as the norm. No application code ever names a node.
 
@@ -427,7 +431,7 @@ The lifecycle from Vision Document 3 is retained. The storage design changes, be
 1. **Build.** Toolchain compiles the modules, runs the Locality Contract check (§4), resolves constraint-based placement, and emits the package manifest: module hashes, declared classes, resource bindings, frozen placement, min core version.
 2. **Sign.** Manifest signed with the cluster deploy key. The signature covers the module hash, so the image cannot be swapped.
 3. **Dispatch.** `DEPLOY_BEGIN` / `DEPLOY_CHUNK` / `DEPLOY_COMMIT` to the inactive slot. Each node verifies the signature **before** commit.
-4. **Commit with a trial period.** New slot marked `PENDING`. The node reboots into it. It must send `HEARTBEAT` with `slot_ok` **N times** (default 10) before the slot is marked `CONFIRMED`. Otherwise the bootloader-level counter reverts it to the previous slot. This is the single feature that makes detaching a 30-node mesh survivable.
+4. **Commit with a trial period.** New slot marked `PENDING`. The node reboots into it. It must send `HEARTBEAT` with `slot_ok` **N times** (default 10) before the slot is marked `CONFIRMED`. *As built: N = 100 (`CONFIG_POT_TRIAL_HEARTBEATS`), because at a 100 ms heartbeat ten is one second, which confirms a module that fails a few seconds in; and a failed trial is retried for 3 boots (`CONFIG_POT_TRIAL_MAX_BOOTS`) before the revert.* Otherwise the bootloader-level counter reverts it to the previous slot. This is the single feature that makes detaching a 30-node mesh survivable.
 5. **Detach.** Host removed. Nodes cold-boot from the confirmed slot, autonomously, indefinitely.
 6. **Rollback counter** in NVS is monotonic and refuses manifests with a lower counter — anti-downgrade (§9.3).
 
