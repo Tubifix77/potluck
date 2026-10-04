@@ -8,13 +8,18 @@
 | licence | dual: 2-clause BSD or CC-0, recipient's choice (`LICENCE.md`, verbatim). Potluck takes it under the BSD licence, which `NOTICE` records |
 | modified | **no** — the five files below are byte-identical to the tag |
 
-| file | upstream path | sha256 |
-|---|---|---|
-| `monocypher.c` | `src/monocypher.c` | `91594377d2044c7212e88aeeab7fb5a03078f4face45e50a5b0635b52d8f89b7` |
-| `monocypher.h` | `src/monocypher.h` | `7911a870e0b26d301ec552015b89abc70091ae81e8830385791e936a8f828c65` |
-| `monocypher-ed25519.c` | `src/optional/monocypher-ed25519.c` | `bdece3b1c55790527fe054fd7230aee0dcfa76cb564ffa6f3129eec0dac9af2a` |
-| `monocypher-ed25519.h` | `src/optional/monocypher-ed25519.h` | `40d90a7e146929e961ef6900f8c471b6fe1a8c4ce41d0bf063d371e5ffd5baf2` |
-| `LICENCE.md` | `LICENCE.md` | `035c7355e948ce49e49f7c4e500ebabe79135f1b46080149649d144a02c23fe5` |
+| file | upstream path | sha256 | git blob (equals upstream's) |
+|---|---|---|---|
+| `monocypher.c` | `src/monocypher.c` | `f1f838cdd483bdebe0df0ff5c5ed60535e496f769c6a2f933ac4c0b114207123` | `c7c5450e84e4dffda44514d9f918162f1830de56` |
+| `monocypher.h` | `src/monocypher.h` | `fcaf6ed771358bb4f40fba016f6518ae86ec02b1b877d2cc35ad92d3a26fd7b3` | `cf635e88e4f5851e1f58a9e2b3e85b8029a73861` |
+| `monocypher-ed25519.c` | `src/optional/monocypher-ed25519.c` | `ce0d2f8e32ca8f66398ba5b3456cc74327c3eff14e7b950ce7d57be9025cc453` | `4fdd07641e1c4d54a348e95d0ab05c28f84654a6` |
+| `monocypher-ed25519.h` | `src/optional/monocypher-ed25519.h` | `3a3035181f991a158d0e1c7567258f0bae8ba0f1f23c5512b4a1db1b3c9730ce` | `d7aa004123e1d38b891fdabd4171fbf9957242ae` |
+| `LICENCE.md` | `LICENCE.md` | `a5781770269d2516e52ba4863f790c10a16da4089a1e81823aee19ff1e9026b0` | `9d69ad72ec113a743264d34dd86a5c04d0c42d35` |
+
+**Check it:** `git hash-object <file>` must print the blob id above, which is the id of the same path
+in upstream's tag (`git rev-parse 4.0.3:<upstream path>`). The first copy committed here (`fd30b31`)
+was NOT byte-identical: a Windows clone had converted it to CRLF line endings, and its hashes were of
+the converted bytes. Copy files out of a clone with `git show 4.0.3:<path>`, never from the checkout.
 
 **Why it is here.** M5 must decide Ed25519 against P-256 on measured verify cost on the node. The
 ESP-IDF v6.0.2 tree ships mbedTLS 4.1.0, which implements P-256 ECDSA and X25519 but not EdDSA (only
