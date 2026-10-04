@@ -161,7 +161,7 @@ NsError Namespace::publish(uint32_t hash, const Value& v, uint32_t now_ms) {
 }
 
 NsError Namespace::apply_remote(uint32_t hash, const Value& v, uint32_t sampled_ms,
-                                uint32_t local_now_ms, bool faulty) {
+                                uint32_t local_now_ms, uint32_t owner_age_ms, bool faulty) {
     NsEntry* e = find(hash);
     if (e == nullptr) {
         return NsError::NotFound;
@@ -179,11 +179,16 @@ NsError Namespace::apply_remote(uint32_t hash, const Value& v, uint32_t sampled_
         e->flags &= static_cast<uint8_t>(~kNsFlagFaulty);
     }
 
-    // Age will be measured from arrival on *our* clock. The owner's timestamp cannot be subtracted
-    // from our clock — they are unsynchronised, and the difference would be an offset rather than
-    // an age. Arrival is conservative: never younger than the truth.
+    // Age is measured on *our* clock: the owner's timestamp cannot be subtracted from it, because
+    // the clocks are unsynchronised and the difference would be an offset, not an age. But the
+    // sample was already `owner_age_ms` old when the owner answered -- a duration, which does
+    // survive -- so the arrival is backdated by that much. The earlier version used plain arrival
+    // and called it "conservative: never younger than the truth". It was the opposite: on
+    // 2026-10-04 board A reported board B's uptime as ~1 s old on three reads in a row while B's
+    // own timestamp on it never moved. Age is now owner's age + time since arrival; only the
+    // one-way transit (milliseconds) is left out.
     const size_t i = static_cast<size_t>(e - entries_);
-    arrived_ms_[i] = local_now_ms;
+    arrived_ms_[i] = local_now_ms - owner_age_ms;  // unsigned: read() subtracts the same way
     return NsError::Ok;
 }
 

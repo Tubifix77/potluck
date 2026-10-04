@@ -698,7 +698,7 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
     const uint32_t now = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
     // The owner's timestamp is carried through untouched; the age will be measured from arrival on
     // our clock, because the two clocks are unsynchronised.
-    ns_.apply_remote(rep.path_hash, v, rep.timestamp_ms, now,
+    ns_.apply_remote(rep.path_hash, v, rep.timestamp_ms, now, rep.age_ms,
                      static_cast<Quality>(rep.quality) == Quality::Faulty);
 }
 

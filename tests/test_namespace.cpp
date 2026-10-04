@@ -115,7 +115,7 @@ TEST(ns, a_dead_owner_outranks_a_fresh_cache) {
     Namespace ns;
     const uint32_t h = path_hash("potluck://lab/node-02/adc/0");
     ns.declare(sampled(h, kOther, 5000));
-    ns.apply_remote(h, Value::of_f32(1.0f), 900, 1000, false);
+    ns.apply_remote(h, Value::of_f32(1.0f), 900, 1000, /*owner_age_ms=*/0, false);
 
     Reading r;
     ns.read(h, 1001, /*owner_alive=*/true, r);
@@ -270,7 +270,8 @@ TEST(ns, a_remote_value_ages_from_arrival_not_from_the_owners_clock) {
     ns.declare(sampled(h, kOther, 1000));
 
     // The owner's clock reads 500,000; ours reads 1,000. Both are legitimate.
-    ns.apply_remote(h, Value::of_f32(9.81f), /*sampled_ms=*/500000, /*local_now_ms=*/1000, false);
+    ns.apply_remote(h, Value::of_f32(9.81f), /*sampled_ms=*/500000, /*local_now_ms=*/1000,
+                    /*owner_age_ms=*/0, false);
 
     Reading r;
     ns.read(h, 1200, true, r);
@@ -283,7 +284,7 @@ TEST(ns, a_faulty_sensor_is_reported_as_faulty_not_as_good) {
     Namespace ns;
     const uint32_t h = path_hash("potluck://lab/node-02/temp");
     ns.declare(sampled(h, kOther, 5000));
-    ns.apply_remote(h, Value::of_f32(-999.0f), 100, 100, /*faulty=*/true);
+    ns.apply_remote(h, Value::of_f32(-999.0f), 100, 100, /*owner_age_ms=*/0, /*faulty=*/true);
 
     Reading r;
     ns.read(h, 150, true, r);

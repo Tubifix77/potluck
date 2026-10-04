@@ -153,8 +153,12 @@ class Namespace {
     NsError write_local(uint32_t hash, const Value& v, uint32_t now_ms);
 
     // Fold in a value that arrived from the owning node. `sampled_ms` is the *owner's* timestamp
-    // from the wire; `local_now_ms` is ours. See the note in read() about which clock ages use.
+    // from the wire; `local_now_ms` is ours. `owner_age_ms` is how old the owner said the sample
+    // already was when it answered -- a duration on the owner's clock, which survives the two clocks
+    // being unsynchronised where a timestamp does not. Required, not defaulted: a caller that
+    // forgets it reports an old sample as young, which is the bug this parameter exists to fix.
     NsError apply_remote(uint32_t hash, const Value& v, uint32_t sampled_ms, uint32_t local_now_ms,
+                         uint32_t owner_age_ms,
                          bool faulty);
 
     // Read, per §4 rule 2. `owner_alive` comes from membership (§8.2) — the namespace does not

@@ -482,3 +482,29 @@ TEST(m1, a_read_for_a_path_no_peer_owns_is_not_adopted) {
     CHECK_EQ(c.replies_to_0.size(), static_cast<size_t>(1));
     CHECK_EQ(static_cast<int>(c.replies_to_0.back().status), static_cast<int>(NsError::NotFound));
 }
+
+TEST(m1, a_replica_is_as_old_as_the_owners_sample_not_as_its_arrival) {
+    // Found on hardware: A reported B's uptime ~1 s old on three reads while B's timestamp on the
+    // sample never moved, because the replica's age started at arrival. The owner tells us how old
+    // the sample already was; that has to count.
+    Cell2 c;
+    c.build(2);
+    c.start();
+    c.advance_ms(300);
+    Node& reader = *c.slots[0].node;
+    Node& owner = *c.slots[1].node;
+    declare_both(c, owner.config().node_id, /*bound_ms=*/1000);
+
+    owner.write_local(kAdc0, Value::of_f32(2.5f));
+    c.advance_ms(3000);  // the owner's sample is now 3 s old, against a 1 s bound
+
+    CHECK(reader.request_read(owner.config().node_id, kAdc0) != 0);
+    c.advance_ms(50);
+
+    Reading r;
+    reader.read(kAdc0, r);
+    CHECK(r.age_ms >= 3000);  // the owner's age plus time since arrival, never less
+    CHECK(r.age_ms < 3200);
+    // And the staleness rule sees it: older than its bound is not Good.
+    CHECK(static_cast<int>(r.quality) != static_cast<int>(Quality::Good));
+}
