@@ -9,7 +9,7 @@
   --bg: #f7f6f2; --card: #ffffff; --fg: #1d1d1b; --muted: #66645e; --border: #d9d6cc;
   --board: #1f5f3f; --board-fg: #e8f3ec; --module: #1b4f8a; --module-fg: #e6eefa;
   --pin: #c9b26a; --pin-off: #8a8a80;
-  --w-tx: #d9480f; --w-rx: #1d6fd1; --w-gnd: #3a3a3a; --w-pwr: #c2255c; --w-h: #e8a400; --w-l: #2b8a3e;
+  --w-tx: #7048e8; --w-rx: #1d6fd1; --w-gnd: #111111; --w-pwr: #e03131; --w-h: #f2b600; --w-l: #2b8a3e;
   --warn-bg: #fff1e6; --warn-fg: #8a2d00; --bad: #c92a2a; --bad-bg: #ffe8e8; --hl: #fff3bf;
 }
 @media (prefers-color-scheme: dark) {
@@ -17,7 +17,7 @@
     --bg: #161614; --card: #21211e; --fg: #ecebe6; --muted: #a9a79f; --border: #3a3935;
     --board: #1c4a33; --board-fg: #dcefe3; --module: #1d3f66; --module-fg: #dbe7f7;
     --pin: #d8c27a; --pin-off: #6e6e66;
-    --w-tx: #ff8a4c; --w-rx: #5aa2ff; --w-gnd: #cfcfc8; --w-pwr: #f06595; --w-h: #ffd43b; --w-l: #69db7c;
+    --w-tx: #b197fc; --w-rx: #5aa2ff; --w-gnd: #e9ecef; --w-pwr: #ff6b6b; --w-h: #ffd43b; --w-l: #69db7c;
     --warn-bg: #3a2414; --warn-fg: #ffc59e; --bad: #ff6b6b; --bad-bg: #3a1a1a; --hl: #4a4220;
   }
 }
@@ -25,7 +25,7 @@
   --bg: #161614; --card: #21211e; --fg: #ecebe6; --muted: #a9a79f; --border: #3a3935;
   --board: #1c4a33; --board-fg: #dcefe3; --module: #1d3f66; --module-fg: #dbe7f7;
   --pin: #d8c27a; --pin-off: #6e6e66;
-  --w-tx: #ff8a4c; --w-rx: #5aa2ff; --w-gnd: #cfcfc8; --w-pwr: #f06595; --w-h: #ffd43b; --w-l: #69db7c;
+  --w-tx: #b197fc; --w-rx: #5aa2ff; --w-gnd: #e9ecef; --w-pwr: #ff6b6b; --w-h: #ffd43b; --w-l: #69db7c;
   --warn-bg: #3a2414; --warn-fg: #ffc59e; --bad: #ff6b6b; --bad-bg: #3a1a1a; --hl: #4a4220;
 }
 * { box-sizing: border-box; }
@@ -109,6 +109,9 @@ terminal carries CANH and CANL in parallel with the pins; either works for the b
 <tr><td>9</td><td>module B <span class="k">CANH</span></td><td>module C <span class="k">CANH</span></td><td>H to H</td></tr>
 <tr><td>10</td><td>module B <span class="k">CANL</span></td><td>module C <span class="k">CANL</span></td><td>L to L</td></tr>
 </table>
+<p>Colours follow the usual convention: <strong>red</strong> for power, <strong>black</strong> for ground,
+yellow for CANH, green for CANL. Using the same colours for the real jumper wires makes the finished
+bench easy to check against this page.</p>
 <p>Ten jumper wires. No resistors: each module carries its own 120 Ω terminator, which is exactly right
 for a bus with two nodes, one at each end.</p>
 
