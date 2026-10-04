@@ -406,6 +406,15 @@ could put 5 V on a GPIO rated to ~3.6 V. So:
 No multimeter was ordered, so step 2 is how the 3.3 V claim gets tested without one: if the stream
 decodes, the convention is right, and the remaining risk is confined to one wire added last.
 
+> **~~Step 2 tests the 3.3 V claim~~ — withdrawn 2026-10-04.** It does not. Step 2 sends the
+> *board's* 3.3 V into the adapter's 1.8–5 V-tolerant input, and that decodes whatever the adapter's
+> own `VIO` is. It proves the wiring, the baud and the byte stream; it says nothing about the level
+> the adapter will *drive*, which is the only dangerous direction. Before step 3, the adapter's TX
+> level needs one of: a multimeter reading of its TX pin against GND while idle (should be ~3.3 V,
+> not ~5 V); or a series resistor of 1–10 kΩ in the adapter-TX → board-RX wire, which limits the
+> current into the GPIO's protection diodes if the level turns out to be 5 V; or an explicit decision
+> to accept the seller's "3.3 V signal level" claim at the cost of one board if it is wrong.
+
 **Not a datasheet.** The PDF supplied with the order (`S47e3eaf6a9ed4e11a850141ba34a132f7.pdf`) is
 two pages of EU RoHS/REACH/CE compliance boilerplate for an "Integrated circuit-module" with the
 model field blank. It contains no pinout, no ratings and no CAN timing, and says so itself: *"refer to
