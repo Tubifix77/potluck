@@ -224,6 +224,9 @@ the PC joins the cluster as a peer. That board reaches the others by radio.
 - **Wiring:** [bench/m1-wiring.html](bench/m1-wiring.html) — the adapter, the board's headers from
   Espressif's own pin table, and the three wires step by step, as actually built. GitHub shows the
   file as source; open it in a browser after cloning.
+- **CAN wiring (M4):** [bench/m4-can-wiring.html](bench/m4-can-wiring.html) — two boards, each with an
+  SN65HVD230 transceiver module (the chip that turns logic levels into bus voltages), ten jumper
+  wires, drawn as they sit on the bench.
 - **Bring-up from nothing:** [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
 - **Soak and measurement procedure:** [M0-RUNBOOK.md](M0-RUNBOOK.md).
 
@@ -234,12 +237,20 @@ python -m potluck.ctl --port COM6 --node 7368 watch sys/uptime        # M1: boar
 python -m potluck.ctl --port COM6 --node 6300 deploy pkg.json --ca ca.pub   # M3: a signed package, whole cell
 ```
 
+M4's CAN test runs on two boards built as radio-off variants, read straight off their consoles:
+
+```
+python tools/can_capture.py 300 captures/m4-can.log     # B on COM4 floods, C on COM5 sends SAFE_STATE
+python tools/can_report.py captures/m4-can.log
+```
+
 ## Reading order
 
 | file | what it is |
 |---|---|
 | [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md) | The bench guide: unboxing, the board register, first contact, the soak and the distance sweep, written for a reader who remembers nothing |
 | [bench/m1-wiring.html](bench/m1-wiring.html) | The frame-link wiring, as built: the USB-serial adapter to one board, step by step (open in a browser) |
+| [bench/m4-can-wiring.html](bench/m4-can-wiring.html) | The two-board CAN bus for M4, as built (open in a browser) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the eight decision records, and milestones M0–M8 with accept/kill criteria |
 | [M0-LOG.md](M0-LOG.md) | The decision log, newest session last — including the conclusions that were later **withdrawn**, kept struck-through rather than deleted. The QEMU sessions are a study in how a stale flash image manufactures false evidence |
 | [M0-RUNBOOK.md](M0-RUNBOOK.md) | Bench procedure: build, flash, emulate, soak, and the delay methodology to read *before quoting any number* |
@@ -288,7 +299,7 @@ runtime states them. Here they are:
 - **No one-way latency is ever reported.** Clocks across nodes are unsynchronised, so Potluck
   measures round trips and never divides by two.
 - **Sub-millisecond loops cannot span the network.** The locality contract pins them to the node
-  wired to the hardware; the build-time checker that enforces this lands at M4.
+  wired to the hardware; the build-time checker that enforces this has been in place since M4.
 - **Planned (M6): portable actors re-activate on another node within ~2 s** of their host dying.
   The actor moves; whatever was physically wired to the dead node does not.
 

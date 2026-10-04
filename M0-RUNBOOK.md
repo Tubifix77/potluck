@@ -542,3 +542,46 @@ date — §6's convention, and the difference between a fact and a design budget
 | PDR high but `rx queue overruns` climbing | the link task is behind, not the radio. A Potluck problem, and never folded into PDR |
 | `bad_frame` climbing | something else on the channel, or a truncated frame. `--show-frames` with the tee on will name the rejection reason |
 | A `link` record missing fields | firmware/host skew. `potluck-capture` prints a warning naming unrecognised record types |
+
+## 10. M4: CAN on two boards
+
+Wiring: [bench/m4-can-wiring.html](bench/m4-can-wiring.html). Each board runs a **radio-off variant**
+(v1 has no router, so a node on two transports would appear as two peers), built in its own
+`build-<variant>` directory so it can never be mistaken for the normal build:
+
+```
+tools\build_firmware.ps1 -Clean -Variant can-flood -Extra "CONFIG_POT_RADIO_DISABLE=y","CONFIG_POT_CAN=y","CONFIG_POT_M4_FLOOD=y" -Flash -Port COM4
+tools\build_firmware.ps1 -Clean -Variant can-safe  -Extra "CONFIG_POT_RADIO_DISABLE=y","CONFIG_POT_CAN=y","CONFIG_POT_M4_SAFE_STATE_MS=1000" -Flash -Port COM5
+```
+
+Run builds from PowerShell directly. `-Clean` after a commit re-stamps the version. Check the
+variant's `build-<variant>\sdkconfig` for the `CONFIG_POT_*` lines before trusting a run.
+
+**One board alone:** add `"CONFIG_POT_CAN_LOOPBACK=y"` for the controller's self-test (no
+transceiver needed; RX is put on the TX pin).
+
+**Read, without resetting the boards** (DTR/RTS held low; needs pyserial, which the ESP-IDF Python
+environment has):
+
+```
+python tools\can_capture.py 300 captures\m4-can-<date>.log
+python tools\can_report.py captures\m4-can-<date>.log
+```
+
+Each board prints a `{"t":"can"}` line every 10 s. What a pass looks like (session 20):
+
+- B: `ss_rx` climbs with C's `ss_sent`; `ss_rx_gaps` 0 (`ss_rx_restarts` counts C rebooting under B);
+  `safe_state_rx` events in the stream carry consecutive counters.
+- C: `ss_min_us`/`ss_max_us`, submit to on-the-wire. Loopback baseline ~320 µs (one frame on an idle
+  bus); under flood 335–683 µs. C's `arb_lost` stays 0.
+- Both: zero `bit_err`, `form_err`, `stuff_err`, `tx_fail`. `ack_err` only while the other board is
+  absent or being flashed.
+
+**Afterwards, put every board back on the normal build** and prove it:
+
+```
+tools\build_firmware.ps1 -Clean -Flash -Port COM4      # then idf.py -p COM5 flash, -p COM3 flash
+python -m esptool --chip esp32s3 -p COM4 verify-flash 0x10000 firmware\build\potluck_m0.bin
+```
+
+Flash all three from one build: beacon formats must agree across the cell.

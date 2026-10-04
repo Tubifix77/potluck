@@ -5,13 +5,16 @@ hardware is built, verified, and public, and the next line of work *requires* a 
 a USB cable. This file is the resumption path. It assumes months may have passed and nobody
 remembers anything.
 
-**State as of 2026-10-04: M0, M1, M2 and M3 are accepted on hardware.** Three boards ran a 24.5-hour
+**State as of 2026-10-05: M0 to M4 are accepted on hardware.** Three boards ran a 24.5-hour
 soak and a distance sweep through a two-storey house (M0); the PC read one board's value through
 another and saw `UNAVAILABLE` when it was unplugged (M1); a ten-minute session replayed byte-identical
 (M2); and a signed package reached all three boards through one, survived detaching and a power cycle,
-and a broken one was reverted by every board on its own (M3). 27 test gates green. The frame-link
+and a broken one was reverted by every board on its own (M3); and on a two-board CAN bus, one
+board flooding at ~3,000 frames/s never delayed the other's safety message by more than 683 µs (M4,
+caveat: no scope or logic analyzer recorded it). The CAN wiring as built is
+[bench/m4-can-wiring.html](bench/m4-can-wiring.html). 27 test gates green. The frame-link
 wiring as built is [bench/m1-wiring.html](bench/m1-wiring.html). Session-by-session detail is in
-[M0-LOG.md](M0-LOG.md), sessions 12-18. What follows is the path that got here, kept as written.
+[M0-LOG.md](M0-LOG.md), sessions 12-20. What follows is the path that got here, kept as written.
 
 **State as of 2026-09-21:** 21 test gates green (172 C++ cases / 36,658 checks, 29 on-target checks
 under emulation, 154 Python). Firmware builds in place for esp32s3. **M2 is accepted** — a
@@ -114,9 +117,9 @@ the same label on the board itself.
 
 | Label | MAC | Derived node id | Notes |
 |---|---|---|---|
-| **A** | `b8:1f:3f:da:63:00` | **0x6300** | 2026-10-01. COM3, CH343 serial `5CBC414102`. Flashed with Potluck (fw `095f21e`); full 16 MB factory image backed up |
-| **B** | `b8:1f:3f:da:73:68` | **0x7368** | 2026-10-01. COM4, CH343 serial `5C93086589`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up |
-| **C** | `b8:1f:3f:da:81:60` | **0x8160** | 2026-10-01. COM5, CH343 serial `5C93086538`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up |
+| **A** | `b8:1f:3f:da:63:00` | **0x6300** | 2026-10-01. COM3, CH343 serial `5CBC414102`. Flashed with Potluck (fw `095f21e`); full 16 MB factory image backed up. Since 2026-10-05: fw `e8fd0d7` |
+| **B** | `b8:1f:3f:da:73:68` | **0x7368** | 2026-10-01. COM4, CH343 serial `5C93086589`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up. Since 2026-10-05: fw `e8fd0d7`, CAN module on GPIO4/5 |
+| **C** | `b8:1f:3f:da:81:60` | **0x8160** | 2026-10-01. COM5, CH343 serial `5C93086538`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up. Since 2026-10-05: fw `e8fd0d7`, CAN module on GPIO4/5 |
 
 **The CH343 carries a unique serial, so the boards identify themselves.** `5CBC414102` is board A and
 `5C93086589` is board B, visible in Device Manager's instance id without unplugging anything. This
@@ -163,6 +166,11 @@ That eleventh wire is the inter-module ground tie, and this file said ten until 
 sibling project's wiring appendix ties the grounds and this one did not. Two boards on separate USB
 ports usually do share a ground through the PC — "usually" being the word that makes it worth the
 wire.
+
+*As built (M4, 2026-10-05): ten wires, not eleven.* The bench ran without the module-to-module ground,
+with B and C on the same PC's USB ports, and five minutes at ~3,000 frames/s showed zero bit, form or
+stuff errors. That is one bench where the shared USB ground held, not proof it always will; on
+separate supplies, add the eleventh wire.
 
 It would not fit anyway, which is worth knowing before buying one hopefully: a half-size (400-point)
 breadboard is about 82 × 54 mm and a DevKitC-1 is about 70 × 28 mm, so one small breadboard holds
