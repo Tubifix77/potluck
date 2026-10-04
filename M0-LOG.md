@@ -3368,3 +3368,26 @@ same key and its enrolment. The console task's 4 KB stack had 1,020 bytes left a
 check. Static DRAM 58.4 KB of the 64 KB cap.
 
 A and B still run `e8fd0d7`; nothing yet *uses* an identity on the radio. That is step 3.
+
+### Step 3 — signed HELLO and session keys, built and host-tested; paused before the boards
+
+`hello_auth` in `pot_trust`: a signed HELLO is the 24-byte HELLO, the sender's certificate and an
+Ed25519 signature over the sender's MAC and both, 200 bytes, inside ESP-NOW's 226. There is no room
+for an ephemeral key, so the session key is X25519 between the two identity keys (Ed25519 mapped to
+Montgomery form; a test checks the mapping against the secret) hashed with both node ids and boot
+epochs: it rotates on every reboot of either end, and has no forward secrecy, which section 9.5
+already states. `Node::set_trust(id, require)` signs our HELLOs (once per boot per flag value) and,
+with `require`, admits only a HELLO certified by our CA and signed by the certified key for the
+sending MAC. Refusals are counted always and logged as `peer_refused` events at most once per
+(node, reason) per 10 s. An identical repeat of a verified HELLO is recognised by digest and not
+re-verified; an older epoch's HELLO is ignored, so a replay cannot roll the key back; full checks
+are rate-limited (burst 4, one per 250 ms), because each costs ~54 ms. The host's serial cable is a
+trusted link (its HELLO is admitted unsigned); deploys over it still need signatures. `test_auth.cpp`,
+13 cases: every byte of a signed HELLO matters; a recorded HELLO fails from another MAC or under
+another id; another CA's node, an id-swapped certificate and an unenrolled node are refused with
+their reasons; a replayed epoch-1 HELLO after a reboot changes nothing; ten forged HELLOs buy four
+verifications.
+
+**Not done before the pause:** wiring it into `m0_main.cpp` and the boards; a mutation check whose
+mutants did not compile, so it proved nothing (CLAUDE.md lists the redo). Paused by the owner at
+2026-10-05 ~01:30 for token budget.

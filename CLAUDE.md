@@ -12,7 +12,7 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04).** M3: deploy to the cell through one board,
+**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 in progress.** M3: deploy to the cell through one board,
 detach and power-cycle, and a broken module that all three nodes revert themselves (M0-LOG session 18). M2: a 10.05-minute three-board session over COM6
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
@@ -33,6 +33,30 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## M5 IN PROGRESS, PAUSED — READ THIS FIRST (handover, 2026-10-05)
+>
+> **Paused by the owner** for token budget; resume Friday evening, or midweek if usage allows. Detail:
+> M0-LOG session 21. M5's order: 1 measure ✓, 2 enrolment ✓, **3 signed HELLO (code done, not enabled)**,
+> 4 auth_tag + replay window, 5 signed epoch-fenced SAFE_STATE, 6 node-side package signatures.
+>
+> - **Step 1 done:** Ed25519/X25519 from vendored **Monocypher 4.0.3** (`firmware/components/monocypher`,
+>   unmodified, blob ids in PROVENANCE.md). Board: Ed25519 verify 27 ms vs P-256 442 ms.
+> - **Step 2 done on board C:** `pot_trust` + `potluck.enrol`. Key generated on first boot, kept in NVS;
+>   112-byte node certificate; console commands `POT! id` / `POT! cert`. C (COM5) runs `75c84c6` and is
+>   **enrolled** under `keys/ca.key` (fp `ef76cc2e`). A and B still run `e8fd0d7`, no identity.
+> - **Step 3 core committed (`645e7a5`), host-tested only:** `hello_auth` (200-byte signed HELLO, session key
+>   from identity keys + both epochs), `Node::set_trust(id, require)`, `NodeConfig::trusted_mac` (host
+>   cable), 13 cases in `tests/test_auth.cpp`. **Not yet wired in `m0_main.cpp`:** next is `set_trust` with a
+>   boot-time identity snapshot, `trusted_mac = kHostMac`, a `CONFIG_POT_REQUIRE_AUTH` (off for CAN builds),
+>   an `{"t":"auth"}` stats line; then flash all three, enrol A, leave B unenrolled and show it refused.
+> - **Unfinished check:** the mutation run on step 3 (break "require", break the stale-epoch check) failed
+>   to compile the mutant (MSVC flags the dead code), so it proved nothing. Redo with mutations that
+>   compile, e.g. flip the condition instead of returning early.
+> - **Open design points:** beacons and HELLO_ACK are unauthenticated (step 4 must decide); a signed
+>   SAFE_STATE costs ~9 ms + ~27 ms and does not fit M4's one CAN frame (step 5); CAN builds admit by
+>   beacon and have no auth yet.
+> - **GitHub:** pushes failed at 01:10 (no connection to github.com); retry `git push`.
+>
 > ## M4 ACCEPTED ON TWO BOARDS — READ THIS FIRST (handover, 2026-10-05)
 >
 > **Result** (M0-LOG session 20): B flooded a two-board CAN bus at 3,072 frames/s for 5 min while C sent
