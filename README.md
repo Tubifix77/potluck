@@ -227,6 +227,8 @@ the PC joins the cluster as a peer. That board reaches the others by radio.
 - **CAN wiring (M4):** [bench/m4-can-wiring.html](bench/m4-can-wiring.html) — two boards, each with an
   SN65HVD230 transceiver module (the chip that turns logic levels into bus voltages), ten jumper
   wires, drawn as they sit on the bench.
+- **The hardware, in one place:** [bench/esp32-s3-bench-datasheet.md](bench/esp32-s3-bench-datasheet.md) —
+  every spec and limit known about these boards and modules, each tagged measured, datasheet or seller.
 - **Bring-up from nothing:** [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
 - **Soak and measurement procedure:** [M0-RUNBOOK.md](M0-RUNBOOK.md).
 
