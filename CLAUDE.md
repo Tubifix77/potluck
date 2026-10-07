@@ -33,7 +33,13 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## M5 ACCEPTED — READ THIS FIRST (handover, 2026-10-07)
+> ## HANDOVER, 2026-10-07 (late): M5 accepted, M5.1 complete except a 24 h streaming soak. NEXT: M6.
+>
+> M6 (reconciler) is next in ARCHITECTURE section 13. Static DRAM is 63.6 KB of 64 KB, so M6 must start by deciding
+> what goes in PSRAM (the `psram` variant is measured: 11-31 MiB/s). Read M0-LOG sessions 21-25 first.
+> Design decisions go through the zero-assumption contract (memory: zero-assumption-for-design).
+>
+> ## M5 ACCEPTED (handover, 2026-10-07)
 >
 > All five acceptance lines met on three boards (M0-LOG sessions 21-22, ARCHITECTURE section 13). **M5.1's code is
 > complete (sessions 23-24): channel follow, runtime window, BUSY bit, PSRAM build, and the single-hop relay

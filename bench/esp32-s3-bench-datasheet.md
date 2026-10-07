@@ -140,7 +140,9 @@ GPIO48 and GPIO38 are driven (see 2.4 on which one it really is).
 | internal SRAM windows | DRAM `0x3FC88000–0x3FD00000` (480 KB) and IRAM `0x40370000–0x403E0000` (448 KB) overlap **one unified pool**; static IRAM use shrinks the DRAM available | datasheet (ESP-IDF `soc.h`, memory-types guide) |
 | **Wi-Fi stack cost, ESP-NOW active** | **32,264 B** of internal DRAM (`esp_wifi_init` + `esp_wifi_start`); ESP-NOW itself adds only 152 B | measured (board A) |
 | free internal DRAM after the radio is up | 249,936 B free, largest block 204,800 B (early firmware, one node, no peers) | measured |
-| PSRAM | 8 MB present; **Potluck does not enable it** (`CONFIG_SPIRAM` unset), so nothing here was measured with PSRAM on | this repo's config |
+| PSRAM | **8 MB octal, AP gen 3, 40 MHz by default**, memory test OK, 8,115 KB added to the heap (measured, `psram` build variant, 2026-10-07). The normal Potluck build still leaves it off | measured; `captures/m51-cr5-psram-membench.log` |
+| PSRAM speed (160 MHz CPU, PSRAM 40 MHz, blocks larger than the cache) | internal→internal **239 MiB/s**; PSRAM→internal **31**; internal→PSRAM **17.5**; PSRAM→PSRAM **11.2** MiB/s. Blocks of 16 KB fit the data cache and measure ~240 for everything — measure with big blocks | measured |
+| `CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY` | moves lwIP's 12.8 KB of static BSS into PSRAM: internal RAM handed back for free | measured (map file) |
 | default CPU clock | Potluck runs at **160 MHz** (`CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=160`); 240 MHz is available | this repo's config |
 | Potluck's partition table | `nvs` 0x9000 (24 KB), `phy_init` 0xF000 (4 KB), `factory` app 0x10000 (1 MB), two 64 KB data slots at 0x110000 and 0x120000. The 16 MB flash is mostly unused | `firmware/partitions.csv` |
 | a full Potluck radio image | ~756 KB (fits the 1 MB app partition) | measured (build output) |
@@ -262,11 +264,21 @@ any channel other than 1, through a human body (a ~20 dB penalty is cited in the
 
 - Current consumption of the boards (no meter).
 - Which DevKitC-1 revision the boards are (v1.0 or v1.1), and so which GPIO the LED is on.
-- Wi-Fi throughput, outdoor range, any channel but 1, long-range mode.
-- Anything about the 8 MB PSRAM in use (Potluck leaves it disabled).
+- Wi-Fi throughput, outdoor range, long-range mode. (Channels 1, 6, 10 and 11 have been used on the bench, 2026-10-07.)
 - Native USB (the second socket) in use: never exercised, because Potluck disables its PHY.
 - CAN with more than two nodes, longer cables, or rates other than 500 kbit/s.
 - An external recording (scope or logic analyzer) of any signal on this bench.
 
 Where a figure here matters to a design, re-measure it on the target rather than inheriting it: these
 numbers belong to one house, one PC, one toolchain and these three boards.
+
+## 7. Added 2026-10-07 (M5 and M5.1)
+
+| fact | value | how known |
+|---|---|---|
+| **Adjacent 2.4 GHz channels leak into each other at close range** | at ~10 cm a board tuned to channel 10 heard a board on 11; design any channel-finding logic to confirm the channel a peer declares | measured |
+| **The owner's house Wi-Fi (Google Wifi) is on channel 1** — the same as Potluck's default | found by an SSID-filtered scan from a board; the Google Home app documents the band, not the channel | measured; Google Nest help 6293481 |
+| **A phone streaming video through an ESP32-S3 repeater on the same channel** | Potluck cell: no false death in 16 min; heartbeat delivery ~99.1-99.3 %; RTT p50 unchanged, p99 up to 85-110 ms one way, max 157 ms | measured, `captures/soak-step0-*` |
+| **Ed25519 verify 27 ms, sign 9 ms, X25519 19 ms; P-256 verify 442 ms; HMAC-SHA-512 frame tag ≤ 0.83 ms** | 160 MHz, size-optimised build | measured |
+| **An Ed25519 operation needs ~2-3 KB of task stack** | a 4 KB task that also does other work overflowed | measured |
+| **This PC has no Wi-Fi adapter** (wired Ethernet) | the PC cannot scan or join Wi-Fi itself; use a board | observed |
