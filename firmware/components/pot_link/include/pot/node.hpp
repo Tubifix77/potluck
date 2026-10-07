@@ -58,6 +58,12 @@ struct NodeHal {
 
     // Human-readable log line. May be null.
     void (*log)(void* ctx, const char* msg) = nullptr;
+
+    // M5: run `fn(arg)` to completion, then return -- on a task with room for it. Every Ed25519 and
+    // X25519 operation the node does goes through here: each needs ~2-3 KB of stack, and on the board
+    // the link task that calls into the node does not have it (a 4 KB stack overflowed on the first
+    // enrolled boot, M0-LOG session 21). Null runs it inline, which is right on a host.
+    void (*run_heavy)(void* ctx, void (*fn)(void*), void* arg) = nullptr;
 };
 
 // The link-layer broadcast address. §5.1's dst 0xFFFF is a Potluck node id; this is its transport
@@ -447,6 +453,7 @@ class Node {
                                    const HelloPayload& h, PeerAuth& out);
     void refuse(uint16_t claimed_id, HelloAuthError e, CertError ce);
     bool is_trusted_link(const uint8_t mac[kMacLen]) const;
+    void heavy(void (*fn)(void*), void* arg);
 
     const Identity* trust_ = nullptr;
     bool require_auth_ = false;

@@ -435,6 +435,39 @@ TEST(auth, the_host_cable_is_trusted_without_a_signature_and_nothing_else_is) {
     CHECK(peer_by_id(*an.node, 0x0042) == nullptr);
 }
 
+TEST(auth, every_signature_and_key_operation_goes_through_run_heavy) {
+    // On the board the link task cannot hold an Ed25519 operation on its stack, so the node must
+    // hand every one to run_heavy. Count them: if one ever runs inline again, the board overflows.
+    static int calls = 0;
+    calls = 0;
+    TestCa ca(1);
+    AuthCell c;
+    std::vector<std::unique_ptr<Identity>> ids;
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x100, 0x11)));
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x101, 0x22)));
+    c.build(std::move(ids), true);
+    for (AuthNode& t : c.nodes) {
+        t.hal.run_heavy = [](void*, void (*fn)(void*), void* arg) {
+            ++calls;
+            fn(arg);
+        };
+        // NodeHal is copied into the Node at construction, so rebuild each with the hooked HAL.
+        delete t.node;
+        NodeConfig cfg;
+        cfg.node_id = static_cast<uint16_t>(0x100 + t.index);
+        cfg.boot_epoch = 1;
+        std::memcpy(cfg.mac, t.mac, kMacLen);
+        cfg.hello_interval_ms = 500;
+        t.node = new Node(cfg, t.hal);
+        t.node->set_trust(t.id.get(), true);
+    }
+    c.start_all();
+    c.advance_ms(3000);
+    CHECK_EQ(alive(*c.nodes[0].node), static_cast<size_t>(1));
+    // Per node: one signing (the want-ack HELLO, cached after) and one verification of the peer.
+    CHECK_EQ(calls, 4);
+}
+
 TEST(auth, without_require_an_unsigned_peer_is_still_admitted) {
     // The migration path: an enrolled node that does not yet require auth still forms a cell with
     // pre-M5 firmware, and still signs its own HELLOs.

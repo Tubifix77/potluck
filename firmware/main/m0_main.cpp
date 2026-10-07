@@ -84,6 +84,9 @@ bool g_no_radio = false;
 
 StaticTask_t g_link_tcb;
 StackType_t g_link_stack[4096 / sizeof(StackType_t)];
+TaskHandle_t g_link_handle = nullptr;
+// M5: the lowest free stack the crypto worker (the console task) has had after a job, in bytes.
+uint32_t g_heavy_stack_free_min = 0;
 StaticTask_t g_stats_tcb;
 StackType_t g_stats_stack[4096 / sizeof(StackType_t)];
 
@@ -1143,14 +1146,17 @@ void stats_task(void*) {
             }
             const bool required = g_node->trust_required();
             xSemaphoreGive(g_mutex);
+            const unsigned link_free = g_link_handle ? static_cast<unsigned>(uxTaskGetStackHighWaterMark(g_link_handle)) : 0u;
             std::printf("{\"t\":\"auth\",\"node\":%u,\"up_ms\":%u,\"enrolled\":%d,\"required\":%d,"
                         "\"verified_peers\":%u,\"verified\":%u,\"cache_hits\":%u,\"refused\":%u,"
-                        "\"rate_limited\":%u,\"stale_epoch\":%u,\"verify_us_max\":%u}\n",
+                        "\"rate_limited\":%u,\"stale_epoch\":%u,\"verify_us_max\":%u,"
+                        "\"link_stack_free_b\":%u,\"crypto_stack_free_b\":%u}\n",
                         static_cast<unsigned>(node_id), static_cast<unsigned>(now_ms_()),
                         g_node->trust_enrolled() ? 1 : 0, required ? 1 : 0, verified_peers,
                         static_cast<unsigned>(ac.verified), static_cast<unsigned>(ac.cache_hits),
                         static_cast<unsigned>(ac.refused), static_cast<unsigned>(ac.rate_limited),
-                        static_cast<unsigned>(ac.stale_epoch), static_cast<unsigned>(ac.verify_us_max));
+                        static_cast<unsigned>(ac.stale_epoch), static_cast<unsigned>(ac.verify_us_max),
+                        link_free, static_cast<unsigned>(g_heavy_stack_free_min));
         }
 #endif
         NodeCounters counters;
@@ -1207,6 +1213,40 @@ StaticTask_t g_console_tcb;
 // 4 KB: an Ed25519 verify measured 2.3 KB of stack on this board (M0-LOG session 21), and every
 // certificate reply reports the high-water mark, so the margin stays a measurement.
 StackType_t g_console_stack[4096];
+
+// The crypto worker. Node hands every Ed25519/X25519 operation to run_heavy(), which queues it here
+// and waits: the link task's 4 KB stack overflowed on the first enrolled boot, while this task's 4 KB
+// is otherwise idle and sits in section 6's crypto line. One job at a time, one submitter (the node).
+struct HeavyJob {
+    void (*fn)(void*);
+    void* arg;
+};
+StaticQueue_t g_jobs_buf;
+uint8_t g_jobs_storage[sizeof(HeavyJob)];
+QueueHandle_t g_jobs = nullptr;
+StaticSemaphore_t g_job_done_buf;
+SemaphoreHandle_t g_job_done = nullptr;
+
+void run_heavy(void*, void (*fn)(void*), void* arg) {
+    if (g_jobs == nullptr) {
+        fn(arg);  // only before start_console(), which app_main calls before any task uses the node
+        return;
+    }
+    HeavyJob j{fn, arg};
+    xQueueSend(g_jobs, &j, portMAX_DELAY);
+    xSemaphoreTake(g_job_done, portMAX_DELAY);
+}
+
+void serve_jobs(TickType_t wait) {
+    HeavyJob j{};
+    while (xQueueReceive(g_jobs, &j, wait) == pdTRUE) {
+        j.fn(j.arg);
+        const uint32_t free_now = static_cast<uint32_t>(uxTaskGetStackHighWaterMark(nullptr));
+        if (g_heavy_stack_free_min == 0 || free_now < g_heavy_stack_free_min) g_heavy_stack_free_min = free_now;
+        xSemaphoreGive(g_job_done);
+        wait = 0;
+    }
+}
 
 void print_id() {
     char line[200];
@@ -1274,8 +1314,7 @@ void console_task(void*) {
     const int uart = CONFIG_ESP_CONSOLE_UART_NUM;
     if (uart_driver_install(static_cast<uart_port_t>(uart), 1024, 0, 0, nullptr, 0) != ESP_OK) {
         ESP_LOGW(kTag, "console commands unavailable: UART%d driver did not install", uart);
-        vTaskDelete(nullptr);
-        return;
+        for (;;) serve_jobs(portMAX_DELAY);  // still the crypto worker: the node depends on it
     }
     uart_vfs_dev_use_driver(uart);  // printf now goes through the same driver, so the two never race
     static char line[400];
@@ -1283,7 +1322,9 @@ void console_task(void*) {
     bool overflow = false;
     for (;;) {
         uint8_t c = 0;
-        if (uart_read_bytes(static_cast<uart_port_t>(uart), &c, 1, portMAX_DELAY) != 1) continue;
+        serve_jobs(0);
+        // 10 ms, so a queued crypto job waits at most that long behind an idle console.
+        if (uart_read_bytes(static_cast<uart_port_t>(uart), &c, 1, pdMS_TO_TICKS(10)) != 1) continue;
         if (c == '\n') {
             if (!overflow) handle(line, n);
             n = 0;
@@ -1297,6 +1338,8 @@ void console_task(void*) {
 }
 
 void start_console(BaseType_t core) {
+    g_jobs = xQueueCreateStatic(1, sizeof(HeavyJob), g_jobs_storage, &g_jobs_buf);
+    g_job_done = xSemaphoreCreateBinaryStatic(&g_job_done_buf);
     xTaskCreateStaticPinnedToCore(console_task, "pot_console", sizeof(g_console_stack) / sizeof(StackType_t),
                                   nullptr, 2, g_console_stack, &g_console_tcb, core);
 }
@@ -1443,6 +1486,7 @@ extern "C" void app_main(void) {
     hal.now_us = &hal_now_us;
     hal.free_dram = &hal_free_dram;
     hal.on_event = &hal_on_event;
+    hal.run_heavy = &trust_rt::run_heavy;
 
     // Placement new into static storage: the node owns the peer table and the histograms, which §6
     // budgets statically, and there is no heap allocation anywhere on this path.
@@ -1521,11 +1565,11 @@ extern "C" void app_main(void) {
     // count decides, not a #ifdef for one particular chip.
     constexpr BaseType_t kStatsCore = (portNUM_PROCESSORS > 1) ? 1 : 0;
 
-    xTaskCreateStaticPinnedToCore(link_task, "pot_link",
+    trust_rt::start_console(kStatsCore);  // first: the crypto worker must exist before the node runs
+    g_link_handle = xTaskCreateStaticPinnedToCore(link_task, "pot_link",
                                   sizeof(g_link_stack) / sizeof(StackType_t), nullptr, 6,
                                   g_link_stack, &g_link_tcb, 0);
     xTaskCreateStaticPinnedToCore(stats_task, "pot_stats",
                                   sizeof(g_stats_stack) / sizeof(StackType_t), nullptr, 3,
                                   g_stats_stack, &g_stats_tcb, kStatsCore);
-    trust_rt::start_console(kStatsCore);
 }

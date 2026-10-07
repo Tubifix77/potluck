@@ -151,6 +151,54 @@ bool Node::send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, c
     return true;
 }
 
+void Node::heavy(void (*fn)(void*), void* arg) {
+    if (hal_.run_heavy != nullptr) {
+        hal_.run_heavy(hal_.ctx, fn, arg);
+    } else {
+        fn(arg);
+    }
+}
+
+namespace {
+
+struct VerifyJob {
+    const Identity* id;
+    const uint8_t* mac;
+    const uint8_t* payload;
+    size_t len;
+    uint16_t sender;
+    uint16_t my_id;
+    uint32_t my_epoch;
+    uint32_t peer_epoch;
+    HelloAuth result;
+    bool key_ok;
+    uint8_t key[kSessionKeyLen];
+};
+
+void verify_job(void* arg) {
+    VerifyJob& j = *static_cast<VerifyJob*>(arg);
+    j.result = hello_verify(j.id->ca_pub, j.mac, j.payload, j.len, j.sender);
+    j.key_ok = false;
+    if (j.result.error == HelloAuthError::Ok) {
+        j.key_ok = session_key(*j.id, j.my_id, j.my_epoch, j.result.peer_pub, j.sender, j.peer_epoch, j.key);
+    }
+}
+
+struct SignJob {
+    const Identity* id;
+    const uint8_t* mac;
+    const uint8_t* base;
+    uint8_t* out;
+    bool ok;
+};
+
+void sign_job(void* arg) {
+    SignJob& j = *static_cast<SignJob*>(arg);
+    j.ok = hello_sign(*j.id, j.mac, j.base, j.out);
+}
+
+}  // namespace
+
 bool Node::is_trusted_link(const uint8_t mac[kMacLen]) const {
     return cfg_.has_trusted_mac && std::memcmp(mac, cfg_.trusted_mac, kMacLen) == 0;
 }
@@ -233,16 +281,28 @@ Node::AuthOutcome Node::authenticate_hello(PeerLink* p, const uint8_t mac[kMacLe
     }
     --verify_tokens_;
     const uint32_t t0 = hal_.now_us ? hal_.now_us(hal_.ctx) : 0;
-    const HelloAuth r = hello_verify(trust_->ca_pub, mac, f.payload, f.payload_len, f.hdr.src);
+    VerifyJob job{};
+    job.id = trust_;
+    job.mac = mac;
+    job.payload = f.payload;
+    job.len = f.payload_len;
+    job.sender = f.hdr.src;
+    job.my_id = cfg_.node_id;
+    job.my_epoch = cfg_.boot_epoch;
+    job.peer_epoch = h.boot_epoch;
+    heavy(&verify_job, &job);
+    const HelloAuth& r = job.result;
     if (r.error != HelloAuthError::Ok) {
         refuse(h.node_id, r.error, r.cert_error);
         return AuthOutcome::Refused;
     }
     out = PeerAuth{};
-    if (!session_key(*trust_, cfg_.node_id, cfg_.boot_epoch, r.peer_pub, h.node_id, h.boot_epoch, out.key)) {
+    if (!job.key_ok) {
         refuse(h.node_id, HelloAuthError::WeakKey, CertError::Ok);
         return AuthOutcome::Refused;
     }
+    std::memcpy(out.key, job.key, kSessionKeyLen);
+    std::memset(job.key, 0, kSessionKeyLen);
     out.verified = true;
     out.epoch = h.boot_epoch;
     std::memcpy(out.pub, r.peer_pub, kEdPubLen);
@@ -271,7 +331,9 @@ void Node::send_hello(bool want_ack) {
         if (!signed_hello_ok_[k]) {
             uint8_t base[kHelloBaseLen];
             std::memcpy(base, &h, kHelloBaseLen);
-            signed_hello_ok_[k] = hello_sign(*trust_, cfg_.mac, base, signed_hello_[k]);
+            SignJob job{trust_, cfg_.mac, base, signed_hello_[k], false};
+            heavy(&sign_job, &job);
+            signed_hello_ok_[k] = job.ok;
         }
         if (signed_hello_ok_[k]) {
             payload = signed_hello_[k];
