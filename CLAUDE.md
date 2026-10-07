@@ -17,7 +17,9 @@ detach and power-cycle, and a broken module that all three nodes revert themselv
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
 board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **M4 is ACCEPTED (2026-10-05)**, with
-one caveat: the arbitration was not recorded by an instrument outside the boards (M0-LOG session 20). **Next: M5.**
+one caveat: the arbitration was not recorded by an instrument outside the boards (M0-LOG session 20). **M5 and M6 are
+accepted too** (sessions 21-22 and 26). **PAUSED after M6 (2026-10-08)**: the owner's `poor-mans-extender` project
+wanted to do something once M6 was done, so Potluck waits for the owner. When it resumes, the roadmap's next item is M8.
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
@@ -33,7 +35,11 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## HANDOVER, 2026-10-08: M6 ACCEPTED on three boards (M0-LOG session 26). NEXT: M8.
+> ## HANDOVER, 2026-10-08: M6 ACCEPTED on three boards (M0-LOG session 26). PAUSED; when resumed, NEXT: M8.
+>
+> **Paused at the owner's request** after M6 was accepted and synced: the sibling project `poor-mans-extender`
+> (`D:\Projects\poor-mans-extender`, read-only for this repo) wanted to do something after M6. Do not start M8
+> until the owner says so; if that project sends a new change request, it goes into section 13 the way M5.1 did.
 >
 > M7 stays gated (no named workload needs WASM). M8 (host services, `potluck-agent`) was gated on M5 only, so it is
 > next in section 13. Open soaks, not blocking: M5.1's 24 h streaming soak and the relay's 24 h soak.

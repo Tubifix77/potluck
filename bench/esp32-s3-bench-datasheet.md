@@ -282,3 +282,15 @@ numbers belong to one house, one PC, one toolchain and these three boards.
 | **Ed25519 verify 27 ms, sign 9 ms, X25519 19 ms; P-256 verify 442 ms; HMAC-SHA-512 frame tag ≤ 0.83 ms** | 160 MHz, size-optimised build | measured |
 | **An Ed25519 operation needs ~2-3 KB of task stack** | a 4 KB task that also does other work overflowed | measured |
 | **This PC has no Wi-Fi adapter** (wired Ethernet) | the PC cannot scan or join Wi-Fi itself; use a board | observed |
+
+## 8. Added 2026-10-08 (M6)
+
+| fact | value | how known |
+|---|---|---|
+| **Potluck's firmware is now the PSRAM build** | `CONFIG_SPIRAM=y`, octal, BSS allowed in PSRAM (`sdkconfig.defaults.esp32s3`). Buffers that only tasks touch live there; nothing an interrupt touches, no task stack | Potluck source, M0-LOG session 26 |
+| **With BSS in PSRAM, a module without PSRAM does not boot** | ESP-IDF: with external BSS "the option to ignore failure is not available". An S3 without the R in its part number needs `CONFIG_SPIRAM=n` | ESP-IDF v6.0.2 external-ram guide |
+| **PSRAM is unreadable while flash is being written** | the cache is off during a flash write, and PSRAM goes with it; tasks are held still then, interrupts need not be. Writing flash *from* a PSRAM buffer is still fine: ESP-IDF copies it through internal RAM in 32-byte chunks | ESP-IDF v6.0.2 external-ram guide and `esp_flash_api.c` |
+| **Potluck's own internal static RAM** | 49.4 KB of its 64 KB cap (was 63.6 KB before the move); a no-PSRAM build fits at 63.6 KB without the reconciler | measured, `idf.py size-components` |
+| **A rebooted, enrolled board admits its peers 1.9-3.5 s after it starts** | one HELLO interval (2 s) plus a signature check; anything that must "hear the cell first" after a reboot has to wait at least this long | measured, three boards |
+| **A portable actor moves when its board dies** | reads served by another board 0.46-0.69 s after the running board is held in reset (15 kills, 600 ms death window); handed back without running twice when it returns | measured, M0-LOG session 26 |
+| **Console baud 115200; the CP2102 frame link 921600** | two different rates on purpose; reading a console at the wrong one shows nothing at all | Potluck sdkconfig |
