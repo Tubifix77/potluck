@@ -5,12 +5,14 @@
 //    when the killed node returns, it does not double-run. Partition and heal the mesh -- duplication
 //    ends within gossip convergence, and fenced consumers never accept the losing instance."
 
+#include <cstdint>
 #include <cstring>
 #include <map>
 #include <vector>
 
 #include "pot/deploy.hpp"
 #include "pot/node.hpp"
+#include "pot/opcodes.hpp"
 #include "pot/reconcile.hpp"
 #include "test_harness.hpp"
 
@@ -50,6 +52,10 @@ struct RCell {
         std::vector<uint8_t> data;
     };
     std::vector<Flight> air;
+    // HELLO and HELLO_ACK to or from this node are lost until hello_blocked_until_us: admission takes
+    // as long as it does on the boards, where a signed HELLO arrives 2-3.5 s after a reboot.
+    size_t hello_blocked = SIZE_MAX;
+    uint32_t hello_blocked_until_us = 0;
 
     bool deaf_pair(size_t a, size_t b) const {
         for (const auto& d : deaf) {
@@ -163,7 +169,10 @@ struct RCell {
         for (Flight& f : due) {
             RNode& from = nodes[f.from];
             RNode& to = nodes[f.to];
-            const bool heard = !to.down && to.node != nullptr && !deaf_pair(f.from, f.to);
+            const bool hello = f.data.size() > 6 && (f.data[6] == kOpHello || f.data[6] == kOpHelloAck);
+            const bool blocked = hello && now_us < hello_blocked_until_us &&
+                                 (f.from == hello_blocked || f.to == hello_blocked);
+            const bool heard = !to.down && to.node != nullptr && !deaf_pair(f.from, f.to) && !blocked;
             if (heard) to.node->on_rx(from.mac, f.data.data(), f.data.size(), now_us, -50);
             if (!f.bcast && !from.down && from.node != nullptr) from.node->on_tx_done(to.mac, heard, now_us);
         }
@@ -334,6 +343,24 @@ TEST(reconcile, the_killed_node_returns_and_nothing_double_runs) {
     CHECK_EQ(c.runner(), 2);
     CHECK_EQ(c.nodes[static_cast<size_t>(interim)].rec->view(0).released, 1u);
     CHECK_EQ(c.nodes[static_cast<size_t>(interim)].rec->view(0).fenced, 0u);
+}
+
+TEST(reconcile, a_returning_node_admitted_slowly_still_does_not_double_run) {
+    // Found on the boards (M0-LOG session 26): C came back, admitted nobody for 3.4 s because a signed
+    // HELLO takes that long, decided it was alone, and started the ticker A was running. Here the
+    // returning node's HELLOs are lost for 3.5 s.
+    RCell c;
+    c.build(3, {1, 1, 2});
+    c.run(4000);
+    c.kill(2);
+    c.run(3000);
+    c.hello_blocked = 2;
+    c.hello_blocked_until_us = c.now_us + 3500 * 1000;
+    c.revive(2);
+    size_t worst = 0;
+    c.run(10000, [&] { worst = c.running_count() > worst ? c.running_count() : worst; });
+    CHECK_EQ(worst, 1u);
+    CHECK_EQ(c.runner(), 2);  // and it still gets the actor back, by handover, once admitted
 }
 
 TEST(reconcile, partition_duplicates_then_heal_fences_the_loser) {

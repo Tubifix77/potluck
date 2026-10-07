@@ -45,11 +45,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "host", "potluc
 import serial  # noqa: E402  (pyserial: the IDF Python environment)
 
 from potluck.bridge import Bridge, RequestTimeout  # noqa: E402
+from potluck.value import Quality  # noqa: E402
 
 PATH = "potluck://lab/act/ticker/out"
 BOARDS = {0x6300: "COM3", 0x7368: "COM4", 0x8160: "COM5"}
 MAC_TAIL = {0x6300: "6300", 0x7368: "7368", 0x8160: "8160"}
-CONSOLE_BAUD = 921600
+CONSOLE_BAUD = 115200
 
 
 class Console:
@@ -117,7 +118,7 @@ class Reader:
     def __init__(self, out) -> None:
         self.out = out
         self.reads: list[tuple[float, int | None, str, int]] = []  # (ts, value, quality, age)
-        self.bridge = Bridge.open(port="COM6", tcp=None, baud=115200, capture=None, heartbeat=True,
+        self.bridge = Bridge.open(port="COM6", tcp=None, baud=921600, capture=None, heartbeat=True,
                                   on_log=lambda m: None, on_frame=None)
         self.bridge.start()
         if self.bridge.hello(timeout=3.0) is None:
@@ -132,7 +133,7 @@ class Reader:
             try:
                 r = self.bridge.read(PATH, timeout=0.5, dst=0x6300)
                 v, q = r.number()
-                rec = (t0, v if isinstance(v, int) else None, str(q), r.age_ms)
+                rec = (t0, v if isinstance(v, int) else None, Quality.name_of(int(q)), r.age_ms)
             except RequestTimeout:
                 rec = (t0, None, "TIMEOUT", -1)
             self.reads.append(rec)
@@ -189,7 +190,7 @@ def events(cons: dict[int, Console], kinds: tuple[str, ...]) -> list[tuple[float
                     boots.append([])
                 last = up
             boots[-1].append((ts, j))
-        for lines in boots:
+        for boot, lines in enumerate(boots):
             off = None
             for ts, j in lines:
                 up = j.get("up_ms")
@@ -202,16 +203,22 @@ def events(cons: dict[int, Console], kinds: tuple[str, ...]) -> list[tuple[float
                 if j.get("t") == "event" and j.get("kind") in kinds:
                     at = j.get("at_ms")
                     if isinstance(at, int):
-                        res.append((off + at / 1000.0, n, j))
+                        res.append((off + at / 1000.0, n, j, boot))
     res.sort(key=lambda r: r[0])
     return res
 
 
-def running_intervals(evs, t_end: float) -> dict[int, list[tuple[float, float]]]:
+def running_intervals(evs, t_end: float, kills: list[tuple[float, int]]) -> dict[int, list[tuple[float, float]]]:
+    """A board held in reset runs nothing: its open interval closes at the kill, not at its next event."""
     iv: dict[int, list[tuple[float, float]]] = {}
     open_at: dict[int, float] = {}
-    for t, n, j in evs:
-        if j["kind"] == "actor_started":
+    stream = [(t, n, j) for t, n, j, _ in evs] + [(t, n, {"kind": "_kill"}) for t, n in kills]
+    stream.sort(key=lambda r: r[0])
+    for t, n, j in stream:
+        if j["kind"] == "_kill":
+            if n in open_at:
+                iv.setdefault(n, []).append((open_at.pop(n), t))
+        elif j["kind"] == "actor_started":
             open_at[n] = t
         elif j["kind"] == "actor_stopped" and n in open_at:
             iv.setdefault(n, []).append((open_at.pop(n), t))
@@ -235,14 +242,16 @@ def overlaps(iv) -> list[tuple[int, int, float]]:
 
 def owner_regressions(evs) -> list[str]:
     bad = []
-    floor: dict[int, int] = {}
-    for t, n, j in evs:
+    # Per board and per boot: a rebooted board remembers nothing, and starts its floor again.
+    floor: dict[tuple[int, int], int] = {}
+    for t, n, j, boot in evs:
         if j["kind"] != "actor_owner" or j.get("peer", 0) == 0:
             continue
         term = j.get("b", 0)
-        if term < floor.get(n, 0):
-            bad.append(f"0x{n:04x} accepted term {term} after {floor[n]} at {t:.3f}")
-        floor[n] = max(floor.get(n, 0), term)
+        k = (n, boot)
+        if term < floor.get(k, 0):
+            bad.append(f"0x{n:04x} accepted term {term} after {floor[k]} at {t:.3f}")
+        floor[k] = max(floor.get(k, 0), term)
     return bad
 
 
@@ -321,9 +330,10 @@ def main() -> int:
 
     t_end = time.time()
     evs = events(cons, ("actor_started", "actor_stopped", "actor_owner"))
-    for t, n, j in evs:
-        say(f"  {t:.3f} 0x{n:04x} {j['kind']} node 0x{j.get('peer', 0):04x} a={j.get('a')} b={j.get('b')}")
-    iv = running_intervals(evs, t_end)
+    for t, n, j, _ in evs:
+        say(f"  {t - marks[0][0]:+8.3f} 0x{n:04x} {j['kind']} node 0x{j.get('peer', 0):04x} a={j.get('a')} b={j.get('b')}")
+    kills = [(t, int(w.split()[1], 16)) for t, w in marks if w.startswith("kill ")]
+    iv = running_intervals(evs, t_end, kills)
     ov = overlaps(iv)
     if a.mode == "failover":
         say(f"double-running intervals (board clocks mapped to host): {len(ov)}"

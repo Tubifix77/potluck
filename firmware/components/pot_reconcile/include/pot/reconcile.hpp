@@ -44,9 +44,10 @@
 // portable (ADR-006), and nothing here can make one so.
 //
 // Settling. A node that has just booted knows nothing about who runs what. It starts nothing until it
-// has heard a claim set from every live peer (each peer sends one the moment it sees a new incarnation)
-// and at least settle_min_ms has passed -- or settle_max_ms has, for a node that is alone. Its own
-// claim set carries the SETTLED flag, and a holder hands over only to a settled node.
+// has heard a claim set from every node the image lists as eligible for some actor (each peer sends
+// one the moment it sees a new incarnation) and at least settle_min_ms has passed -- or until
+// settle_max_ms, for eligible nodes that never answer. Its own claim set carries the SETTLED flag, and
+// a holder hands over only to a settled node.
 //
 // Portable, like the node: no ESP-IDF, no heap, single-threaded under the caller's node lock.
 
@@ -88,7 +89,10 @@ constexpr size_t kClaimMaxLen = kClaimHeaderLen + kMaxPortable * kClaimEntryLen;
 struct ReconcileConfig {
     uint32_t refresh_ms = 250;        // one peer's claim refresh per interval, round-robin
     uint32_t settle_min_ms = 500;     // never settled sooner than this after start()
-    uint32_t settle_max_ms = 3000;    // settled by this time even if a peer stays silent
+    // Settled by this time even if an eligible node stays silent. Three HELLO intervals: a booting
+    // node admits its peers one HELLO interval (2 s) plus a signature check after it starts, so a
+    // shorter wait cannot tell "alone" from "not admitted yet" -- 3 s did not, on the boards.
+    uint32_t settle_max_ms = 6000;
     uint32_t orphan_step_ms = 1000;   // rank r starts an unclaimed actor after r x this
 };
 
@@ -162,7 +166,6 @@ class Reconciler {
     const PeerClaims* claims_of(uint16_t node) const;
     PeerClaims* claims_slot(uint16_t node, bool create);
     bool refresh_view(uint32_t now);
-    bool eligible_anywhere(uint16_t node) const;
     void update_settled(uint32_t now);
     void decide(size_t i, uint32_t now);
     void resolve_owner(size_t i);

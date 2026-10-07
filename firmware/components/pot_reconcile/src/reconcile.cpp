@@ -261,28 +261,26 @@ bool Reconciler::refresh_view(uint32_t now) {
     return changed;
 }
 
-bool Reconciler::eligible_anywhere(uint16_t node) const {
-    for (size_t i = 0; i < count_; ++i) {
-        for (uint8_t k = 0; k < slots_[i].cfg.count; ++k) {
-            if (slots_[i].cfg.node[k] == node) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 void Reconciler::update_settled(uint32_t now) {
     if (settled_) {
         return;
     }
     const uint32_t up = now - started_ms_;
-    // Heard from every live peer that could be running something: a peer no actor lists can hold no
-    // claim, and the host on the serial link never sends one, so neither is waited for.
+    // Heard from every node the image says could be running something -- not every node we happen to
+    // have admitted. The two differ exactly when it matters: a node that has just booted has admitted
+    // nobody yet (on the boards a signed HELLO takes 2-3.5 s to arrive and verify, M0-LOG session 26),
+    // and "heard from all of nobody" settled it alone, so it started an actor its peers were running.
+    // The eligible set is desired state, frozen in the image, so it is known before anyone answers. A
+    // node that never answers -- dead, or out of range -- is waited for until settle_max_ms. A node no
+    // actor lists can hold no claim, and the host on the serial link never sends one: not waited for.
+    const uint16_t self = node_.config().node_id;
     bool all_heard = up >= cfg_.settle_min_ms;
-    for (size_t j = 0; all_heard && j < seen_n_; ++j) {
-        if (eligible_anywhere(seen_[j].node_id) && claims_of(seen_[j].node_id) == nullptr) {
-            all_heard = false;
+    for (size_t i = 0; all_heard && i < count_; ++i) {
+        for (uint8_t k = 0; all_heard && k < slots_[i].cfg.count; ++k) {
+            const uint16_t n = slots_[i].cfg.node[k];
+            if (n != self && claims_of(n) == nullptr) {
+                all_heard = false;
+            }
         }
     }
     if (all_heard || up >= cfg_.settle_max_ms) {
