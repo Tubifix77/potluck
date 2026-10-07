@@ -180,7 +180,8 @@ Naming now in force, all ASCII:
    Owner tests arrive as **example systems** (ARCHITECTURE.md §1.2, "the test fleet"); the
    standing rule is falsification — if a named system is not possible under the architecture,
    that is an architecture bug to fix, never a scope answer.
-2. **The eight ADRs are closed.** Reopen one only when its stated *revisit trigger* fires, and
+2. **The ADRs are closed** (eight until 2026-10-07; ADR-009, the single-hop relay, was added for M5.1 without
+   touching them). Reopen one only when its stated *revisit trigger* fires, and
    record the change in the ADR itself — never fork the decision elsewhere in the document.
 3. **Every factual claim goes through the zero-assumption ledger** at
    `.claude/zero-assumption/memory.md`: live lookup → cite → register. No numbers from model
