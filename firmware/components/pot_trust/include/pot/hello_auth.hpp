@@ -72,4 +72,19 @@ void hello_digest(const uint8_t mac[6], const uint8_t* payload, size_t len, uint
 bool session_key(const Identity& me, uint16_t my_id, uint32_t my_epoch, const uint8_t peer_pub[kEdPubLen],
                  uint16_t peer_id, uint32_t peer_epoch, uint8_t key[kSessionKeyLen]);
 
+// ---- Step 5: the signed SAFE_STATE (ARCHITECTURE section 8.3) ----
+//
+// On the radio an enrolled node sends 76 bytes: the 8-byte SafeStatePayload (counter, reason,
+// reserved), the sender's boot epoch, and an Ed25519 signature by its certified key over
+// "potluck-safe-state-v1\0" || node_id || epoch || the 8 bytes. Receivers fence replays with the
+// high-water (epoch, counter) per sender, persisted (section 8.3). CAN builds keep the unsigned
+// 8-byte frame: a signature cannot ride in one classic CAN frame (M0-LOG session 21).
+constexpr size_t kSafeStateBaseLen = 8;
+constexpr size_t kSafeStateSignedLen = kSafeStateBaseLen + 4 + kEdSigLen;  // 76
+
+bool safe_state_sign(const Identity& id, uint16_t node_id, uint32_t epoch, const uint8_t base[kSafeStateBaseLen],
+                     uint8_t sig[kEdSigLen]);
+bool safe_state_verify(const uint8_t pub[kEdPubLen], uint16_t node_id, uint32_t epoch,
+                       const uint8_t base[kSafeStateBaseLen], const uint8_t sig[kEdSigLen]);
+
 }  // namespace pot

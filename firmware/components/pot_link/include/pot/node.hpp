@@ -65,6 +65,10 @@ struct NodeHal {
     // the link task that calls into the node does not have it (a 4 KB stack overflowed on the first
     // enrolled boot, M0-LOG session 21). Null runs it inline, which is right on a host.
     void (*run_heavy)(void* ctx, void (*fn)(void*), void* arg) = nullptr;
+
+    // M5 step 5: the SAFE_STATE high-water table changed; persist it (section 8.3: "so a mesh power
+    // cycle does not reopen the window"). Called after every accepted signed SAFE_STATE. May be null.
+    void (*persist_safe_state_floors)(void* ctx, const void* table, size_t bytes) = nullptr;
 };
 
 // The link-layer broadcast address. §5.1's dst 0xFFFF is a Potluck node id; this is its transport
@@ -202,6 +206,29 @@ class Node {
         uint32_t tag_us_max;     // longest tag check
     };
     const AuthCounters& auth_counters() const { return auth_counters_; }
+
+    // Step 5: the highest (epoch, counter) accepted per SAFE_STATE source. Restored at boot from what
+    // persist_safe_state_floors wrote, before start().
+    struct SafeStateFloor {
+        uint16_t node_id;  // 0 = free
+        uint16_t reserved;
+        uint32_t epoch;
+        uint32_t counter;
+        uint32_t last_try_ms;  // per-source verification rate limit; not meaningful across boots
+    };
+    static constexpr size_t kSafeStateSources = kMaxPeers;
+    const SafeStateFloor* safe_state_floors() const { return ss_floor_; }
+    void restore_safe_state_floors(const void* table, size_t bytes);
+    struct SafeStateCounters {
+        uint32_t accepted;
+        uint32_t unsigned_refused;
+        uint32_t unknown_sender;
+        uint32_t bad_signature;
+        uint32_t replayed;      // (epoch, counter) not above the source's high-water
+        uint32_t rate_limited;
+        uint32_t verify_us_max;
+    };
+    const SafeStateCounters& safe_state_counters() const { return ss_counters_; }
 
     // Announce an intentional departure (§5.2) and stop participating. `rejoin()` undoes it.
     void depart();
@@ -470,6 +497,9 @@ class Node {
     bool check_frame_auth(PeerLink& p, const uint8_t* data, const Frame& f);
     void reject_frame(const PeerLink& p, uint32_t reason, uint32_t ext_seq);
     uint32_t last_reject_event_ms_ = 0;
+    SafeStateFloor ss_floor_[kSafeStateSources]{};
+    SafeStateCounters ss_counters_{};
+    SafeStateFloor* ss_floor_for(uint16_t node_id, bool create);
 
     const Identity* trust_ = nullptr;
     bool require_auth_ = false;

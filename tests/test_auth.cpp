@@ -94,6 +94,8 @@ struct AuthCell {
     // The most recent unicast WRITE on the air, exactly as sent: what an attacker would record.
     std::vector<uint8_t> last_write;
     size_t last_write_from = 0;
+    std::vector<uint8_t> last_safe_state;  // likewise, the most recent SAFE_STATE broadcast
+    std::vector<uint8_t> persisted[8];     // what each node asked to persist (its high-water table)
 
     // `ids[i]` null means: no identity at all (pre-M5 behaviour). `require` applies to every node
     // that has one.
@@ -116,6 +118,11 @@ struct AuthCell {
             t.hal.now_ms = [](void* c) { return static_cast<AuthNode*>(c)->cell->now_us / 1000; };
             t.hal.now_us = [](void* c) { return static_cast<AuthNode*>(c)->cell->now_us; };
             t.hal.on_event = [](void* c, const Event& e) { static_cast<AuthNode*>(c)->events.push_back(e); };
+            t.hal.persist_safe_state_floors = [](void* c, const void* table, size_t bytes) {
+                AuthNode* n = static_cast<AuthNode*>(c);
+                const uint8_t* b = static_cast<const uint8_t*>(table);
+                if (n->index < 8) n->cell->persisted[n->index].assign(b, b + bytes);
+            };
             t.node = new Node(cfg, t.hal);
             if (t.id) t.node->set_trust(t.id.get(), require);
         }
@@ -139,6 +146,9 @@ struct AuthCell {
         Frame f;
         if (parse(data, len, f, kMaxPayloadV2) == FrameError::Ok && f.hdr.opcode == kOpHello && from->index < 8) {
             c->last_hello_from[from->index].assign(f.payload, f.payload + f.payload_len);
+        }
+        if (parse(data, len, f, kMaxPayloadV2) == FrameError::Ok && f.hdr.opcode == kOpSafeState) {
+            c->last_safe_state.assign(data, data + len);
         }
         if (parse(data, len, f, kMaxPayloadV2) == FrameError::Ok && f.hdr.opcode == kOpWrite) {
             c->last_write.assign(data, data + len);
@@ -635,4 +645,113 @@ TEST(auth, a_write_replayed_long_after_it_was_recorded_is_rejected_by_its_tag) {
     CHECK_EQ(w.b().auth_counters().bad_tag, 1u);
     CHECK_EQ(w.b().ns_counters().writes_served, served);
     CHECK_EQ(setpoint_of(w.b()), 7);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Step 5: the signed, epoch-fenced SAFE_STATE, and its high-water surviving a power cycle
+// ---------------------------------------------------------------------------------------------
+
+namespace {
+
+size_t count_events(const AuthNode& t, EventKind k, uint32_t a = 0xFFFFFFFFu) {
+    size_t n = 0;
+    for (const Event& e : t.events) {
+        if (e.kind == k && (a == 0xFFFFFFFFu || e.detail_a == a)) ++n;
+    }
+    return n;
+}
+
+// Replace node i with a fresh incarnation: same identity and MAC, a new boot epoch, RAM state gone --
+// what a power cycle leaves. `restore` hands it the table it persisted before.
+void power_cycle(AuthCell& c, size_t i, uint32_t epoch, bool restore) {
+    AuthNode& t = c.nodes[i];
+    delete t.node;
+    t.events.clear();
+    NodeConfig cfg;
+    cfg.node_id = static_cast<uint16_t>(0x100 + i);
+    cfg.boot_epoch = epoch;
+    std::memcpy(cfg.mac, t.mac, kMacLen);
+    cfg.hello_interval_ms = 500;
+    t.node = new Node(cfg, t.hal);
+    t.node->set_trust(t.id.get(), true);
+    if (restore && !c.persisted[i].empty()) {
+        t.node->restore_safe_state_floors(c.persisted[i].data(), c.persisted[i].size());
+    }
+    t.node->start();
+}
+
+}  // namespace
+
+TEST(auth, a_signed_safe_state_is_accepted_once_and_its_replay_is_refused) {
+    WriteCell w;
+    CHECK(w.a().send_safe_state(3) == 1u);
+    Frame f;
+    CHECK(parse(w.c.last_safe_state.data(), w.c.last_safe_state.size(), f, kMaxPayloadV2) == FrameError::Ok);
+    CHECK_EQ(static_cast<size_t>(f.payload_len), kSafeStateSignedLen);  // 76 B, one ESP-NOW frame
+    CHECK_EQ(w.b().safe_state_counters().accepted, 1u);
+    CHECK_EQ(count_events(w.c.nodes[1], EventKind::SafeStateRx), static_cast<size_t>(1));
+    CHECK(!w.c.persisted[1].empty());  // and the receiver asked for its high-water to be persisted
+    const std::vector<uint8_t> recorded = w.c.last_safe_state;
+    w.b().on_rx(w.c.nodes[0].mac, recorded.data(), recorded.size(), w.c.now_us, -50);
+    CHECK_EQ(w.b().safe_state_counters().replayed, 1u);
+    CHECK_EQ(count_events(w.c.nodes[1], EventKind::SafeStateRx), static_cast<size_t>(1));
+}
+
+TEST(auth, a_genuine_safe_state_replayed_after_a_full_power_cycle_is_refused) {
+    WriteCell w;
+    CHECK(w.a().send_safe_state(3) == 1u);
+    const std::vector<uint8_t> recorded = w.c.last_safe_state;  // a genuine frame, epoch 1
+    // The whole mesh loses power. Both come back with new epochs; B restores what it persisted.
+    power_cycle(w.c, 0, 2, true);
+    power_cycle(w.c, 1, 2, true);
+    w.c.advance_ms(2000);
+    CHECK(w.b().peer_auth(peer_by_id(w.b(), 0x100)) != nullptr);
+    w.b().on_rx(w.c.nodes[0].mac, recorded.data(), recorded.size(), w.c.now_us, -50);
+    CHECK_EQ(w.b().safe_state_counters().replayed, 1u);
+    CHECK_EQ(w.b().safe_state_counters().accepted, 0u);
+    CHECK_EQ(count_events(w.c.nodes[1], EventKind::SafeStateRx), static_cast<size_t>(0));
+    // A genuine SAFE_STATE from the new incarnation still gets through.
+    CHECK(w.a().send_safe_state(4) == 1u);
+    CHECK_EQ(w.b().safe_state_counters().accepted, 1u);
+}
+
+TEST(auth, without_the_persisted_high_water_the_same_replay_would_succeed) {
+    // The control for the test above: the fence is the persisted table, not the reboot itself.
+    WriteCell w;
+    CHECK(w.a().send_safe_state(3) == 1u);
+    const std::vector<uint8_t> recorded = w.c.last_safe_state;
+    power_cycle(w.c, 0, 2, false);
+    power_cycle(w.c, 1, 2, false);  // B forgets
+    w.c.advance_ms(2000);
+    w.b().on_rx(w.c.nodes[0].mac, recorded.data(), recorded.size(), w.c.now_us, -50);
+    CHECK_EQ(w.b().safe_state_counters().accepted, 1u);
+}
+
+TEST(auth, an_unsigned_or_forged_safe_state_is_refused) {
+    WriteCell w;
+    // Unsigned, from a verified peer: refused under require.
+    SafeStatePayload sp{};
+    sp.counter = 50;
+    sp.reason = 1;
+    EncodeSpec spec;
+    spec.src = 0x100;
+    spec.dst = kNodeBroadcast;
+    spec.opcode = kOpSafeState;
+    spec.lclass = kClassL0;
+    spec.priority = 31;
+    uint8_t buf[128];
+    size_t n = 0;
+    CHECK(encode(spec, reinterpret_cast<const uint8_t*>(&sp), static_cast<uint16_t>(sizeof(sp)), buf, sizeof(buf), n) ==
+          FrameError::Ok);
+    w.b().on_rx(w.c.nodes[0].mac, buf, n, w.c.now_us, -50);
+    CHECK_EQ(w.b().safe_state_counters().unsigned_refused, 1u);
+    // Signed, but the signature is garbage.
+    CHECK(w.a().send_safe_state(3) == 1u);
+    std::vector<uint8_t> forged = w.c.last_safe_state;
+    forged[kHeaderSize] = 9;                  // counter 9: above the high-water, so only the signature stops it
+    forged[forged.size() - 1] ^= 0x55;
+    w.c.advance_ms(200);                      // past the per-source rate limit
+    w.b().on_rx(w.c.nodes[0].mac, forged.data(), forged.size(), w.c.now_us, -50);
+    CHECK_EQ(w.b().safe_state_counters().bad_signature, 1u);
+    CHECK_EQ(w.b().safe_state_counters().accepted, 1u);
 }

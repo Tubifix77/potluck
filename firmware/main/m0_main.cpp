@@ -40,6 +40,7 @@
 #include "pot/sys_resources.hpp"
 #include "pot/trust.hpp"
 #include "pot/trust_store.hpp"
+#include "nvs.h"
 #include "driver/gpio.h"
 #include "driver/rmt_tx.h"
 #include "driver/uart.h"
@@ -139,6 +140,10 @@ void tee_frame(const char*, const uint8_t*, int8_t, const uint8_t*, size_t) {}
 uint8_t g_rec_write[64];
 size_t g_rec_write_len = 0;
 uint8_t g_rec_write_mac[kMacLen];
+// Likewise the last SAFE_STATE this node broadcast. `POT! safe` also saves it to NVS, so it survives
+// the power cycle that section 8.3's replay fence is about, and `POT! replay-ss` re-sends it after.
+uint8_t g_rec_ss[kHeaderSize + 80];
+size_t g_rec_ss_len = 0;
 
 int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
     tee_frame("tx", mac, 0, data, len);
@@ -147,6 +152,11 @@ int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t 
         std::memcpy(g_rec_write, data, len);
         g_rec_write_len = len;
         std::memcpy(g_rec_write_mac, mac, kMacLen);
+    }
+    if (len <= sizeof(g_rec_ss) && len > kHeaderSize && data[6] == kOpSafeState &&
+        std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0) {
+        std::memcpy(g_rec_ss, data, len);
+        g_rec_ss_len = len;
     }
 #if CONFIG_POT_CAN
     // A CAN peer's address, or a broadcast: the bus. In a CAN build broadcasts go to CAN only --
@@ -1189,6 +1199,27 @@ void stats_task(void*) {
             const bool has = sp.get_i32(spv, spq);
             std::printf("{\"t\":\"act\",\"node\":%u,\"setpoint\":%d,\"has_value\":%d,\"writes_served\":%u}\n",
                         static_cast<unsigned>(node_id), static_cast<int>(spv), has ? 1 : 0, served);
+            Node::SafeStateCounters sc{};
+            Node::SafeStateFloor fl[Node::kSafeStateSources];
+            xSemaphoreTake(g_mutex, portMAX_DELAY);
+            sc = g_node->safe_state_counters();
+            std::memcpy(fl, g_node->safe_state_floors(), sizeof(fl));
+            xSemaphoreGive(g_mutex);
+            std::printf("{\"t\":\"ss\",\"node\":%u,\"accepted\":%u,\"unsigned\":%u,\"unknown_sender\":%u,"
+                        "\"bad_signature\":%u,\"replayed\":%u,\"rate_limited\":%u,\"verify_us_max\":%u,\"floors\":[",
+                        static_cast<unsigned>(node_id), static_cast<unsigned>(sc.accepted),
+                        static_cast<unsigned>(sc.unsigned_refused), static_cast<unsigned>(sc.unknown_sender),
+                        static_cast<unsigned>(sc.bad_signature), static_cast<unsigned>(sc.replayed),
+                        static_cast<unsigned>(sc.rate_limited), static_cast<unsigned>(sc.verify_us_max));
+            bool first = true;
+            for (const Node::SafeStateFloor& e : fl) {
+                if (e.node_id == 0) continue;
+                std::printf("%s{\"src\":%u,\"epoch\":%u,\"counter\":%u}", first ? "" : ",",
+                            static_cast<unsigned>(e.node_id), static_cast<unsigned>(e.epoch),
+                            static_cast<unsigned>(e.counter));
+                first = false;
+            }
+            std::printf("]}\n");
         }
 #endif
         NodeCounters counters;
@@ -1260,13 +1291,57 @@ StaticSemaphore_t g_job_done_buf;
 SemaphoreHandle_t g_job_done = nullptr;
 
 void run_heavy(void*, void (*fn)(void*), void* arg) {
-    if (g_jobs == nullptr) {
+    // From the worker itself (a console command that sends a SAFE_STATE), queueing would wait on
+    // ourselves forever: run it here, on this task's own stack, which is the one it is meant for.
+    if (g_jobs == nullptr || xTaskGetCurrentTaskHandle() == reinterpret_cast<TaskHandle_t>(&g_console_tcb)) {
         fn(arg);  // only before start_console(), which app_main calls before any task uses the node
         return;
     }
     HeavyJob j{fn, arg};
     xQueueSend(g_jobs, &j, portMAX_DELAY);
     xSemaphoreTake(g_job_done, portMAX_DELAY);
+}
+
+// Section 8.3: the SAFE_STATE high-water table, in NVS, so a power cycle cannot reopen the window.
+constexpr const char* kSsNs = "pot_ss";
+struct PersistJob {
+    const void* table;
+    size_t bytes;
+};
+void persist_job(void* a) {
+    const PersistJob& j = *static_cast<PersistJob*>(a);
+    nvs_handle_t h;
+    if (nvs_open(kSsNs, NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_blob(h, "floors", j.table, j.bytes);
+    nvs_commit(h);
+    nvs_close(h);
+}
+void persist_floors(void* ctx, const void* table, size_t bytes);  // below, once run_heavy exists
+void load_floors() {
+    static uint8_t buf[sizeof(Node::SafeStateFloor) * Node::kSafeStateSources];
+    nvs_handle_t h;
+    if (nvs_open(kSsNs, NVS_READONLY, &h) != ESP_OK) return;
+    size_t len = sizeof(buf);
+    if (nvs_get_blob(h, "floors", buf, &len) == ESP_OK) {
+        g_node->restore_safe_state_floors(buf, len);
+        ESP_LOGI(kTag, "safe_state: high-water table restored from NVS");
+    }
+    nvs_close(h);
+}
+void save_recording(const char* key, const uint8_t* data, size_t len) {
+    nvs_handle_t h;
+    if (nvs_open(kSsNs, NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_blob(h, key, data, len);
+    nvs_commit(h);
+    nvs_close(h);
+}
+size_t load_recording(const char* key, uint8_t* out, size_t cap) {
+    nvs_handle_t h;
+    if (nvs_open(kSsNs, NVS_READONLY, &h) != ESP_OK) return 0;
+    size_t len = cap;
+    const bool ok = nvs_get_blob(h, key, out, &len) == ESP_OK;
+    nvs_close(h);
+    return ok ? len : 0;
 }
 
 void serve_jobs(TickType_t wait) {
@@ -1278,6 +1353,18 @@ void serve_jobs(TickType_t wait) {
         xSemaphoreGive(g_job_done);
         wait = 0;
     }
+}
+
+// The console task takes the node mutex for its test commands. The link task may be holding it
+// while it waits for this very task to run a crypto job, so waiting here plainly would deadlock the
+// two: keep serving jobs while the mutex is busy.
+void lock_node() {
+    while (xSemaphoreTake(g_mutex, pdMS_TO_TICKS(2)) != pdTRUE) serve_jobs(0);
+}
+
+void persist_floors(void* ctx, const void* table, size_t bytes) {
+    PersistJob j{table, bytes};
+    run_heavy(ctx, &persist_job, &j);  // NVS work belongs on the worker's stack, like the crypto
 }
 
 void print_id() {
@@ -1319,12 +1406,36 @@ bool handle_test(const char* line, size_t len) {
     unsigned node = 0;
     int value = 0;
     if (std::sscanf(buf, "POT! write %x %d", &node, &value) == 2) {
-        xSemaphoreTake(g_mutex, portMAX_DELAY);
+        lock_node();
         const uint16_t id = g_node->request_write(static_cast<uint16_t>(node), path_hash("act/setpoint"),
                                                   Value::of_i32(value));
         xSemaphoreGive(g_mutex);
         std::printf("{\"t\":\"test\",\"cmd\":\"write\",\"to\":%u,\"value\":%d,\"msg_id\":%u}\n", node, value,
                     static_cast<unsigned>(id));
+        return true;
+    }
+    unsigned reason = 0;
+    if (std::sscanf(buf, "POT! safe %u", &reason) == 1) {
+        lock_node();
+        const uint32_t counter = g_node->send_safe_state(static_cast<uint16_t>(reason));
+        xSemaphoreGive(g_mutex);
+        if (g_rec_ss_len != 0) save_recording("rec_ss", g_rec_ss, g_rec_ss_len);
+        std::printf("{\"t\":\"test\",\"cmd\":\"safe\",\"counter\":%u,\"len\":%u,\"recorded\":%d}\n",
+                    static_cast<unsigned>(counter), static_cast<unsigned>(g_rec_ss_len), g_rec_ss_len != 0 ? 1 : 0);
+        return true;
+    }
+    if (std::strcmp(buf, "POT! replay-ss") == 0) {
+        uint8_t f[sizeof(g_rec_ss)];
+        const size_t n = load_recording("rec_ss", f, sizeof(f));
+        const int32_t err = (n != 0) ? espnow_send(kBroadcastMacAddr, f, n) : -1;
+        uint32_t ep = 0, counter = 0;
+        if (n >= kHeaderSize + 12) {
+            std::memcpy(&counter, f + kHeaderSize, 4);
+            std::memcpy(&ep, f + kHeaderSize + 8, 4);
+        }
+        std::printf("{\"t\":\"test\",\"cmd\":\"replay-ss\",\"len\":%u,\"epoch\":%u,\"counter\":%u,\"err\":%d}\n",
+                    static_cast<unsigned>(n), static_cast<unsigned>(ep), static_cast<unsigned>(counter),
+                    static_cast<int>(err));
         return true;
     }
     if (std::strncmp(buf, "POT! replay", 11) == 0) {
@@ -1558,6 +1669,7 @@ extern "C" void app_main(void) {
     hal.free_dram = &hal_free_dram;
     hal.on_event = &hal_on_event;
     hal.run_heavy = &trust_rt::run_heavy;
+    hal.persist_safe_state_floors = &trust_rt::persist_floors;
 
     // Placement new into static storage: the node owns the peer table and the histograms, which §6
     // budgets statically, and there is no heap allocation anywhere on this path.
@@ -1600,6 +1712,7 @@ extern "C" void app_main(void) {
     deploy_rt::boot(cfg.node_id);
     trust_rt::boot(cfg.node_id, espnow_up());
     trust_rt::g_id_boot = trust_rt::g_id;
+    trust_rt::load_floors();
 #if !CONFIG_POT_CAN
 #if CONFIG_POT_REQUIRE_AUTH
     g_node->set_trust(&trust_rt::g_id_boot, true);

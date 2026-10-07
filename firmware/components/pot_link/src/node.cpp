@@ -1571,10 +1571,73 @@ PeerLink* Node::admit_from_beacon(const uint8_t src_mac[kMacLen], const Frame& f
     return p;
 }
 
+namespace {
+struct SsSignJob {
+    const Identity* id;
+    uint16_t node_id;
+    uint32_t epoch;
+    const uint8_t* base;
+    uint8_t* sig;
+    bool ok;
+};
+void ss_sign_job(void* a) {
+    SsSignJob& j = *static_cast<SsSignJob*>(a);
+    j.ok = safe_state_sign(*j.id, j.node_id, j.epoch, j.base, j.sig);
+}
+struct SsVerifyJob {
+    const uint8_t* pub;
+    uint16_t node_id;
+    uint32_t epoch;
+    const uint8_t* base;
+    const uint8_t* sig;
+    bool ok;
+};
+void ss_verify_job(void* a) {
+    SsVerifyJob& j = *static_cast<SsVerifyJob*>(a);
+    j.ok = safe_state_verify(j.pub, j.node_id, j.epoch, j.base, j.sig);
+}
+uint32_t rd32le(const uint8_t* p) {
+    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) |
+           (static_cast<uint32_t>(p[3]) << 24);
+}
+}  // namespace
+
+Node::SafeStateFloor* Node::ss_floor_for(uint16_t node_id, bool create) {
+    SafeStateFloor* free_slot = nullptr;
+    for (SafeStateFloor& e : ss_floor_) {
+        if (e.node_id == node_id) return &e;
+        if (e.node_id == 0 && free_slot == nullptr) free_slot = &e;
+    }
+    if (!create || free_slot == nullptr) return nullptr;
+    *free_slot = SafeStateFloor{};
+    free_slot->node_id = node_id;
+    return free_slot;
+}
+
+void Node::restore_safe_state_floors(const void* table, size_t bytes) {
+    if (table == nullptr || bytes != sizeof(ss_floor_)) return;
+    std::memcpy(ss_floor_, table, sizeof(ss_floor_));
+    for (SafeStateFloor& e : ss_floor_) e.last_try_ms = 0;
+}
+
 uint32_t Node::send_safe_state(uint16_t reason) {
     SafeStatePayload s{};
     s.counter = ++safe_state_tx_;
     s.reason = reason;
+    if (trust_ != nullptr && trust_->enrolled) {
+        // Step 5: signed and epoch-fenced, 76 bytes, one ESP-NOW frame.
+        uint8_t buf[kSafeStateSignedLen];
+        std::memcpy(buf, &s, kSafeStateBaseLen);
+        const uint32_t ep = cfg_.boot_epoch;
+        std::memcpy(buf + kSafeStateBaseLen, &ep, 4);
+        SsSignJob job{trust_, cfg_.node_id, ep, buf, buf + kSafeStateBaseLen + 4, false};
+        heavy(&ss_sign_job, &job);
+        if (!job.ok || !send_frame(nullptr, kBroadcastMacAddr, kOpSafeState, buf, static_cast<uint16_t>(sizeof(buf)),
+                                   false, 0, kNodeBroadcast, true, /*single_frame=*/false, kClassL0, kPriorityMax)) {
+            return 0;
+        }
+        return s.counter;
+    }
     if (!send_frame(nullptr, kBroadcastMacAddr, kOpSafeState, &s, sizeof(s), false, 0, kNodeBroadcast,
                     true, /*single_frame=*/true, kClassL0, kPriorityMax)) {
         return 0;
@@ -1587,6 +1650,53 @@ void Node::handle_safe_state(PeerLink* p, const Frame& f) {
     if (!load_safe_state(f.payload, f.payload_len, s)) {
         ++counters_.rx_short_payload;
         return;
+    }
+    if (trust_required()) {
+        // Section 8.3: signed, and fenced by the sender's (epoch, counter) high-water, persisted.
+        if (f.payload_len != kSafeStateSignedLen) {
+            ++ss_counters_.unsigned_refused;
+            emit(EventKind::SafeStateRejected, p, 1, s.counter);
+            return;
+        }
+        const PeerAuth* pa = peer_auth(p);
+        if (p == nullptr || pa == nullptr || !pa->verified || p->node_id != f.hdr.src) {
+            ++ss_counters_.unknown_sender;  // only an enrolled, verified source can halt this node
+            emit(EventKind::SafeStateRejected, p, 2, s.counter);
+            return;
+        }
+        const uint32_t ep = rd32le(f.payload + kSafeStateBaseLen);
+        SafeStateFloor* fl = ss_floor_for(f.hdr.src, true);
+        if (fl != nullptr && (ep < fl->epoch || (ep == fl->epoch && s.counter <= fl->counter))) {
+            // Cheap, and before the signature: an old frame is refused without costing a verify.
+            ++ss_counters_.replayed;
+            emit(EventKind::SafeStateRejected, p, 4, s.counter);
+            return;
+        }
+        const uint32_t now = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+        if (fl != nullptr && fl->last_try_ms != 0 && now - fl->last_try_ms < 100) {
+            ++ss_counters_.rate_limited;  // at most ten verifications a second per source
+            emit(EventKind::SafeStateRejected, p, 5, s.counter);
+            return;
+        }
+        if (fl != nullptr) fl->last_try_ms = (now == 0) ? 1 : now;
+        const uint32_t t0 = hal_.now_us ? hal_.now_us(hal_.ctx) : 0;
+        SsVerifyJob job{pa->pub, f.hdr.src, ep, f.payload, f.payload + kSafeStateBaseLen + 4, false};
+        heavy(&ss_verify_job, &job);
+        const uint32_t took = (hal_.now_us ? hal_.now_us(hal_.ctx) : 0) - t0;
+        if (took > ss_counters_.verify_us_max) ss_counters_.verify_us_max = took;
+        if (!job.ok) {
+            ++ss_counters_.bad_signature;
+            emit(EventKind::SafeStateRejected, p, 3, s.counter);
+            return;
+        }
+        if (fl != nullptr) {
+            fl->epoch = ep;
+            fl->counter = s.counter;
+            if (hal_.persist_safe_state_floors != nullptr) {
+                hal_.persist_safe_state_floors(hal_.ctx, ss_floor_, sizeof(ss_floor_));
+            }
+        }
+        ++ss_counters_.accepted;
     }
     emit(EventKind::SafeStateRx, p, s.counter, s.reason);
     if (safe_state_fn_ != nullptr) {

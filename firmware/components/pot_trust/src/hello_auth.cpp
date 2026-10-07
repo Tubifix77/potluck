@@ -138,4 +138,40 @@ bool session_key(const Identity& me, uint16_t my_id, uint32_t my_epoch, const ui
     return true;
 }
 
+namespace {
+constexpr char kSafeDomain[] = "potluck-safe-state-v1";  // sizeof includes the NUL
+size_t safe_state_message(uint16_t node_id, uint32_t epoch, const uint8_t base[kSafeStateBaseLen], uint8_t* m) {
+    std::memcpy(m, kSafeDomain, sizeof(kSafeDomain));
+    size_t n = sizeof(kSafeDomain);
+    put16(m + n, node_id);
+    n += 2;
+    put32(m + n, epoch);
+    n += 4;
+    std::memcpy(m + n, base, kSafeStateBaseLen);
+    return n + kSafeStateBaseLen;
+}
+}  // namespace
+
+bool safe_state_sign(const Identity& id, uint16_t node_id, uint32_t epoch, const uint8_t base[kSafeStateBaseLen],
+                     uint8_t sig[kEdSigLen]) {
+    if (!id.has_key || !id.enrolled) return false;
+    uint8_t msg[sizeof(kSafeDomain) + 6 + kSafeStateBaseLen];
+    const size_t n = safe_state_message(node_id, epoch, base, msg);
+    uint8_t sk[64];
+    uint8_t pub[kEdPubLen];
+    uint8_t seed[kEdSeedLen];
+    std::memcpy(seed, id.seed, kEdSeedLen);
+    crypto_ed25519_key_pair(sk, pub, seed);
+    crypto_ed25519_sign(sig, sk, msg, n);
+    crypto_wipe(sk, sizeof(sk));
+    return true;
+}
+
+bool safe_state_verify(const uint8_t pub[kEdPubLen], uint16_t node_id, uint32_t epoch,
+                       const uint8_t base[kSafeStateBaseLen], const uint8_t sig[kEdSigLen]) {
+    uint8_t msg[sizeof(kSafeDomain) + 6 + kSafeStateBaseLen];
+    const size_t n = safe_state_message(node_id, epoch, base, msg);
+    return crypto_ed25519_check(sig, pub, msg, n) == 0;
+}
+
 }  // namespace pot
