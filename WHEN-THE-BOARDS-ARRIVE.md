@@ -117,9 +117,9 @@ the same label on the board itself.
 
 | Label | MAC | Derived node id | Notes |
 |---|---|---|---|
-| **A** | `b8:1f:3f:da:63:00` | **0x6300** | 2026-10-01. COM3, CH343 serial `5CBC414102`. Flashed with Potluck (fw `095f21e`); full 16 MB factory image backed up. Since 2026-10-07: fw `94da774`, **enrolled** (M5) |
-| **B** | `b8:1f:3f:da:73:68` | **0x7368** | 2026-10-01. COM4, CH343 serial `5C93086589`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up. Since 2026-10-07: fw `94da774`, **not enrolled on purpose** (M5's refused board), CAN module on GPIO4/5 |
-| **C** | `b8:1f:3f:da:81:60` | **0x8160** | 2026-10-01. COM5, CH343 serial `5C93086538`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up. Since 2026-10-07: fw `94da774`, **enrolled** (M5), CAN module on GPIO4/5 |
+| **A** | `b8:1f:3f:da:63:00` | **0x6300** | 2026-10-01. COM3, CH343 serial `5CBC414102`. Flashed with Potluck (fw `095f21e`); full 16 MB factory image backed up. Since 2026-10-07: **enrolled** (M5) |
+| **B** | `b8:1f:3f:da:73:68` | **0x7368** | 2026-10-01. COM4, CH343 serial `5C93086589`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up. Since 2026-10-07: **enrolled** (session 24; it was M5's refused board until then), CAN module on GPIO4/5 |
+| **C** | `b8:1f:3f:da:81:60` | **0x8160** | 2026-10-01. COM5, CH343 serial `5C93086538`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up. Since 2026-10-07: **enrolled** (M5), CAN module on GPIO4/5 |
 
 **The CH343 carries a unique serial, so the boards identify themselves.** `5CBC414102` is board A and
 `5C93086589` is board B, visible in Device Manager's instance id without unplugging anything. This

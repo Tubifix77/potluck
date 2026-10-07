@@ -3536,3 +3536,45 @@ whichever firmware joins a router; Potluck's does not yet.
 **Not done:** step 0 (owner), CR-2 the relay (amends a closed decision, section 5.3; needs its own
 ADR first), CR-4's placement half (M6), a `sys/channel` namespace entry (a new built-in changes the
 namespace fixtures; deferred deliberately). Static DRAM 63.6 KB of 64.
+
+## Session 24 — 2026-10-07, M5.1 CR-2: the single-hop relay (ADR-009), on three boards
+
+**The decision first.** No closed ADR covers multi-hop; §5.3's "routed profile is not in v1" is a scope
+statement, and ADR-004's one-frame-format rule is exactly what a byte-for-byte relay keeps. Under the
+standing rule (a named system the architecture cannot host is a gap to fix), **ADR-009** was added —
+one relay, one hop, star only, revisit when a member must be two hops out — and §5.3 amended in place
+(`ce1f04a`). The eight ADRs are untouched.
+
+**The core change: peers are keyed by (next-hop MAC, node id).** A frame whose `src` is not the node
+at its MAC was forwarded, and is accepted only from a node whose HELLO declares RELAY, and never by a
+relay. A relayed HELLO carries the original sender's MAC after its payload, because the HELLO
+signature covers it; the relay forwards a HELLO only after admitting and, under auth, verifying it.
+Unicast is forwarded before any authentication — the tag is under the two ends' key, which the relay
+does not hold — and beacons, SAFE_STATE and CHANNEL are re-broadcast unchanged. A member heard directly
+stays direct while that path is alive (relayed copies dropped before the replay window sees them);
+when it dies the entry moves behind the relay; a direct HELLO moves it back. Own echoes are dropped;
+two relays resolve to the lower id. `8032bc2`; mutants: no forwarding fails 2 cases, verifying a
+relayed HELLO against the hop's MAC fails the auth case. (That case first crashed under the mutant:
+the test dereferenced a null after a failed CHECK. Guarded.)
+
+**On the boards** (`captures/m51-cr2-relay-8032bc2.log`), B enrolled for it — its refused-board role
+is done and recorded in sessions 22-23 — and "out of range" acted out with a bench instrument
+(`POT! deaf <id>`, each board ignoring the other's MAC; a simulation, stated as one):
+
+| | |
+|---|---|
+| A and B deaf to each other | each declares the other dead |
+| C made the relay | within ~1 s A sees B `alive/via` and B sees A `alive/via` |
+| A writes 99 to B's `act/setpoint` | B applies it: authenticated end to end, two hops, through a relay with no key for it |
+| C also deaf to B | A declares B dead — its only path is gone |
+| restored | all direct again; relayed copies dropped as duplicates |
+| auth, both ends | `bad_tag` 0, `untagged` 0, 284 / 300 tags verified; A's 2 `replayed` were relayed copies at a path switch |
+
+**Capture and replay through the relay** (`captures/m51-cr2-relay-session-8032bc2.jsonl`): a 3-minute
+`potctl soak` over A's cable sweeping all three boards, B reachable only through C — 1,350 reads,
+**0 timeouts** — replays to the identical 18-entry digest `4d716fe2…cb761` (exit 0); a wrong digest
+exits 6. ADR-009's claim that capture is unchanged holds on hardware.
+
+**M5.1's code is complete:** CR-1, CR-2, CR-3, CR-4 (signal), CR-5. Open: step 0 (the owner's hands: a
+real repeater, his Wi-Fi password, a phone streaming), CR-2's 24-hour soak through the relay, CR-4's
+placement half (M6). Static DRAM 63.6 KB of 64.

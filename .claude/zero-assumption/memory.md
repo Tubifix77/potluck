@@ -598,3 +598,10 @@ doc fetched as raw markdown from its repository), not from a summary.
 | **`CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY` moves lwIP's BSS (12,828 B) to PSRAM** | External RAM `.bss` 12,828 B with no Potluck buffer there; `liblwip.a` objects listed under `.ext_ram.bss` in the map | `firmware/build-psram/potluck_m0.map`, size report | 2026-10-07 | per IDF version | measured |
 | **Adjacent 2.4 GHz channels leak into each other at close range** | at ~10 cm, board C scanning locked onto channel 10 hearing board A on 11; with the channel declared in HELLO it corrected to 11 in 1.1 s | `captures/m51-cr1-channel-e6541ae-adjacent-lock.log`, `-b04c987` run | 2026-10-07 | volatile | measured |
 | **Re-convergence after an unannounced channel change: ~5 s** | lost-to-found 3.9 s (3 s alone + 4 hops), then 1.1 s to adopt the station's declared channel | `captures/m51-cr1-channel-*` | 2026-10-07 | volatile | measured |
+
+### ADR-009, the relay, on the boards — 2026-10-07
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **Through one relay, an authenticated WRITE lands two hops away** | A wrote 99 to B's `act/setpoint` while A and B could not hear each other (bench instrument) and C relayed; B applied it; `bad_tag` 0 and `untagged` 0 on both ends | `captures/m51-cr2-relay-8032bc2.log`, fw `8032bc2` | 2026-10-07 | volatile | measured |
+| **A capture taken through the relay replays byte-identical** | 3-min soak via A's cable, B behind the relay: 1,350 reads, 0 timeouts; replay digest `4d716fe205447b5d0a982013eeedeaa03c6a01f238b001434b1d8bb5813cb761` matches (exit 0), wrong digest exit 6 | `captures/m51-cr2-relay-session-8032bc2.jsonl` | 2026-10-07 | stable for that capture | measured |

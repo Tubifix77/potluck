@@ -35,13 +35,15 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 
 > ## M5 ACCEPTED — READ THIS FIRST (handover, 2026-10-07)
 >
-> All five acceptance lines met on three boards (M0-LOG sessions 21-22, ARCHITECTURE section 13). **M5.1 is
-> four-fifths built (session 23): channel follow, runtime window, BUSY bit, PSRAM build.** Left: step 0 (needs the
-> owner: a repeater, his Wi-Fi password, a phone), CR-2 relay (write its ADR first). Was: **Next:
+> All five acceptance lines met on three boards (M0-LOG sessions 21-22, ARCHITECTURE section 13). **M5.1's code is
+> complete (sessions 23-24): channel follow, runtime window, BUSY bit, PSRAM build, and the single-hop relay
+> (ADR-009).** Left: step 0 (needs the owner: a repeater, his Wi-Fi password, a phone), the relay's 24 h soak. Was: **Next:
 > M5.1 "sharing the radio"** (section 13, from `D:\Projects\poor-mans-extender\CR for Potluck.md`;
 > read-only for us), starting with its zero-code experiment.
 >
-> - **The bench now:** all three on **`b04c987`**, cell on channel 1. **A (COM3) and C (COM5) enrolled** (CA fp `ef76cc2e`);
+> - **The bench now:** all three on **`8032bc2`**, cell on channel 1, **all three enrolled** (B since session 24 --
+>   it was the refused board until then). No deafness, no relay set. `POT! relay 1` on C and `POT! deaf <id>`
+>   pairs recreate the relay test (`scratchpad`-style script in M0-LOG session 24). **A (COM3) and C (COM5) enrolled** (CA fp `ef76cc2e`);
 >   **B (COM4) deliberately unenrolled** (the refused board). A and C run the deployed `m3-purple` at
 >   **counter 4 — the next package must be counter 5+**. CP2102 on COM6 to A; CAN modules on B and C, idle.
 > - **Deploy now needs the image signed:** `python -m potluck.ctl --port COM6 --node 6300 deploy
