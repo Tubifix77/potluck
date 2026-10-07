@@ -273,7 +273,7 @@ enum class EventKind : uint8_t {
     PeerRefused = 13,  // M5: a HELLO refused; node_id = who it claimed to be, a = HelloAuthError, b = CertError
     FrameRejected = 14,  // M5: a = 1 replay, 2 bad tag, 3 untagged; b = extended seq. At most one per second
     SafeStateRejected = 15,  // M5: a = 1 unsigned, 2 unknown sender, 3 bad signature, 4 replay, 5 rate limited; b = counter
-    ChannelChanged = 16,     // M5.1: a = new channel, b = 1 announced move, 2 found by scan, 3 local retune, 4 scan hop
+    ChannelChanged = 16,     // M5.1: a = new channel, b = 1 announced move, 2 found by scan, 3 local retune, 5 adopted a peer's declared channel
 };
 
 const char* event_kind_str(EventKind k);

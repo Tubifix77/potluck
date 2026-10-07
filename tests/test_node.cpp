@@ -33,6 +33,7 @@ struct TestCell {
     uint32_t now_us = 0;
     bool partitioned = false;  // when true, nothing is delivered
     bool drop_hello = false;   // when true, HELLOs are lost and everything else is delivered
+    bool leak_adjacent = false;  // M5.1: a frame on channel n is also heard on n-1 and n+1 (close range)
     // Added to every send completion's timestamp. Negative models the radio's callback stamping a
     // completion before the node task submitted the probe it is then credited to.
     int32_t done_skew_us = 0;
@@ -106,7 +107,8 @@ struct TestCell {
         }
         for (size_t i = 0; i < c->nodes.size(); ++i) {
             if (i == from->index) continue;
-            if (c->nodes[i].chan != from->chan) continue;
+            const int dch = static_cast<int>(c->nodes[i].chan) - static_cast<int>(from->chan);
+            if (dch != 0 && !(c->leak_adjacent && (dch == 1 || dch == -1))) continue;
             if (bcast || std::memcmp(c->nodes[i].mac, mac, kMacLen) == 0) {
                 c->nodes[i].node->on_rx(from->mac, data, len, c->now_us, -50);
             }
@@ -568,4 +570,34 @@ TEST(node, a_node_that_boots_on_the_wrong_channel_finds_the_cell) {
     c.advance_ms(3000 + 11 * 300 + 1500);
     CHECK_EQ(static_cast<int>(c.nodes[2].chan), 4);
     CHECK_EQ(alive_peers(*c.nodes[2].node), static_cast<size_t>(2));
+}
+
+TEST(node, a_scan_that_locks_one_channel_off_moves_to_where_the_station_really_is) {
+    // Found on the bench: at 10 cm, board C locked onto channel 10 hearing board A on 11. With the
+    // channel declared in HELLO, the scanner moves to the station's channel at its next HELLO.
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon);
+    c.leak_adjacent = true;
+    make_fixed(c, 0);
+    c.start_all();
+    c.advance_ms(1000);
+    c.nodes[0].node->set_channel_now(9);
+    c.advance_ms(3000 + 11 * 300 + 2000);
+    CHECK_EQ(static_cast<int>(c.nodes[1].chan), 9);
+    CHECK_EQ(static_cast<int>(c.nodes[0].chan), 9);
+    CHECK_EQ(alive_peers(*c.nodes[1].node), static_cast<size_t>(1));
+}
+
+TEST(node, two_free_nodes_one_channel_apart_settle_on_the_lower_ids_channel) {
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon);
+    c.leak_adjacent = true;
+    c.start_all();
+    c.nodes[0].node->set_channel_now(5);
+    c.nodes[1].node->set_channel_now(6);
+    c.advance_ms(3000);
+    CHECK_EQ(static_cast<int>(c.nodes[0].chan), 5);
+    CHECK_EQ(static_cast<int>(c.nodes[1].chan), 5);  // 0x101 defers to 0x100; no ping-pong
+    c.advance_ms(5000);
+    CHECK_EQ(static_cast<int>(c.nodes[1].chan), 5);
 }

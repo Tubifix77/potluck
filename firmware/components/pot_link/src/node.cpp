@@ -236,6 +236,7 @@ void ch_verify_job(void* a) {
 }  // namespace
 
 void Node::retune(uint8_t ch) {
+    if (ch != channel_) signed_hello_ok_[0] = signed_hello_ok_[1] = false;  // HELLO declares the channel
     channel_ = ch;
     if (hal_.set_channel != nullptr) hal_.set_channel(hal_.ctx, ch);
 }
@@ -557,7 +558,8 @@ bool Node::check_frame_auth(PeerLink& p, const uint8_t* data, const Frame& f) {
 void Node::send_hello(bool want_ack) {
     HelloPayload h{};
     h.boot_epoch = cfg_.boot_epoch;
-    h.caps = caps_;
+    h.caps = caps_ | (static_cast<uint32_t>(channel_ & 0xF) << kHelloCapChannelShift) |
+             (cfg_.channel_fixed ? kHelloCapChannelFixed : 0u);
     h.node_id = cfg_.node_id;
     h.espnow_version = cfg_.espnow_version;
     // M5.1: the window being announced, which leads cfg_ while a looser window is pending.
@@ -772,6 +774,19 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
     }
     p->node_id = h.node_id;
     peer_caps_[peers_.index_of(p)] = h.caps;
+    {
+        // CR-1: a peer heard one channel off (adjacent-channel leakage at close range) is really on the
+        // channel it declares. Go there -- if it cannot move (a station) or it outranks us by lower node
+        // id, so two nodes can never chase each other's channel.
+        const uint8_t declared = static_cast<uint8_t>((h.caps & kHelloCapChannelMask) >> kHelloCapChannelShift);
+        const bool peer_fixed = (h.caps & kHelloCapChannelFixed) != 0;
+        if (declared != 0 && declared != channel_ && !cfg_.channel_fixed && declared >= cfg_.channel_lo &&
+            declared <= cfg_.channel_hi && (peer_fixed || h.node_id < cfg_.node_id) && hal_.set_channel != nullptr) {
+            retune(declared);
+            scanning_ = false;
+            emit(EventKind::ChannelChanged, p, declared, 5);
+        }
+    }
     p->hb_period_ms = (h.hb_period_cs != 0) ? h.hb_period_cs * 10u : cfg_.hb_period_ms;
     p->miss_limit = (h.hb_miss_limit != 0) ? h.hb_miss_limit : cfg_.hb_miss_limit;
     pin_version(*p, h.espnow_version);

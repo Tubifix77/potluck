@@ -44,6 +44,12 @@ constexpr uint8_t kHelloFlagWantAck = 1u << 0;
 // routing phone traffic), so placement should prefer other nodes -- a placement input, never an
 // exclusion (section 0.1). Nothing places work yet; M6's reconciler is the consumer.
 constexpr uint32_t kHelloCapBusy = 1u << 0;
+// CR-1: the sender's channel is owned by someone else (a Wi-Fi station's router); it will not move.
+constexpr uint32_t kHelloCapChannelFixed = 1u << 1;
+// CR-1: bits 8-11, the channel the sender is tuned to. Adjacent 2.4 GHz channels overlap, so at close
+// range a node can hear a peer one channel off; this lets it move to where the peer really is.
+constexpr uint32_t kHelloCapChannelShift = 8;
+constexpr uint32_t kHelloCapChannelMask = 0xFu << kHelloCapChannelShift;
 
 // CHANNEL -- 0x05, 12 bytes (M5.1, CR-1): "move to `channel` in `delay_ms`". Broadcast. From an
 // enrolled sender it carries 64 more bytes: an Ed25519 signature over the 12 (hello_auth.hpp), and
