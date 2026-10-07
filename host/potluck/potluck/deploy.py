@@ -30,7 +30,11 @@ IMAGE_HEADER_LEN = 24
 MAX_ACTORS = 16
 MAX_IMAGE_LEN = 512
 EVERY_NODE = 0xFFFF
-CHUNK_MAX = 512
+# 220, not the node's 512: a CHUNK frame is 6 + data bytes, and the node caps a peer it has not pinned
+# to ESP-NOW v2 -- the host, on the serial link -- at the 226-byte v1 payload (section 5.3). Images
+# under 184 B never noticed; M5's 176-byte signature trailer made the first chunk 230 B and the node
+# dropped it unanswered.
+CHUNK_MAX = 220
 FLAG_DISTRIBUTE = 0x01
 
 ACTOR_LED = 1

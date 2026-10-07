@@ -1,0 +1,74 @@
+
+=== 1 unsigned image, valid package c4
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 141 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 141, death window 100 ms x 6 = 600 ms
+package 'm3-bench' counter 4, signed by efb18338c77b66fe ('owner-pc')
+node image 54 B, crc 5a1fa621, 3 actor(s), manifest 07759479fc23fe7f
+  BEGIN   OK  (slot A, 0 B received)
+  CHUNK   OK  (slot A, 54 B received)
+  COMMIT  UNSIGNED  (slot A, 54 B received)
+FAILED: COMMIT refused by 0x6300: UNSIGNED
+exit 5
+=== 2 deploy cert from a rogue CA, c4
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 141 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 141, death window 100 ms x 6 = 600 ms
+image signed for node-side checking (176 B trailer)
+package 'm3-bench' counter 4, signed by efb18338c77b66fe ('owner-pc')
+node image 230 B, crc ec4bde3f, 3 actor(s), manifest 07759479fc23fe7f
+  BEGIN   OK  (slot A, 0 B received)
+FAILED: DEPLOY_CHUNK hash=0x00000000 msg=2: no REPLY in 2.000 s
+exit 5
+=== 3 signed downgrade, c2
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 141 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 141, death window 100 ms x 6 = 600 ms
+image signed for node-side checking (176 B trailer)
+package 'm3-bench' counter 2, signed by efb18338c77b66fe ('owner-pc')
+node image 230 B, crc a6ef568d, 3 actor(s), manifest 07759479fc23fe7f
+  BEGIN   DOWNGRADE  (slot A, 0 B received)
+FAILED: BEGIN refused by 0x6300: DOWNGRADE
+exit 5
+=== 4 signed, valid, c4
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 141 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 141, death window 100 ms x 6 = 600 ms
+image signed for node-side checking (176 B trailer)
+package 'm3-bench' counter 4, signed by efb18338c77b66fe ('owner-pc')
+node image 230 B, crc ece84db1, 3 actor(s), manifest 07759479fc23fe7f
+  BEGIN   OK  (slot A, 0 B received)
+FAILED: DEPLOY_CHUNK hash=0x00000000 msg=2: no REPLY in 2.000 s
+exit 5
+=== 2b deploy cert from a rogue CA, c4
+
+image signed for node-side checking (176 B trailer)
+package 'm3-bench' counter 4, signed by efb18338c77b66fe ('owner-pc')
+node image 230 B, crc ec4bde3f, 3 actor(s), manifest 07759479fc23fe7f
+  BEGIN   OK  (slot A, 0 B received)
+  CHUNK   OK  (slot A, 220 B received)
+  CHUNK   OK  (slot A, 230 B received)
+  COMMIT  BAD_SIGNATURE  (slot A, 230 B received)
+FAILED: COMMIT refused by 0x6300: BAD_SIGNATURE
+
+exit 5
+=== 4b signed, valid, c4
+
+image signed for node-side checking (176 B trailer)
+package 'm3-bench' counter 4, signed by efb18338c77b66fe ('owner-pc')
+node image 230 B, crc ece84db1, 3 actor(s), manifest 07759479fc23fe7f
+  BEGIN   OK  (slot A, 0 B received)
+  CHUNK   OK  (slot A, 220 B received)
+  CHUNK   OK  (slot A, 230 B received)
+  COMMIT  OK  (slot A, 230 B received)
+committed on 0x6300 and passed on: 1 peer(s) committed, 0 failed
+every committed node now reboots into the new slot and runs it on trial
+
+exit 0
+
+=== board C after the deploy, reset to read its boot log
+I (289) app_init: App version:      deploy-and-detach-30-g94da774
+I (2075) pot.m0: deploy: image counter 4, digest 07759479..., 3 actor(s) in the image
+I (2075) pot.m0: deploy: boot confirmed, running slot B, trial boot 0/3, counter 4
+I (2092) pot.m0: safe_state: high-water table restored from NVS
+I (2096) pot.m0: auth: enrolled, required
