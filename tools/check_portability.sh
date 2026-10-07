@@ -29,7 +29,7 @@ INC="-Ifirmware/components/pot_frame/include -Ifirmware/components/pot_link/incl
      -Ifirmware/components/monocypher -Itests -Isim"
 
 CORE=$(ls firmware/components/pot_frame/src/*.cpp firmware/components/pot_link/src/*.cpp \
-          firmware/components/pot_ns/src/*.cpp firmware/components/pot_trust/src/trust.cpp firmware/components/pot_trust/src/hello_auth.cpp)
+          firmware/components/pot_ns/src/*.cpp firmware/components/pot_trust/src/trust.cpp firmware/components/pot_trust/src/hello_auth.cpp firmware/components/pot_trust/src/frame_auth.cpp)
 EXTRA=$(ls tests/*.cpp sim/*.cpp 2>/dev/null)
 
 # --- find a compiler ---------------------------------------------------------------------------
