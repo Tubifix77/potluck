@@ -96,6 +96,7 @@ struct AuthCell {
     size_t last_write_from = 0;
     std::vector<uint8_t> last_safe_state;  // likewise, the most recent SAFE_STATE broadcast
     std::vector<uint8_t> persisted[8];     // what each node asked to persist (its high-water table)
+    std::vector<std::pair<size_t, size_t>> deaf;  // ADR-009: pairs out of each other's range
 
     // `ids[i]` null means: no identity at all (pre-M5 behaviour). `require` applies to every node
     // that has one.
@@ -157,6 +158,11 @@ struct AuthCell {
         const bool bcast = std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0;
         for (size_t i = 0; i < c->nodes.size(); ++i) {
             if (i == from->index) continue;
+            bool is_deaf = false;
+            for (const auto& d : c->deaf) {
+                if ((d.first == from->index && d.second == i) || (d.first == i && d.second == from->index)) is_deaf = true;
+            }
+            if (is_deaf) continue;
             if (bcast || std::memcmp(c->nodes[i].mac, mac, kMacLen) == 0) {
                 c->nodes[i].node->on_rx(from->mac, data, len, c->now_us, -50);
             }
@@ -787,4 +793,39 @@ TEST(auth, an_unsigned_channel_move_is_refused_under_require) {
     w.c.advance_ms(200);
     CHECK_EQ(w.b().channel_counters().moves_refused, 1u);
     CHECK_EQ(static_cast<int>(w.b().channel()), 1);
+}
+
+// ---- M5.1 CR-2 / ADR-009 under authentication ----
+
+TEST(auth, through_the_relay_admission_is_verified_end_to_end_and_a_write_lands) {
+    TestCa ca(1);
+    AuthCell c;
+    std::vector<std::unique_ptr<Identity>> ids;
+    for (uint16_t i = 0; i < 3; ++i) {
+        ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, static_cast<uint16_t>(0x100 + i),
+                                                                   static_cast<uint8_t>(0x11 * (i + 1)))));
+    }
+    c.build(std::move(ids), true);
+    c.deaf.push_back({0, 2});
+    declare_setpoint(*c.nodes[2].node, 0x102);
+    c.nodes[1].node->set_relay(true);
+    c.start_all();
+    c.advance_ms(5000);
+    Node& a = *c.nodes[0].node;
+    Node& g = *c.nodes[2].node;
+    const PeerLink* ag = peer_by_id(a, 0x102);
+    CHECK(ag != nullptr && a.peer_relayed(ag));
+    // A verified G's HELLO -- whose signature covers G's MAC, carried by the relay -- and the two
+    // derived the same key, which the relay does not have.
+    const Node::PeerAuth* pa = a.peer_auth(ag);
+    const Node::PeerAuth* pg = g.peer_auth(peer_by_id(g, 0x100));
+    CHECK(pa != nullptr && pa->verified);
+    CHECK(pg != nullptr && pg->verified);
+    if (pa == nullptr || pg == nullptr) return;  // a failed CHECK does not stop the test; do not dereference
+    CHECK(std::memcmp(pa->key, pg->key, 32) == 0);
+    a.request_write(0x102, kSetpoint, Value::of_i32(77));
+    c.advance_ms(100);
+    CHECK_EQ(setpoint_of(g), 77);
+    CHECK_EQ(g.auth_counters().bad_tag, 0u);
+    CHECK(g.auth_counters().tags_ok > 0u);
 }

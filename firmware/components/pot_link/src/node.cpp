@@ -362,6 +362,62 @@ void Node::tick_channel(uint32_t now) {
     }
 }
 
+PeerLink* Node::direct_peer(const uint8_t mac[kMacLen]) {
+    for (size_t i = 0; i < kMaxPeers; ++i) {
+        PeerLink& q = peers_.slot(i);
+        if (q.state != PeerState::Free && !relayed_[i] && std::memcmp(q.mac, mac, kMacLen) == 0) return &q;
+    }
+    return nullptr;
+}
+
+PeerLink* Node::relayed_peer(uint16_t node_id) {
+    for (size_t i = 0; i < kMaxPeers; ++i) {
+        PeerLink& q = peers_.slot(i);
+        if (q.state != PeerState::Free && relayed_[i] && q.node_id == node_id) return &q;
+    }
+    return nullptr;
+}
+
+PeerLink* Node::any_peer(uint16_t node_id) {
+    for (size_t i = 0; i < kMaxPeers; ++i) {
+        PeerLink& q = peers_.slot(i);
+        if (q.state != PeerState::Free && q.node_id == node_id) return &q;
+    }
+    return nullptr;
+}
+
+bool Node::peer_relayed(const PeerLink* p) const {
+    if (p == nullptr) return false;
+    const size_t i = peers_.index_of(p);
+    return i < kMaxPeers && relayed_[i];
+}
+
+void Node::set_relay(bool on) {
+    if (relay_ == on) return;
+    relay_ = on;
+    announce_change();  // the RELAY bit is in HELLO
+}
+
+void Node::relay_hello(const Frame& f, const uint8_t orig_mac[kMacLen]) {
+    // The original HELLO, header fields unchanged, with the sender's MAC appended (ADR-009).
+    uint8_t payload[kHelloSignedLen + kRelayMacTrailer];
+    if (f.payload_len > kHelloSignedLen) return;
+    std::memcpy(payload, f.payload, f.payload_len);
+    std::memcpy(payload + f.payload_len, orig_mac, kMacLen);
+    EncodeSpec spec;
+    spec.src = f.hdr.src;
+    spec.dst = f.hdr.dst;
+    spec.opcode = f.hdr.opcode;
+    spec.seq = f.hdr.seq;
+    spec.msg_id = f.hdr.msg_id;
+    size_t n = 0;
+    if (encode(spec, payload, static_cast<uint16_t>(f.payload_len + kRelayMacTrailer), tx_, sizeof(tx_), n) !=
+        FrameError::Ok) {
+        return;
+    }
+    if (hal_.send != nullptr && hal_.send(hal_.ctx, kBroadcastMacAddr, tx_, n) == 0) ++relay_counters_.hello_forwarded;
+}
+
 void Node::announce_change() {
     // A HELLO that says something new: the cached signature covers the old content.
     signed_hello_ok_[0] = signed_hello_ok_[1] = false;
@@ -563,7 +619,8 @@ void Node::send_hello(bool want_ack) {
     h.boot_epoch = cfg_.boot_epoch;
     const uint32_t hnow = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
     h.caps = caps_ | (static_cast<uint32_t>(channel_ & 0xF) << kHelloCapChannelShift) |
-             (cfg_.channel_fixed ? kHelloCapChannelFixed : 0u) | (settling(hnow) ? kHelloCapSettling : 0u);
+             (cfg_.channel_fixed ? kHelloCapChannelFixed : 0u) | (settling(hnow) ? kHelloCapSettling : 0u) |
+             (relay_ ? kHelloCapRelay : 0u);
     h.node_id = cfg_.node_id;
     h.espnow_version = cfg_.espnow_version;
     // M5.1: the window being announced, which leads cfg_ while a looser window is pending.
@@ -733,8 +790,23 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
 
     PeerAuth fresh{};
     AuthOutcome outcome = AuthOutcome::Legacy;
+    if (!rx_via_relay_ && p == nullptr) {
+        // ADR-009: a member we reached through the relay is now heard directly -- move it to its own MAC.
+        PeerLink* r = relayed_peer(h.node_id);
+        if (r != nullptr && (hal_.add_peer == nullptr || hal_.add_peer(hal_.ctx, src_mac))) {
+            std::memcpy(r->mac, src_mac, kMacLen);
+            relayed_[peers_.index_of(r)] = false;
+            ++relay_counters_.path_changes;
+            p = r;
+        }
+    }
+    if (relay_ && (h.caps & kHelloCapRelay) != 0 && h.node_id < cfg_.node_id) {
+        relay_ = false;  // two relays in one cell: the lower node id keeps the role (ADR-009)
+        announce_change();
+    }
+
     if (trust_ != nullptr && !is_trusted_link(src_mac)) {
-        outcome = authenticate_hello(p, src_mac, f, h, fresh);
+        outcome = authenticate_hello(p, rx_orig_mac_, f, h, fresh);
         if (outcome == AuthOutcome::Refused || outcome == AuthOutcome::Ignore) {
             return;  // a refused stranger never gets a peer slot; a known peer's state is untouched
         }
@@ -748,8 +820,8 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
             ++counters_.peer_table_full;
             return;
         }
-        if (hal_.add_peer != nullptr && !hal_.add_peer(hal_.ctx, src_mac)) {
-            ++counters_.peer_table_full;
+        if (!rx_via_relay_ && hal_.add_peer != nullptr && !hal_.add_peer(hal_.ctx, src_mac)) {
+            ++counters_.peer_table_full;  // a relayed member costs no radio peer slot: it is the relay's
             return;
         }
         p = peers_.add(src_mac, h.node_id, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0, cfg_.hb_period_ms,
@@ -759,6 +831,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
             return;
         }
         auth_[peers_.index_of(p)] = PeerAuth{};  // a reused slot must not inherit its last tenant's key
+        relayed_[peers_.index_of(p)] = rx_via_relay_;
         emit(EventKind::PeerDiscovered, p, h.boot_epoch);
         // on_rx only accounts a frame against a peer it already knew, so the HELLO that creates the
         // peer has to be accounted here or it is missing from rx_frames forever.
@@ -1446,7 +1519,9 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
                  int8_t rssi) {
     ++counters_.rx_total;
 
-    PeerLink* p = peers_.find_by_mac(src_mac);
+    // ADR-009: the MAC is the hop the frame came from. Which member sent it is the header's src.
+    PeerLink* p = direct_peer(src_mac);
+    rx_via_relay_ = false;
 
     // Parse against the cap pinned for this peer (§5.3); an unknown peer gets the v1 floor, which
     // is the conservative answer when we do not yet know what it can send.
@@ -1463,6 +1538,53 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
     }
 
     const bool was_broadcast = (f.hdr.dst == kNodeBroadcast);
+
+    // ---- ADR-009, the relay ----
+    if (f.hdr.src == cfg_.node_id) {
+        ++relay_counters_.own_echo;  // our own frame, re-broadcast to us by the relay
+        return;
+    }
+    PeerLink* const hop = p;
+    if (hop != nullptr && f.hdr.src != hop->node_id) {
+        // Forwarded by `hop`. Only a declared relay forwards, and a relay never takes a relayed frame.
+        if (relay_ || (peer_caps_[peers_.index_of(hop)] & kHelloCapRelay) == 0) {
+            ++relay_counters_.refused;
+            return;
+        }
+        PeerLink* d = any_peer(f.hdr.src);
+        if (d != nullptr && !relayed_[peers_.index_of(d)]) {
+            if (d->state == PeerState::Alive) {
+                ++relay_counters_.relay_dup;  // we hear this member directly: the direct path wins
+                return;
+            }
+            // Its direct path has died; from here on it is reached through the relay.
+            std::memcpy(d->mac, hop->mac, kMacLen);
+            relayed_[peers_.index_of(d)] = true;
+            ++relay_counters_.path_changes;
+        }
+        p = relayed_peer(f.hdr.src);
+        rx_via_relay_ = true;
+    } else if (hop == nullptr && f.hdr.opcode == kOpHello &&
+               (f.payload_len == kHelloSignedLen + kRelayMacTrailer || f.payload_len == kHelloBaseLen + kRelayMacTrailer)) {
+        ++relay_counters_.refused;  // a relayed HELLO from a relay we have not admitted yet
+        return;
+    }
+    if (relay_ && hop != nullptr && !rx_via_relay_ && !was_broadcast && f.hdr.dst != cfg_.node_id) {
+        // Unicast between two members through us: forward it unchanged. Not authenticated here -- the
+        // tag is under the two ends' key, which the relay does not hold, and verifies end to end.
+        PeerLink* to = any_peer(f.hdr.dst);
+        if (to != nullptr && to != hop && !relayed_[peers_.index_of(to)] && hal_.send != nullptr &&
+            hal_.send(hal_.ctx, to->mac, data, len) == 0) {
+            ++relay_counters_.unicast_forwarded;
+        } else {
+            ++relay_counters_.not_forwarded;
+        }
+        return;
+    }
+    const bool rebroadcast = relay_ && hop != nullptr && !rx_via_relay_ && was_broadcast &&
+                             (f.hdr.opcode == kOpHeartbeat || f.hdr.opcode == kOpSafeState ||
+                              f.hdr.opcode == kOpChannel);
+
     if (!was_broadcast && f.hdr.dst != cfg_.node_id) {
         ++counters_.rx_wrong_dst;
         return;
@@ -1510,7 +1632,26 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
     }
 
     switch (f.hdr.opcode) {
-        case kOpHello: handle_hello(p, src_mac, f, rssi); break;
+        case kOpHello: {
+            Frame fh = f;
+            if (rx_via_relay_) {
+                if (f.payload_len < kRelayMacTrailer) return;
+                fh.payload_len = static_cast<uint16_t>(f.payload_len - kRelayMacTrailer);
+                std::memcpy(rx_orig_mac_, f.payload + fh.payload_len, kMacLen);
+            } else {
+                std::memcpy(rx_orig_mac_, src_mac, kMacLen);
+            }
+            handle_hello(p, src_mac, fh, rssi);
+            if (relay_ && !rx_via_relay_) {
+                // Forward a member's HELLO only once we have admitted (and, if required, verified) it.
+                PeerLink* q = direct_peer(src_mac);
+                const PeerAuth* qa = peer_auth(q);
+                if (q != nullptr && q->node_id == f.hdr.src && (!trust_required() || (qa != nullptr && qa->verified))) {
+                    relay_hello(f, src_mac);
+                }
+            }
+            break;
+        }
         case kOpHelloAck: handle_hello_ack(p, f); break;
         case kOpHeartbeat: handle_heartbeat(p, f, recv_us, was_broadcast); break;
         case kOpBye: handle_bye(p, f); break;
@@ -1531,10 +1672,13 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
             send_err(p, src_mac, kErrUnknownOpcode, f.hdr.msg_id);
             break;
     }
+    if (rebroadcast && hal_.send != nullptr && hal_.send(hal_.ctx, kBroadcastMacAddr, data, len) == 0) {
+        ++relay_counters_.broadcast_forwarded;  // unchanged, after our own processing of it
+    }
 }
 
 void Node::on_tx_done(const uint8_t dst_mac[kMacLen], bool ok, uint32_t done_us) {
-    PeerLink* p = peers_.find_by_mac(dst_mac);
+    PeerLink* p = direct_peer(dst_mac);
     if (p == nullptr) {
         // A broadcast completion. A broadcast has no MAC-layer ACK and is not a link, so it has no
         // PDR — the inbound side of a beacon is measured by its receivers, from hb_seq gaps.

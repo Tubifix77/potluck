@@ -137,6 +137,17 @@ void tee_frame(const char*, const uint8_t*, int8_t, const uint8_t*, size_t) {}
 // M5 test instrument: the last unicast WRITE this node put on the radio, byte for byte -- what an
 // attacker in range would record. `POT! replay` sends it again unchanged, so a receiver's replay
 // window can be shown rejecting a genuine frame. It only ever re-sends this node's own frame.
+// M5.1 bench instrument (ADR-009): MACs this board pretends not to hear, by their last two bytes, so
+// three boards on one desk can act out "out of range" for the relay test. Empty in normal use.
+uint16_t g_deaf[4] = {0, 0, 0, 0};
+bool deaf_to(const uint8_t mac[kMacLen]) {
+    const uint16_t tail = static_cast<uint16_t>((mac[4] << 8) | mac[5]);
+    for (uint16_t d : g_deaf) {
+        if (d != 0 && d == tail) return true;
+    }
+    return false;
+}
+
 uint8_t g_rec_write[64];
 size_t g_rec_write_len = 0;
 uint8_t g_rec_write_mac[kMacLen];
@@ -924,10 +935,10 @@ void link_task(void*) {
         if (espnow_rx_pop(rx, wait_ms)) {
             xSemaphoreTake(g_mutex, portMAX_DELAY);
             tee_frame("rx", rx.src_mac, rx.rssi, rx.data, rx.len);
-            g_node->on_rx(rx.src_mac, rx.data, rx.len, rx.recv_us, rx.rssi);
+            if (!deaf_to(rx.src_mac)) g_node->on_rx(rx.src_mac, rx.data, rx.len, rx.recv_us, rx.rssi);
             for (size_t drained = 1; drained < kRxRingSlots && espnow_rx_pop(rx, 0); ++drained) {
                 tee_frame("rx", rx.src_mac, rx.rssi, rx.data, rx.len);
-                g_node->on_rx(rx.src_mac, rx.data, rx.len, rx.recv_us, rx.rssi);
+                if (!deaf_to(rx.src_mac)) g_node->on_rx(rx.src_mac, rx.data, rx.len, rx.recv_us, rx.rssi);
             }
             xSemaphoreGive(g_mutex);
         }
@@ -1204,23 +1215,32 @@ void stats_task(void*) {
             const Node::ChannelCounters chc = g_node->channel_counters();
             std::printf("{\"t\":\"peers\",\"node\":%u,\"own_period_ms\":%u,\"own_busy\":%d,\"channel\":%u,"
                         "\"scanning\":%d,\"scans\":%u,\"hops\":%u,\"found\":%u,\"lost_to_found_ms\":%u,"
-                        "\"moves_followed\":%u,\"moves_refused\":%u,\"list\":[",
+                        "\"moves_followed\":%u,\"moves_refused\":%u,\"relay\":%d,\"fwd_u\":%u,\"fwd_b\":%u,"
+                        "\"fwd_h\":%u,\"relay_dup\":%u,\"list\":[",
                         static_cast<unsigned>(node_id), static_cast<unsigned>(g_node->heartbeat_period_ms()),
                         g_node->busy() ? 1 : 0, static_cast<unsigned>(g_node->channel()), g_node->scanning() ? 1 : 0,
                         static_cast<unsigned>(chc.scans_started), static_cast<unsigned>(chc.scan_hops),
                         static_cast<unsigned>(chc.found_by_scan), static_cast<unsigned>(chc.last_lost_to_found_ms),
-                        static_cast<unsigned>(chc.moves_followed), static_cast<unsigned>(chc.moves_refused));
+                        static_cast<unsigned>(chc.moves_followed), static_cast<unsigned>(chc.moves_refused),
+                        g_node->relay() ? 1 : 0, static_cast<unsigned>(g_node->relay_counters().unicast_forwarded),
+                        static_cast<unsigned>(g_node->relay_counters().broadcast_forwarded),
+                        static_cast<unsigned>(g_node->relay_counters().hello_forwarded),
+                        static_cast<unsigned>(g_node->relay_counters().relay_dup));
             {
                 bool first_peer = true;
                 for (size_t i = 0; i < kMaxPeers; ++i) {
                     xSemaphoreTake(g_mutex, portMAX_DELAY);
                     const PeerLink pl = g_node->peers().slot(i);
                     const uint32_t caps = g_node->peer_caps(&g_node->peers().slot(i));
+                    const bool via = g_node->peer_relayed(&g_node->peers().slot(i));
                     xSemaphoreGive(g_mutex);
                     if (pl.state == PeerState::Free) continue;
-                    std::printf("%s{\"id\":%u,\"period_ms\":%u,\"misses\":%u,\"busy\":%d}", first_peer ? "" : ",",
-                                static_cast<unsigned>(pl.node_id), static_cast<unsigned>(pl.hb_period_ms),
-                                static_cast<unsigned>(pl.miss_limit), (caps & kHelloCapBusy) ? 1 : 0);
+                    std::printf("%s{\"id\":%u,\"state\":\"%s\",\"via_relay\":%d,\"period_ms\":%u,\"misses\":%u,"
+                                "\"busy\":%d,\"rtt_n\":%u}",
+                                first_peer ? "" : ",", static_cast<unsigned>(pl.node_id),
+                                pl.state == PeerState::Alive ? "alive" : (pl.state == PeerState::Dead ? "dead" : "other"),
+                                via ? 1 : 0, static_cast<unsigned>(pl.hb_period_ms), static_cast<unsigned>(pl.miss_limit),
+                                (caps & kHelloCapBusy) ? 1 : 0, static_cast<unsigned>(pl.rtt_samples));
                     first_peer = false;
                 }
             }
@@ -1466,6 +1486,31 @@ bool handle_test(const char* line, size_t len) {
         xSemaphoreGive(g_mutex);
         std::printf("{\"t\":\"test\",\"cmd\":\"write\",\"to\":%u,\"value\":%d,\"msg_id\":%u}\n", node, value,
                     static_cast<unsigned>(id));
+        return true;
+    }
+    unsigned relay_on = 0;
+    if (std::sscanf(buf, "POT! relay %u", &relay_on) == 1) {
+        lock_node();
+        g_node->set_relay(relay_on != 0);
+        xSemaphoreGive(g_mutex);
+        std::printf("{\"t\":\"test\",\"cmd\":\"relay\",\"relay\":%u}\n", relay_on != 0 ? 1u : 0u);
+        return true;
+    }
+    unsigned deaf_tail = 0;
+    if (std::sscanf(buf, "POT! deaf %x", &deaf_tail) == 1) {
+        // POT! deaf <last 2 MAC bytes, hex>: stop hearing that board; POT! deaf 0 clears the list.
+        if (deaf_tail == 0) {
+            for (uint16_t& d : g_deaf) d = 0;
+        } else {
+            for (uint16_t& d : g_deaf) {
+                if (d == 0) {
+                    d = static_cast<uint16_t>(deaf_tail);
+                    break;
+                }
+            }
+        }
+        std::printf("{\"t\":\"test\",\"cmd\":\"deaf\",\"list\":[%u,%u,%u,%u]}\n", g_deaf[0], g_deaf[1], g_deaf[2],
+                    g_deaf[3]);
         return true;
     }
     unsigned chan = 0;

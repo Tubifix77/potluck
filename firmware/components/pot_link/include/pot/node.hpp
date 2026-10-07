@@ -277,6 +277,25 @@ class Node {
     };
     const ChannelCounters& channel_counters() const { return ch_counters_; }
 
+    // ---- M5.1 (CR-2, ADR-009): the single-hop relay -----------------------------------------
+    // As the relay, this node forwards frames unchanged between members it hears and members only it
+    // hears. Star only: a relay never accepts a relayed frame, and two relays resolve to the lower id.
+    void set_relay(bool on);
+    bool relay() const { return relay_; }
+    // A peer reached through the relay (its next-hop MAC is the relay's).
+    bool peer_relayed(const PeerLink* p) const;
+    struct RelayCounters {
+        uint32_t unicast_forwarded;
+        uint32_t broadcast_forwarded;
+        uint32_t hello_forwarded;
+        uint32_t not_forwarded;   // destination not a direct member, or would go back where it came from
+        uint32_t relay_dup;       // a relayed copy of a member we hear directly: dropped before auth
+        uint32_t own_echo;        // our own frame, re-broadcast back to us
+        uint32_t refused;         // a forwarded frame from a node that is not a relay, or to a relay
+        uint32_t path_changes;    // a member moved between direct and relayed
+    };
+    const RelayCounters& relay_counters() const { return relay_counters_; }
+
     // ---- M5.1 (CR-4): the BUSY capability ------------------------------------------------------
     void set_busy(bool busy);
     bool busy() const { return (caps_ & kHelloCapBusy) != 0; }
@@ -550,6 +569,17 @@ class Node {
     bool check_frame_auth(PeerLink& p, const uint8_t* data, const Frame& f);
     void reject_frame(const PeerLink& p, uint32_t reason, uint32_t ext_seq);
     uint32_t last_reject_event_ms_ = 0;
+
+    // M5.1 CR-2
+    PeerLink* direct_peer(const uint8_t mac[kMacLen]);
+    PeerLink* relayed_peer(uint16_t node_id);
+    PeerLink* any_peer(uint16_t node_id);
+    void relay_hello(const Frame& f, const uint8_t orig_mac[kMacLen]);
+    bool relay_ = false;
+    bool relayed_[kMaxPeers]{};
+    bool rx_via_relay_ = false;  // set by on_rx for the frame being dispatched
+    uint8_t rx_orig_mac_[kMacLen]{};
+    RelayCounters relay_counters_{};
 
     // M5.1
     void handle_channel(PeerLink* p, const Frame& f);

@@ -491,15 +491,15 @@
     },
     "esp-idf/esp_stdio/libesp_stdio.a": {
         "abbrev_name": "libesp_stdio.a",
-        "size": 62002,
+        "size": 62220,
         "size_diff": 0,
         "memory_types": {
             "Flash Data": {
-                "size": 61592,
+                "size": 61810,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 61592,
+                        "size": 61810,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -589,15 +589,15 @@
     },
     "esp-idf/main/libmain.a": {
         "abbrev_name": "libmain.a",
-        "size": 44897,
+        "size": 45292,
         "size_diff": 0,
         "memory_types": {
             "DIRAM": {
-                "size": 34714,
+                "size": 34786,
                 "size_diff": 0,
                 "sections": {
                     ".dram0.bss": {
-                        "size": 34696,
+                        "size": 34768,
                         "size_diff": 0,
                         "abbrev_name": ".bss"
                     },
@@ -614,11 +614,11 @@
                 }
             },
             "Flash Code": {
-                "size": 10047,
+                "size": 10370,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 10047,
+                        "size": 10370,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -1275,15 +1275,15 @@
     },
     "esp-idf/pot_link/libpot_link.a": {
         "abbrev_name": "libpot_link.a",
-        "size": 15238,
+        "size": 16586,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 15144,
+                "size": 16492,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 15144,
+                        "size": 16492,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -1471,15 +1471,15 @@
     },
     "esp-idf/nvs_flash/libnvs_flash.a": {
         "abbrev_name": "libnvs_flash.a",
-        "size": 13327,
+        "size": 13339,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 13167,
+                "size": 13179,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 13167,
+                        "size": 13179,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }

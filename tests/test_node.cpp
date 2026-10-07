@@ -34,6 +34,14 @@ struct TestCell {
     bool partitioned = false;  // when true, nothing is delivered
     bool drop_hello = false;   // when true, HELLOs are lost and everything else is delivered
     bool leak_adjacent = false;  // M5.1: a frame on channel n is also heard on n-1 and n+1 (close range)
+    // ADR-009: pairs of nodes out of each other's range, both directions.
+    std::vector<std::pair<size_t, size_t>> deaf;
+    bool deaf_pair(size_t a, size_t b) const {
+        for (const auto& d : deaf) {
+            if ((d.first == a && d.second == b) || (d.first == b && d.second == a)) return true;
+        }
+        return false;
+    }
     // Added to every send completion's timestamp. Negative models the radio's callback stamping a
     // completion before the node task submitted the probe it is then credited to.
     int32_t done_skew_us = 0;
@@ -109,6 +117,7 @@ struct TestCell {
             if (i == from->index) continue;
             const int dch = static_cast<int>(c->nodes[i].chan) - static_cast<int>(from->chan);
             if (dch != 0 && !(c->leak_adjacent && (dch == 1 || dch == -1))) continue;
+            if (c->deaf_pair(from->index, i)) continue;
             if (bcast || std::memcmp(c->nodes[i].mac, mac, kMacLen) == 0) {
                 c->nodes[i].node->on_rx(from->mac, data, len, c->now_us, -50);
             }
@@ -607,4 +616,84 @@ TEST(node, a_scanner_defers_to_a_stable_peer_and_never_drags_the_cell) {
     CHECK_EQ(static_cast<int>(c.nodes[2].chan), 5);
     CHECK_EQ(static_cast<int>(c.nodes[0].chan), 5);  // the scanner came to them
     CHECK_EQ(alive_peers(*c.nodes[0].node), static_cast<size_t>(2));
+}
+
+// ---- M5.1 CR-2 / ADR-009: one relay, one hop ----
+
+TEST(node, a_relay_joins_two_nodes_that_cannot_hear_each_other) {
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    c.deaf.push_back({0, 2});
+    c.nodes[1].node->set_relay(true);
+    c.start_all();
+    c.advance_ms(4000);
+    Node& a = *c.nodes[0].node;
+    Node& g = *c.nodes[2].node;
+    CHECK_EQ(alive_peers(a), static_cast<size_t>(2));  // the relay directly, the far node through it
+    CHECK_EQ(alive_peers(g), static_cast<size_t>(2));
+    const PeerLink* ag = a.peers().find_by_node_id(0x102);
+    CHECK(ag != nullptr && a.peer_relayed(ag));
+    CHECK(!a.peer_relayed(a.peers().find_by_node_id(0x101)));
+    CHECK(c.nodes[1].node->relay_counters().unicast_forwarded > 0u);  // probes and replies went through
+    CHECK(ag->rtt_samples > 0u);                                       // a two-hop round trip was measured
+    // The far node falls silent (out of the relay's range too): the near node declares it dead.
+    c.deaf.push_back({1, 2});
+    c.advance_ms(2000);
+    CHECK_EQ(alive_peers(a), static_cast<size_t>(1));
+    CHECK(a.counters().deaths_declared >= 1u);
+}
+
+TEST(node, the_direct_path_wins_when_it_exists_and_the_relay_takes_over_when_it_dies) {
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    c.deaf.push_back({0, 2});
+    c.nodes[1].node->set_relay(true);
+    c.start_all();
+    c.advance_ms(4000);
+    Node& a = *c.nodes[0].node;
+    CHECK(a.peer_relayed(a.peers().find_by_node_id(0x102)));
+    c.deaf.clear();  // node 2 comes into direct range
+    c.advance_ms(3000);
+    CHECK(!a.peer_relayed(a.peers().find_by_node_id(0x102)));
+    CHECK(a.relay_counters().relay_dup > 0u);  // relayed copies dropped while the direct path lives
+    c.deaf.push_back({0, 2});  // and out of range again
+    c.advance_ms(3000);
+    CHECK(a.peer_relayed(a.peers().find_by_node_id(0x102)));
+    CHECK_EQ(alive_peers(a), static_cast<size_t>(2));
+}
+
+TEST(node, a_forwarded_frame_from_a_node_that_is_not_a_relay_is_refused) {
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    c.start_all();
+    c.advance_ms(1000);
+    // A beacon claiming to be from node 2, arriving from node 1's MAC; node 1 never declared RELAY.
+    BeaconPayload bp{};
+    bp.node_id = 0x102;
+    bp.hb_seq = 9;
+    bp.boot_epoch = 1;
+    EncodeSpec spec;
+    spec.src = 0x102;
+    spec.dst = kNodeBroadcast;
+    spec.opcode = kOpHeartbeat;
+    spec.lclass = kClassL3;
+    spec.priority = 1;
+    uint8_t buf[64];
+    size_t n = 0;
+    CHECK(encode(spec, reinterpret_cast<const uint8_t*>(&bp), static_cast<uint16_t>(sizeof(bp)), buf, sizeof(buf), n) ==
+          FrameError::Ok);
+    const uint32_t before = c.nodes[0].node->relay_counters().refused;
+    c.nodes[0].node->on_rx(c.nodes[1].mac, buf, n, c.now_us, -50);
+    CHECK_EQ(c.nodes[0].node->relay_counters().refused, before + 1);
+}
+
+TEST(node, two_relays_in_one_cell_resolve_to_the_lower_node_id) {
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    c.nodes[1].node->set_relay(true);
+    c.nodes[2].node->set_relay(true);
+    c.start_all();
+    c.advance_ms(2000);
+    CHECK(c.nodes[1].node->relay());
+    CHECK(!c.nodes[2].node->relay());
 }

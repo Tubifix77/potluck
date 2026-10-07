@@ -50,6 +50,11 @@ constexpr uint32_t kHelloCapChannelFixed = 1u << 1;
 // nobody else follows it (found on the bench: a node that scanned at boot dragged the cell off channel
 // 1 because a lower-node-id rule let its guess win).
 constexpr uint32_t kHelloCapSettling = 1u << 2;
+// CR-2 / ADR-009: the sender is the cell's relay. Frames it forwards keep their original src.
+constexpr uint32_t kHelloCapRelay = 1u << 3;
+// ADR-009: a relayed HELLO carries the original sender's MAC after the payload, because the HELLO
+// signature covers it. 200 + 6 signed, 24 + 6 unsigned -- both inside v1's 226.
+constexpr size_t kRelayMacTrailer = 6;
 // CR-1: bits 8-11, the channel the sender is tuned to. Adjacent 2.4 GHz channels overlap, so at close
 // range a node can hear a peer one channel off; this lets it move to where the peer really is.
 constexpr uint32_t kHelloCapChannelShift = 8;
