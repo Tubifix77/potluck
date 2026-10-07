@@ -1,0 +1,458 @@
+--- convergence on channel 1
+19:40:10 C I (230) esp_image: segment 3: paddr=000bbb98 vaddr=3fc9a0f4 size=028c4h ( 10436) load
+19:40:10 C I (232) esp_image: segment 4: paddr=000be464 vaddr=40374000 size=138d0h ( 80080) load
+19:40:10 C I (252) esp_image: segment 5: paddr=000d1d3c vaddr=50000000 size=00024h (    36) load
+19:40:10 C I (261) boot: Loaded app from partition at offset 0x10000
+19:40:10 C I (261) boot: Disabling RNG early entropy source...
+19:40:10 C I (271) cpu_start: Multicore app
+19:40:10 C I (279) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+19:40:10 C I (280) cpu_start: Pro cpu start user code
+19:40:10 C I (280) cpu_start: cpu freq: 160000000 Hz
+19:40:10 C I (282) app_init: Application information:
+19:40:10 C I (286) app_init: Project name:     potluck_m0
+19:40:10 C I (290) app_init: App version:      deploy-and-detach-37-gb04c987
+19:40:10 C I (296) app_init: Compile time:     Oct  7 2026 19:38:03
+19:40:10 C I (301) app_init: ELF file SHA256:  216e65a21...
+19:40:10 C I (305) app_init: ESP-IDF:          v6.0.2
+19:40:10 C I (309) efuse_init: Min chip rev:     v0.0
+19:40:10 C I (313) efuse_init: Max chip rev:     v0.99
+19:40:10 C I (317) efuse_init: Chip rev:         v0.2
+19:40:10 C I (320) heap_init: Initializing. RAM available for dynamic allocation:
+19:40:10 C I (327) heap_init: At 3FCB06E0 len 00039030 (228 KiB): RAM
+19:40:10 C I (332) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+19:40:10 C I (337) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+19:40:10 C I (342) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+19:40:10 C I (348) spi_flash: detected chip: generic
+19:40:10 C I (351) spi_flash: flash io: dio
+19:40:10 C I (355) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+19:40:10 C I (361) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+19:40:10 C I (368) main_task: Started on CPU0
+19:40:10 C I (398) main_task: Calling app_main()
+19:40:10 C I (412) pp: pp rom version: e7ae62f
+19:40:10 C I (412) net80211: net80211 rom version: e7ae62f
+19:40:10 C I (414) wifi:wifi driver task: 3fcee80c, prio:23, stack:6656, core=0
+19:40:10 C I (415) wifi:wifi firmware version: 00ad238
+19:40:10 C I (418) wifi:wifi certification version: v7.0
+19:40:10 C I (422) wifi:config NVS flash: disabled
+19:40:10 C I (426) wifi:config nano formatting: disabled
+19:40:10 C I (430) wifi:Init data frame dynamic rx buffer num: 16
+19:40:10 C I (435) wifi:Init static rx mgmt buffer num: 5
+19:40:10 C I (439) wifi:Init management short buffer num: 32
+19:40:10 C I (443) wifi:Init dynamic tx buffer num: 32
+19:40:10 C I (447) wifi:Init static tx FG buffer num: 2
+19:40:10 C I (451) wifi:Init static rx buffer size: 1600
+19:40:10 C I (456) wifi:Init static rx buffer num: 6
+19:40:10 C I (459) wifi:Init dynamic rx buffer num: 16
+19:40:10 C I (464) wifi_init: accept mbox: 6
+19:40:10 C I (466) wifi_init: tcpip mbox: 32
+19:40:10 C I (469) wifi_init: udp mbox: 6
+19:40:10 C I (472) wifi_init: tcp mbox: 6
+19:40:10 C I (475) wifi_init: tcp tx win: 5760
+19:40:10 C I (478) wifi_init: tcp rx win: 5760
+19:40:10 C I (481) wifi_init: tcp mss: 1440
+19:40:10 C I (484) wifi_init: WiFi IRAM OP enabled
+19:40:10 C I (488) wifi_init: WiFi RX IRAM OP enabled
+19:40:10 C I (492) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+19:40:10 C I (539) wifi:mode : sta (b8:1f:3f:da:81:60)
+19:40:10 C I (540) wifi:enable tsf
+19:40:10 C I (541) wifi:Set ps type: 0, coexist: 0
+19:40:10 C 
+19:40:10 C I (543) ESPNOW: espnow [version: 2.0] init
+19:40:10 C I (544) pot.espnow: esp-now v2 up on channel 1, mac b8:1f:3f:da:81:60
+19:40:10 C I (550) pot.epoch: boot epoch 156
+19:40:10 C I (552) pot.m0: namespace: 6 resources declared
+19:40:10 C I (557) pot.serial: frame link on UART1, tx=17 rx=18, 921600 baud
+19:40:10 C I (563) pot.m0: status LED on GPIO48 and GPIO38; self-test red, green, blue
+19:40:11 C I (2070) pot.m0: deploy: image counter 4, digest 07759479..., 3 actor(s) in the image
+19:40:11 C I (2070) pot.m0: deploy: boot confirmed, running slot B, trial boot 0/3, counter 4
+19:40:11 C {"t":"enrol","node":33120,"pub":"0392ff6cd7890c311c0b048061f7b78a8a4c8f2363360d5bc3a19d91996afe04","enrolled":1,"ca_fp":"ef76cc2e"}
+19:40:11 C I (2087) pot.m0: safe_state: high-water table restored from NVS
+19:40:11 C I (2091) pot.m0: auth: enrolled, required
+19:40:11 C I (2095) pot.m0: Potluck M0 node 0x8160 epoch 156, heartbeat 100 ms x 6 misses = 600 ms
+19:40:11 C I (2103) main_task: Returned from app_main()
+19:40:11 C {"t":"boot","node":33120,"epoch":156,"mac":"b8:1f:3f:da:81:60","espnow_ver":2,"chan":1,"hb_period_ms":100,"hb_miss_limit":6,"fw":"deploy-and-detach-37-gb04c987","idf":"v6.0.2","dram":{"at_boot":276676,"after_nvs":274648,"after_netif":266804,"after_wifi_init":236256,"after_wifi_start":234552,"after_espnow":234408,"largest_block":188416,"wifi_stack":32252,"espnow":144,"total_to_radio":42268}}
+19:40:11 C I (2146) pot.m0: beacon mode: broadcast_beacon
+19:40:11 C I (2217) pot.m0: discovered peer 0x6300
+19:40:11 C I (2217) pot.m0: peer 0x6300 pinned to ESP-NOW v2, payload cap 1446 B
+19:40:12 C W (2903) pot.m0: peer 0x6300 declared DEAD after 6 misses (683 ms silent)
+19:40:13 C I (3961) pot.m0: peer 0x6300 revived
+19:40:13 A W (10483) pot.m0: peer 0x8160 rebooted, epoch now 156
+19:40:15 A {"t":"event","at_ms":1860,"node":25344,"kind":"peer_discovered","peer":33120,"slot":0,"a":155,"b":0}
+19:40:15 A {"t":"event","at_ms":1860,"node":25344,"kind":"version_pinned","peer":33120,"slot":0,"a":2,"b":1446}
+19:40:15 A {"t":"event","at_ms":1861,"node":25344,"kind":"peer_alive","peer":33120,"slot":0,"a":0,"b":0}
+19:40:15 A {"t":"event","at_ms":1863,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:15 A {"t":"event","at_ms":2727,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:15 A {"t":"event","at_ms":3646,"node":25344,"kind":"peer_dead","peer":33120,"slot":0,"a":6,"b":671}
+19:40:15 A {"t":"event","at_ms":4746,"node":25344,"kind":"probe_timeout","peer":33120,"slot":0,"a":2,"b":0}
+19:40:15 A {"t":"event","at_ms":4809,"node":25344,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:40:15 A {"t":"event","at_ms":5746,"node":25344,"kind":"probe_timeout","peer":33120,"slot":0,"a":3,"b":0}
+19:40:15 A {"t":"event","at_ms":6746,"node":25344,"kind":"probe_timeout","peer":33120,"slot":0,"a":4,"b":0}
+19:40:15 A {"t":"event","at_ms":7746,"node":25344,"kind":"probe_timeout","peer":33120,"slot":0,"a":5,"b":0}
+19:40:15 A {"t":"event","at_ms":8762,"node":25344,"kind":"probe_timeout","peer":33120,"slot":0,"a":6,"b":0}
+19:40:15 A {"t":"event","at_ms":9762,"node":25344,"kind":"probe_timeout","peer":33120,"slot":0,"a":7,"b":0}
+19:40:15 A {"t":"event","at_ms":9774,"node":25344,"kind":"frame_rejected","peer":33120,"slot":0,"a":1,"b":2}
+19:40:15 A {"t":"event","at_ms":10135,"node":25344,"kind":"channel_changed","peer":33120,"slot":0,"a":1,"b":5}
+19:40:15 A {"t":"event","at_ms":10135,"node":25344,"kind":"peer_rebooted","peer":33120,"slot":0,"a":156,"b":0}
+19:40:15 A {"t":"event","at_ms":10137,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:15 A {"t":"link","up_ms":11941,"node":25344,"peer":33120,"mac":"b8:1f:3f:da:81:60","state":"alive","epoch":156,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-35,"tx":{"frames":16,"cb_ok":11,"cb_fail":5,"enqueue_err":0,"pdr_ppm":687500},"rx":{"frames":48,"lost_seqgap":0,"reorder_dup":3,"dropped_bad":0,"hb_lost":8,"bcast_frames":34,"pdr_ppm":1000000},"rtt":{"samples":3,"min_us":5605,"max_us":5965,"timeouts":6,"txq_last_us":0,"txq_max_us":0,"remote_turnaround_us":928,"remote_turnaround_max_us":928,"p50_us":[4000,6000],"p99_us":[4000,6000],"hist":[0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0]}}
+19:40:15 A {"t":"auth","node":25344,"up_ms":11994,"enrolled":1,"required":1,"verified_peers":1,"verified":2,"cache_hits":1,"refused":6,"rate_limited":0,"stale_epoch":0,"verify_us_max":86915,"link_stack_free_b":1732,"crypto_stack_free_b":1220,"tags_ok":8,"bad_tag":3,"replayed":1,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":4,"tag_us_max":750}
+19:40:15 A {"t":"act","node":25344,"setpoint":0,"has_value":0,"writes_served":0}
+19:40:15 A {"t":"peers","node":25344,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":1,"hops":12,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"list":[{"id":33120,"period_ms":100,"misses":6,"busy":0}]}
+19:40:15 A {"t":"ss","node":25344,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[]}
+19:40:15 A {"t":"node","up_ms":12063,"node":25344,"epoch":150,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228948,"largest_block":180224,"rx":{"total":92,"bad_frame":0,"unknown_peer":38,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":7},"tx":{"total":139,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":1,"revivals":0,"reboots_seen":1,"table_full":0,"events_dropped":0}}
+19:40:15 A {"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":301,"ts":11790,"updates":1,"value":150}
+19:40:15 A {"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":326,"ts":11790,"updates":1,"value":-34}
+19:40:15 A {"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":340,"ts":11790,"updates":1,"value":1}
+19:40:15 A {"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":353,"ts":11790,"updates":1,"value":228948}
+19:40:15 A {"t":"ns","node":25344,"hash":2033492666,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:40:15 A {"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":381,"ts":11790,"updates":1,"value":11}
+19:40:15 A {"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":394,"ts":11790,"updates":1,"value":180224}
+--- 1. A announces a move to channel 6 (in 500 ms)
+19:40:21 A {"t":"test","cmd":"channel","channel":6,"quiet":0,"ok":1}
+19:40:21 C {"t":"event","at_ms":1868,"node":33120,"kind":"peer_discovered","peer":25344,"slot":0,"a":150,"b":0}
+19:40:21 C {"t":"event","at_ms":1869,"node":33120,"kind":"version_pinned","peer":25344,"slot":0,"a":2,"b":1446}
+19:40:21 C {"t":"event","at_ms":1870,"node":33120,"kind":"peer_alive","peer":25344,"slot":0,"a":0,"b":0}
+19:40:21 C {"t":"event","at_ms":1871,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:21 C {"t":"event","at_ms":2554,"node":33120,"kind":"peer_dead","peer":25344,"slot":0,"a":6,"b":683}
+19:40:21 C {"t":"event","at_ms":3613,"node":33120,"kind":"peer_revived","peer":25344,"slot":0,"a":0,"b":0}
+19:40:21 C {"t":"event","at_ms":3615,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:21 C {"t":"event","at_ms":3639,"node":33120,"kind":"frame_rejected","peer":25344,"slot":0,"a":2,"b":10}
+19:40:21 C {"t":"event","at_ms":3734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:21 C {"t":"event","at_ms":3754,"node":33120,"kind":"probe_timeout","peer":25344,"slot":0,"a":1,"b":0}
+19:40:21 C {"t":"event","at_ms":3909,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:21 C {"t":"event","at_ms":4676,"node":33120,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:40:21 C {"t":"event","at_ms":4755,"node":33120,"kind":"probe_timeout","peer":25344,"slot":0,"a":2,"b":0}
+19:40:21 C {"t":"event","at_ms":5836,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:21 C {"t":"event","at_ms":7734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:21 C {"t":"event","at_ms":9734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:21 C {"t":"event","at_ms":11737,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:21 C {"t":"link","up_ms":11969,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":150,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-33,"tx":{"frames":26,"cb_ok":24,"cb_fail":2,"enqueue_err":0,"pdr_ppm":923076},"rx":{"frames":116,"lost_seqgap":6,"reorder_dup":0,"dropped_bad":0,"hb_lost":31,"bcast_frames":84,"pdr_ppm":950819},"rtt":{"samples":8,"min_us":5678,"max_us":16335,"timeouts":2,"txq_last_us":4454,"txq_max_us":4454,"remote_turnaround_us":769,"remote_turnaround_max_us":918,"p50_us":[4000,6000],"p99_us":[16000,22000],"hist":[0,0,0,0,4,2,1,0,1,0,0,0,0,0,0,0]}}
+19:40:21 C {"t":"auth","node":33120,"up_ms":12022,"enrolled":1,"required":1,"verified_peers":1,"verified":4,"cache_hits":4,"refused":7,"rate_limited":0,"stale_epoch":0,"verify_us_max":86590,"link_stack_free_b":1732,"crypto_stack_free_b":1220,"tags_ok":21,"bad_tag":1,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":780}
+19:40:21 C {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+19:40:21 C {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":1,"moves_refused":0,"list":[{"id":25344,"period_ms":100,"misses":6,"busy":0}]}
+19:40:21 C {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+19:40:21 C {"t":"node","up_ms":12089,"node":33120,"epoch":156,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":229076,"largest_block":180224,"rx":{"total":145,"bad_frame":0,"unknown_peer":28,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":18},"tx":{"total":136,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":1,"revivals":1,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+19:40:21 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":330,"ts":11799,"updates":1,"value":1}
+19:40:21 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":343,"ts":11799,"updates":1,"value":180224}
+19:40:21 C {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:40:22 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":371,"ts":11799,"updates":1,"value":156}
+19:40:22 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":385,"ts":11799,"updates":1,"value":11}
+19:40:22 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":410,"ts":11799,"updates":1,"value":-34}
+19:40:22 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":423,"ts":11799,"updates":1,"value":229076}
+19:40:26 A {"t":"event","at_ms":12049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:26 A {"t":"event","at_ms":14049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:26 A {"t":"event","at_ms":16049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:26 A {"t":"event","at_ms":17410,"node":25344,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:40:26 A {"t":"event","at_ms":18049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:26 A {"t":"event","at_ms":18487,"node":25344,"kind":"channel_changed","peer":0,"slot":255,"a":6,"b":1}
+19:40:26 A {"t":"event","at_ms":18615,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:26 A {"t":"event","at_ms":20049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:26 A {"t":"event","at_ms":22049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:26 A {"t":"link","up_ms":22268,"node":25344,"peer":33120,"mac":"b8:1f:3f:da:81:60","state":"alive","epoch":156,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-30,"tx":{"frames":43,"cb_ok":38,"cb_fail":5,"enqueue_err":0,"pdr_ppm":883720},"rx":{"frames":184,"lost_seqgap":0,"reorder_dup":3,"dropped_bad":0,"hb_lost":9,"bcast_frames":136,"pdr_ppm":1000000},"rtt":{"samples":13,"min_us":5605,"max_us":13008,"timeouts":6,"txq_last_us":3023,"txq_max_us":3023,"remote_turnaround_us":917,"remote_turnaround_max_us":931,"p50_us":[4000,6000],"p99_us":[11000,16000],"hist":[0,0,0,0,11,1,0,1,0,0,0,0,0,0,0,0]}}
+19:40:26 A {"t":"auth","node":25344,"up_ms":22321,"enrolled":1,"required":1,"verified_peers":1,"verified":3,"cache_hits":7,"refused":15,"rate_limited":0,"stale_epoch":0,"verify_us_max":86915,"link_stack_free_b":1732,"crypto_stack_free_b":1172,"tags_ok":34,"bad_tag":3,"replayed":1,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":4,"tag_us_max":757}
+19:40:26 A {"t":"act","node":25344,"setpoint":0,"has_value":0,"writes_served":0}
+19:40:26 A {"t":"peers","node":25344,"own_period_ms":100,"own_busy":0,"channel":6,"scanning":0,"scans":1,"hops":12,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"list":[{"id":33120,"period_ms":100,"misses":6,"busy":0}]}
+19:40:26 A {"t":"ss","node":25344,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[]}
+19:40:26 A {"t":"node","up_ms":22388,"node":25344,"epoch":150,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228948,"largest_block":180224,"rx":{"total":258,"bad_frame":0,"unknown_peer":70,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":7},"tx":{"total":277,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":1,"revivals":0,"reboots_seen":1,"table_full":0,"events_dropped":0}}
+19:40:26 A {"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":228,"ts":22199,"updates":2,"value":150}
+19:40:26 A {"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":242,"ts":22199,"updates":2,"value":-30}
+19:40:26 A {"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":255,"ts":22199,"updates":2,"value":1}
+19:40:26 A {"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":269,"ts":22199,"updates":2,"value":228948}
+19:40:26 A {"t":"ns","node":25344,"hash":2033492666,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:40:26 A {"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":307,"ts":22199,"updates":2,"value":22}
+19:40:26 A {"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":321,"ts":22199,"updates":2,"value":180224}
+19:40:32 C {"t":"event","at_ms":12373,"node":33120,"kind":"channel_changed","peer":0,"slot":255,"a":6,"b":1}
+19:40:32 C {"t":"event","at_ms":12480,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:32 C {"t":"event","at_ms":13740,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:32 C {"t":"event","at_ms":15734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:32 C {"t":"event","at_ms":15776,"node":33120,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:40:32 C {"t":"event","at_ms":17734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:32 C {"t":"event","at_ms":19734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:32 C {"t":"event","at_ms":21737,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:32 C {"t":"link","up_ms":22304,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":150,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-30,"tx":{"frames":52,"cb_ok":50,"cb_fail":2,"enqueue_err":0,"pdr_ppm":961538},"rx":{"frames":251,"lost_seqgap":6,"reorder_dup":0,"dropped_bad":0,"hb_lost":31,"bcast_frames":187,"pdr_ppm":976653},"rtt":{"samples":18,"min_us":5615,"max_us":16335,"timeouts":2,"txq_last_us":4454,"txq_max_us":4454,"remote_turnaround_us":767,"remote_turnaround_max_us":918,"p50_us":[6000,8000],"p99_us":[16000,22000],"hist":[0,0,0,0,8,6,2,1,1,0,0,0,0,0,0,0]}}
+19:40:32 C {"t":"auth","node":33120,"up_ms":22357,"enrolled":1,"required":1,"verified_peers":1,"verified":5,"cache_hits":9,"refused":15,"rate_limited":0,"stale_epoch":0,"verify_us_max":86590,"link_stack_free_b":1732,"crypto_stack_free_b":1220,"tags_ok":47,"bad_tag":1,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":780}
+19:40:32 C {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+19:40:32 C {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":6,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":1,"moves_refused":0,"list":[{"id":25344,"period_ms":100,"misses":6,"busy":0}]}
+19:40:32 C {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+19:40:32 C {"t":"node","up_ms":22424,"node":33120,"epoch":156,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228948,"largest_block":180224,"rx":{"total":312,"bad_frame":0,"unknown_peer":59,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":18},"tx":{"total":271,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":1,"revivals":1,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+19:40:32 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":226,"ts":22237,"updates":2,"value":1}
+19:40:32 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":240,"ts":22237,"updates":2,"value":180224}
+19:40:32 C {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:40:32 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":268,"ts":22237,"updates":2,"value":156}
+19:40:32 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":281,"ts":22237,"updates":2,"value":22}
+19:40:32 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":295,"ts":22237,"updates":2,"value":-30}
+19:40:32 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":309,"ts":22237,"updates":2,"value":228948}
+19:40:36 A {"t":"event","at_ms":24049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:36 A {"t":"event","at_ms":26052,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:36 A {"t":"event","at_ms":28049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:36 A {"t":"event","at_ms":28511,"node":25344,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:40:36 A {"t":"event","at_ms":30049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:36 A {"t":"event","at_ms":32049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:36 A {"t":"link","up_ms":32576,"node":25344,"peer":33120,"mac":"b8:1f:3f:da:81:60","state":"alive","epoch":156,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-30,"tx":{"frames":68,"cb_ok":63,"cb_fail":5,"enqueue_err":0,"pdr_ppm":926470},"rx":{"frames":317,"lost_seqgap":0,"reorder_dup":3,"dropped_bad":0,"hb_lost":9,"bcast_frames":239,"pdr_ppm":1000000},"rtt":{"samples":23,"min_us":5605,"max_us":13008,"timeouts":6,"txq_last_us":3365,"txq_max_us":3567,"remote_turnaround_us":916,"remote_turnaround_max_us":931,"p50_us":[4000,6000],"p99_us":[11000,16000],"hist":[0,0,0,0,14,7,1,1,0,0,0,0,0,0,0,0]}}
+19:40:36 A {"t":"auth","node":25344,"up_ms":32629,"enrolled":1,"required":1,"verified_peers":1,"verified":3,"cache_hits":12,"refused":24,"rate_limited":0,"stale_epoch":0,"verify_us_max":86915,"link_stack_free_b":1732,"crypto_stack_free_b":1172,"tags_ok":59,"bad_tag":3,"replayed":1,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":4,"tag_us_max":757}
+19:40:36 A {"t":"act","node":25344,"setpoint":0,"has_value":0,"writes_served":0}
+19:40:36 A {"t":"peers","node":25344,"own_period_ms":100,"own_busy":0,"channel":6,"scanning":0,"scans":1,"hops":12,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"list":[{"id":33120,"period_ms":100,"misses":6,"busy":0}]}
+19:40:36 A {"t":"ss","node":25344,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[]}
+19:40:36 A {"t":"node","up_ms":32696,"node":25344,"epoch":150,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228948,"largest_block":180224,"rx":{"total":424,"bad_frame":0,"unknown_peer":102,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":7},"tx":{"total":410,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":1,"revivals":0,"reboots_seen":1,"table_full":0,"events_dropped":0}}
+19:40:36 A {"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":201,"ts":32534,"updates":3,"value":150}
+19:40:36 A {"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":215,"ts":32534,"updates":3,"value":-30}
+19:40:36 A {"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":230,"ts":32534,"updates":3,"value":1}
+19:40:36 A {"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":244,"ts":32534,"updates":3,"value":228948}
+19:40:36 A {"t":"ns","node":25344,"hash":2033492666,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:40:36 A {"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":282,"ts":32534,"updates":3,"value":32}
+19:40:36 A {"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":296,"ts":32534,"updates":3,"value":180224}
+19:40:42 C {"t":"event","at_ms":23734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:42 C {"t":"event","at_ms":25734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:42 C {"t":"event","at_ms":25977,"node":33120,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:40:42 C {"t":"event","at_ms":27734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:42 C {"t":"event","at_ms":29734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:42 C {"t":"event","at_ms":31734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:42 C {"t":"link","up_ms":32613,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":150,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-29,"tx":{"frames":77,"cb_ok":75,"cb_fail":2,"enqueue_err":0,"pdr_ppm":974025},"rx":{"frames":384,"lost_seqgap":6,"reorder_dup":0,"dropped_bad":0,"hb_lost":31,"bcast_frames":290,"pdr_ppm":984615},"rtt":{"samples":28,"min_us":5595,"max_us":16335,"timeouts":2,"txq_last_us":4454,"txq_max_us":4454,"remote_turnaround_us":776,"remote_turnaround_max_us":918,"p50_us":[6000,8000],"p99_us":[16000,22000],"hist":[0,0,0,0,13,10,3,1,1,0,0,0,0,0,0,0]}}
+19:40:42 C {"t":"auth","node":33120,"up_ms":32666,"enrolled":1,"required":1,"verified_peers":1,"verified":5,"cache_hits":14,"refused":25,"rate_limited":0,"stale_epoch":0,"verify_us_max":86590,"link_stack_free_b":1732,"crypto_stack_free_b":1220,"tags_ok":73,"bad_tag":1,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":780}
+19:40:42 C {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+19:40:42 C {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":6,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":1,"moves_refused":0,"list":[{"id":25344,"period_ms":100,"misses":6,"busy":0}]}
+19:40:42 C {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+19:40:42 C {"t":"node","up_ms":32744,"node":33120,"epoch":156,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228948,"largest_block":180224,"rx":{"total":481,"bad_frame":0,"unknown_peer":94,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":18},"tx":{"total":405,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":1,"revivals":1,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+19:40:42 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":202,"ts":32571,"updates":3,"value":1}
+19:40:42 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":215,"ts":32571,"updates":3,"value":180224}
+19:40:42 C {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:40:42 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":254,"ts":32571,"updates":3,"value":156}
+19:40:42 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":267,"ts":32571,"updates":3,"value":32}
+19:40:42 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":281,"ts":32571,"updates":3,"value":-29}
+19:40:42 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":295,"ts":32571,"updates":3,"value":228948}
+19:40:43 A {"t":"test","cmd":"fixed","fixed":1}
+--- 2. A is router-tied and jumps to 11 unannounced; C must lose it, scan and find it
+19:40:43 A {"t":"test","cmd":"channel","channel":11,"quiet":1,"ok":1}
+19:40:44 A W (41195) pot.m0: peer 0x8160 declared DEAD after 6 misses (657 ms silent)
+19:40:44 C W (35103) pot.m0: peer 0x6300 declared DEAD after 6 misses (640 ms silent)
+19:40:46 A {"t":"event","at_ms":34049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:46 A {"t":"event","at_ms":36049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:46 A {"t":"event","at_ms":38049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:46 A {"t":"event","at_ms":38710,"node":25344,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:40:46 A {"t":"event","at_ms":40048,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:46 A {"t":"event","at_ms":40252,"node":25344,"kind":"channel_changed","peer":0,"slot":255,"a":11,"b":3}
+19:40:46 A {"t":"event","at_ms":40846,"node":25344,"kind":"peer_dead","peer":33120,"slot":0,"a":6,"b":657}
+19:40:46 A {"t":"event","at_ms":41762,"node":25344,"kind":"probe_timeout","peer":33120,"slot":0,"a":39,"b":0}
+19:40:46 A {"t":"event","at_ms":42762,"node":25344,"kind":"probe_timeout","peer":33120,"slot":0,"a":40,"b":0}
+19:40:46 A {"t":"link","up_ms":42913,"node":25344,"peer":33120,"mac":"b8:1f:3f:da:81:60","state":"dead","epoch":156,"espnow_ver":2,"mtu":1446,"misses":6,"rssi":-30,"tx":{"frames":91,"cb_ok":83,"cb_fail":8,"enqueue_err":0,"pdr_ppm":912087},"rx":{"frames":418,"lost_seqgap":0,"reorder_dup":3,"dropped_bad":0,"hb_lost":9,"bcast_frames":316,"pdr_ppm":1000000},"rtt":{"samples":31,"min_us":5605,"max_us":13008,"timeouts":8,"txq_last_us":2743,"txq_max_us":3987,"remote_turnaround_us":923,"remote_turnaround_max_us":933,"p50_us":[4000,6000],"p99_us":[11000,16000],"hist":[0,0,0,0,16,13,1,1,0,0,0,0,0,0,0,0]}}
+19:40:46 A {"t":"auth","node":25344,"up_ms":42966,"enrolled":1,"required":1,"verified_peers":1,"verified":3,"cache_hits":16,"refused":31,"rate_limited":0,"stale_epoch":0,"verify_us_max":86915,"link_stack_free_b":1732,"crypto_stack_free_b":1172,"tags_ok":79,"bad_tag":3,"replayed":1,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":4,"tag_us_max":757}
+19:40:46 A {"t":"act","node":25344,"setpoint":0,"has_value":0,"writes_served":0}
+19:40:46 A {"t":"peers","node":25344,"own_period_ms":100,"own_busy":0,"channel":11,"scanning":0,"scans":1,"hops":12,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"list":[{"id":33120,"period_ms":100,"misses":6,"busy":0}]}
+19:40:46 A {"t":"ss","node":25344,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[]}
+19:40:46 A {"t":"node","up_ms":43032,"node":25344,"epoch":150,"peers_alive":0,"peers_dead":1,"no_radio":0,"free_dram":228824,"largest_block":180224,"rx":{"total":547,"bad_frame":0,"unknown_peer":126,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":7},"tx":{"total":542,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":0,"reboots_seen":1,"table_full":0,"events_dropped":0}}
+19:40:46 A {"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":228,"ts":42844,"updates":4,"value":150}
+19:40:46 A {"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":241,"ts":42844,"updates":4,"value":0}
+19:40:46 A {"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":255,"ts":42844,"updates":4,"value":0}
+19:40:46 A {"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":268,"ts":42844,"updates":4,"value":228824}
+19:40:46 A {"t":"ns","node":25344,"hash":2033492666,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:40:46 A {"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":307,"ts":42844,"updates":4,"value":42}
+19:40:46 A {"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":321,"ts":42844,"updates":4,"value":180224}
+19:40:48 C I (39027) pot.m0: peer 0x6300 revived
+19:40:48 A I (45165) pot.m0: peer 0x8160 revived
+19:40:52 C {"t":"event","at_ms":33734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:52 C {"t":"event","at_ms":34754,"node":33120,"kind":"peer_dead","peer":25344,"slot":0,"a":6,"b":640}
+19:40:52 C {"t":"event","at_ms":35754,"node":33120,"kind":"probe_timeout","peer":25344,"slot":0,"a":33,"b":0}
+19:40:52 C {"t":"event","at_ms":36754,"node":33120,"kind":"probe_timeout","peer":25344,"slot":0,"a":34,"b":0}
+19:40:52 C {"t":"event","at_ms":37781,"node":33120,"kind":"probe_timeout","peer":25344,"slot":0,"a":35,"b":0}
+19:40:52 C {"t":"event","at_ms":38678,"node":33120,"kind":"peer_revived","peer":25344,"slot":0,"a":0,"b":0}
+19:40:52 C {"t":"event","at_ms":38681,"node":33120,"kind":"channel_changed","peer":0,"slot":255,"a":10,"b":2}
+19:40:52 C {"t":"event","at_ms":38780,"node":33120,"kind":"probe_timeout","peer":25344,"slot":0,"a":36,"b":0}
+19:40:52 C {"t":"event","at_ms":39813,"node":33120,"kind":"channel_changed","peer":25344,"slot":0,"a":11,"b":5}
+19:40:52 C {"t":"event","at_ms":39814,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:52 C {"t":"event","at_ms":40677,"node":33120,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:40:52 C {"t":"event","at_ms":41735,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:40:52 C {"t":"link","up_ms":42975,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":150,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-25,"tx":{"frames":98,"cb_ok":92,"cb_fail":6,"enqueue_err":0,"pdr_ppm":938775},"rx":{"frames":463,"lost_seqgap":10,"reorder_dup":0,"dropped_bad":0,"hb_lost":77,"bcast_frames":348,"pdr_ppm":978858},"rtt":{"samples":35,"min_us":5595,"max_us":16335,"timeouts":6,"txq_last_us":727,"txq_max_us":4454,"remote_turnaround_us":967,"remote_turnaround_max_us":1017,"p50_us":[6000,8000],"p99_us":[16000,22000],"hist":[0,0,0,0,16,14,3,1,1,0,0,0,0,0,0,0]}}
+19:40:52 C {"t":"auth","node":33120,"up_ms":43028,"enrolled":1,"required":1,"verified_peers":1,"verified":6,"cache_hits":16,"refused":31,"rate_limited":0,"stale_epoch":0,"verify_us_max":86590,"link_stack_free_b":1732,"crypto_stack_free_b":1220,"tags_ok":90,"bad_tag":1,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":780}
+19:40:52 C {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+19:40:52 C {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":11,"scanning":0,"scans":1,"hops":4,"found":1,"lost_to_found_ms":3928,"moves_followed":1,"moves_refused":0,"list":[{"id":25344,"period_ms":100,"misses":6,"busy":0}]}
+19:40:52 C {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+19:40:52 C {"t":"node","up_ms":43107,"node":33120,"epoch":156,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228948,"largest_block":180224,"rx":{"total":578,"bad_frame":0,"unknown_peer":114,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":18},"tx":{"total":539,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":2,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+19:40:52 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":255,"ts":42880,"updates":4,"value":1}
+19:40:52 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":269,"ts":42880,"updates":4,"value":180224}
+19:40:52 C {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:40:52 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":307,"ts":42880,"updates":4,"value":156}
+19:40:52 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":321,"ts":42880,"updates":4,"value":42}
+19:40:52 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":335,"ts":42880,"updates":4,"value":-25}
+19:40:53 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":348,"ts":42880,"updates":4,"value":228948}
+19:40:57 A {"t":"event","at_ms":43762,"node":25344,"kind":"probe_timeout","peer":33120,"slot":0,"a":41,"b":0}
+19:40:57 A {"t":"event","at_ms":44762,"node":25344,"kind":"probe_timeout","peer":33120,"slot":0,"a":42,"b":0}
+19:40:57 A {"t":"event","at_ms":44817,"node":25344,"kind":"peer_revived","peer":33120,"slot":0,"a":0,"b":0}
+19:40:57 A {"t":"event","at_ms":44900,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:57 A {"t":"event","at_ms":46147,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:57 A {"t":"event","at_ms":48049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:57 A {"t":"event","at_ms":49813,"node":25344,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:40:57 A {"t":"event","at_ms":50049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:57 A {"t":"event","at_ms":52049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:40:57 A {"t":"link","up_ms":53248,"node":25344,"peer":33120,"mac":"b8:1f:3f:da:81:60","state":"alive","epoch":156,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-25,"tx":{"frames":115,"cb_ok":106,"cb_fail":9,"enqueue_err":0,"pdr_ppm":921739},"rx":{"frames":527,"lost_seqgap":4,"reorder_dup":3,"dropped_bad":0,"hb_lost":57,"bcast_frames":398,"pdr_ppm":992467},"rtt":{"samples":40,"min_us":5605,"max_us":53505,"timeouts":10,"txq_last_us":2751,"txq_max_us":27399,"remote_turnaround_us":919,"remote_turnaround_max_us":23601,"p50_us":[4000,6000],"p99_us":[42000,60000],"hist":[0,0,0,0,22,13,2,2,0,0,0,1,0,0,0,0]}}
+19:40:57 A {"t":"auth","node":25344,"up_ms":53301,"enrolled":1,"required":1,"verified_peers":1,"verified":5,"cache_hits":19,"refused":37,"rate_limited":0,"stale_epoch":0,"verify_us_max":86915,"link_stack_free_b":1732,"crypto_stack_free_b":1076,"tags_ok":101,"bad_tag":3,"replayed":1,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":4,"tag_us_max":757}
+19:40:57 A {"t":"act","node":25344,"setpoint":0,"has_value":0,"writes_served":0}
+19:40:57 A {"t":"peers","node":25344,"own_period_ms":100,"own_busy":0,"channel":11,"scanning":0,"scans":1,"hops":12,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"list":[{"id":33120,"period_ms":100,"misses":6,"busy":0}]}
+19:40:57 A {"t":"ss","node":25344,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[]}
+19:40:57 A {"t":"node","up_ms":53368,"node":25344,"epoch":150,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228824,"largest_block":180224,"rx":{"total":680,"bad_frame":0,"unknown_peer":149,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":7},"tx":{"total":675,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":1,"reboots_seen":1,"table_full":0,"events_dropped":0}}
+19:40:57 A {"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":228,"ts":53179,"updates":5,"value":150}
+19:40:57 A {"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":242,"ts":53179,"updates":5,"value":-25}
+19:40:57 A {"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":255,"ts":53179,"updates":5,"value":1}
+19:40:57 A {"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":269,"ts":53179,"updates":5,"value":228824}
+19:40:57 A {"t":"ns","node":25344,"hash":2033492666,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:40:57 A {"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":308,"ts":53179,"updates":5,"value":53}
+19:40:57 A {"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":321,"ts":53179,"updates":5,"value":180224}
+19:41:03 C {"t":"event","at_ms":43734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:03 C {"t":"event","at_ms":45738,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:03 C {"t":"event","at_ms":47734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:03 C {"t":"event","at_ms":49734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:03 C {"t":"event","at_ms":50677,"node":33120,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:41:03 C {"t":"event","at_ms":51734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:03 C {"t":"link","up_ms":53284,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":150,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-25,"tx":{"frames":123,"cb_ok":117,"cb_fail":6,"enqueue_err":0,"pdr_ppm":951219},"rx":{"frames":596,"lost_seqgap":10,"reorder_dup":0,"dropped_bad":0,"hb_lost":77,"bcast_frames":451,"pdr_ppm":983498},"rtt":{"samples":45,"min_us":5595,"max_us":16335,"timeouts":6,"txq_last_us":727,"txq_max_us":4454,"remote_turnaround_us":959,"remote_turnaround_max_us":1017,"p50_us":[6000,8000],"p99_us":[16000,22000],"hist":[0,0,0,0,19,18,6,1,1,0,0,0,0,0,0,0]}}
+19:41:03 C {"t":"auth","node":33120,"up_ms":53337,"enrolled":1,"required":1,"verified_peers":1,"verified":6,"cache_hits":21,"refused":37,"rate_limited":0,"stale_epoch":0,"verify_us_max":86590,"link_stack_free_b":1732,"crypto_stack_free_b":1220,"tags_ok":115,"bad_tag":1,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":780}
+19:41:03 C {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+19:41:03 C {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":11,"scanning":0,"scans":1,"hops":4,"found":1,"lost_to_found_ms":3928,"moves_followed":1,"moves_refused":0,"list":[{"id":25344,"period_ms":100,"misses":6,"busy":0}]}
+19:41:03 C {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+19:41:03 C {"t":"node","up_ms":53416,"node":33120,"epoch":156,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228948,"largest_block":180224,"rx":{"total":733,"bad_frame":0,"unknown_peer":135,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":18},"tx":{"total":672,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":2,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+19:41:03 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":202,"ts":53242,"updates":5,"value":1}
+19:41:03 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":227,"ts":53242,"updates":5,"value":180224}
+19:41:03 C {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:41:03 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":254,"ts":53242,"updates":5,"value":156}
+19:41:03 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":268,"ts":53242,"updates":5,"value":53}
+19:41:03 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":282,"ts":53242,"updates":5,"value":-25}
+19:41:03 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":295,"ts":53242,"updates":5,"value":228948}
+19:41:07 A {"t":"event","at_ms":54049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:07 A {"t":"event","at_ms":56049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:07 A {"t":"event","at_ms":58049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:07 A {"t":"event","at_ms":60011,"node":25344,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:41:07 A {"t":"event","at_ms":60049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:07 A {"t":"event","at_ms":62049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:07 A {"t":"link","up_ms":63557,"node":25344,"peer":33120,"mac":"b8:1f:3f:da:81:60","state":"alive","epoch":156,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-26,"tx":{"frames":140,"cb_ok":131,"cb_fail":9,"enqueue_err":0,"pdr_ppm":935714},"rx":{"frames":660,"lost_seqgap":4,"reorder_dup":3,"dropped_bad":0,"hb_lost":57,"bcast_frames":501,"pdr_ppm":993975},"rtt":{"samples":50,"min_us":5605,"max_us":53505,"timeouts":10,"txq_last_us":2746,"txq_max_us":27399,"remote_turnaround_us":911,"remote_turnaround_max_us":23601,"p50_us":[4000,6000],"p99_us":[42000,60000],"hist":[0,0,0,0,29,15,3,2,0,0,0,1,0,0,0,0]}}
+19:41:07 A {"t":"auth","node":25344,"up_ms":63610,"enrolled":1,"required":1,"verified_peers":1,"verified":5,"cache_hits":24,"refused":44,"rate_limited":0,"stale_epoch":0,"verify_us_max":86915,"link_stack_free_b":1732,"crypto_stack_free_b":1076,"tags_ok":126,"bad_tag":3,"replayed":1,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":4,"tag_us_max":757}
+19:41:07 A {"t":"act","node":25344,"setpoint":0,"has_value":0,"writes_served":0}
+19:41:07 A {"t":"peers","node":25344,"own_period_ms":100,"own_busy":0,"channel":11,"scanning":0,"scans":1,"hops":12,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"list":[{"id":33120,"period_ms":100,"misses":6,"busy":0}]}
+19:41:07 A {"t":"ss","node":25344,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[]}
+19:41:07 A {"t":"node","up_ms":63688,"node":25344,"epoch":150,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228824,"largest_block":180224,"rx":{"total":836,"bad_frame":0,"unknown_peer":172,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":7},"tx":{"total":808,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":1,"reboots_seen":1,"table_full":0,"events_dropped":0}}
+19:41:07 A {"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":201,"ts":63515,"updates":6,"value":150}
+19:41:07 A {"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":215,"ts":63515,"updates":6,"value":-26}
+19:41:07 A {"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":229,"ts":63515,"updates":6,"value":1}
+19:41:07 A {"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":254,"ts":63515,"updates":6,"value":228824}
+19:41:07 A {"t":"ns","node":25344,"hash":2033492666,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:41:07 A {"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":282,"ts":63515,"updates":6,"value":63}
+19:41:07 A {"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":295,"ts":63515,"updates":6,"value":180224}
+19:41:13 C {"t":"event","at_ms":53734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:13 C {"t":"event","at_ms":55734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:13 C {"t":"event","at_ms":57734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:13 C {"t":"event","at_ms":59734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:13 C {"t":"event","at_ms":60678,"node":33120,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:41:13 C {"t":"event","at_ms":61734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:13 C {"t":"link","up_ms":63593,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":150,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-25,"tx":{"frames":148,"cb_ok":142,"cb_fail":6,"enqueue_err":0,"pdr_ppm":959459},"rx":{"frames":729,"lost_seqgap":10,"reorder_dup":0,"dropped_bad":0,"hb_lost":77,"bcast_frames":554,"pdr_ppm":986468},"rtt":{"samples":55,"min_us":5595,"max_us":16335,"timeouts":6,"txq_last_us":727,"txq_max_us":4454,"remote_turnaround_us":977,"remote_turnaround_max_us":1017,"p50_us":[6000,8000],"p99_us":[16000,22000],"hist":[0,0,0,0,27,20,6,1,1,0,0,0,0,0,0,0]}}
+19:41:13 C {"t":"auth","node":33120,"up_ms":63646,"enrolled":1,"required":1,"verified_peers":1,"verified":6,"cache_hits":26,"refused":44,"rate_limited":0,"stale_epoch":0,"verify_us_max":86590,"link_stack_free_b":1732,"crypto_stack_free_b":1220,"tags_ok":141,"bad_tag":1,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":788}
+19:41:13 C {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+19:41:13 C {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":11,"scanning":0,"scans":1,"hops":4,"found":1,"lost_to_found_ms":3928,"moves_followed":1,"moves_refused":0,"list":[{"id":25344,"period_ms":100,"misses":6,"busy":0}]}
+19:41:13 C {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+19:41:13 C {"t":"node","up_ms":63725,"node":33120,"epoch":156,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228948,"largest_block":180224,"rx":{"total":893,"bad_frame":0,"unknown_peer":161,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":18},"tx":{"total":806,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":2,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+19:41:13 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":202,"ts":63551,"updates":6,"value":1}
+19:41:13 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":216,"ts":63551,"updates":6,"value":180224}
+19:41:13 C {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:41:13 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":255,"ts":63551,"updates":6,"value":156}
+19:41:13 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":268,"ts":63551,"updates":6,"value":63}
+19:41:13 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":283,"ts":63551,"updates":6,"value":-25}
+19:41:13 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":296,"ts":63551,"updates":6,"value":228948}
+19:41:15 A {"t":"test","cmd":"fixed","fixed":0}
+--- 3. announced move back to channel 1
+19:41:16 A {"t":"test","cmd":"channel","channel":1,"quiet":0,"ok":1}
+19:41:17 A {"t":"event","at_ms":64049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:17 A {"t":"event","at_ms":66049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:17 A {"t":"event","at_ms":68049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:17 A {"t":"event","at_ms":70049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:17 A {"t":"event","at_ms":72049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:17 A {"t":"event","at_ms":73087,"node":25344,"kind":"channel_changed","peer":0,"slot":255,"a":1,"b":1}
+19:41:17 A {"t":"event","at_ms":73220,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:17 A {"t":"event","at_ms":73510,"node":25344,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:41:17 A {"t":"link","up_ms":73893,"node":25344,"peer":33120,"mac":"b8:1f:3f:da:81:60","state":"alive","epoch":156,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-33,"tx":{"frames":167,"cb_ok":158,"cb_fail":9,"enqueue_err":0,"pdr_ppm":946107},"rx":{"frames":797,"lost_seqgap":4,"reorder_dup":3,"dropped_bad":0,"hb_lost":58,"bcast_frames":604,"pdr_ppm":995006},"rtt":{"samples":61,"min_us":5605,"max_us":53505,"timeouts":10,"txq_last_us":2764,"txq_max_us":27399,"remote_turnaround_us":916,"remote_turnaround_max_us":23601,"p50_us":[4000,6000],"p99_us":[42000,60000],"hist":[0,0,0,0,37,16,5,2,0,0,0,1,0,0,0,0]}}
+19:41:17 A {"t":"auth","node":25344,"up_ms":73946,"enrolled":1,"required":1,"verified_peers":1,"verified":6,"cache_hits":29,"refused":51,"rate_limited":0,"stale_epoch":0,"verify_us_max":86915,"link_stack_free_b":1732,"crypto_stack_free_b":1076,"tags_ok":154,"bad_tag":3,"replayed":1,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":4,"tag_us_max":757}
+19:41:17 A {"t":"act","node":25344,"setpoint":0,"has_value":0,"writes_served":0}
+19:41:17 A {"t":"peers","node":25344,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":1,"hops":12,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"list":[{"id":33120,"period_ms":100,"misses":6,"busy":0}]}
+19:41:17 A {"t":"ss","node":25344,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[]}
+19:41:17 A {"t":"node","up_ms":74013,"node":25344,"epoch":150,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228824,"largest_block":180224,"rx":{"total":998,"bad_frame":0,"unknown_peer":196,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":7},"tx":{"total":949,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":1,"reboots_seen":1,"table_full":0,"events_dropped":0}}
+19:41:17 A {"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":216,"ts":73825,"updates":7,"value":150}
+19:41:17 A {"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":230,"ts":73825,"updates":7,"value":-33}
+19:41:17 A {"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":255,"ts":73825,"updates":7,"value":1}
+19:41:17 A {"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":269,"ts":73825,"updates":7,"value":228824}
+19:41:17 A {"t":"ns","node":25344,"hash":2033492666,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:41:17 A {"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":296,"ts":73825,"updates":7,"value":73}
+19:41:17 A {"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":310,"ts":73825,"updates":7,"value":180224}
+19:41:24 C {"t":"event","at_ms":63734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:24 C {"t":"event","at_ms":65734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:24 C {"t":"event","at_ms":66975,"node":33120,"kind":"channel_changed","peer":0,"slot":255,"a":1,"b":1}
+19:41:24 C {"t":"event","at_ms":67086,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:24 C {"t":"event","at_ms":67734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:24 C {"t":"event","at_ms":69734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:24 C {"t":"event","at_ms":70679,"node":33120,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:41:24 C {"t":"event","at_ms":71734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:24 C {"t":"event","at_ms":73734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:24 C {"t":"link","up_ms":73931,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":150,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-32,"tx":{"frames":177,"cb_ok":171,"cb_fail":6,"enqueue_err":0,"pdr_ppm":966101},"rx":{"frames":872,"lost_seqgap":10,"reorder_dup":0,"dropped_bad":0,"hb_lost":77,"bcast_frames":658,"pdr_ppm":988662},"rtt":{"samples":66,"min_us":5595,"max_us":16335,"timeouts":6,"txq_last_us":727,"txq_max_us":4454,"remote_turnaround_us":973,"remote_turnaround_max_us":1017,"p50_us":[4000,6000],"p99_us":[16000,22000],"hist":[0,0,0,0,35,23,6,1,1,0,0,0,0,0,0,0]}}
+19:41:24 C {"t":"auth","node":33120,"up_ms":73984,"enrolled":1,"required":1,"verified_peers":1,"verified":7,"cache_hits":32,"refused":51,"rate_limited":0,"stale_epoch":0,"verify_us_max":86590,"link_stack_free_b":1732,"crypto_stack_free_b":1220,"tags_ok":169,"bad_tag":1,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":814}
+19:41:24 C {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+19:41:24 C {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":1,"hops":4,"found":1,"lost_to_found_ms":3928,"moves_followed":2,"moves_refused":0,"list":[{"id":25344,"period_ms":100,"misses":6,"busy":0}]}
+19:41:24 C {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+19:41:24 C {"t":"node","up_ms":74063,"node":33120,"epoch":156,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228948,"largest_block":180224,"rx":{"total":1058,"bad_frame":0,"unknown_peer":185,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":18},"tx":{"total":945,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":2,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+19:41:24 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":229,"ts":73862,"updates":7,"value":1}
+19:41:24 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":243,"ts":73862,"updates":7,"value":180224}
+19:41:24 C {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:41:24 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":281,"ts":73862,"updates":7,"value":156}
+19:41:24 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":295,"ts":73862,"updates":7,"value":73}
+19:41:24 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":309,"ts":73862,"updates":7,"value":-34}
+19:41:24 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":322,"ts":73862,"updates":7,"value":228948}
+19:41:28 A {"t":"event","at_ms":74052,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:28 A {"t":"event","at_ms":76049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:28 A {"t":"event","at_ms":78049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:28 A {"t":"event","at_ms":80049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:28 A {"t":"event","at_ms":82049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:28 A {"t":"event","at_ms":83710,"node":25344,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:41:28 A {"t":"event","at_ms":84049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:28 A {"t":"link","up_ms":84204,"node":25344,"peer":33120,"mac":"b8:1f:3f:da:81:60","state":"alive","epoch":156,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-34,"tx":{"frames":194,"cb_ok":185,"cb_fail":9,"enqueue_err":0,"pdr_ppm":953608},"rx":{"frames":932,"lost_seqgap":4,"reorder_dup":3,"dropped_bad":0,"hb_lost":58,"bcast_frames":707,"pdr_ppm":995726},"rtt":{"samples":71,"min_us":5605,"max_us":53505,"timeouts":10,"txq_last_us":2764,"txq_max_us":27399,"remote_turnaround_us":918,"remote_turnaround_max_us":23601,"p50_us":[4000,6000],"p99_us":[42000,60000],"hist":[0,0,0,0,45,18,5,2,0,0,0,1,0,0,0,0]}}
+19:41:28 A {"t":"auth","node":25344,"up_ms":84257,"enrolled":1,"required":1,"verified_peers":1,"verified":6,"cache_hits":35,"refused":58,"rate_limited":0,"stale_epoch":0,"verify_us_max":86915,"link_stack_free_b":1732,"crypto_stack_free_b":1076,"tags_ok":180,"bad_tag":3,"replayed":1,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":4,"tag_us_max":757}
+19:41:28 A {"t":"act","node":25344,"setpoint":0,"has_value":0,"writes_served":0}
+19:41:28 A {"t":"peers","node":25344,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":1,"hops":12,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"list":[{"id":33120,"period_ms":100,"misses":6,"busy":0}]}
+19:41:28 A {"t":"ss","node":25344,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[]}
+19:41:28 A {"t":"node","up_ms":84323,"node":25344,"epoch":150,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228824,"largest_block":180224,"rx":{"total":1157,"bad_frame":0,"unknown_peer":221,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":7},"tx":{"total":1083,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":1,"reboots_seen":1,"table_full":0,"events_dropped":0}}
+19:41:28 A {"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":214,"ts":84149,"updates":8,"value":150}
+19:41:28 A {"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":228,"ts":84149,"updates":8,"value":-33}
+19:41:28 A {"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":241,"ts":84149,"updates":8,"value":1}
+19:41:28 A {"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":255,"ts":84149,"updates":8,"value":228824}
+19:41:28 A {"t":"ns","node":25344,"hash":2033492666,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:41:28 A {"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":282,"ts":84149,"updates":8,"value":84}
+19:41:28 A {"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":307,"ts":84149,"updates":8,"value":180224}
+19:41:34 C {"t":"event","at_ms":75734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:34 C {"t":"event","at_ms":77734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:34 C {"t":"event","at_ms":79734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:34 C {"t":"event","at_ms":81734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:34 C {"t":"event","at_ms":83734,"node":33120,"kind":"peer_admitted","peer":25344,"slot":0,"a":0,"b":0}
+19:41:34 C {"t":"event","at_ms":83877,"node":33120,"kind":"peer_refused","peer":29544,"slot":255,"a":1,"b":0}
+19:41:34 C {"t":"link","up_ms":84241,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":150,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-34,"tx":{"frames":202,"cb_ok":196,"cb_fail":6,"enqueue_err":0,"pdr_ppm":970297},"rx":{"frames":1005,"lost_seqgap":10,"reorder_dup":0,"dropped_bad":0,"hb_lost":77,"bcast_frames":761,"pdr_ppm":990147},"rtt":{"samples":76,"min_us":5595,"max_us":16335,"timeouts":6,"txq_last_us":727,"txq_max_us":4454,"remote_turnaround_us":994,"remote_turnaround_max_us":1106,"p50_us":[4000,6000],"p99_us":[16000,22000],"hist":[0,0,0,0,40,26,8,1,1,0,0,0,0,0,0,0]}}
+19:41:34 C {"t":"auth","node":33120,"up_ms":84294,"enrolled":1,"required":1,"verified_peers":1,"verified":7,"cache_hits":37,"refused":57,"rate_limited":0,"stale_epoch":0,"verify_us_max":86590,"link_stack_free_b":1732,"crypto_stack_free_b":1220,"tags_ok":194,"bad_tag":1,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":814}
+19:41:34 C {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+19:41:34 C {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":1,"hops":4,"found":1,"lost_to_found_ms":3928,"moves_followed":2,"moves_refused":0,"list":[{"id":25344,"period_ms":100,"misses":6,"busy":0}]}
+19:41:34 C {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+19:41:34 C {"t":"node","up_ms":84373,"node":33120,"epoch":156,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228948,"largest_block":180224,"rx":{"total":1216,"bad_frame":0,"unknown_peer":210,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":18},"tx":{"total":1078,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":2,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+19:41:34 C {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":202,"ts":84199,"updates":8,"value":1}
+19:41:34 C {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":216,"ts":84199,"updates":8,"value":180224}
+19:41:34 C {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:41:34 C {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":254,"ts":84199,"updates":8,"value":156}
+19:41:34 C {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":268,"ts":84199,"updates":8,"value":84}
+19:41:34 C {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":282,"ts":84199,"updates":8,"value":-34}
+19:41:34 C {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":296,"ts":84199,"updates":8,"value":228948}
+19:41:38 A {"t":"event","at_ms":86049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:38 A {"t":"event","at_ms":88050,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:38 A {"t":"event","at_ms":90049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:38 A {"t":"event","at_ms":92049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:38 A {"t":"event","at_ms":94049,"node":25344,"kind":"peer_admitted","peer":33120,"slot":0,"a":0,"b":0}
+19:41:38 A {"t":"link","up_ms":94510,"node":25344,"peer":33120,"mac":"b8:1f:3f:da:81:60","state":"alive","epoch":156,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-33,"tx":{"frames":219,"cb_ok":210,"cb_fail":9,"enqueue_err":0,"pdr_ppm":958904},"rx":{"frames":1065,"lost_seqgap":4,"reorder_dup":3,"dropped_bad":0,"hb_lost":58,"bcast_frames":810,"pdr_ppm":996258},"rtt":{"samples":81,"min_us":5605,"max_us":53505,"timeouts":10,"txq_last_us":2764,"txq_max_us":27399,"remote_turnaround_us":916,"remote_turnaround_max_us":23601,"p50_us":[4000,6000],"p99_us":[42000,60000],"hist":[0,0,0,0,53,20,5,2,0,0,0,1,0,0,0,0]}}
+19:41:38 A {"t":"auth","node":25344,"up_ms":94564,"enrolled":1,"required":1,"verified_peers":1,"verified":6,"cache_hits":40,"refused":65,"rate_limited":0,"stale_epoch":0,"verify_us_max":86915,"link_stack_free_b":1732,"crypto_stack_free_b":1076,"tags_ok":205,"bad_tag":3,"replayed":1,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":4,"tag_us_max":757}
+19:41:38 A {"t":"act","node":25344,"setpoint":0,"has_value":0,"writes_served":0}
+19:41:38 A {"t":"peers","node":25344,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":1,"hops":12,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"list":[{"id":33120,"period_ms":100,"misses":6,"busy":0}]}
+19:41:38 A {"t":"ss","node":25344,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[]}
+19:41:38 A {"t":"node","up_ms":94631,"node":25344,"epoch":150,"peers_alive":1,"peers_dead":0,"no_radio":0,"free_dram":228824,"largest_block":180224,"rx":{"total":1313,"bad_frame":0,"unknown_peer":244,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":7},"tx":{"total":1216,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":2,"revivals":1,"reboots_seen":1,"table_full":0,"events_dropped":0}}
+19:41:38 A {"t":"ns","node":25344,"hash":2410274060,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":200,"ts":94470,"updates":9,"value":150}
+19:41:38 A {"t":"ns","node":25344,"hash":1274253983,"owner":25344,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":214,"ts":94470,"updates":9,"value":-34}
+19:41:38 A {"t":"ns","node":25344,"hash":3354298913,"owner":25344,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":227,"ts":94470,"updates":9,"value":1}
+19:41:38 A {"t":"ns","node":25344,"hash":1771187623,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":241,"ts":94470,"updates":9,"value":228824}
+19:41:38 A {"t":"ns","node":25344,"hash":2033492666,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+19:41:38 A {"t":"ns","node":25344,"hash":4103947588,"owner":25344,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":268,"ts":94470,"updates":9,"value":94}
+19:41:38 A {"t":"ns","node":25344,"hash":1662441583,"owner":25344,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":282,"ts":94470,"updates":9,"value":180224}

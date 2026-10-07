@@ -3488,3 +3488,51 @@ limitations added to section 9.5: unauthenticated beacons, no auth on CAN, a 64-
 (PSRAM build, channel follow, relay) cannot start inside it; the PSRAM item is already the
 change request's answer, and the cap's own rationale (fit the classic ESP32) is worth re-reading
 before then.
+
+## Session 23 — 2026-10-07, M5.1 "sharing the radio": four of the five change requests, on the boards
+
+From the `poor-mans-extender` change request (section 13). Step 0 — the soak beside a real repeater
+carrying streamed video — needs the owner's hands (a repeater board, the house Wi-Fi password typed
+by him, a phone), so it waits for him; everything that needed only code and the bench was built.
+
+**CR-3, the heartbeat window at run time (`34fad91`).** Tighter applies at once; looser is announced
+(three HELLOs) and applied after the old death window **plus two ordinary HELLO intervals**. The first
+version waited only the old window, which a test with lost announcements showed to be a false-death
+generator — and that test itself passed the bad version twice before it was right: once because the
+losses ended too early, once because RTT probe replies were keeping the peer alive and hiding the
+heartbeat question (probes made rare in that case). On the boards (`captures/m51-cr34-window-busy-34fad91.log`):
+A moved to 1000 ms × 6, C learned it before A slowed down, 40 s at 1 s heartbeats, no death on C; the
+README's failure contract now states the 10 ms–2.55 s range.
+
+**CR-4, the BUSY bit (`34fad91`).** `HELLO.caps` bit 0; C saw A's busy and its clearing within one
+HELLO. The acceptance half about placement waits for M6's reconciler, which does not exist yet.
+
+**CR-5, a PSRAM build (`34fad91`, `captures/m51-cr5-psram-membench.log`).** The `psram` variant:
+octal 8 MB detected at 40 MHz, memory test OK, 8,115 KB added to the heap; internal RAM free with the
+radio up 241 KB. A 64 KB buffer placed in PSRAM's BSS left the section 6 gate at 63.4 KB — the gate
+counts Potluck's internal static RAM only, as the request asked — and the option also moved lwIP's
+12.8 KB of BSS out of internal RAM for free. Copy throughput at 160 MHz, blocks larger than the cache
+(a first run with 16 KB blocks measured the cache, not the PSRAM, and is kept as such): internal
+239 MiB/s; PSRAM→internal 31; internal→PSRAM 17.5; PSRAM→PSRAM 11.2. The request cites 5–15 Mbit/s for
+the NAT router it proposes; even 15 Mbit/s is under 2 MB/s, so NAT buffers can live in PSRAM.
+
+**CR-1, the cell follows a channel (`e6541ae`, `6595bcf`, `b04c987`).** Facts from the IDF source first
+(ledger): a station is told by `WIFI_EVENT_HOME_CHANNEL_CHANGE` only after its router moved, so it
+cannot warn the cell — **re-discovery is the core**, the `CHANNEL` (0x05) announcement only helps
+planned moves. A node alone for 3 s hops 1–11 (the default country's range), 300 ms each; ESP-NOW
+peers are registered on channel 0 so they follow; a signed move is fenced by the sender's current
+verified epoch. Two bench findings, each turned into a test that fails without its fix:
+1. **Adjacent channels overlap at close range**: C locked onto 10 hearing A on 11. HELLO now declares
+   the sender's channel (caps bits 8–11) and whether it is fixed.
+2. **A scan's guess dragged the cell**: at boot A scanned while the others rebooted, locked onto 2
+   hearing C on 1, and a lower-node-id rule moved C to 2. Now a node declares SETTLING while it
+   scans and briefly after; settling nodes defer to stable ones, never the reverse; a station wins.
+On the boards (`captures/m51-cr1-channel-*`): the cell stayed on 1 through the boot race; announced
+moves to 6 and back to 1 took both; a router-style jump of A to 11 was re-found by C in ~5 s
+(lost-to-found 3.9 s, then 1.1 s to correct 10 → 11), against a stated bound of 3 s + 11 × 0.3 s +
+one HELLO round ≈ 8 s. The station side — calling `set_channel_now` on that event — belongs to
+whichever firmware joins a router; Potluck's does not yet.
+
+**Not done:** step 0 (owner), CR-2 the relay (amends a closed decision, section 5.3; needs its own
+ADR first), CR-4's placement half (M6), a `sys/channel` namespace entry (a new built-in changes the
+namespace fixtures; deferred deliberately). Static DRAM 63.6 KB of 64.

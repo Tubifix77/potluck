@@ -35,11 +35,13 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 
 > ## M5 ACCEPTED — READ THIS FIRST (handover, 2026-10-07)
 >
-> All five acceptance lines met on three boards (M0-LOG sessions 21-22, ARCHITECTURE section 13). **Next:
+> All five acceptance lines met on three boards (M0-LOG sessions 21-22, ARCHITECTURE section 13). **M5.1 is
+> four-fifths built (session 23): channel follow, runtime window, BUSY bit, PSRAM build.** Left: step 0 (needs the
+> owner: a repeater, his Wi-Fi password, a phone), CR-2 relay (write its ADR first). Was: **Next:
 > M5.1 "sharing the radio"** (section 13, from `D:\Projects\poor-mans-extender\CR for Potluck.md`;
 > read-only for us), starting with its zero-code experiment.
 >
-> - **The bench now:** all three on **`94da774`**. **A (COM3) and C (COM5) enrolled** (CA fp `ef76cc2e`);
+> - **The bench now:** all three on **`b04c987`**, cell on channel 1. **A (COM3) and C (COM5) enrolled** (CA fp `ef76cc2e`);
 >   **B (COM4) deliberately unenrolled** (the refused board). A and C run the deployed `m3-purple` at
 >   **counter 4 — the next package must be counter 5+**. CP2102 on COM6 to A; CAN modules on B and C, idle.
 > - **Deploy now needs the image signed:** `python -m potluck.ctl --port COM6 --node 6300 deploy
@@ -47,7 +49,10 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 >   made once by `python -m potluck.enrol --deploy-cert keys/deploy.pub --ca-key keys/ca.key --out ...`).
 > - **Test instruments on the console** (`POT! write <node> <int>`, `POT! replay [flip]`, `POT! safe <n>`,
 >   `POT! replay-ss`) and the `act/setpoint` stand-in actuator; stats lines `auth`, `act`, `ss`.
-> - **Static DRAM 63.3 KB of 64 KB.** Nothing more fits. M5.1 starts by pricing memory (PSRAM build, CR-5).
+> - **Static DRAM 63.6 KB of 64 KB.** Nothing more fits. The `psram` variant exists (`-Variant psram -Extra
+>   "CONFIG_SPIRAM=y","CONFIG_SPIRAM_MODE_OCT=y","CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY=y"`); app buffers go there.
+> - **Console for M5.1:** `POT! window <ms> <misses>`, `POT! busy 0|1`, `POT! channel <n> [quiet]`, `POT! fixed 0|1`;
+>   `{"t":"peers"}` line shows channel, scan state and each peer's window and busy bit.
 > - **Crypto runs on the console task** (`NodeHal::run_heavy`); never call Monocypher from the link task.
 >   The console serves jobs while it waits for the node mutex; keep it that way or the two deadlock.
 > - **Owner constraints some evenings:** no Ollama, WSL or Docker (portability gate via Git Bash's

@@ -588,3 +588,13 @@ doc fetched as raw markdown from its repository), not from a summary.
 | **`esp_wifi_set_channel` constraints** | call after `esp_wifi_start()`; in STA mode not while scanning or connecting to an AP; on a SoftAP with connected stations it starts a CSA; the channel is not stored in NVS | `components/esp_wifi/include/esp_wifi.h`, attention notes 1-5 | 2026-10-07 | per IDF version | verified |
 | **ESP-NOW peer channel 0 means the current channel** | "If the value is 0, use the current channel which station or softap is on. Otherwise, it must be set as the channel that station or softap is on" | `components/esp_wifi/include/esp_now.h`, `esp_now_peer_info.channel` | 2026-10-07 | per IDF version | verified |
 | **Default country is world-safe mode, channels 1-11** | `{.cc="01", .schan=1, .nchan=11, .policy=WIFI_COUNTRY_POLICY_AUTO}`; `ieee80211d_enabled` TRUE by default | `components/esp_wifi/include/esp_wifi.h` (notes on country APIs) | 2026-10-07 | per IDF version | verified |
+
+### M5.1 on the boards — 2026-10-07
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **PSRAM on these boards: octal, 8 MB, AP gen 3, 40 MHz by default** | `octal_psram: vendor id 0x0d (AP)`, `density 0x03 (64 Mbit)`, `Found 8MB PSRAM device`, `Speed: 40MHz`, memory test OK, 8,115 KB added to the heap | `captures/m51-cr5-psram-membench.log`, board B | 2026-10-07 | stable | measured |
+| **Copy throughput, 160 MHz CPU, PSRAM at 40 MHz** | internal→internal 239 MiB/s; PSRAM→internal 31; internal→PSRAM 17.5; PSRAM→PSRAM 11.2 (64 KB internal / 256 KB PSRAM blocks). 16 KB blocks measured the data cache instead (~230-247 MiB/s for all) | same | 2026-10-07 | volatile | measured |
+| **`CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY` moves lwIP's BSS (12,828 B) to PSRAM** | External RAM `.bss` 12,828 B with no Potluck buffer there; `liblwip.a` objects listed under `.ext_ram.bss` in the map | `firmware/build-psram/potluck_m0.map`, size report | 2026-10-07 | per IDF version | measured |
+| **Adjacent 2.4 GHz channels leak into each other at close range** | at ~10 cm, board C scanning locked onto channel 10 hearing board A on 11; with the channel declared in HELLO it corrected to 11 in 1.1 s | `captures/m51-cr1-channel-e6541ae-adjacent-lock.log`, `-b04c987` run | 2026-10-07 | volatile | measured |
+| **Re-convergence after an unannounced channel change: ~5 s** | lost-to-found 3.9 s (3 s alone + 4 hops), then 1.1 s to adopt the station's declared channel | `captures/m51-cr1-channel-*` | 2026-10-07 | volatile | measured |
