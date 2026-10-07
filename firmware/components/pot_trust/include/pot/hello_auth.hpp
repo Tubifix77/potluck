@@ -87,4 +87,12 @@ bool safe_state_sign(const Identity& id, uint16_t node_id, uint32_t epoch, const
 bool safe_state_verify(const uint8_t pub[kEdPubLen], uint16_t node_id, uint32_t epoch,
                        const uint8_t base[kSafeStateBaseLen], const uint8_t sig[kEdSigLen]);
 
+// M5.1 CR-1: the signed CHANNEL move -- the 12-byte payload, then Ed25519 over
+// "potluck-channel-v1\0" || node_id || the 12 bytes.
+constexpr size_t kChannelBaseLen = 12;
+constexpr size_t kChannelSignedLen = kChannelBaseLen + kEdSigLen;  // 76
+bool channel_sign(const Identity& id, uint16_t node_id, const uint8_t base[kChannelBaseLen], uint8_t sig[kEdSigLen]);
+bool channel_verify(const uint8_t pub[kEdPubLen], uint16_t node_id, const uint8_t base[kChannelBaseLen],
+                    const uint8_t sig[kEdSigLen]);
+
 }  // namespace pot

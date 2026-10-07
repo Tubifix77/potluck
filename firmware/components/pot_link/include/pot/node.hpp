@@ -69,6 +69,10 @@ struct NodeHal {
     // M5 step 5: the SAFE_STATE high-water table changed; persist it (section 8.3: "so a mesh power
     // cycle does not reopen the window"). Called after every accepted signed SAFE_STATE. May be null.
     void (*persist_safe_state_floors)(void* ctx, const void* table, size_t bytes) = nullptr;
+
+    // M5.1 CR-1: retune the radio. The node calls this when the cell moves or while it scans for a
+    // cell it has lost. Null: the node never changes channel (a host test, or a transport that has none).
+    void (*set_channel)(void* ctx, uint8_t channel) = nullptr;
 };
 
 // The link-layer broadcast address. §5.1's dst 0xFFFF is a Potluck node id; this is its transport
@@ -132,6 +136,18 @@ struct NodeConfig {
     // key), so this trusts the cable's endpoint to be the operator, not to be the CA.
     bool has_trusted_mac = false;
     uint8_t trusted_mac[kMacLen] = {};
+
+    // M5.1 CR-1: the channel, and finding the cell again. A node that has lost every peer for
+    // `scan_after_ms` hops channel_lo..channel_hi, `scan_dwell_ms` on each, greeting on each, and stays
+    // where a peer answers. A node whose channel someone else owns -- a Wi-Fi station, which must stay
+    // on its router's channel -- sets channel_fixed and never hops. 1..11 is the default country's
+    // range ("01", world-safe; ledger 2026-10-07).
+    uint8_t channel = 1;
+    uint8_t channel_lo = 1;
+    uint8_t channel_hi = 11;
+    bool channel_fixed = false;
+    uint32_t scan_after_ms = 3000;
+    uint32_t scan_dwell_ms = 300;
 
     // A namespace request nobody answered. Longer than probe_timeout_ms because a READ may
     // have to wait on the owner's own scheduling, not only on the link.
@@ -239,6 +255,27 @@ class Node {
     // centiseconds: 10..2550 ms in steps of 10, miss limit 1..255. False if out of range.
     bool set_heartbeat_window(uint32_t period_ms, uint8_t miss_limit);
     uint32_t heartbeat_period_ms() const { return cfg_.hb_period_ms; }
+
+    // ---- M5.1 (CR-1): moving the cell, and finding it again -----------------------------------
+    // Tell the cell to move to `channel` in `delay_ms` (signed when enrolled), and move with it.
+    bool move_cell(uint8_t channel, uint16_t delay_ms);
+    // Retune this node alone, unannounced -- what a station node experiences when its router moves.
+    // The others find it by scanning.
+    void set_channel_now(uint8_t channel);
+    // A Wi-Fi station's channel belongs to its router: it must never hop. Settable at run time.
+    void set_channel_fixed(bool fixed) { cfg_.channel_fixed = fixed; }
+    uint8_t channel() const { return channel_; }
+    bool scanning() const { return scanning_; }
+    struct ChannelCounters {
+        uint32_t moves_sent;
+        uint32_t moves_followed;
+        uint32_t moves_refused;  // unsigned, unknown sender, stale epoch, old move id, bad signature
+        uint32_t scans_started;
+        uint32_t scan_hops;
+        uint32_t found_by_scan;
+        uint32_t last_lost_to_found_ms;  // how long the last scan took to find the cell
+    };
+    const ChannelCounters& channel_counters() const { return ch_counters_; }
 
     // ---- M5.1 (CR-4): the BUSY capability ------------------------------------------------------
     void set_busy(bool busy);
@@ -515,6 +552,19 @@ class Node {
     uint32_t last_reject_event_ms_ = 0;
 
     // M5.1
+    void handle_channel(PeerLink* p, const Frame& f);
+    void retune(uint8_t ch);
+    void tick_channel(uint32_t now_ms);
+    uint8_t channel_ = 1;
+    bool scanning_ = false;
+    uint32_t last_alive_ms_ = 0;
+    uint32_t scan_next_ms_ = 0;
+    uint32_t scan_started_ms_ = 0;
+    uint8_t pending_channel_ = 0;
+    uint32_t pending_channel_at_ms_ = 0;
+    uint32_t move_tx_ = 0;
+    uint32_t move_rx_last_[kMaxPeers]{};
+    ChannelCounters ch_counters_{};
     void announce_change();
     uint32_t caps_ = 0;
     uint32_t peer_caps_[kMaxPeers]{};

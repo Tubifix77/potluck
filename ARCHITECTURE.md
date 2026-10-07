@@ -242,6 +242,7 @@ Fixed 16 bytes, no options, no TLVs in the header. Parsing is a struct cast on e
 | | `0x02 HELLO_ACK` | admission decision |
 | | `0x03 HEARTBEAT` | liveness + link stats (§8) |
 | | `0x04 BYE` | intentional departure |
+| | `0x05 CHANNEL` | *(M5.1)* the cell moves channel: new channel, delay, sender epoch, move id; signed when enrolled |
 | Namespace | `0x10 READ` | path → typed value |
 | | `0x11 WRITE` | path ← typed value |
 | | `0x12 SUBSCRIBE` | path + min interval + max staleness |

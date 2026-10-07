@@ -174,4 +174,35 @@ bool safe_state_verify(const uint8_t pub[kEdPubLen], uint16_t node_id, uint32_t 
     return crypto_ed25519_check(sig, pub, msg, n) == 0;
 }
 
+namespace {
+constexpr char kChannelDomain[] = "potluck-channel-v1";  // sizeof includes the NUL
+size_t channel_message(uint16_t node_id, const uint8_t base[kChannelBaseLen], uint8_t* m) {
+    std::memcpy(m, kChannelDomain, sizeof(kChannelDomain));
+    put16(m + sizeof(kChannelDomain), node_id);
+    std::memcpy(m + sizeof(kChannelDomain) + 2, base, kChannelBaseLen);
+    return sizeof(kChannelDomain) + 2 + kChannelBaseLen;
+}
+}  // namespace
+
+bool channel_sign(const Identity& id, uint16_t node_id, const uint8_t base[kChannelBaseLen], uint8_t sig[kEdSigLen]) {
+    if (!id.has_key || !id.enrolled) return false;
+    uint8_t msg[sizeof(kChannelDomain) + 2 + kChannelBaseLen];
+    const size_t n = channel_message(node_id, base, msg);
+    uint8_t sk[64];
+    uint8_t pub[kEdPubLen];
+    uint8_t seed[kEdSeedLen];
+    std::memcpy(seed, id.seed, kEdSeedLen);
+    crypto_ed25519_key_pair(sk, pub, seed);
+    crypto_ed25519_sign(sig, sk, msg, n);
+    crypto_wipe(sk, sizeof(sk));
+    return true;
+}
+
+bool channel_verify(const uint8_t pub[kEdPubLen], uint16_t node_id, const uint8_t base[kChannelBaseLen],
+                    const uint8_t sig[kEdSigLen]) {
+    uint8_t msg[sizeof(kChannelDomain) + 2 + kChannelBaseLen];
+    const size_t n = channel_message(node_id, base, msg);
+    return crypto_ed25519_check(sig, pub, msg, n) == 0;
+}
+
 }  // namespace pot

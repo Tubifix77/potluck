@@ -21,6 +21,7 @@ struct TestCell;
 struct TestNode {
     TestCell* cell = nullptr;
     size_t index = 0;
+    uint8_t chan = 1;  // M5.1: frames reach only nodes tuned to the sender's channel
     uint8_t mac[kMacLen] = {};
     Node* node = nullptr;
     NodeHal hal{};
@@ -64,6 +65,7 @@ struct TestCell {
             t.hal.add_peer = nullptr;
             t.hal.now_ms = &TestCell::now_ms;
             t.hal.now_us = &TestCell::now_us_cb;
+            t.hal.set_channel = [](void* ctx, uint8_t ch) { static_cast<TestNode*>(ctx)->chan = ch; };
             t.node = new Node(cfg, t.hal);
         }
     }
@@ -104,6 +106,7 @@ struct TestCell {
         }
         for (size_t i = 0; i < c->nodes.size(); ++i) {
             if (i == from->index) continue;
+            if (c->nodes[i].chan != from->chan) continue;
             if (bcast || std::memcmp(c->nodes[i].mac, mac, kMacLen) == 0) {
                 c->nodes[i].node->on_rx(from->mac, data, len, c->now_us, -50);
             }
@@ -495,4 +498,74 @@ TEST(node, beacons_keep_a_peer_alive_and_a_lying_beacon_is_refused) {
     const uint32_t before = p.rx_bcast_frames;
     c.nodes[0].node->on_rx(c.nodes[1].mac, buf, n, c.now_us, -50);
     CHECK_EQ(p.rx_bcast_frames, before);
+}
+
+// ---- M5.1 CR-1: the cell moves channel, and a node that missed it finds the cell again ----
+
+namespace {
+// Rebuild node i with its channel owned by someone else (a Wi-Fi station's router).
+void make_fixed(TestCell& c, size_t i) {
+    TestNode& t = c.nodes[i];
+    delete t.node;
+    NodeConfig cfg;
+    cfg.node_id = static_cast<uint16_t>(0x100 + i);
+    cfg.boot_epoch = 1;
+    std::memcpy(cfg.mac, t.mac, kMacLen);
+    cfg.hello_interval_ms = 500;
+    cfg.channel_fixed = true;
+    t.node = new Node(cfg, t.hal);
+}
+}  // namespace
+
+TEST(node, an_announced_move_takes_the_whole_cell_and_nobody_dies) {
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    c.start_all();
+    c.advance_ms(1000);
+    CHECK(c.nodes[0].node->move_cell(6, 300));
+    c.advance_ms(400);
+    for (TestNode& t : c.nodes) {
+        CHECK_EQ(static_cast<int>(t.chan), 6);
+        CHECK_EQ(static_cast<int>(t.node->channel()), 6);
+    }
+    c.advance_ms(5000);
+    for (TestNode& t : c.nodes) {
+        CHECK_EQ(alive_peers(*t.node), static_cast<size_t>(2));
+        CHECK_EQ(t.node->counters().deaths_declared, 0u);
+    }
+}
+
+TEST(node, a_node_whose_router_moved_is_found_again_by_scanning) {
+    // CR-1's accept shape: the station node is moved by its router without warning; the others lose
+    // it, declare it dead (which is honest: they cannot hear it), scan, and re-converge.
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);
+    c.start_all();
+    c.advance_ms(1000);
+    CHECK_EQ(alive_peers(*c.nodes[1].node), static_cast<size_t>(1));
+    c.nodes[0].node->set_channel_now(9);
+    // Bound: 3 s alone, then at most one full sweep of 11 channels at 300 ms, plus a HELLO round.
+    c.advance_ms(3000 + 11 * 300 + 1000);
+    CHECK_EQ(static_cast<int>(c.nodes[1].chan), 9);
+    CHECK_EQ(alive_peers(*c.nodes[1].node), static_cast<size_t>(1));
+    CHECK_EQ(c.nodes[1].node->channel_counters().found_by_scan, 1u);
+    CHECK(!c.nodes[1].node->scanning());
+    // And the station node, whose channel is not its own to change, never hopped.
+    CHECK_EQ(static_cast<int>(c.nodes[0].chan), 9);
+    CHECK_EQ(c.nodes[0].node->channel_counters().scan_hops, 0u);
+}
+
+TEST(node, a_node_that_boots_on_the_wrong_channel_finds_the_cell) {
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    for (TestNode& t : c.nodes) t.chan = 4;  // the cell lives on 4 ...
+    c.nodes[2].chan = 1;                     // ... and node 2 boots on its default, 1
+    // Nodes 0 and 1 start on 4 by being told so; node 2 by default config is on 1.
+    c.start_all();
+    c.nodes[0].node->set_channel_now(4);
+    c.nodes[1].node->set_channel_now(4);
+    c.advance_ms(3000 + 11 * 300 + 1500);
+    CHECK_EQ(static_cast<int>(c.nodes[2].chan), 4);
+    CHECK_EQ(alive_peers(*c.nodes[2].node), static_cast<size_t>(2));
 }

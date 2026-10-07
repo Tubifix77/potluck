@@ -16,6 +16,7 @@ constexpr uint8_t kOpHello = 0x01;      // node announce: id, capabilities, epoc
 constexpr uint8_t kOpHelloAck = 0x02;   // admission decision
 constexpr uint8_t kOpHeartbeat = 0x03;  // liveness + link stats (§8)
 constexpr uint8_t kOpBye = 0x04;        // intentional departure
+constexpr uint8_t kOpChannel = 0x05;    // M5.1 CR-1: the cell moves to another channel
 
 // ---- Namespace (M1) ----
 constexpr uint8_t kOpRead = 0x10;   // path → typed value

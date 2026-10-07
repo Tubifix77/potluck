@@ -298,6 +298,11 @@ bool espnow_add_peer(const uint8_t mac[kMacLen], uint8_t channel) {
     return true;
 }
 
+bool espnow_set_channel(uint8_t channel) {
+    if (!g_espnow_up) return false;
+    return esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) == ESP_OK;
+}
+
 bool espnow_del_peer(const uint8_t mac[kMacLen]) {
     return g_espnow_up && esp_now_del_peer(mac) == ESP_OK;
 }

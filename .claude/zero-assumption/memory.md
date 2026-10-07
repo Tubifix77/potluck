@@ -579,3 +579,12 @@ doc fetched as raw markdown from its repository), not from a summary.
 | **A signed SAFE_STATE costs ~31 ms to verify on the board** | `verify_us_max` 30,453-32,012 µs (Ed25519 plus the hop to the crypto worker) | same | 2026-10-07 | volatile | measured |
 | **The node refuses unsigned, rogue-CA and downgraded deploys itself** | `UNSIGNED` at COMMIT; `BAD_SIGNATURE` at COMMIT for a deploy certificate from another CA; `DOWNGRADE` at BEGIN for counter 2; counter 4 signed was committed on A and C, and C booted slot B at counter 4 with its trial confirmed | `captures/m5-step6-deploy-94da774.log`, fw `94da774` | 2026-10-07 | volatile | measured |
 | **The node caps the host's payload at the 226-byte v1 profile** | a 236-byte DEPLOY_CHUNK from the host went unanswered; 220-byte chunks were accepted. `PeerLink::max_payload()` pins v1 unless the peer is v2, and the host on the serial link is not pinned v2 | the bench, and `firmware/components/pot_link/src/link_stats.cpp` | 2026-10-07 | stable | measured |
+
+### M5.1 CR-1 design sources: following a channel change — 2026-10-07
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **A station sees its home channel change as an event** | `WIFI_EVENT_HOME_CHANNEL_CHANGE`, argument `wifi_event_home_channel_change_t {old_chan, old_snd, new_chan, new_snd}`, "doesn't occur when scanning" | `components/esp_wifi/include/esp_wifi_types_generic.h`, ESP-IDF v6.0.2 | 2026-10-07 | per IDF version | verified |
+| **`esp_wifi_set_channel` constraints** | call after `esp_wifi_start()`; in STA mode not while scanning or connecting to an AP; on a SoftAP with connected stations it starts a CSA; the channel is not stored in NVS | `components/esp_wifi/include/esp_wifi.h`, attention notes 1-5 | 2026-10-07 | per IDF version | verified |
+| **ESP-NOW peer channel 0 means the current channel** | "If the value is 0, use the current channel which station or softap is on. Otherwise, it must be set as the channel that station or softap is on" | `components/esp_wifi/include/esp_now.h`, `esp_now_peer_info.channel` | 2026-10-07 | per IDF version | verified |
+| **Default country is world-safe mode, channels 1-11** | `{.cc="01", .schan=1, .nchan=11, .policy=WIFI_COUNTRY_POLICY_AUTO}`; `ieee80211d_enabled` TRUE by default | `components/esp_wifi/include/esp_wifi.h` (notes on country APIs) | 2026-10-07 | per IDF version | verified |

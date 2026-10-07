@@ -210,6 +210,154 @@ void sign_job(void* arg) {
 
 }  // namespace
 
+namespace {
+struct ChSignJob {
+    const Identity* id;
+    uint16_t node_id;
+    const uint8_t* base;
+    uint8_t* sig;
+    bool ok;
+};
+void ch_sign_job(void* a) {
+    ChSignJob& j = *static_cast<ChSignJob*>(a);
+    j.ok = channel_sign(*j.id, j.node_id, j.base, j.sig);
+}
+struct ChVerifyJob {
+    const uint8_t* pub;
+    uint16_t node_id;
+    const uint8_t* base;
+    const uint8_t* sig;
+    bool ok;
+};
+void ch_verify_job(void* a) {
+    ChVerifyJob& j = *static_cast<ChVerifyJob*>(a);
+    j.ok = channel_verify(j.pub, j.node_id, j.base, j.sig);
+}
+}  // namespace
+
+void Node::retune(uint8_t ch) {
+    channel_ = ch;
+    if (hal_.set_channel != nullptr) hal_.set_channel(hal_.ctx, ch);
+}
+
+void Node::set_channel_now(uint8_t ch) {
+    if (ch < cfg_.channel_lo || ch > cfg_.channel_hi) return;
+    retune(ch);
+    emit(EventKind::ChannelChanged, nullptr, ch, 3);
+    last_alive_ms_ = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;  // give the move a fair chance first
+    if (!departed_) send_hello(true);
+}
+
+bool Node::move_cell(uint8_t ch, uint16_t delay_ms) {
+    if (ch < cfg_.channel_lo || ch > cfg_.channel_hi || delay_ms > 2000) return false;
+    ChannelPayload c{};
+    c.channel = ch;
+    c.reason = 1;
+    c.delay_ms = delay_ms;
+    c.epoch = cfg_.boot_epoch;
+    c.move_id = ++move_tx_;
+    uint8_t buf[kChannelSignedLen];
+    std::memcpy(buf, &c, kChannelBaseLen);
+    uint16_t len = static_cast<uint16_t>(kChannelBaseLen);
+    if (trust_ != nullptr && trust_->enrolled) {
+        ChSignJob job{trust_, cfg_.node_id, buf, buf + kChannelBaseLen, false};
+        heavy(&ch_sign_job, &job);
+        if (!job.ok) return false;
+        len = static_cast<uint16_t>(kChannelSignedLen);
+    }
+    // Said three times before anyone moves: a broadcast has no MAC-layer retries.
+    for (int i = 0; i < 3; ++i) {
+        send_frame(nullptr, kBroadcastMacAddr, kOpChannel, buf, len, false, 0, kNodeBroadcast, true);
+    }
+    ++ch_counters_.moves_sent;
+    pending_channel_ = ch;
+    pending_channel_at_ms_ = (hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0) + delay_ms;
+    if (pending_channel_at_ms_ == 0) pending_channel_at_ms_ = 1;
+    return true;
+}
+
+void Node::handle_channel(PeerLink* p, const Frame& f) {
+    if (p == nullptr || f.payload_len < kChannelBaseLen) {
+        ++ch_counters_.moves_refused;
+        return;
+    }
+    ChannelPayload c{};
+    std::memcpy(&c, f.payload, kChannelBaseLen);
+    const size_t idx = peers_.index_of(p);
+    if (c.channel < cfg_.channel_lo || c.channel > cfg_.channel_hi || c.delay_ms > 2000 || idx >= kMaxPeers ||
+        cfg_.channel_fixed) {
+        ++ch_counters_.moves_refused;
+        return;
+    }
+    if (trust_required()) {
+        // A forged move would scatter the cell, so it is signed, and fenced by the sender's current
+        // verified epoch: a recorded move from an earlier incarnation is refused without a verify.
+        const PeerAuth* pa = peer_auth(p);
+        if (pa != nullptr && pa->verified && c.epoch == pa->epoch && c.move_id == move_rx_last_[idx] &&
+            move_rx_last_[idx] != 0) {
+            return;  // the same move again (it is said three times): already scheduled
+        }
+        if (f.payload_len != kChannelSignedLen || pa == nullptr || !pa->verified || c.epoch != pa->epoch ||
+            c.move_id <= move_rx_last_[idx]) {
+            ++ch_counters_.moves_refused;
+            return;
+        }
+        ChVerifyJob job{pa->pub, f.hdr.src, f.payload, f.payload + kChannelBaseLen, false};
+        heavy(&ch_verify_job, &job);
+        if (!job.ok) {
+            ++ch_counters_.moves_refused;
+            return;
+        }
+    } else if (c.move_id <= move_rx_last_[idx] && c.epoch == p->boot_epoch) {
+        return;  // a repeat of a move already scheduled (it is said three times)
+    }
+    move_rx_last_[idx] = c.move_id;
+    ++ch_counters_.moves_followed;
+    pending_channel_ = c.channel;
+    pending_channel_at_ms_ = (hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0) + c.delay_ms;
+    if (pending_channel_at_ms_ == 0) pending_channel_at_ms_ = 1;
+}
+
+void Node::tick_channel(uint32_t now) {
+    if (pending_channel_at_ms_ != 0 && static_cast<int32_t>(now - pending_channel_at_ms_) >= 0) {
+        pending_channel_at_ms_ = 0;
+        if (pending_channel_ != channel_) {
+            retune(pending_channel_);
+            emit(EventKind::ChannelChanged, nullptr, pending_channel_, 1);
+        }
+        last_alive_ms_ = now;
+        if (!departed_) send_hello(true);
+    }
+    if (cfg_.channel_fixed || hal_.set_channel == nullptr || departed_) return;
+    const size_t alive = peers_.count_in_state(PeerState::Alive);
+    if (alive > 0) {
+        if (scanning_) {
+            scanning_ = false;
+            ++ch_counters_.found_by_scan;
+            ch_counters_.last_lost_to_found_ms = now - scan_started_ms_ + cfg_.scan_after_ms;
+            emit(EventKind::ChannelChanged, nullptr, channel_, 2);
+        }
+        last_alive_ms_ = now;
+        return;
+    }
+    if (!scanning_) {
+        if (now - last_alive_ms_ < cfg_.scan_after_ms) return;
+        scanning_ = true;
+        scan_started_ms_ = now;
+        scan_next_ms_ = now;
+        ++ch_counters_.scans_started;
+    }
+    if (static_cast<int32_t>(now - scan_next_ms_) >= 0) {
+        const uint8_t next = (channel_ >= cfg_.channel_hi || channel_ < cfg_.channel_lo)
+                                 ? cfg_.channel_lo
+                                 : static_cast<uint8_t>(channel_ + 1);
+        retune(next);
+        ++ch_counters_.scan_hops;
+        scan_next_ms_ = now + cfg_.scan_dwell_ms;
+        send_hello(true);  // so a scanner can be found as well as find
+    }
+}
+
 void Node::announce_change() {
     // A HELLO that says something new: the cached signature covers the old content.
     signed_hello_ok_[0] = signed_hello_ok_[1] = false;
@@ -1301,7 +1449,8 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
             // There is no pairwise key for a broadcast. HELLO is signed, SAFE_STATE is signed (step
             // 5), and the 8-byte beacon is a liveness hint that cannot move an epoch (see
             // handle_heartbeat). Nothing else may arrive unauthenticated.
-            if (f.hdr.opcode != kOpHello && f.hdr.opcode != kOpHeartbeat && f.hdr.opcode != kOpSafeState) {
+            if (f.hdr.opcode != kOpHello && f.hdr.opcode != kOpHeartbeat && f.hdr.opcode != kOpSafeState &&
+                f.hdr.opcode != kOpChannel) {
                 ++auth_counters_.bcast_dropped;
                 return;
             }
@@ -1341,6 +1490,7 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         case kOpHelloAck: handle_hello_ack(p, f); break;
         case kOpHeartbeat: handle_heartbeat(p, f, recv_us, was_broadcast); break;
         case kOpBye: handle_bye(p, f); break;
+        case kOpChannel: handle_channel(p, f); break;
         case kOpRead: handle_read(p, f); break;
         case kOpWrite: handle_write(p, f); break;
         case kOpReply: handle_reply(p, f); break;
@@ -1389,6 +1539,8 @@ void Node::on_tx_done(const uint8_t dst_mac[kMacLen], bool ok, uint32_t done_us)
 
 void Node::start() {
     const uint32_t now = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+    channel_ = cfg_.channel;
+    last_alive_ms_ = now;  // a node that has just booted has not yet been alone for long
     next_beacon_ms_ = now + cfg_.hb_period_ms;
     next_probe_ms_ = now + cfg_.probe_interval_ms;
     next_hello_ms_ = now;
@@ -1481,6 +1633,8 @@ void Node::tick(uint32_t now_ms) {
     }
 
     pending_expire(now_ms);
+
+    tick_channel(now_ms);
 
     // M5.1: repeat an announced change, then apply a looser window once the old one has run out.
     if (announce_left_ != 0 && static_cast<int32_t>(now_ms - next_announce_ms_) >= 0) {

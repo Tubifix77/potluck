@@ -45,6 +45,18 @@ constexpr uint8_t kHelloFlagWantAck = 1u << 0;
 // exclusion (section 0.1). Nothing places work yet; M6's reconciler is the consumer.
 constexpr uint32_t kHelloCapBusy = 1u << 0;
 
+// CHANNEL -- 0x05, 12 bytes (M5.1, CR-1): "move to `channel` in `delay_ms`". Broadcast. From an
+// enrolled sender it carries 64 more bytes: an Ed25519 signature over the 12 (hello_auth.hpp), and
+// receivers accept it only for the sender's current verified epoch and an increasing move_id.
+struct ChannelPayload {
+    uint8_t channel;
+    uint8_t reason;     // 1 = operator, 2 = following an upstream router
+    uint16_t delay_ms;  // when to switch, from receipt; bounded by the receiver
+    uint32_t epoch;     // the sender's boot epoch
+    uint32_t move_id;   // the sender's count of moves this epoch
+};
+static_assert(sizeof(ChannelPayload) == 12, "CHANNEL is 12 bytes");
+
 struct HelloPayload {
     uint32_t boot_epoch;
     uint32_t caps;

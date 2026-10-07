@@ -755,3 +755,36 @@ TEST(auth, an_unsigned_or_forged_safe_state_is_refused) {
     CHECK_EQ(w.b().safe_state_counters().bad_signature, 1u);
     CHECK_EQ(w.b().safe_state_counters().accepted, 1u);
 }
+
+// ---- M5.1 CR-1 under auth: a signed move is followed; a replayed or forged one is not ----
+
+TEST(auth, a_signed_channel_move_is_followed_and_a_replay_of_it_is_not) {
+    WriteCell w;
+    CHECK(w.a().move_cell(6, 200));
+    w.c.advance_ms(300);
+    CHECK_EQ(static_cast<int>(w.b().channel()), 6);
+    CHECK_EQ(w.b().channel_counters().moves_followed, 1u);
+    CHECK_EQ(w.b().channel_counters().moves_refused, 0u);  // the two repeats are recognised, not refused
+}
+
+TEST(auth, an_unsigned_channel_move_is_refused_under_require) {
+    WriteCell w;
+    ChannelPayload cp{};
+    cp.channel = 9;
+    cp.reason = 1;
+    cp.delay_ms = 100;
+    cp.epoch = 1;
+    cp.move_id = 1;
+    EncodeSpec spec;
+    spec.src = 0x100;
+    spec.dst = kNodeBroadcast;
+    spec.opcode = kOpChannel;
+    uint8_t buf[64];
+    size_t n = 0;
+    CHECK(encode(spec, reinterpret_cast<const uint8_t*>(&cp), static_cast<uint16_t>(sizeof(cp)), buf, sizeof(buf), n) ==
+          FrameError::Ok);
+    w.b().on_rx(w.c.nodes[0].mac, buf, n, w.c.now_us, -50);
+    w.c.advance_ms(200);
+    CHECK_EQ(w.b().channel_counters().moves_refused, 1u);
+    CHECK_EQ(static_cast<int>(w.b().channel()), 1);
+}

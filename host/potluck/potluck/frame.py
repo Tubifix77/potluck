@@ -59,6 +59,7 @@ class Op(IntEnum):
     HELLO_ACK = 0x02
     HEARTBEAT = 0x03
     BYE = 0x04
+    CHANNEL = 0x05
     READ = 0x10
     WRITE = 0x11
     CALL = 0x20

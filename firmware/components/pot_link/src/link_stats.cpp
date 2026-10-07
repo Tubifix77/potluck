@@ -37,6 +37,7 @@ const char* event_kind_str(EventKind k) {
         case EventKind::PeerRefused: return "peer_refused";
         case EventKind::FrameRejected: return "frame_rejected";
         case EventKind::SafeStateRejected: return "safe_state_rejected";
+        case EventKind::ChannelChanged: return "channel_changed";
     }
     return "unknown";
 }

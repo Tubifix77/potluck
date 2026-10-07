@@ -192,7 +192,8 @@ bool hal_add_peer(void*, const uint8_t mac[kMacLen]) {
         return serial_port_running();
     }
 #endif
-    return espnow_add_peer(mac, kChannel);
+    // Channel 0: "use the current channel" (esp_now.h), so peers follow a cell that moves (M5.1).
+    return espnow_add_peer(mac, 0);
 }
 uint32_t hal_now_ms(void*) { return now_ms_(); }
 uint32_t hal_now_us(void*) { return now_us_(); }
@@ -1200,9 +1201,15 @@ void stats_task(void*) {
             std::printf("{\"t\":\"act\",\"node\":%u,\"setpoint\":%d,\"has_value\":%d,\"writes_served\":%u}\n",
                         static_cast<unsigned>(node_id), static_cast<int>(spv), has ? 1 : 0, served);
             // M5.1: each peer's declared window (CR-3) and caps (CR-4), as this node holds them.
-            std::printf("{\"t\":\"peers\",\"node\":%u,\"own_period_ms\":%u,\"own_busy\":%d,\"list\":[",
+            const Node::ChannelCounters chc = g_node->channel_counters();
+            std::printf("{\"t\":\"peers\",\"node\":%u,\"own_period_ms\":%u,\"own_busy\":%d,\"channel\":%u,"
+                        "\"scanning\":%d,\"scans\":%u,\"hops\":%u,\"found\":%u,\"lost_to_found_ms\":%u,"
+                        "\"moves_followed\":%u,\"moves_refused\":%u,\"list\":[",
                         static_cast<unsigned>(node_id), static_cast<unsigned>(g_node->heartbeat_period_ms()),
-                        g_node->busy() ? 1 : 0);
+                        g_node->busy() ? 1 : 0, static_cast<unsigned>(g_node->channel()), g_node->scanning() ? 1 : 0,
+                        static_cast<unsigned>(chc.scans_started), static_cast<unsigned>(chc.scan_hops),
+                        static_cast<unsigned>(chc.found_by_scan), static_cast<unsigned>(chc.last_lost_to_found_ms),
+                        static_cast<unsigned>(chc.moves_followed), static_cast<unsigned>(chc.moves_refused));
             {
                 bool first_peer = true;
                 for (size_t i = 0; i < kMaxPeers; ++i) {
@@ -1461,6 +1468,31 @@ bool handle_test(const char* line, size_t len) {
                     static_cast<unsigned>(id));
         return true;
     }
+    unsigned chan = 0;
+    char word[8] = {};
+    const int nchan = std::sscanf(buf, "POT! channel %u %7s", &chan, word);
+    if (nchan >= 1) {
+        const bool quiet = (nchan == 2 && std::strcmp(word, "quiet") == 0);
+        lock_node();
+        bool ok = true;
+        if (quiet) {
+            g_node->set_channel_now(static_cast<uint8_t>(chan));  // as if a router had moved us
+        } else {
+            ok = g_node->move_cell(static_cast<uint8_t>(chan), 500);
+        }
+        xSemaphoreGive(g_mutex);
+        std::printf("{\"t\":\"test\",\"cmd\":\"channel\",\"channel\":%u,\"quiet\":%d,\"ok\":%d}\n", chan,
+                    quiet ? 1 : 0, ok ? 1 : 0);
+        return true;
+    }
+    unsigned fixed = 0;
+    if (std::sscanf(buf, "POT! fixed %u", &fixed) == 1) {
+        lock_node();
+        g_node->set_channel_fixed(fixed != 0);
+        xSemaphoreGive(g_mutex);
+        std::printf("{\"t\":\"test\",\"cmd\":\"fixed\",\"fixed\":%u}\n", fixed != 0 ? 1u : 0u);
+        return true;
+    }
     unsigned period = 0, misses = 0, flag = 0;
     if (std::sscanf(buf, "POT! window %u %u", &period, &misses) == 2) {
         lock_node();
@@ -1675,6 +1707,7 @@ extern "C" void app_main(void) {
     cfg.hb_period_ms = CONFIG_POT_HB_PERIOD_MS;
     cfg.hb_miss_limit = CONFIG_POT_HB_MISS_LIMIT;
     cfg.hello_interval_ms = CONFIG_POT_HELLO_INTERVAL_MS;
+    cfg.channel = kChannel;
 #if CONFIG_POT_CAN
     cfg.admit_on_beacon = true;  // a CAN bus carries no HELLO (§5.3.1)
 #endif
@@ -1732,6 +1765,9 @@ extern "C" void app_main(void) {
     hal.free_dram = &hal_free_dram;
     hal.on_event = &hal_on_event;
     hal.run_heavy = &trust_rt::run_heavy;
+#if !CONFIG_POT_RADIO_DISABLE && !CONFIG_POT_CAN
+    hal.set_channel = [](void*, uint8_t ch) { espnow_set_channel(ch); };
+#endif
     hal.persist_safe_state_floors = &trust_rt::persist_floors;
 
     // Placement new into static storage: the node owns the peer table and the histograms, which §6
@@ -1813,7 +1849,7 @@ extern "C" void app_main(void) {
     // The broadcast address needs a peer entry before anything can be broadcast, and it consumes
     // one of §3's twenty slots — leaving nineteen for unicast.
     if (espnow_up()) {
-        if (!espnow_add_peer(kBroadcastMacAddr, kChannel)) {
+        if (!espnow_add_peer(kBroadcastMacAddr, 0)) {
             ESP_LOGE(kTag, "could not add the broadcast peer");
         }
     }
