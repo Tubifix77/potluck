@@ -1156,6 +1156,11 @@ void stats_task(void*) {
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(kStatsIntervalMs));
         const uint16_t node_id = g_node->config().node_id;
+        // First, while the console is idle: the board's clock, for a host that must put several
+        // boards' events on one timeline (tools/m6_bench.py). Any later line in the period waits
+        // behind up to ~3 KB of output at 115200 baud, and so is a poor timestamp.
+        std::printf("{\"t\":\"clk\",\"node\":%u,\"up_ms\":%u}\n", static_cast<unsigned>(node_id),
+                    static_cast<unsigned>(now_ms_()));
 
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         refresh_sys_resources();

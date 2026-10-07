@@ -157,55 +157,44 @@ class Reader:
             self.bridge.close()
 
 
-def offsets(cons: dict[int, Console]) -> dict[int, float]:
-    """Board clock -> host clock: min(host_ts - up_ms/1000) over the board's stats lines (current boot)."""
-    out = {}
-    for n, c in cons.items():
-        best = None
-        last_up = None
-        for ts, j in c.lines:
-            up = j.get("up_ms")
-            if not isinstance(up, int):
-                continue
-            if last_up is not None and up < last_up:
-                best = None  # rebooted: only the latest incarnation's clock is wanted
-            last_up = up
-            off = ts - up / 1000.0
-            best = off if best is None or off < best else best
-        out[n] = best
-    return out
+def split_boots(lines: list[tuple[float, dict]]) -> list[list[tuple[float, dict]]]:
+    """A board's lines, one list per boot. A boot record starts a new one."""
+    boots: list[list[tuple[float, dict]]] = [[]]
+    for ts, j in lines:
+        if j.get("t") == "boot" and boots[-1]:
+            boots.append([])
+        boots[-1].append((ts, j))
+    return boots
 
 
-def events(cons: dict[int, Console], kinds: tuple[str, ...]) -> list[tuple[float, int, dict]]:
-    """Every event of these kinds, on the host clock. Each board's boots are mapped separately."""
+def boot_offset(lines: list[tuple[float, dict]]) -> tuple[float | None, float]:
+    """(offset, spread) mapping this boot's clock to the host's. From the clk lines, which each board
+    prints first in a stats period while its console is idle; min(host_ts - up_ms) is the least
+    delayed one. `spread` is max - min over them: an honest bound on how wrong one sample can be."""
+    offs = [ts - j["up_ms"] / 1000.0 for ts, j in lines if j.get("t") == "clk" and isinstance(j.get("up_ms"), int)]
+    if not offs:
+        return None, 0.0
+    return min(offs), max(offs) - min(offs)
+
+
+def events(by_node: dict[int, list[tuple[float, dict]]], kinds: tuple[str, ...], t_start: float):
+    """Every event of these kinds that happened after t_start, on the host clock, with its boot index.
+    Returns (events, worst offset spread)."""
     res = []
-    for n, c in cons.items():
-        # Split the board's lines at reboots (up_ms going backwards), mapping each boot by its own lines.
-        boots: list[list[tuple[float, dict]]] = [[]]
-        last = None
-        for ts, j in c.lines:
-            up = j.get("up_ms")
-            if isinstance(up, int):
-                if last is not None and up < last:
-                    boots.append([])
-                last = up
-            boots[-1].append((ts, j))
-        for boot, lines in enumerate(boots):
-            off = None
-            for ts, j in lines:
-                up = j.get("up_ms")
-                if isinstance(up, int):
-                    o = ts - up / 1000.0
-                    off = o if off is None or o < off else off
+    worst = 0.0
+    for n, lines in by_node.items():
+        for boot, bl in enumerate(split_boots(lines)):
+            off, spread = boot_offset(bl)
             if off is None:
                 continue
-            for ts, j in lines:
-                if j.get("t") == "event" and j.get("kind") in kinds:
-                    at = j.get("at_ms")
-                    if isinstance(at, int):
-                        res.append((off + at / 1000.0, n, j, boot))
+            worst = max(worst, spread)
+            for ts, j in bl:
+                if j.get("t") == "event" and j.get("kind") in kinds and isinstance(j.get("at_ms"), int):
+                    t = off + j["at_ms"] / 1000.0
+                    if t >= t_start:
+                        res.append((t, n, j, boot))
     res.sort(key=lambda r: r[0])
-    return res
+    return res, worst
 
 
 def running_intervals(evs, t_end: float, kills: list[tuple[float, int]]) -> dict[int, list[tuple[float, float]]]:
@@ -240,6 +229,26 @@ def overlaps(iv) -> list[tuple[int, int, float]]:
     return bad
 
 
+def causal_starts(evs) -> tuple[int, list[str]]:
+    """Each start, judged on the starter's own clock, where no mapping error can reach: the last owner
+    it had accepted just before starting must be nobody (0) -- it held no live claim from anyone else.
+    A handover shows as owner X -> 0 -> start: X's claim withdrawn, which X sends only after it has
+    stopped. Returns (starts, violations)."""
+    last_owner: dict[tuple[int, int], int] = {}
+    starts = 0
+    bad = []
+    for t, n, j, boot in evs:
+        k = (n, boot)
+        if j["kind"] == "actor_owner":
+            last_owner[k] = j.get("peer", 0)
+        elif j["kind"] == "actor_started":
+            starts += 1
+            prev = last_owner.get(k, 0)
+            if prev not in (0, n):
+                bad.append(f"0x{n:04x} started while it accepted 0x{prev:04x} as owner")
+    return starts, bad
+
+
 def owner_regressions(evs) -> list[str]:
     bad = []
     # Per board and per boot: a rebooted board remembers nothing, and starts its floor again.
@@ -255,22 +264,86 @@ def owner_regressions(evs) -> list[str]:
     return bad
 
 
+def analyze(by_node, marks, reads, t_start: float, t_end: float, mode: str, say) -> None:
+    t0 = marks[0][0] if marks else t_start
+    starts = [m for m in marks if m[1].startswith(("kill ", "partition"))]
+    ends = [m for m in marks if m[1].startswith(("release ", "heal"))]
+    for k, (t_kill, what) in enumerate(starts):
+        victim = int(what.split("0x")[1].split()[0], 16)
+        t_stop = ends[k][0] if k < len(ends) else t_end
+        served = next((ts for ts, v, q, _ in reads
+                       if ts > t_kill and v is not None and q == "GOOD" and (v >> 16) != victim), None)
+        stale = [r for r in reads if t_kill + 1.0 < r[0] < t_stop and r[1] is not None
+                 and (r[1] >> 16) == victim and r[2] == "GOOD"]
+        say(f"cycle {k}: {what}: served by another node "
+            + (f"{served - t_kill:.3f} s later" if served else "NEVER, before the end"))
+        say(f"cycle {k}: Good reads carrying 0x{victim:04x}'s value from 1 s after the start to the end: {len(stale)}")
+    evs, spread = events(by_node, ("actor_started", "actor_stopped", "actor_owner"), t_start)
+    for t, n, j, _ in evs:
+        say(f"  {t - t0:+8.3f} 0x{n:04x} {j['kind']:<14} node 0x{j.get('peer', 0):04x} b={j.get('b')}")
+    kills = [(t, int(w.split("0x")[1].split()[0], 16)) for t, w in marks if w.startswith("kill ")]
+    iv = running_intervals(evs, t_end, kills)
+    if mode == "failover":
+        ov = overlaps(iv)
+        say(f"running intervals overlapping, across board clocks mapped to the host's: {len(ov)}"
+            + "".join(f"\n  0x{x:04x}/0x{y:04x} {o * 1000:.1f} ms" for x, y, o in ov)
+            + f"\n  (clock mapping: worst spread of a board's clk samples {spread * 1000:.1f} ms)")
+    else:
+        say("running intervals per board, s from the partition: " + "; ".join(
+            f"0x{n:04x} " + ", ".join(f"{s - t0:+.2f}..{e - t0:+.2f}" for s, e in v) for n, v in iv.items()))
+    n_starts, bad = causal_starts(evs)
+    say(f"starts: {n_starts}; started while accepting another node's live claim: {len(bad)}"
+        + "".join(f"\n  {b}" for b in bad))
+    reg = owner_regressions(evs)
+    say(f"consumers that accepted a lower term than one they had accepted: {len(reg)}"
+        + "".join(f"\n  {r}" for r in reg))
+    say(f"reads: {len(reads)}, Good {sum(1 for r in reads if r[2] == 'GOOD')}, "
+        f"timeouts {sum(1 for r in reads if r[2] == 'TIMEOUT')}")
+
+
+def load(path: str):
+    by_node: dict[int, list[tuple[float, dict]]] = {}
+    marks, reads = [], []
+    first = None
+    for l in open(path, encoding="utf-8"):
+        r = json.loads(l)
+        first = r["host_ts"] if first is None else first
+        if "mark" in r:
+            marks.append((r["host_ts"], r["mark"]))
+        elif "read" in r:
+            reads.append((r["host_ts"], r["value"], r["quality"], r["age_ms"]))
+        elif r.get("line", "").startswith("{"):
+            try:
+                by_node.setdefault(r["node"], []).append((r["host_ts"], json.loads(r["line"])))
+            except json.JSONDecodeError:
+                pass
+    return by_node, marks, reads, first
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=("failover", "partition"))
-    ap.add_argument("--out", required=True)
+    ap.add_argument("mode", choices=("failover", "partition", "analyze"))
+    ap.add_argument("--out", required=True, help="capture prefix; for analyze, the .jsonl to read")
+    ap.add_argument("--as", dest="as_mode", choices=("failover", "partition"), default="failover")
     ap.add_argument("--cycles", type=int, default=3)
     ap.add_argument("--hold-s", type=float, default=10.0)
     ap.add_argument("--settle-s", type=float, default=25.0)
     a = ap.parse_args()
 
-    raw = open(a.out + ".jsonl", "w", encoding="utf-8")
     report = []
 
     def say(s: str) -> None:
         print(s, flush=True)
         report.append(s)
 
+    if a.mode == "analyze":
+        by_node, marks, reads, first = load(a.out)
+        last = max([r[0] for r in reads] + [m[0] for m in marks])
+        analyze(by_node, marks, reads, first, last, a.as_mode, say)
+        return 0
+
+    raw = open(a.out + ".jsonl", "w", encoding="utf-8")
+    t_start = time.time()
     cons = {n: Console(n, p, raw) for n, p in BOARDS.items()}
     reader = Reader(raw)
     marks: list[tuple[float, str]] = []
@@ -294,7 +367,6 @@ def main() -> int:
                 break
             if a.mode == "failover":
                 mark(f"kill 0x{victim:04x} (reset held)")
-                t_kill = marks[-1][0]
                 cons[victim].hold_reset(True)
                 time.sleep(a.hold_s)
                 mark(f"release 0x{victim:04x}")
@@ -302,7 +374,6 @@ def main() -> int:
             else:
                 others = [n for n in BOARDS if n != victim]
                 mark(f"partition: isolate 0x{victim:04x}")
-                t_kill = marks[-1][0]
                 for n in others:
                     cons[n].send(f"POT! deaf {MAC_TAIL[victim]}")
                     cons[victim].send(f"POT! deaf {MAC_TAIL[n]}")
@@ -310,16 +381,6 @@ def main() -> int:
                 mark("heal")
                 for n in BOARDS:
                     cons[n].send("POT! deaf 0")
-            # The 2 s line, from outside: first Good read served by a node other than the victim.
-            served = next((ts for ts, v, q, _ in reader.reads
-                           if ts > t_kill and v is not None and "GOOD" in q.upper() and (v >> 16) != victim), None)
-            stale_good = [r for r in reader.reads
-                          if r[0] > t_kill + 1.0 and r[1] is not None and (r[1] >> 16) == victim
-                          and "GOOD" in r[2].upper() and r[0] < marks[-1][0]]
-            say(f"cycle {k}: served by another node {served - t_kill:.3f} s after the {a.mode} start"
-                if served else f"cycle {k}: NOT served by another node before the {a.mode} ended")
-            say(f"cycle {k}: Good reads carrying the {('dead' if a.mode == 'failover' else 'isolated')} "
-                f"node's value, 1 s after the start and before the end: {len(stale_good)}")
             time.sleep(a.settle_s)
         time.sleep(11)  # one more stats period, so every event has been printed
     finally:
@@ -327,27 +388,8 @@ def main() -> int:
         for c in cons.values():
             c.hold_reset(False)
             c.close()
-
-    t_end = time.time()
-    evs = events(cons, ("actor_started", "actor_stopped", "actor_owner"))
-    for t, n, j, _ in evs:
-        say(f"  {t - marks[0][0]:+8.3f} 0x{n:04x} {j['kind']} node 0x{j.get('peer', 0):04x} a={j.get('a')} b={j.get('b')}")
-    kills = [(t, int(w.split()[1], 16)) for t, w in marks if w.startswith("kill ")]
-    iv = running_intervals(evs, t_end, kills)
-    ov = overlaps(iv)
-    if a.mode == "failover":
-        say(f"double-running intervals (board clocks mapped to host): {len(ov)}"
-            + "".join(f"\n  0x{x:04x}/0x{y:04x} overlap {o * 1000:.1f} ms" for x, y, o in ov))
-    else:
-        say("running intervals per board: " + "; ".join(
-            f"0x{n:04x} " + ", ".join(f"{s - marks[0][0]:+.2f}..{e - marks[0][0]:+.2f}" for s, e in v)
-            for n, v in iv.items()))
-    reg = owner_regressions(evs)
-    say(f"consumers that accepted a lower term than one they had accepted: {len(reg)}"
-        + "".join(f"\n  {r}" for r in reg))
-    good = sum(1 for r in reader.reads if "GOOD" in r[2].upper())
-    say(f"reads: {len(reader.reads)}, Good {good}, timeouts {sum(1 for r in reader.reads if r[2] == 'TIMEOUT')}")
     raw.close()
+    analyze({n: c.lines for n, c in cons.items()}, marks, reader.reads, t_start, time.time(), a.mode, say)
     with open(a.out + "-report.txt", "w", encoding="utf-8") as f:
         f.write("\n".join(report) + "\n")
     return 0
