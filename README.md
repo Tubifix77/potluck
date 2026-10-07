@@ -290,6 +290,11 @@ runtime states them. Here they are:
 
 - **A dead node is declared dead after 600 ms** — six missed heartbeats at the default 100 ms period
   (both configurable). Until that window closes, the cluster still believes the node is alive.
+- **Each node declares its own death window, and may change it while running** (since M5.1): the
+  period is carried in one byte of centiseconds, so **10 ms to 2.55 s** in 10 ms steps, times a miss
+  limit of 1 to 255. A node that loosens its window keeps the old rate until a periodic greeting has
+  told its peers; a node that tightens it applies the change at once. Peers always judge a node by
+  the window it declared, not by their own.
 - **Stale values are delivered, marked.** Past a resource's staleness bound a read still returns the
   last value, with its exact age and quality `STALE` (the default "informative" policy; a resource
   declared "strict" withholds the value instead). A dead owner's resources read `UNAVAILABLE` — no
