@@ -12,7 +12,7 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 in progress.** M3: deploy to the cell through one board,
+**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07.** M3: deploy to the cell through one board,
 detach and power-cycle, and a broken module that all three nodes revert themselves (M0-LOG session 18). M2: a 10.05-minute three-board session over COM6
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
@@ -33,26 +33,26 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## M5 IN PROGRESS — READ THIS FIRST (handover, 2026-10-07)
+> ## M5 ACCEPTED — READ THIS FIRST (handover, 2026-10-07)
 >
-> M5's order: 1 measure ✓, 2 enrolment ✓, **3 signed HELLO ✓ on hardware (M0-LOG session 22)**, 4 auth_tag +
-> replay window, 5 signed epoch-fenced SAFE_STATE, 6 node-side package signatures. First acceptance line
-> met: an unenrolled board is refused and logged.
+> All five acceptance lines met on three boards (M0-LOG sessions 21-22, ARCHITECTURE section 13). **Next:
+> M5.1 "sharing the radio"** (section 13, from `D:\Projects\poor-mans-extender\CR for Potluck.md`;
+> read-only for us), starting with its zero-code experiment.
 >
-> - **The bench now:** all three on **`84a4763`**, verify-flash matched. **A (COM3) and C (COM5) enrolled**
->   under `keys/ca.key` (fp `ef76cc2e`); **B (COM4) deliberately not enrolled** — it is the refused board,
->   keep it that way until the demo is no longer needed (`python -m potluck.enrol --port COM4 --ca-key
->   keys/ca.key`, then reset it). CP2102 on COM6 to A; SN65HVD230 modules still wired to B and C, idle.
-> - **Crypto runs on the console task** via `NodeHal::run_heavy` — the link task's 4 KB overflowed when it
->   did it itself. Never call Monocypher from the link task.
-> - **Static DRAM 61.0 KB of 64 KB.** Price step 4's per-peer replay state before writing it.
-> - **Step 4 design constraint (from M5.1):** `auth_tag` end-to-end over header + payload, per-pair session
->   key, **not over the MAC**, so a future relay can forward byte for byte. Also decide beacons and
->   HELLO_ACK (still unauthenticated).
-> - **Owner constraint for some sessions:** no Ollama, WSL or Docker. `tools\run_all_tests.ps1` calls
->   `bash`, which is WSL here; run the gates separately and the portability gate via Git Bash (Xtensa GCC).
-> - **M5.1 "sharing the radio"** is planned in ARCHITECTURE section 13, from
->   `D:\Projects\poor-mans-extender\CR for Potluck.md`. Read-only for us: do not edit that project.
+> - **The bench now:** all three on **`94da774`**. **A (COM3) and C (COM5) enrolled** (CA fp `ef76cc2e`);
+>   **B (COM4) deliberately unenrolled** (the refused board). A and C run the deployed `m3-purple` at
+>   **counter 4 — the next package must be counter 5+**. CP2102 on COM6 to A; CAN modules on B and C, idle.
+> - **Deploy now needs the image signed:** `python -m potluck.ctl --port COM6 --node 6300 deploy
+>   keys/<m>.pkg.json --ca keys/ca.pub --key keys/deploy.key --bcert keys/deploy.bcert` (`deploy.bcert`
+>   made once by `python -m potluck.enrol --deploy-cert keys/deploy.pub --ca-key keys/ca.key --out ...`).
+> - **Test instruments on the console** (`POT! write <node> <int>`, `POT! replay [flip]`, `POT! safe <n>`,
+>   `POT! replay-ss`) and the `act/setpoint` stand-in actuator; stats lines `auth`, `act`, `ss`.
+> - **Static DRAM 63.3 KB of 64 KB.** Nothing more fits. M5.1 starts by pricing memory (PSRAM build, CR-5).
+> - **Crypto runs on the console task** (`NodeHal::run_heavy`); never call Monocypher from the link task.
+>   The console serves jobs while it waits for the node mutex; keep it that way or the two deadlock.
+> - **Owner constraints some evenings:** no Ollama, WSL or Docker (portability gate via Git Bash's
+>   Xtensa fallback). **New design decisions go through the zero-assumption contract**
+>   (github.com/Tubifix77/zero-assumption): primary sources, registered in the ledger before use.
 >
 > ## M4 ACCEPTED ON TWO BOARDS — READ THIS FIRST (handover, 2026-10-05)
 >

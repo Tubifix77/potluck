@@ -3437,3 +3437,54 @@ high-water mark, so the next session should price them before writing them.
 request, recorded in ARCHITECTURE section 13 between M5 and M6. One constraint it places on M5 now:
 step 4's frame tag must not cover the sender's MAC, or a later single-hop relay cannot forward a
 frame byte for byte.
+
+### Steps 4-6, and M5 accepted (2026-10-07)
+
+The owner asked for every new design decision to go through the zero-assumption contract
+(github.com/Tubifix77/zero-assumption, read from the repository): RFC 4303 and RFC 2104 were read as
+plain text from rfc-editor.org, libsodium's documentation as raw markdown, and registered in the
+ledger before use.
+
+**Step 4 — tags and the replay window (`0429f5f`).** Every unicast frame between verified peers carries
+an 8-byte HMAC-SHA-512 tag under the per-pair key, over header and payload and **not the MAC** (M5.1's
+relay constraint). The header's seq is 16 bits and a link wraps it every ~1.4 h, so both ends keep
+the high 16 bits implicitly and put them in the tag, exactly as IPsec's extended sequence numbers do
+(RFC 4303 §2.2.1, Appendix A2); a 64-frame window (§3.4.3's preferred size) rejects duplicates and
+moves only after the tag verifies. One consequence of the RFC's rule, found by a test that expected
+otherwise: a frame older than the window is read as the next subspace and fails its **tag**, so very
+old replays count as `bad_tag`, not `replayed`. Beacons stay unauthenticated hints that can no
+longer announce a reboot. On the boards (`captures/m5-step4-replay-0429f5f.log`): A wrote 42 then 7
+to C's `act/setpoint`; A re-sent the recorded frame unchanged and C refused it (`frame_rejected`,
+reason replay, seq 147), setpoint 7, writes served 2; the bit-flipped copy likewise. Tag check
+≤ 0.83 ms per frame; link stack 5 KB with 1,732 B free.
+
+**Step 5 — signed, epoch-fenced SAFE_STATE (`23fab51`).** 76 bytes on the radio (payload, the sender's
+boot epoch, Ed25519); receivers check the signature against the certified key and require
+(epoch, counter) above the source's high-water, saved to NVS on the crypto worker and restored at
+boot. Two concurrency traps closed on the way: the worker submitting a job to itself would wait
+forever (it now runs it inline), and the console waiting for the node mutex while the link task
+waited for the console would deadlock (the console serves jobs while it waits). On the boards
+(`captures/m5-step5-safe-state-power-cycle-23fab51.log`): A's genuine SAFE_STATE accepted by C
+(epoch 138, verify 31 ms); all three reset; C "high-water table restored from NVS"; A re-sent the
+recorded epoch-138 frame and C refused it (reason 4, replay); a new one from epoch 139 was accepted.
+
+**Step 6 — node-side package signatures (`94da774`).** The image travels with a 176-byte trailer: a
+deploy-key certificate (the node-certificate format, role 2, signed once by the CA with
+`potluck.enrol --deploy-cert`) and the deploy key's signature over domain || SHA-512(image) — a
+hash rather than the image, so the check needs 81 bytes of stack, not 529. An enrolled node checks
+it at COMMIT before writing anything; a distributing node passes the trailer on so each peer checks
+for itself. **Found on the bench:** the 230-byte signed image made the host's first chunk a 236-byte
+payload, above the 226-byte cap the node applies to the host on the serial link; the node dropped
+it unanswered. Host chunks are now ≤ 220 B (`05fba9a`). Results through A
+(`captures/m5-step6-deploy-94da774.log`): unsigned → `UNSIGNED`; deploy certificate from a rogue CA →
+`BAD_SIGNATURE`; signed counter 2 → `DOWNGRADE`; signed counter 4 → committed and passed to C, both
+booted it, C reports slot B, counter 4, trial confirmed.
+
+**M5 is accepted** — all five lines; ARCHITECTURE section 13 records the reset-not-power caveat. Stated
+limitations added to section 9.5: unauthenticated beacons, no auth on CAN, a 64-bit tag below RFC
+2104's 80, and one identity key for both signing and key agreement.
+
+**The budget is the next constraint, not a footnote:** static DRAM 63.3 KB of the 64 KB cap. M5.1
+(PSRAM build, channel follow, relay) cannot start inside it; the PSRAM item is already the
+change request's answer, and the cap's own rationale (fit the classic ESP32) is worth re-reading
+before then.
