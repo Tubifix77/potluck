@@ -26,10 +26,12 @@ STRICT="-std=c++17 -fsyntax-only -Wall -Wextra -Wpedantic -Wconversion -Wsign-co
         -Wshadow -Wcast-qual -Wold-style-cast -Wdouble-promotion -Wformat=2"
 INC="-Ifirmware/components/pot_frame/include -Ifirmware/components/pot_link/include
      -Ifirmware/components/pot_ns/include -Ifirmware/components/pot_trust/include
+     -Ifirmware/components/pot_deploy/include -Ifirmware/components/pot_reconcile/include
      -Ifirmware/components/monocypher -Itests -Isim"
 
 CORE=$(ls firmware/components/pot_frame/src/*.cpp firmware/components/pot_link/src/*.cpp \
-          firmware/components/pot_ns/src/*.cpp firmware/components/pot_trust/src/trust.cpp firmware/components/pot_trust/src/hello_auth.cpp firmware/components/pot_trust/src/frame_auth.cpp)
+          firmware/components/pot_ns/src/*.cpp firmware/components/pot_trust/src/trust.cpp firmware/components/pot_trust/src/hello_auth.cpp firmware/components/pot_trust/src/frame_auth.cpp \
+          firmware/components/pot_deploy/src/deploy.cpp firmware/components/pot_reconcile/src/reconcile.cpp)
 EXTRA=$(ls tests/*.cpp sim/*.cpp 2>/dev/null)
 
 # --- find a compiler ---------------------------------------------------------------------------

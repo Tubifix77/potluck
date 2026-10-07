@@ -439,8 +439,13 @@ class Node {
         uint32_t calls_served;     // units accepted by a handler here
         uint32_t calls_refused;    // units this node declined, or had no handler for
         uint32_t calls_lost;       // units dispatched to a peer that died before answering
+        uint32_t replies_fenced;   // M6: a value from a node that no longer owns the resource
     };
     const NsCounters& ns_counters() const { return ns_counters_; }
+
+    // An event raised above the node -- the reconciler's -- into the same ring and the same on_event
+    // as membership's, so one stream carries both and a capture can order them.
+    void record_event(EventKind kind, uint16_t node_id, uint32_t a, uint32_t b);
 
     PeerTable& peers() { return peers_; }
     const PeerTable& peers() const { return peers_; }

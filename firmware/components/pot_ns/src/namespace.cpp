@@ -160,6 +160,25 @@ NsError Namespace::publish(uint32_t hash, const Value& v, uint32_t now_ms) {
     return NsError::Ok;
 }
 
+NsError Namespace::set_owner(uint32_t hash, uint16_t owner) {
+    NsEntry* e = find(hash);
+    if (e == nullptr) {
+        return NsError::NotFound;
+    }
+    if (e->owner_node == owner) {
+        return NsError::Ok;
+    }
+    e->owner_node = owner;
+    const ValueType t = e->value.type;
+    e->value = Value{};
+    e->value.type = t;
+    e->updated_ms = 0;
+    e->update_count = 0;
+    e->flags = 0;
+    arrived_ms_[static_cast<size_t>(e - entries_)] = 0;
+    return NsError::Ok;
+}
+
 NsError Namespace::apply_remote(uint32_t hash, const Value& v, uint32_t sampled_ms,
                                 uint32_t local_now_ms, uint32_t owner_age_ms, bool faulty) {
     NsEntry* e = find(hash);

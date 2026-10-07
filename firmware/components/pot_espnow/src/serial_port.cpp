@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "driver/uart.h"
+#include "esp_attr.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -33,19 +34,23 @@ struct SerialRxSlot {
 // ring — it is M2 instrumentation, sized to the smallest number that cannot lose a burst.
 constexpr size_t kSerialRxSlots = 4;
 
+// M6: buffers only tasks touch, at the host cable's speed, live in PSRAM when the build has it
+// (EXT_RAM_BSS_ATTR is empty otherwise). Never one an ISR touches: the cache, and with it PSRAM, is
+// off during a flash write, and only tasks are guaranteed to be held still then (ESP-IDF
+// external-ram guide). Section 6's cap counts internal RAM, which is what these were spending.
 StaticQueue_t g_rx_ctrl;
-uint8_t g_rx_storage[kSerialRxSlots * sizeof(SerialRxSlot)];
+EXT_RAM_BSS_ATTR uint8_t g_rx_storage[kSerialRxSlots * sizeof(SerialRxSlot)];
 QueueHandle_t g_rx_queue = nullptr;
 
 SerialPortConfig g_cfg;
 bool g_running = false;
 
-SerialReassembler g_reassembler;
+EXT_RAM_BSS_ATTR SerialReassembler g_reassembler;
 SerialPortStats g_stats{};
 
 // Scratch for the reader task. The task is the only writer, so one instance is enough and a 1470-byte
 // frame never lands on a stack.
-SerialRxSlot g_scratch;
+EXT_RAM_BSS_ATTR SerialRxSlot g_scratch;
 
 StaticTask_t g_reader_tcb;
 StackType_t g_reader_stack[3072 / sizeof(StackType_t)];
@@ -145,7 +150,7 @@ int32_t serial_port_send(const uint8_t* frame, size_t len) {
     // Framed on the stack: kSerialFrameMax is ~1.5 KB and the link task's stack is 4 KB. A static
     // buffer would be shared with the reader task and need a lock for no benefit, since only the
     // link task sends.
-    static uint8_t wire[kSerialFrameMax];
+    EXT_RAM_BSS_ATTR static uint8_t wire[kSerialFrameMax];
     const size_t n = write_serial_frame(frame, len, wire, sizeof(wire));
     if (n == 0) {
         ++g_stats.tx_errors;

@@ -35,6 +35,7 @@
 #include "pot/espnow_port.hpp"
 #include "pot/node.hpp"
 #include "pot/opcodes.hpp"
+#include "pot/reconcile.hpp"
 #include "pot/serial_port.hpp"
 #include "pot/stats_json.hpp"
 #include "pot/sys_resources.hpp"
@@ -46,6 +47,7 @@
 #include "driver/uart.h"
 #include "driver/uart_vfs.h"
 #include "esp_app_desc.h"
+#include "esp_attr.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_system.h"
@@ -71,13 +73,21 @@ constexpr uint32_t kStatsIntervalMs = CONFIG_POT_STATS_INTERVAL_MS;
 alignas(Node) uint8_t g_node_storage[sizeof(Node)];
 Node* g_node = nullptr;
 
+#if CONFIG_POT_RECONCILER
+// M6: section 7.7's reconciler, created only when the running image has portable actors. Touched by
+// the link task and, for its stats line, the stats task -- both under g_mutex, never from an ISR.
+EXT_RAM_BSS_ATTR alignas(Reconciler) uint8_t g_rec_storage[sizeof(Reconciler)];
+#endif
+Reconciler* g_rec = nullptr;
+
 StaticSemaphore_t g_mutex_buf;
 SemaphoreHandle_t g_mutex = nullptr;
 
 // The stats line buffer. Static rather than on stats_task's stack: 1 KB is a quarter of that task's
 // 4 KB, and a stack overflow nineteen hours into a soak is the worst way to lose a measurement.
 // This 1 KB is M0 instrumentation, not §6 core — M2's bridge tees binary frames and it goes away.
-char g_json[kJsonLineMax];
+// M6: in PSRAM when the build has it -- only the stats and console tasks touch it.
+EXT_RAM_BSS_ATTR char g_json[kJsonLineMax];
 
 // Set when the radio failed to start. Reported everywhere so a boot without a radio can
 // never be mistaken for a valid soak.
@@ -492,13 +502,16 @@ DeployState g_state{};
 BootOutcome g_outcome = BootOutcome::NoDeployment;
 // One buffer, used twice: by boot() to load the active slot before any frame can arrive, then by
 // the receiver. Nothing keeps pointers into it after boot -- the actors' settings are copied out.
-uint8_t g_rx_buf[kMaxImageLen];
+EXT_RAM_BSS_ATTR uint8_t g_rx_buf[kMaxImageLen];  // M6: PSRAM when present; tasks only
 uint8_t* const g_image = g_rx_buf;
 DeployReceiver g_rx(g_store, g_rx_buf, sizeof(g_rx_buf));
 bool g_trial = false;            // running a pending slot, not yet confirmed
 uint32_t g_fault_at_ms = 0;      // 0 = no fault actor armed
 uint32_t g_reboot_at_ms = 0;     // 0 = no reboot scheduled
 uint16_t g_node_id = 0;
+// M6: the image's portable actors, handed to the reconciler once the node exists.
+TickerConfig g_portable[kMaxPortable];
+size_t g_portable_n = 0;
 
 const char* slot_name(uint8_t s) { return s == kSlotA ? "A" : s == kSlotB ? "B" : "none"; }
 
@@ -524,8 +537,24 @@ bool load_and_apply(const char** why) {
     bool have_led = false;
     LedConfig led{};
     uint32_t fault_at = 0;
+    size_t portable_n = 0;
     for (uint8_t i = 0; i < img.actor_count; ++i) {
         const ActorDecl& a = img.actors[i];
+        if (a.node_id == kPortableNode) {
+            // Every node takes every portable actor: section 7.7's "code moves at deploy time, not at
+            // failure time". The reconciler decides where each one runs.
+#if CONFIG_POT_RECONCILER
+            if (portable_n >= kMaxPortable || !ticker_config(a, g_portable[portable_n])) {
+                *why = "portable actor invalid, or more than kMaxPortable";
+                return false;
+            }
+            ++portable_n;
+            continue;
+#else
+            *why = "portable actor, and this build has no reconciler (CONFIG_POT_RECONCILER)";
+            return false;
+#endif
+        }
         if (a.node_id != g_node_id && a.node_id != kEveryNode) {
             continue;
         }
@@ -550,6 +579,7 @@ bool load_and_apply(const char** why) {
         status_led::set_healthy(led);
     }
     g_fault_at_ms = fault_at;
+    g_portable_n = portable_n;
     ESP_LOGI(kTag, "deploy: image counter %u, digest %02x%02x%02x%02x..., %u actor(s) in the image",
              static_cast<unsigned>(img.rollback_counter), img.package_digest[0],
              img.package_digest[1], img.package_digest[2], img.package_digest[3],
@@ -865,6 +895,11 @@ void print_stats() {
 
 void link_task(void*) {
     g_node->start();
+    if (g_rec != nullptr) {
+        xSemaphoreTake(g_mutex, portMAX_DELAY);
+        g_rec->start(now_ms_());
+        xSemaphoreGive(g_mutex);
+    }
     uint32_t next_button_poll_ms = now_ms_();
     uint32_t next_led_ms = now_ms_() + status_led::kRenderMs;
     uint32_t next_assess_ms = now_ms_() + status_led::kUpdateMs;
@@ -948,7 +983,7 @@ void link_task(void*) {
         // case above the transport — §8.1 says a mode transition is a non-event, and that only holds
         // if the code does not branch on where a frame came from.
         {
-            static uint8_t sbuf[kEspNowV2LinkMtu];
+            EXT_RAM_BSS_ATTR static uint8_t sbuf[kEspNowV2LinkMtu];  // M6: PSRAM when present
             size_t slen = 0;
             uint32_t srecv = 0;
             while (serial_port_rx_pop(sbuf, sizeof(sbuf), slen, srecv)) {
@@ -970,6 +1005,7 @@ void link_task(void*) {
 
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         g_node->tick(nt);
+        if (g_rec != nullptr) g_rec->tick(nt);
         xSemaphoreGive(g_mutex);
 
         if (static_cast<int32_t>(nt - next_assess_ms) >= 0) {
@@ -1266,6 +1302,33 @@ void stats_task(void*) {
                 first = false;
             }
             std::printf("]}\n");
+            if (g_rec != nullptr) {
+                // M6: one line per portable actor, as this node sees it.
+                xSemaphoreTake(g_mutex, portMAX_DELAY);
+                const Reconciler::Counters rc = g_rec->counters();
+                const bool settled = g_rec->settled();
+                const size_t na = g_rec->actor_count();
+                Reconciler::ActorView av[kMaxPortable];
+                for (size_t i = 0; i < na; ++i) av[i] = g_rec->view(i);
+                const uint32_t fenced_replies = g_node->ns_counters().replies_fenced;
+                xSemaphoreGive(g_mutex);
+                std::printf("{\"t\":\"rec\",\"node\":%u,\"up_ms\":%u,\"settled\":%d,\"sent\":%u,\"received\":%u,"
+                            "\"malformed\":%u,\"views\":%u,\"replies_fenced\":%u,\"actors\":[",
+                            static_cast<unsigned>(node_id), static_cast<unsigned>(now_ms_()), settled ? 1 : 0,
+                            static_cast<unsigned>(rc.sets_sent), static_cast<unsigned>(rc.sets_received),
+                            static_cast<unsigned>(rc.sets_malformed), static_cast<unsigned>(rc.view_changes),
+                            static_cast<unsigned>(fenced_replies));
+                for (size_t i = 0; i < na; ++i) {
+                    std::printf("%s{\"key\":%u,\"running\":%d,\"term\":%u,\"owner\":%u,\"owner_term\":%u,"
+                                "\"assigned\":%u,\"starts\":%u,\"fenced\":%u,\"released\":%u,\"ticks\":%u}",
+                                i == 0 ? "" : ",", static_cast<unsigned>(av[i].key), av[i].running ? 1 : 0,
+                                static_cast<unsigned>(av[i].term), static_cast<unsigned>(av[i].owner),
+                                static_cast<unsigned>(av[i].owner_term), static_cast<unsigned>(av[i].assigned),
+                                static_cast<unsigned>(av[i].activations), static_cast<unsigned>(av[i].fenced),
+                                static_cast<unsigned>(av[i].released), static_cast<unsigned>(av[i].ticks));
+                }
+                std::printf("]}\n");
+            }
         }
 #endif
         NodeCounters counters;
@@ -1863,6 +1926,20 @@ extern "C" void app_main(void) {
     // §7.4: decide which slot this boot runs, persist the trial count, apply the actors -- all
     // before any task starts, so the first heartbeat already comes from the deployed behaviour.
     deploy_rt::boot(cfg.node_id);
+#if CONFIG_POT_RECONCILER
+    if (deploy_rt::g_portable_n > 0) {
+        g_rec = new (g_rec_storage) Reconciler(*g_node);
+        if (!g_rec->load(deploy_rt::g_portable, deploy_rt::g_portable_n)) {
+            ESP_LOGE(kTag, "reconciler: could not declare the portable actors' resources");
+        }
+        g_node->set_call_handler(
+            [](void*, uint16_t from, uint16_t, uint32_t path, const uint8_t* args, uint16_t len) {
+                return g_rec->on_cast(from, path, args, len);
+            },
+            nullptr);
+        ESP_LOGI(kTag, "reconciler: %u portable actor(s)", static_cast<unsigned>(g_rec->actor_count()));
+    }
+#endif
 #if CONFIG_POT_MEM_BENCH
     pot_mem_bench_run();  // with the radio already up, so internal RAM is what the node really has
 #endif

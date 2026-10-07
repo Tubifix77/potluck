@@ -29,22 +29,26 @@ CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
 CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
 
-# --- PSRAM: deliberately OFF for the M0 measurement -----------------------------------------------
-# The R8 in N16R8 is 8 MB of octal PSRAM, and it is off by default in ESP-IDF. It stays off here,
-# on purpose.
+# --- PSRAM: ON since M6 (2026-10-07) -----------------------------------------------------------------
+# The R8 in N16R8 is 8 MB of octal PSRAM. It was off through M0-M5.1 on purpose: section 6's budget
+# and its [MEASURE] were about *internal* DRAM, and that number had to be produced first (it was:
+# 32,264 B for the Wi-Fi stack, M0-LOG session 12). M5.1 CR-5 then measured the PSRAM build on these
+# boards (octal, 8 MB, 40 MHz; 11-31 MiB/s against 239 for internal RAM; M0-LOG session 23).
 #
-# §6's budget and its [MEASURE] item are both about *internal* DRAM. With PSRAM enabled the Wi-Fi
-# stack can place buffers in external RAM, so free-internal-DRAM would rise for reasons that have
-# nothing to do with the Wi-Fi stack's real cost — the §6 number would become unattributable, and
-# it is the number M0 was asked to produce.
+# M6 turns it on because section 6's 64 KB core cap was full (63.6 KB) and the reconciler needs
+# room. What moved is chosen by rule, not by size: buffers that only tasks touch, at the host cable's
+# speed -- the serial frame link's ring, reassembler and scratch, the stats line, the deploy image
+# buffer, the reconciler's tables. Nothing an ISR touches, and no task stack: with the flash cache off
+# during a flash write, PSRAM is inaccessible too (ESP-IDF external-ram guide), which is safe only
+# for code that is held still then -- tasks are; interrupts need not be.
 #
-# Enabling it is a good thing to measure *second*, as a separate run, once the baseline exists.
-# It matters for ADR-003 too: §3.1's Correction 3 rejects WASM as a per-node default because
-# wasm3 measures ~156 KB "against a 160 KB static DRAM ceiling". On a board with 8 MB of PSRAM
-# that argument needs re-testing — logged against ADR-003's revisit trigger, not acted on here,
-# because M7 is gated on M0–M6 shipping.
-# CONFIG_SPIRAM=y
-# CONFIG_SPIRAM_MODE_OCT=y
+# CONSEQUENCE, stated where it will be read: with BSS in external memory the startup aborts on a
+# module that has no PSRAM ("the option to ignore failure is not available", same guide). For an S3
+# without PSRAM, build with CONFIG_SPIRAM=n: CONFIG_POT_RECONCILER then defaults off and the node is
+# a full member of the cell that cannot host portable actors.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY=y
 
 # --- Memory model note ----------------------------------------------------------------------------
 # The S3 has ~512 KB of *unified* internal SRAM: IRAM and DRAM carve out of one pool, and

@@ -52,6 +52,20 @@ void Node::emit(EventKind kind, const PeerLink* p, uint32_t a, uint32_t b) {
     }
 }
 
+void Node::record_event(EventKind kind, uint16_t node_id, uint32_t a, uint32_t b) {
+    Event e{};
+    e.at_ms = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+    e.kind = kind;
+    e.node_id = node_id;
+    e.peer_slot = 0xFF;
+    e.detail_a = a;
+    e.detail_b = b;
+    events_.push(e);
+    if (hal_.on_event != nullptr) {
+        hal_.on_event(hal_.ctx, e);
+    }
+}
+
 void Node::note(MembershipChange c, PeerLink* p) {
     switch (c) {
         case MembershipChange::Dead:
@@ -1175,7 +1189,7 @@ void Node::handle_read(PeerLink* p, const Frame& f) {
     // dead owner cannot stall the requester. Skipped when the requester owns the resource itself.
     if (st == NsError::Ok && !local) {
         const NsEntry* e = ns_.find(req.path_hash);
-        if (e != nullptr && e->owner_node != p->node_id) {
+        if (e != nullptr && e->owner_node != p->node_id && e->owner_node != 0) {
             request_read(e->owner_node, req.path_hash);
         }
     }
@@ -1286,6 +1300,18 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
         // The owner had nothing to give - unavailable, strict-and-stale, or faulty. Caching a
         // value it declined to send is not an option, because it did not send one.
         return;
+    }
+
+    // M6 (section 7.7): accept a value only from the node that owns the resource *now*. A portable
+    // actor that was re-placed while a read was in flight answers from the instance consumers have
+    // since fenced out, and that answer must not land -- "fenced consumers never accept the losing
+    // instance". For every resource that never moves, the owner is the node asked, and this is a no-op.
+    {
+        const NsEntry* e = ns_.find(rep.path_hash);
+        if (e != nullptr && e->owner_node != p->node_id) {
+            ++ns_counters_.replies_fenced;
+            return;
+        }
     }
 
     const Value v = value_from_wire(rep.value_type, rep.value_len, rep.value_raw);

@@ -100,6 +100,14 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                     return false;
                 }
                 break;
+            case ActorType::Ticker: {
+                TickerConfig tc{};
+                if (a.node_id != kPortableNode || !ticker_config(a, tc)) {
+                    w = "ticker must be portable, with 1..8 distinct eligible nodes";
+                    return false;
+                }
+                break;
+            }
             default:
                 w = "unknown actor type";
                 return false;
@@ -133,6 +141,33 @@ bool fault_config(const ActorDecl& a, FaultConfig& out) {
     }
     out.panic_after_ms = rd32(a.cfg);
     return out.panic_after_ms > 0;
+}
+
+bool ticker_config(const ActorDecl& a, TickerConfig& out) {
+    if (a.type != ActorType::Ticker || a.cfg_len < kTickerCfgFixed) {
+        return false;
+    }
+    out.out_hash = rd32(a.cfg);
+    out.period_ms = rd16(a.cfg + 4);
+    out.count = a.cfg[6];
+    if (out.out_hash == 0 || out.period_ms < 50 || out.period_ms > 60000 || out.count == 0 ||
+        out.count > kMaxEligible || a.cfg_len != kTickerCfgFixed + 3u * out.count) {
+        return false;
+    }
+    for (uint8_t i = 0; i < out.count; ++i) {
+        const uint8_t* e = a.cfg + kTickerCfgFixed + 3u * i;
+        out.node[i] = rd16(e);
+        out.gravity[i] = e[2];
+        if (out.node[i] == 0 || out.node[i] >= kPortableNode) {
+            return false;
+        }
+        for (uint8_t j = 0; j < i; ++j) {
+            if (out.node[j] == out.node[i]) {
+                return false;  // listed twice: the build tool has a bug, and the rank would be ambiguous
+            }
+        }
+    }
+    return true;
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .manifest import Manifest
+from .paths import path_hash
 
 IMAGE_MAGIC = 0x44544F50  # "POTD"
 IMAGE_VERSION = 1
@@ -39,7 +40,8 @@ FLAG_DISTRIBUTE = 0x01
 
 ACTOR_LED = 1
 ACTOR_FAULT = 2
-BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT}
+ACTOR_TICKER = 3  # M6: portable; placed at run time by the reconciler (potluck.reconcile)
+BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER}
 
 #: pot::DeployStatus, in order.
 STATUS_NAMES = ("OK", "TOO_LARGE", "DOWNGRADE", "NOT_STARTED", "BAD_OFFSET", "CRC_MISMATCH",
@@ -96,6 +98,29 @@ def _actor_config(module: str, cfg: dict[str, Any], where: str) -> bytes:
                       f"(ADR-003 Tier 0: one of {sorted(BUILTINS)})")
 
 
+def _ticker_config(m: Manifest, a, where: str) -> bytes:
+    from . import reconcile as rc
+
+    extra = set(a.config) - {"period_ms"}
+    if extra:
+        raise DeployError(f"{where}: unknown ticker config key(s) {sorted(extra)}")
+    period = int(a.config.get("period_ms", 100))
+    if not 50 <= period <= 60000:
+        raise DeployError(f"{where}: ticker period_ms={period} is outside 50..60000")
+    if a.pin is None:
+        ok, why = rc.portability(m, a)
+        if not ok:
+            raise DeployError(f"{where}: a ticker must be portable or pinned, and this one is neither: {why}")
+    nodes = rc.eligible(m, a)
+    if not 1 <= len(nodes) <= rc.MAX_ELIGIBLE:
+        raise DeployError(f"{where}: {len(nodes)} eligible nodes; the node image holds 1..{rc.MAX_ELIGIBLE}")
+    key = path_hash(rc.output_path(m, a))
+    cfg = struct.pack("<IHB", key, period, len(nodes))
+    for node_id, gravity in nodes:
+        cfg += struct.pack("<HB", node_id, gravity)
+    return cfg
+
+
 def compile_image(m: Manifest, counter: int) -> bytes:
     """The node image for a manifest at a rollback counter. Deterministic: same input, same bytes."""
     body = b""
@@ -105,6 +130,14 @@ def compile_image(m: Manifest, counter: int) -> bytes:
         if a.module not in BUILTINS:
             raise DeployError(f"{where}: module '{a.module}' is not a built-in actor this firmware "
                               f"has (ADR-003 Tier 0: one of {sorted(BUILTINS)})")
+        if a.module == "builtin:ticker":
+            # Section 7.7: every node gets it; the reconciler decides where it runs. A pinned ticker
+            # is a portable one with a single eligible node.
+            node = 0xFFFE
+            cfg = _ticker_config(m, a, where)
+            body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+            count += 1
+            continue
         node = m.placement_of(a)
         if node is None:
             raise DeployError(f"{where}: not placed -- pin it, or resolve placement first")

@@ -51,10 +51,13 @@ constexpr size_t kMaxActors = 16;
 // cut was 2048 here, which cost 4 KB of committed headroom for two buffers 90 % empty.
 constexpr size_t kMaxImageLen = 512;
 constexpr uint16_t kEveryNode = 0xFFFF;
+// M6 (section 7.7): placed at run time by the reconciler, among the nodes the actor's config lists.
+constexpr uint16_t kPortableNode = 0xFFFE;
 
 enum class ActorType : uint8_t {
     Led = 1,    // the status LED's healthy-state appearance
     Fault = 2,  // test actor: aborts the node after a delay, to exercise trial-and-revert
+    Ticker = 3, // M6: publishes a counter to one resource; portable, so the reconciler places it
 };
 
 struct ActorDecl {
@@ -94,6 +97,28 @@ struct FaultConfig {
 };
 constexpr uint8_t kFaultCfgLen = 4;
 bool fault_config(const ActorDecl& a, FaultConfig& out);
+
+// Ticker (M6): the smallest actor that serves reads. While running it publishes, every period_ms,
+// a u32 to the resource `out_hash`: this node's id in the high 16 bits and a count that restarts at
+// every activation in the low 16 -- section 7.7: "re-activation restarts from the actor's declared
+// initial state". So a reader sees which instance answered, and that it is a fresh one.
+//
+// A ticker is always portable: its declaration's node_id is kPortableNode and its config lists the
+// eligible nodes with a data-gravity score each (section 7.4), frozen by the build. A pinned ticker
+// is one with a single eligible node. `out_hash` doubles as the actor's identity for rendezvous
+// hashing and for claims, so two tickers cannot share an output.
+//
+//   out_hash u32, period_ms u16, count u8, then count x (node_id u16, gravity u8)
+constexpr size_t kMaxEligible = 8;
+struct TickerConfig {
+    uint32_t out_hash;
+    uint16_t period_ms;  // 50..60000
+    uint8_t count;       // 1..kMaxEligible
+    uint16_t node[kMaxEligible];
+    uint8_t gravity[kMaxEligible];  // higher wins; equal scores fall to the rendezvous hash
+};
+constexpr uint8_t kTickerCfgFixed = 7;
+bool ticker_config(const ActorDecl& a, TickerConfig& out);
 
 // ---------------------------------------------------------------------------------------------
 // The A/B state machine, persisted in NVS.

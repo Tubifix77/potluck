@@ -243,6 +243,16 @@ config POT_TRIAL_MAX_BOOTS
         A module that crashes its node is retried this many times, then the node goes back to its
         previous slot by itself.
 
+config POT_RECONCILER
+    bool "Run portable actors: the section 7.7 reconciler (M6)"
+    default y if SPIRAM
+    help
+        Places the deployed image's portable actors on live nodes and moves them when a node dies,
+        with claims, fencing and handover (components/pot_reconcile). Its tables live in PSRAM, and
+        with it on, a build without PSRAM spends internal RAM that section 6's 64 KB core cap does
+        not have -- so it defaults on only where PSRAM is configured. A node built without it still
+        joins the cell; it refuses an image that contains a portable actor.
+
 config POT_REQUIRE_AUTH
     bool "Admit only peers enrolled by this cluster's CA (section 9.3, M5)"
     default y

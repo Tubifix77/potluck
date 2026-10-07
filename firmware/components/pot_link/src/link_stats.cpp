@@ -38,6 +38,9 @@ const char* event_kind_str(EventKind k) {
         case EventKind::FrameRejected: return "frame_rejected";
         case EventKind::SafeStateRejected: return "safe_state_rejected";
         case EventKind::ChannelChanged: return "channel_changed";
+        case EventKind::ActorStarted: return "actor_started";
+        case EventKind::ActorStopped: return "actor_stopped";
+        case EventKind::ActorOwner: return "actor_owner";
     }
     return "unknown";
 }

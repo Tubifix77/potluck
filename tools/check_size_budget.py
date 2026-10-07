@@ -34,7 +34,11 @@ DESIGN_BYTES = int(59.4 * 1024)  # section 6: "Potluck core total | 59.4 KB"
 # The archives that are Potluck. `libmain.a` is the M0 application rather than the core proper, but it
 # is counted: at M0 it holds the peer table, the histograms, the counters, the event ring and both
 # task stacks, which is most of what section 6's table is actually about.
-CORE_ARCHIVES = ("libpot_frame.a", "libpot_link.a", "libpot_espnow.a", "libmain.a")
+CORE_ARCHIVES = ("libpot_frame.a", "libpot_link.a", "libpot_espnow.a", "libmain.a",
+                 # Listed since M6, when the reconciler arrived as its own component. The others have
+                 # no static data today (their state lives in objects main.a owns), and would show
+                 # "absent"; listing them means the day one grows a buffer, the gate sees it.
+                 "libpot_ns.a", "libpot_deploy.a", "libpot_trust.a", "libpot_can.a", "libpot_reconcile.a")
 
 # The memory type that holds static data, by target family.
 #

@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "system": "lab",
+  "min_core_version": 1,
+  "nodes": [
+    {
+      "node_id": 25344,
+      "label": "A"
+    },
+    {
+      "node_id": 29544,
+      "label": "B"
+    },
+    {
+      "node_id": 33120,
+      "label": "C",
+      "owns": [
+        {
+          "path": "potluck://lab/node-8160/sys/uptime",
+          "unit": "millisecond",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 5000
+        }
+      ]
+    }
+  ],
+  "actors": [
+    {
+      "name": "ticker",
+      "module": "builtin:ticker",
+      "latency_class": 3,
+      "needs": [
+        "potluck://lab/node-8160/sys/uptime"
+      ],
+      "config": {
+        "period_ms": 100
+      }
+    }
+  ]
+}

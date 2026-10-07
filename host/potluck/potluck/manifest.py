@@ -92,6 +92,10 @@ MAX_PATH_LEN = 128
 
 SCHEMA = 1
 
+#: M6: modules whose placement is decided at run time by the reconciler (potluck.reconcile), so a
+#: resolved manifest need not freeze a node for them.
+RUNTIME_PLACED_MODULES = ("builtin:ticker",)
+
 
 class ManifestError(Exception):
     """One problem, with the place in the document that has it.
@@ -764,7 +768,9 @@ def cross_check(m: Manifest, *, require_placement: bool = False) -> list[Manifes
 
     if require_placement:
         for i, a in enumerate(m.actors):
-            if m.placement_of(a) is None:
+            # M6: a portable actor's placement is the reconciler's at run time (section 7.7); what the
+            # build freezes for it is the eligible set and gravity, which potluck.deploy compiles.
+            if m.placement_of(a) is None and a.module not in RUNTIME_PLACED_MODULES:
                 errors.append(ManifestError(
                     f"actors[{i}]",
                     "has no placement and no pin; a manifest is only deployable once the build "
