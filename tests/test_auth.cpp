@@ -91,6 +91,9 @@ struct AuthCell {
     std::vector<AuthNode> nodes;
     uint32_t now_us = 0;
     std::vector<uint8_t> last_hello_from[8];  // the most recent HELLO payload each node broadcast
+    // The most recent unicast WRITE on the air, exactly as sent: what an attacker would record.
+    std::vector<uint8_t> last_write;
+    size_t last_write_from = 0;
 
     // `ids[i]` null means: no identity at all (pre-M5 behaviour). `require` applies to every node
     // that has one.
@@ -136,6 +139,10 @@ struct AuthCell {
         Frame f;
         if (parse(data, len, f, kMaxPayloadV2) == FrameError::Ok && f.hdr.opcode == kOpHello && from->index < 8) {
             c->last_hello_from[from->index].assign(f.payload, f.payload + f.payload_len);
+        }
+        if (parse(data, len, f, kMaxPayloadV2) == FrameError::Ok && f.hdr.opcode == kOpWrite) {
+            c->last_write.assign(data, data + len);
+            c->last_write_from = from->index;
         }
         const bool bcast = std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0;
         for (size_t i = 0; i < c->nodes.size(); ++i) {
@@ -482,4 +489,150 @@ TEST(auth, without_require_an_unsigned_peer_is_still_admitted) {
     CHECK_EQ(alive(*c.nodes[0].node), static_cast<size_t>(1));
     CHECK_EQ(alive(*c.nodes[1].node), static_cast<size_t>(1));  // and the old firmware takes 200 B HELLOs
     CHECK_EQ(c.last_hello_from[0].size(), kHelloSignedLen);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Step 4: tagged frames and the replay window, in a cell
+// ---------------------------------------------------------------------------------------------
+
+namespace {
+
+constexpr uint32_t kSetpoint = path_hash("act/setpoint");
+
+void declare_setpoint(Node& n, uint16_t owner) {
+    NsDecl d;
+    d.path_hash = kSetpoint;
+    d.owner_node = owner;
+    d.type = ValueType::I32;
+    d.access = Access::ReadWrite;
+    d.latency_class = kClassL3;
+    CHECK(n.ns().declare(d) == NsError::Ok);
+}
+
+int32_t setpoint_of(Node& n) {
+    Reading r;
+    n.read(kSetpoint, r);
+    int32_t v = -1;
+    Quality q;
+    r.get_i32(v, q);
+    return v;
+}
+
+// Two enrolled nodes, admitted to each other; 0x101 owns a writable setpoint.
+struct WriteCell {
+    TestCa ca{1};
+    AuthCell c;
+    WriteCell() {
+        std::vector<std::unique_ptr<Identity>> ids;
+        ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x100, 0x11)));
+        ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x101, 0x22)));
+        c.build(std::move(ids), true);
+        declare_setpoint(*c.nodes[1].node, 0x101);
+        c.start_all();
+        c.advance_ms(2000);
+    }
+    Node& a() { return *c.nodes[0].node; }
+    Node& b() { return *c.nodes[1].node; }
+};
+
+}  // namespace
+
+TEST(auth, frames_between_verified_peers_are_tagged_and_check) {
+    WriteCell w;
+    CHECK(w.a().auth_counters().tags_ok > 0u);  // probes and replies, at least
+    CHECK(w.b().auth_counters().tags_ok > 0u);
+    CHECK_EQ(w.b().auth_counters().bad_tag, 0u);
+    CHECK_EQ(w.b().auth_counters().replayed, 0u);
+    CHECK_EQ(w.b().auth_counters().untagged, 0u);
+    w.a().request_write(0x101, kSetpoint, Value::of_i32(42));
+    w.c.advance_ms(50);
+    CHECK_EQ(setpoint_of(w.b()), 42);
+    Frame f;
+    CHECK(parse(w.c.last_write.data(), w.c.last_write.size(), f, kMaxPayloadV2) == FrameError::Ok);
+    CHECK(f.has_auth());  // and what went on the air carried a tag
+}
+
+TEST(auth, a_replayed_write_is_rejected_and_changes_nothing) {
+    WriteCell w;
+    w.a().request_write(0x101, kSetpoint, Value::of_i32(42));
+    w.c.advance_ms(50);
+    const std::vector<uint8_t> recorded = w.c.last_write;
+    w.a().request_write(0x101, kSetpoint, Value::of_i32(7));  // the owner moves on
+    w.c.advance_ms(50);
+    CHECK_EQ(setpoint_of(w.b()), 7);
+    const uint32_t served = w.b().ns_counters().writes_served;
+    // The attacker replays the recorded "42" from A's own MAC.
+    w.b().on_rx(w.c.nodes[0].mac, recorded.data(), recorded.size(), w.c.now_us, -50);
+    CHECK_EQ(w.b().auth_counters().replayed, 1u);
+    CHECK_EQ(w.b().ns_counters().writes_served, served);
+    CHECK_EQ(setpoint_of(w.b()), 7);
+}
+
+TEST(auth, a_tampered_or_untagged_write_is_rejected) {
+    WriteCell w;
+    w.a().request_write(0x101, kSetpoint, Value::of_i32(5));
+    w.c.advance_ms(50);
+    std::vector<uint8_t> bad = w.c.last_write;
+    bad[kHeaderSize + 6] ^= 0x01;  // inside the payload
+    // Bump seq past everything seen so the window says New and only the tag can refuse it.
+    bad[8] = 0xF0;  // header seq, low byte first
+    bad[9] = 0xEE;
+    w.b().on_rx(w.c.nodes[0].mac, bad.data(), bad.size(), w.c.now_us, -50);
+    CHECK_EQ(w.b().auth_counters().bad_tag, 1u);
+    CHECK_EQ(setpoint_of(w.b()), 5);
+
+    // A plain, untagged WRITE claiming to be from A.
+    WritePayload wp{};
+    wp.path_hash = kSetpoint;
+    const Value v = Value::of_i32(666);
+    value_to_wire(v, wp.value_type, wp.value_len, wp.value_raw);
+    EncodeSpec spec;
+    spec.src = 0x100;
+    spec.dst = 0x101;
+    spec.opcode = kOpWrite;
+    spec.seq = 60000;
+    uint8_t buf[128];
+    size_t n = 0;
+    CHECK(encode(spec, reinterpret_cast<const uint8_t*>(&wp), static_cast<uint16_t>(sizeof(wp)), buf, sizeof(buf), n) ==
+          FrameError::Ok);
+    w.b().on_rx(w.c.nodes[0].mac, buf, n, w.c.now_us, -50);
+    CHECK_EQ(w.b().auth_counters().untagged, 1u);
+    CHECK_EQ(setpoint_of(w.b()), 5);
+}
+
+TEST(auth, a_beacon_cannot_announce_a_reboot_only_a_signed_hello_can) {
+    WriteCell w;
+    BeaconPayload bp{};
+    bp.node_id = 0x100;
+    bp.hb_seq = 5;
+    bp.boot_epoch = 99;  // a reboot that never happened
+    EncodeSpec spec;
+    spec.src = 0x100;
+    spec.dst = kNodeBroadcast;
+    spec.opcode = kOpHeartbeat;
+    spec.lclass = kClassL3;
+    spec.priority = 1;
+    uint8_t buf[64];
+    size_t n = 0;
+    CHECK(encode(spec, reinterpret_cast<const uint8_t*>(&bp), static_cast<uint16_t>(sizeof(bp)), buf, sizeof(buf), n) ==
+          FrameError::Ok);
+    const uint32_t reboots = w.b().counters().reboots_seen;
+    w.b().on_rx(w.c.nodes[0].mac, buf, n, w.c.now_us, -50);
+    CHECK_EQ(w.b().auth_counters().beacon_epoch_ignored, 1u);
+    CHECK_EQ(w.b().counters().reboots_seen, reboots);
+}
+
+TEST(auth, a_write_replayed_long_after_it_was_recorded_is_rejected_by_its_tag) {
+    WriteCell w;
+    w.a().request_write(0x101, kSetpoint, Value::of_i32(42));
+    w.c.advance_ms(50);
+    const std::vector<uint8_t> recorded = w.c.last_write;
+    w.a().request_write(0x101, kSetpoint, Value::of_i32(7));
+    w.c.advance_ms(120000);  // two minutes of probes: far more than 64 frames from A to B
+    const uint32_t served = w.b().ns_counters().writes_served;
+    w.b().on_rx(w.c.nodes[0].mac, recorded.data(), recorded.size(), w.c.now_us, -50);
+    // Below the window, so RFC 4303 reads it as the next subspace; its tag was made for the old one.
+    CHECK_EQ(w.b().auth_counters().bad_tag, 1u);
+    CHECK_EQ(w.b().ns_counters().writes_served, served);
+    CHECK_EQ(setpoint_of(w.b()), 7);
 }

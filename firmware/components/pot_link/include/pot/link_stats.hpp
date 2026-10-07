@@ -271,6 +271,7 @@ enum class EventKind : uint8_t {
     VersionPinned = 11,
     SafeStateRx = 12,  // a SAFE_STATE arrived; detail_a = the sender's counter, detail_b = reason
     PeerRefused = 13,  // M5: a HELLO refused; node_id = who it claimed to be, a = HelloAuthError, b = CertError
+    FrameRejected = 14,  // M5: a = 1 replay, 2 bad tag, 3 untagged; b = extended seq. At most one per second
 };
 
 const char* event_kind_str(EventKind k);

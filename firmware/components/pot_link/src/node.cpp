@@ -117,10 +117,15 @@ bool Node::send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, c
     spec.seq = single_frame ? 0 : broadcast ? seq_tx_bcast_++ : (p != nullptr ? p->seq_tx++ : 0);
     spec.msg_id = msg_id;
     spec.ack_req = ack_req;
-    // AUTH stays clear until M5. §14 reserves the eight bytes in §5.3's MTU arithmetic from day
-    // one; emitting a zeroed tag now would look authenticated to a receiver that had started
-    // checking.
-    spec.auth = false;
+    // M5 step 4: tag every unicast frame to a peer whose key we hold (frame_auth.hpp). §14 reserved
+    // the eight bytes in §5.3's MTU arithmetic from day one, so no payload cap moves.
+    PeerAuth* tag_with = nullptr;
+    if (trust_ != nullptr && trust_->enrolled && p != nullptr && !broadcast && !single_frame &&
+        !is_trusted_link(mac)) {
+        const size_t i = peers_.index_of(p);
+        if (i < kMaxPeers && auth_[i].verified) tag_with = &auth_[i];
+    }
+    spec.auth = (tag_with != nullptr);
 
     const uint16_t cap = (p != nullptr) ? p->max_payload() : kMaxPayloadV1;
     if (payload_len > cap) {
@@ -131,6 +136,12 @@ bool Node::send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, c
     if (encode(spec, static_cast<const uint8_t*>(payload), payload_len, tx_, sizeof(tx_), written) !=
         FrameError::Ok) {
         return false;
+    }
+
+    if (tag_with != nullptr) {
+        const size_t body = written - kAuthTagSize;
+        frame_tag(tag_with->key, tag_with->tx_hi, tx_, body, tx_ + body);
+        if (spec.seq == 0xFFFF) ++tag_with->tx_hi;  // the next frame is seq 0 of the next subspace
     }
 
     ++counters_.tx_total;
@@ -311,6 +322,44 @@ Node::AuthOutcome Node::authenticate_hello(PeerLink* p, const uint8_t mac[kMacLe
     const uint32_t took = (hal_.now_us ? hal_.now_us(hal_.ctx) : 0) - t0;
     if (took > auth_counters_.verify_us_max) auth_counters_.verify_us_max = took;
     return AuthOutcome::Fresh;
+}
+
+void Node::reject_frame(const PeerLink& p, uint32_t reason, uint32_t ext_seq) {
+    const uint32_t now = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+    if (last_reject_event_ms_ != 0 && now - last_reject_event_ms_ < 1000) return;  // counted regardless
+    last_reject_event_ms_ = (now == 0) ? 1 : now;
+    emit(EventKind::FrameRejected, &p, reason, ext_seq);
+}
+
+bool Node::check_frame_auth(PeerLink& p, const uint8_t* data, const Frame& f) {
+    const size_t i = peers_.index_of(&p);
+    PeerAuth* pa = (i < kMaxPeers) ? &auth_[i] : nullptr;
+    if (pa == nullptr || !pa->verified || !f.has_auth() || f.auth_tag == nullptr) {
+        ++auth_counters_.untagged;
+        reject_frame(p, 3, f.hdr.seq);
+        return false;
+    }
+    // RFC 4303 section 3.4.3's order: the cheap replay check first, then integrity, and the window
+    // moves only once the tag has verified.
+    const uint16_t hi = replay_seq_hi(pa->rx, f.hdr.seq);
+    const uint32_t ext = (static_cast<uint32_t>(hi) << 16) | f.hdr.seq;
+    if (replay_check(pa->rx, ext) != ReplayVerdict::New) {
+        ++auth_counters_.replayed;
+        reject_frame(p, 1, ext);
+        return false;
+    }
+    const uint32_t t0 = hal_.now_us ? hal_.now_us(hal_.ctx) : 0;
+    const bool ok = frame_tag_ok(pa->key, hi, data, kHeaderSize + f.payload_len, f.auth_tag);
+    const uint32_t took = (hal_.now_us ? hal_.now_us(hal_.ctx) : 0) - t0;
+    if (took > auth_counters_.tag_us_max) auth_counters_.tag_us_max = took;
+    if (!ok) {
+        ++auth_counters_.bad_tag;
+        reject_frame(p, 2, ext);
+        return false;
+    }
+    replay_accept(pa->rx, ext);
+    ++auth_counters_.tags_ok;
+    return true;
 }
 
 void Node::send_hello(bool want_ack) {
@@ -517,7 +566,14 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
     }
 
     if (outcome == AuthOutcome::Fresh) {
-        auth_[peers_.index_of(p)] = fresh;
+        PeerAuth& slot = auth_[peers_.index_of(p)];
+        if (slot.verified && std::memcmp(slot.key, fresh.key, kSessionKeyLen) == 0) {
+            // Same two epochs, so the same key: a HELLO that differs only in what it announces must
+            // not reset the replay window, or every recent frame would become replayable.
+            fresh.tx_hi = slot.tx_hi;
+            fresh.rx = slot.rx;
+        }
+        slot = fresh;
     }
     p->node_id = h.node_id;
     p->hb_period_ms = (h.hb_period_cs != 0) ? h.hb_period_cs * 10u : cfg_.hb_period_ms;
@@ -565,6 +621,15 @@ void Node::handle_heartbeat(PeerLink* p, const Frame& f, uint32_t recv_us, bool 
         if (b.node_id != p->node_id) {
             ++counters_.rx_short_payload;  // a beacon naming someone other than its sender is malformed
             return;
+        }
+        if (trust_required()) {
+            // Unauthenticated: it may keep a verified peer alive, never announce a reboot. A new epoch
+            // is believed only from a signed HELLO, which also brings the new key.
+            const PeerAuth* pa = peer_auth(p);
+            if (pa != nullptr && pa->verified && b.boot_epoch != pa->epoch) {
+                ++auth_counters_.beacon_epoch_ignored;
+                return;
+            }
         }
         note(peer_on_frame(*p, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0, b.boot_epoch), p);
         ++p->rx_bcast_frames;
@@ -1181,6 +1246,20 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
     if (!was_broadcast && f.hdr.dst != cfg_.node_id) {
         ++counters_.rx_wrong_dst;
         return;
+    }
+
+    if (trust_required() && !is_trusted_link(src_mac)) {
+        if (was_broadcast) {
+            // There is no pairwise key for a broadcast. HELLO is signed, SAFE_STATE is signed (step
+            // 5), and the 8-byte beacon is a liveness hint that cannot move an epoch (see
+            // handle_heartbeat). Nothing else may arrive unauthenticated.
+            if (f.hdr.opcode != kOpHello && f.hdr.opcode != kOpHeartbeat && f.hdr.opcode != kOpSafeState) {
+                ++auth_counters_.bcast_dropped;
+                return;
+            }
+        } else if (p != nullptr && !check_frame_auth(*p, data, f)) {
+            return;
+        }
     }
 
     if (p == nullptr) {

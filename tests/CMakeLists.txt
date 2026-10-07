@@ -52,6 +52,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_can/src/can_profile.cpp"
   "${POT_FIRMWARE}/components/pot_trust/src/trust.cpp"
   "${POT_FIRMWARE}/components/pot_trust/src/hello_auth.cpp"
+  "${POT_FIRMWARE}/components/pot_trust/src/frame_auth.cpp"
 )
 target_link_libraries(pot_portable PUBLIC monocypher)
 target_include_directories(pot_portable PUBLIC
@@ -83,6 +84,7 @@ add_executable(pot_tests
   test_can.cpp
   test_trust.cpp
   test_auth.cpp
+  test_frame_auth.cpp
 )
 target_link_libraries(pot_tests PRIVATE pot_portable)
 target_include_directories(pot_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")

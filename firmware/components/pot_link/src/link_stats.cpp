@@ -35,6 +35,7 @@ const char* event_kind_str(EventKind k) {
         case EventKind::VersionPinned: return "version_pinned";
         case EventKind::SafeStateRx: return "safe_state_rx";
         case EventKind::PeerRefused: return "peer_refused";
+        case EventKind::FrameRejected: return "frame_rejected";
     }
     return "unknown";
 }

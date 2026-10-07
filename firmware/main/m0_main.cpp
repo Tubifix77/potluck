@@ -83,7 +83,9 @@ char g_json[kJsonLineMax];
 bool g_no_radio = false;
 
 StaticTask_t g_link_tcb;
-StackType_t g_link_stack[4096 / sizeof(StackType_t)];
+// 5 KB since M5 step 4: every unicast frame is tagged and checked here (HMAC-SHA-512, ~0.4 KB of
+// stack); the heavier Ed25519/X25519 work goes to the crypto worker instead (run_heavy).
+StackType_t g_link_stack[5120 / sizeof(StackType_t)];
 TaskHandle_t g_link_handle = nullptr;
 // M5: the lowest free stack the crypto worker (the console task) has had after a job, in bytes.
 uint32_t g_heavy_stack_free_min = 0;
@@ -131,8 +133,21 @@ void tee_frame(const char*, const uint8_t*, int8_t, const uint8_t*, size_t) {}
 // The router, such as it is at M0/M1: one reserved MAC means the UART, everything else means the
 // radio. §7.0 puts a real router above the transports; this is the two-transport degenerate case of
 // it, and keeping the decision in one function is what stops "is this the host?" from spreading.
+// M5 test instrument: the last unicast WRITE this node put on the radio, byte for byte -- what an
+// attacker in range would record. `POT! replay` sends it again unchanged, so a receiver's replay
+// window can be shown rejecting a genuine frame. It only ever re-sends this node's own frame.
+uint8_t g_rec_write[64];
+size_t g_rec_write_len = 0;
+uint8_t g_rec_write_mac[kMacLen];
+
 int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
     tee_frame("tx", mac, 0, data, len);
+    if (len <= sizeof(g_rec_write) && len > kHeaderSize && data[6] == kOpWrite &&
+        std::memcmp(mac, kBroadcastMacAddr, kMacLen) != 0) {
+        std::memcpy(g_rec_write, data, len);
+        g_rec_write_len = len;
+        std::memcpy(g_rec_write_mac, mac, kMacLen);
+    }
 #if CONFIG_POT_CAN
     // A CAN peer's address, or a broadcast: the bus. In a CAN build broadcasts go to CAN only --
     // v1 has no router that could keep one node reachable on two transports from appearing as two
@@ -1150,13 +1165,30 @@ void stats_task(void*) {
             std::printf("{\"t\":\"auth\",\"node\":%u,\"up_ms\":%u,\"enrolled\":%d,\"required\":%d,"
                         "\"verified_peers\":%u,\"verified\":%u,\"cache_hits\":%u,\"refused\":%u,"
                         "\"rate_limited\":%u,\"stale_epoch\":%u,\"verify_us_max\":%u,"
-                        "\"link_stack_free_b\":%u,\"crypto_stack_free_b\":%u}\n",
+                        "\"link_stack_free_b\":%u,\"crypto_stack_free_b\":%u,"
+                        "\"tags_ok\":%u,\"bad_tag\":%u,\"replayed\":%u,\"untagged\":%u,\"bcast_dropped\":%u,"
+                        "\"beacon_epoch_ignored\":%u,\"tag_us_max\":%u}\n",
                         static_cast<unsigned>(node_id), static_cast<unsigned>(now_ms_()),
                         g_node->trust_enrolled() ? 1 : 0, required ? 1 : 0, verified_peers,
                         static_cast<unsigned>(ac.verified), static_cast<unsigned>(ac.cache_hits),
                         static_cast<unsigned>(ac.refused), static_cast<unsigned>(ac.rate_limited),
                         static_cast<unsigned>(ac.stale_epoch), static_cast<unsigned>(ac.verify_us_max),
-                        link_free, static_cast<unsigned>(g_heavy_stack_free_min));
+                        link_free, static_cast<unsigned>(g_heavy_stack_free_min),
+                        static_cast<unsigned>(ac.tags_ok), static_cast<unsigned>(ac.bad_tag),
+                        static_cast<unsigned>(ac.replayed), static_cast<unsigned>(ac.untagged),
+                        static_cast<unsigned>(ac.bcast_dropped), static_cast<unsigned>(ac.beacon_epoch_ignored),
+                        static_cast<unsigned>(ac.tag_us_max));
+            Reading sp;
+            unsigned served = 0;
+            xSemaphoreTake(g_mutex, portMAX_DELAY);
+            g_node->read(path_hash("act/setpoint"), sp);
+            served = g_node->ns_counters().writes_served;
+            xSemaphoreGive(g_mutex);
+            int32_t spv = 0;
+            Quality spq;
+            const bool has = sp.get_i32(spv, spq);
+            std::printf("{\"t\":\"act\",\"node\":%u,\"setpoint\":%d,\"has_value\":%d,\"writes_served\":%u}\n",
+                        static_cast<unsigned>(node_id), static_cast<int>(spv), has ? 1 : 0, served);
         }
 #endif
         NodeCounters counters;
@@ -1275,7 +1307,46 @@ void boot(uint16_t node_id, bool radio_running) {
     print_id();
 }
 
+// M5 test instruments, on the console only (physical access already owns the board):
+//   POT! write <node hex> <int>   this node sends a WRITE of act/setpoint to that node
+//   POT! replay [flip]            re-send the last recorded WRITE unchanged (or with one payload bit flipped)
+bool handle_test(const char* line, size_t len) {
+    char buf[64];
+    if (len >= sizeof(buf)) return false;
+    std::memcpy(buf, line, len);
+    buf[len] = 0;
+    while (len > 0 && (buf[len - 1] == '\r' || buf[len - 1] == '\n' || buf[len - 1] == ' ')) buf[--len] = 0;
+    unsigned node = 0;
+    int value = 0;
+    if (std::sscanf(buf, "POT! write %x %d", &node, &value) == 2) {
+        xSemaphoreTake(g_mutex, portMAX_DELAY);
+        const uint16_t id = g_node->request_write(static_cast<uint16_t>(node), path_hash("act/setpoint"),
+                                                  Value::of_i32(value));
+        xSemaphoreGive(g_mutex);
+        std::printf("{\"t\":\"test\",\"cmd\":\"write\",\"to\":%u,\"value\":%d,\"msg_id\":%u}\n", node, value,
+                    static_cast<unsigned>(id));
+        return true;
+    }
+    if (std::strncmp(buf, "POT! replay", 11) == 0) {
+        const bool flip = std::strstr(buf, "flip") != nullptr;
+        if (g_rec_write_len == 0) {
+            std::printf("{\"t\":\"test\",\"cmd\":\"replay\",\"result\":\"nothing_recorded\"}\n");
+            return true;
+        }
+        uint8_t f[sizeof(g_rec_write)];
+        std::memcpy(f, g_rec_write, g_rec_write_len);
+        if (flip) f[kHeaderSize + 6] ^= 0x01;
+        const int32_t err = espnow_send(g_rec_write_mac, f, g_rec_write_len);
+        std::printf("{\"t\":\"test\",\"cmd\":\"replay\",\"flip\":%d,\"len\":%u,\"seq\":%u,\"err\":%d}\n", flip ? 1 : 0,
+                    static_cast<unsigned>(g_rec_write_len), static_cast<unsigned>(f[8] | (f[9] << 8)),
+                    static_cast<int>(err));
+        return true;
+    }
+    return false;
+}
+
 void handle(const char* line, size_t len) {
+    if (handle_test(line, len)) return;
     const EnrolRequest r = parse_enrol_line(line, len);
     char out[200];
     switch (r.cmd) {
@@ -1495,6 +1566,17 @@ extern "C" void app_main(void) {
     // §7.2: declare what this node owns. Six built-ins every board has, so a fresh fleet has
     // something real to read across a link on the day it is switched on.
     const size_t declared = declare_sys_resources(g_node->ns(), cfg.node_id);
+    {
+        // M5's stand-in actuator: a writable setpoint. Nothing physical moves; every applied value is
+        // reported on the {"t":"act"} line, which is what the replay demonstration watches.
+        NsDecl d;
+        d.path_hash = path_hash("act/setpoint");
+        d.owner_node = cfg.node_id;
+        d.type = ValueType::I32;
+        d.access = Access::ReadWrite;
+        d.latency_class = kClassL3;
+        g_node->ns().declare(d);
+    }
     ESP_LOGI(kTag, "namespace: %u resources declared", static_cast<unsigned>(declared));
 
 #if CONFIG_POT_SERIAL_LINK

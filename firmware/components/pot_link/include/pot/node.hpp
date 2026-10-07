@@ -20,6 +20,7 @@
 #include <cstdint>
 
 #include "pot/frame.hpp"
+#include "pot/frame_auth.hpp"
 #include "pot/hello_auth.hpp"
 #include "pot/link_stats.hpp"
 #include "pot/membership.hpp"
@@ -177,6 +178,10 @@ class Node {
         uint8_t pub[kEdPubLen];
         uint8_t key[kSessionKeyLen];
         uint8_t digest[kHelloDigestLen];  // of the exact HELLO verified, to skip identical repeats
+        // Step 4: the implicit high 16 bits of our seq towards this peer, and its anti-replay window.
+        // Both start over with every new key (frame_auth.hpp).
+        uint16_t tx_hi;
+        ReplayWindow rx;
     };
     const PeerAuth* peer_auth(const PeerLink* p) const;
 
@@ -187,6 +192,14 @@ class Node {
         uint32_t rate_limited;   // dropped unexamined: over the verification budget
         uint32_t stale_epoch;    // signed or not, older than the epoch already verified
         uint32_t verify_us_max;  // longest full check: certificate, signature, session key
+        // Step 4, unicast frames from verified peers:
+        uint32_t tags_ok;
+        uint32_t bad_tag;        // tag did not verify: forged, corrupted, or a previous key's frame
+        uint32_t replayed;       // a duplicate, or older than the 64-frame window
+        uint32_t untagged;       // no tag, or from a peer whose key we do not hold yet
+        uint32_t bcast_dropped;  // a broadcast of an opcode that may not be broadcast unauthenticated
+        uint32_t beacon_epoch_ignored;  // a beacon claiming an epoch no signed HELLO has shown
+        uint32_t tag_us_max;     // longest tag check
     };
     const AuthCounters& auth_counters() const { return auth_counters_; }
 
@@ -454,6 +467,9 @@ class Node {
     void refuse(uint16_t claimed_id, HelloAuthError e, CertError ce);
     bool is_trusted_link(const uint8_t mac[kMacLen]) const;
     void heavy(void (*fn)(void*), void* arg);
+    bool check_frame_auth(PeerLink& p, const uint8_t* data, const Frame& f);
+    void reject_frame(const PeerLink& p, uint32_t reason, uint32_t ext_seq);
+    uint32_t last_reject_event_ms_ = 0;
 
     const Identity* trust_ = nullptr;
     bool require_auth_ = false;
