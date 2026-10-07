@@ -46,6 +46,10 @@ constexpr uint8_t kHelloFlagWantAck = 1u << 0;
 constexpr uint32_t kHelloCapBusy = 1u << 0;
 // CR-1: the sender's channel is owned by someone else (a Wi-Fi station's router); it will not move.
 constexpr uint32_t kHelloCapChannelFixed = 1u << 1;
+// CR-1: the sender is scanning, or has only just found the cell by scanning. Its channel is a guess;
+// nobody else follows it (found on the bench: a node that scanned at boot dragged the cell off channel
+// 1 because a lower-node-id rule let its guess win).
+constexpr uint32_t kHelloCapSettling = 1u << 2;
 // CR-1: bits 8-11, the channel the sender is tuned to. Adjacent 2.4 GHz channels overlap, so at close
 // range a node can hear a peer one channel off; this lets it move to where the peer really is.
 constexpr uint32_t kHelloCapChannelShift = 8;

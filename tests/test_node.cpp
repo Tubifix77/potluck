@@ -588,16 +588,23 @@ TEST(node, a_scan_that_locks_one_channel_off_moves_to_where_the_station_really_i
     CHECK_EQ(alive_peers(*c.nodes[1].node), static_cast<size_t>(1));
 }
 
-TEST(node, two_free_nodes_one_channel_apart_settle_on_the_lower_ids_channel) {
+TEST(node, a_scanner_defers_to_a_stable_peer_and_never_drags_the_cell) {
+    // Found on the bench at boot: node 0x6300 scanned while its peer rebooted, locked onto channel 2
+    // hearing the peer on 1, and the peer then moved to 2 because 0x6300 had the lower id. Now the
+    // scanner defers to the stable peer, whatever the ids.
     TestCell c;
-    c.build(2, BeaconMode::BroadcastBeacon);
+    c.build(3, BeaconMode::BroadcastBeacon);
     c.leak_adjacent = true;
     c.start_all();
-    c.nodes[0].node->set_channel_now(5);
-    c.nodes[1].node->set_channel_now(6);
-    c.advance_ms(3000);
-    CHECK_EQ(static_cast<int>(c.nodes[0].chan), 5);
-    CHECK_EQ(static_cast<int>(c.nodes[1].chan), 5);  // 0x101 defers to 0x100; no ping-pong
-    c.advance_ms(5000);
-    CHECK_EQ(static_cast<int>(c.nodes[1].chan), 5);
+    c.advance_ms(1000);
+    CHECK(c.nodes[1].node->move_cell(5, 100));  // the cell lives on 5
+    c.advance_ms(2000);
+    // Node 0 -- the LOWEST id -- is suddenly on 3; nodes 1 and 2 still hear each other on 5, so they
+    // are stable and do not scan. Node 0's first hop is 4, which hears 5 by leakage: the bench case.
+    c.nodes[0].node->set_channel_now(3);
+    c.advance_ms(3000 + 11 * 300 + 2500);
+    CHECK_EQ(static_cast<int>(c.nodes[1].chan), 5);  // the stable nodes did not move
+    CHECK_EQ(static_cast<int>(c.nodes[2].chan), 5);
+    CHECK_EQ(static_cast<int>(c.nodes[0].chan), 5);  // the scanner came to them
+    CHECK_EQ(alive_peers(*c.nodes[0].node), static_cast<size_t>(2));
 }

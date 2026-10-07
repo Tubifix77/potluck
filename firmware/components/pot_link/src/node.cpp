@@ -336,6 +336,9 @@ void Node::tick_channel(uint32_t now) {
             scanning_ = false;
             ++ch_counters_.found_by_scan;
             ch_counters_.last_lost_to_found_ms = now - scan_started_ms_ + cfg_.scan_after_ms;
+            // Long enough for a stable peer's next HELLO to tell us where it really is.
+            settle_until_ms_ = now + 2 * cfg_.hello_interval_ms + 500;
+            if (!departed_) send_hello(true);
             emit(EventKind::ChannelChanged, nullptr, channel_, 2);
         }
         last_alive_ms_ = now;
@@ -558,8 +561,9 @@ bool Node::check_frame_auth(PeerLink& p, const uint8_t* data, const Frame& f) {
 void Node::send_hello(bool want_ack) {
     HelloPayload h{};
     h.boot_epoch = cfg_.boot_epoch;
+    const uint32_t hnow = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
     h.caps = caps_ | (static_cast<uint32_t>(channel_ & 0xF) << kHelloCapChannelShift) |
-             (cfg_.channel_fixed ? kHelloCapChannelFixed : 0u);
+             (cfg_.channel_fixed ? kHelloCapChannelFixed : 0u) | (settling(hnow) ? kHelloCapSettling : 0u);
     h.node_id = cfg_.node_id;
     h.espnow_version = cfg_.espnow_version;
     // M5.1: the window being announced, which leads cfg_ while a looser window is pending.
@@ -776,12 +780,17 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
     peer_caps_[peers_.index_of(p)] = h.caps;
     {
         // CR-1: a peer heard one channel off (adjacent-channel leakage at close range) is really on the
-        // channel it declares. Go there -- if it cannot move (a station) or it outranks us by lower node
-        // id, so two nodes can never chase each other's channel.
+        // channel it declares. Who moves: a station's channel always wins; a node that has only just
+        // found the cell by scanning defers to a stable peer; two settling nodes break the tie by node
+        // id; and a stable node never follows a settling one, so a scan's guess cannot drag the cell.
         const uint8_t declared = static_cast<uint8_t>((h.caps & kHelloCapChannelMask) >> kHelloCapChannelShift);
         const bool peer_fixed = (h.caps & kHelloCapChannelFixed) != 0;
+        const bool peer_settling = (h.caps & kHelloCapSettling) != 0;
+        const uint32_t hnow = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+        const bool me_settling = settling(hnow);
+        const bool follow = peer_fixed || (me_settling && (!peer_settling || h.node_id < cfg_.node_id));
         if (declared != 0 && declared != channel_ && !cfg_.channel_fixed && declared >= cfg_.channel_lo &&
-            declared <= cfg_.channel_hi && (peer_fixed || h.node_id < cfg_.node_id) && hal_.set_channel != nullptr) {
+            declared <= cfg_.channel_hi && follow && hal_.set_channel != nullptr) {
             retune(declared);
             scanning_ = false;
             emit(EventKind::ChannelChanged, p, declared, 5);

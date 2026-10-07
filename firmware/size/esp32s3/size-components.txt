@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xc1c70 bytes. Smallest app partition is 0x100000 bytes. 0x3e390 bytes (24%) free.
+potluck_m0.bin binary size 0xc1cf0 bytes. Smallest app partition is 0x100000 bytes. 0x3e310 bytes (24%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -57,7 +57,7 @@ Executing "ninja size-components"...
 
 │ libmonocypher.a                 │      17110 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      13266 │  13266 │       3844 │      0 │    3844 │        0 │        0 │             0 │        0 │           0 │
 
-│ libpot_link.a                   │      15115 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      15021 │  15021 │         94 │      0 │      94 │        0 │        0 │             0 │        0 │           0 │
+│ libpot_link.a                   │      15238 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      15144 │  15144 │         94 │      0 │      94 │        0 │        0 │             0 │        0 │           0 │
 
 │ libesp_system.a                 │      13779 │ 2456 │  2456 │        0 │  1411 │   317 │   433 │   661 │       9232 │   9232 │        680 │      0 │     680 │        0 │        0 │             0 │        0 │           0 │
 

@@ -560,6 +560,8 @@ class Node {
     uint32_t last_alive_ms_ = 0;
     uint32_t scan_next_ms_ = 0;
     uint32_t scan_started_ms_ = 0;
+    uint32_t settle_until_ms_ = 0;  // after a scan finds the cell: defer to stable peers' channel until then
+    bool settling(uint32_t now) const { return scanning_ || static_cast<int32_t>(settle_until_ms_ - now) > 0; }
     uint8_t pending_channel_ = 0;
     uint32_t pending_channel_at_ms_ = 0;
     uint32_t move_tx_ = 0;
