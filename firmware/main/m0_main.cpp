@@ -1488,6 +1488,15 @@ bool handle_test(const char* line, size_t len) {
                     static_cast<unsigned>(id));
         return true;
     }
+    char scan_ssid[33] = {};
+    if (std::sscanf(buf, "POT! scan %32s", scan_ssid) == 1) {
+        uint8_t ch = 0;
+        int8_t rssi = 0;
+        const bool seen = espnow_scan_for(scan_ssid, ch, rssi);
+        std::printf("{\"t\":\"test\",\"cmd\":\"scan\",\"ssid\":\"%s\",\"seen\":%d,\"channel\":%u,\"rssi\":%d}\n",
+                    scan_ssid, seen ? 1 : 0, static_cast<unsigned>(ch), static_cast<int>(rssi));
+        return true;
+    }
     unsigned relay_on = 0;
     if (std::sscanf(buf, "POT! relay %u", &relay_on) == 1) {
         lock_node();

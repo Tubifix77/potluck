@@ -605,3 +605,11 @@ doc fetched as raw markdown from its repository), not from a summary.
 |-------|-------|--------|-----------|-----------|--------|
 | **Through one relay, an authenticated WRITE lands two hops away** | A wrote 99 to B's `act/setpoint` while A and B could not hear each other (bench instrument) and C relayed; B applied it; `bad_tag` 0 and `untagged` 0 on both ends | `captures/m51-cr2-relay-8032bc2.log`, fw `8032bc2` | 2026-10-07 | volatile | measured |
 | **A capture taken through the relay replays byte-identical** | 3-min soak via A's cable, B behind the relay: 1,350 reads, 0 timeouts; replay digest `4d716fe205447b5d0a982013eeedeaa03c6a01f238b001434b1d8bb5813cb761` matches (exit 0), wrong digest exit 6 | `captures/m51-cr2-relay-session-8032bc2.jsonl` | 2026-10-07 | stable for that capture | measured |
+
+### M5.1 step 0 — 2026-10-07
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **esp32_nat_router S3 install** | prebuilt `firmware_esp32s3/` (bootloader 17,664 B, partition table 3,072 B, ota data 8,192 B, app 1,374,176 B; build `699e5c4`, 2026-10-06); offsets 0x0 / 0x8000 / 0xf000 / 0x20000; first boot offers open AP `ESP32_NAT_Router`, config at http://192.168.4.1; "Expect something in the range from 5 - 15 mbps"; settings in NVS survive reflashing unless erased | github.com/martin-ger/esp32_nat_router README and wiki Installation.md, read as raw markdown | 2026-10-07 | volatile | verified |
+| **Google Home app's documented Wi-Fi detail is the band, not the channel** | help page describes seeing which band a device uses; no channel display described | [Google Nest help 6293481](https://support.google.com/googlenest/answer/6293481) | 2026-10-07 | volatile | verified (absence in that page only) |
+| **Beside a phone streaming video through the repeater, the cell declared no false death** | 16 min, A↔C: deaths 0; heartbeat delivery 99.26 % / 99.06 % (control 99.45 % / 99.45 %); RTT p50 unchanged; p99 22-30 / 85-110 ms (control 30-42 / 16-22); max 157 ms | `captures/soak-step0-*`, owner's house, channel 1 | 2026-10-07 | volatile | measured |

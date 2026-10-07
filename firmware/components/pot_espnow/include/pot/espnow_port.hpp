@@ -80,6 +80,9 @@ bool espnow_add_peer(const uint8_t mac[kMacLen], uint8_t channel);
 bool espnow_del_peer(const uint8_t mac[kMacLen]);
 // M5.1 CR-1: retune. Peers registered with channel 0 follow ("use the current channel", esp_now.h).
 bool espnow_set_channel(uint8_t channel);
+// M5.1 bench helper: scan for ONE network by name (the SSID filter keeps every other network out of
+// the result, and so out of any log). Blocking, a few seconds. False if not seen.
+bool espnow_scan_for(const char* ssid, uint8_t& channel, int8_t& rssi);
 
 // Submit a frame. Returns the esp_err_t from esp_now_send() — ESP_OK means queued, not delivered.
 // Delivery is the send callback's business, and conflating the two is how a PDR figure becomes a

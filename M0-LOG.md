@@ -3578,3 +3578,43 @@ exits 6. ADR-009's claim that capture is unchanged holds on hardware.
 **M5.1's code is complete:** CR-1, CR-2, CR-3, CR-4 (signal), CR-5. Open: step 0 (the owner's hands: a
 real repeater, his Wi-Fi password, a phone streaming), CR-2's 24-hour soak through the relay, CR-4's
 placement half (M6). Static DRAM 63.6 KB of 64.
+
+## Session 25 — 2026-10-07, M5.1 step 0: a real repeater, a phone streaming video, and no false death
+
+**The setup.** Board B was flashed with `esp32_nat_router` (github.com/martin-ger/esp32_nat_router,
+prebuilt `firmware_esp32s3/`, build `699e5c4` of 2026-10-06, four files checked against the
+repository's git blob ids — the first copy of `ota_data_initial.bin` came through `gh` as text with
+every 0xFF turned into a replacement character, and was re-fetched; flashed at the Installation wiki's
+S3 offsets 0x0 / 0x8000 / 0xf000 / 0x20000). The owner joined its hotspot from his phone and entered
+the house Wi-Fi in its own web page; **his password went into B's flash and never through this
+session**. Internet worked through it. The house Wi-Fi (Google Wifi) app does not show the channel, so
+board A found it with a new `POT! scan <ssid>` command — an SSID-filtered scan, so no neighbour's
+network is ever returned: `ESP32_NAT_Router` on **channel 1**, −24 dBm — Potluck's default, so the
+cell did not need to move. The PC has no Wi-Fi adapter.
+
+**The comparison**, A and C on the bench, same desk and evening (`captures/soak-step0-*`):
+
+| A ↔ C | control, 18 min, hotspot up, no streaming | streaming, 16 min |
+|---|---|---|
+| deaths in the window | 0 | **0** |
+| heartbeat delivery A→C / C→A | 99.45 % / 99.45 % | 99.26 % / 99.06 % |
+| RTT p50 | 6–8 / 4–6 ms | 6–8 / 4–6 ms |
+| RTT p99 | 30–42 / 16–22 ms | 22–30 / **85–110 ms** |
+| RTT max | 96 ms | **157 ms** |
+| C's local tx-queue max | 59 ms | **152 ms** |
+| free DRAM | flat | flat |
+
+**Kill criterion not fired**: no false death at the default 100 ms × 6 window under streaming load. The
+change request's prediction holds — the cost is **jitter, not liveness**: medians unmoved, the tail
+roughly five-fold on one direction, delivery down 0.2–0.4 points, and the worst round trip a quarter of
+the 600 ms death window. CR-3's runtime window therefore stays an option for heavier load, not a
+requirement. Even the control is below the 24 h baseline's 99.69–99.84 %, plausibly the hotspot's own
+airtime on channel 1.
+
+**What this is not:** 16 minutes, not the 24 h soak the request describes; and the hotspot's own
+throughput was not measured (its console is on the S3's other USB socket), so "streaming the whole
+time" rests on the owner's phone. A long soak with streaming is the stronger claim, still open.
+
+**Board B is still the router**, with the owner's Wi-Fi credentials in its flash (its wiki: settings
+survive reflashing). Restoring it is: `esptool erase-flash` on B (wipes them), Potluck flash, re-enrol
+— to be done when the owner no longer needs the hotspot, not while his phone may depend on it.

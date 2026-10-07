@@ -303,6 +303,23 @@ bool espnow_set_channel(uint8_t channel) {
     return esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) == ESP_OK;
 }
 
+bool espnow_scan_for(const char* ssid, uint8_t& channel, int8_t& rssi) {
+    if (!g_espnow_up || ssid == nullptr) return false;
+    wifi_scan_config_t sc{};
+    sc.ssid = reinterpret_cast<uint8_t*>(const_cast<char*>(ssid));
+    sc.show_hidden = false;
+    sc.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+    if (esp_wifi_scan_start(&sc, true) != ESP_OK) return false;
+    uint16_t n = 1;
+    wifi_ap_record_t rec{};
+    const bool got = esp_wifi_scan_get_ap_records(&n, &rec) == ESP_OK && n > 0;  // also frees the driver's list
+    if (got) {
+        channel = rec.primary;
+        rssi = rec.rssi;
+    }
+    return got;
+}
+
 bool espnow_del_peer(const uint8_t mac[kMacLen]) {
     return g_espnow_up && esp_now_del_peer(mac) == ESP_OK;
 }
