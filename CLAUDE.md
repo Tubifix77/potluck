@@ -33,29 +33,26 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## M5 IN PROGRESS, PAUSED — READ THIS FIRST (handover, 2026-10-05)
+> ## M5 IN PROGRESS — READ THIS FIRST (handover, 2026-10-07)
 >
-> **Paused by the owner** for token budget; resume Friday evening, or midweek if usage allows. Detail:
-> M0-LOG session 21. M5's order: 1 measure ✓, 2 enrolment ✓, **3 signed HELLO (code done, not enabled)**,
-> 4 auth_tag + replay window, 5 signed epoch-fenced SAFE_STATE, 6 node-side package signatures.
+> M5's order: 1 measure ✓, 2 enrolment ✓, **3 signed HELLO ✓ on hardware (M0-LOG session 22)**, 4 auth_tag +
+> replay window, 5 signed epoch-fenced SAFE_STATE, 6 node-side package signatures. First acceptance line
+> met: an unenrolled board is refused and logged.
 >
-> - **Step 1 done:** Ed25519/X25519 from vendored **Monocypher 4.0.3** (`firmware/components/monocypher`,
->   unmodified, blob ids in PROVENANCE.md). Board: Ed25519 verify 27 ms vs P-256 442 ms.
-> - **Step 2 done on board C:** `pot_trust` + `potluck.enrol`. Key generated on first boot, kept in NVS;
->   112-byte node certificate; console commands `POT! id` / `POT! cert`. C (COM5) runs `75c84c6` and is
->   **enrolled** under `keys/ca.key` (fp `ef76cc2e`). A and B still run `e8fd0d7`, no identity.
-> - **Step 3 core committed (`645e7a5`), host-tested only:** `hello_auth` (200-byte signed HELLO, session key
->   from identity keys + both epochs), `Node::set_trust(id, require)`, `NodeConfig::trusted_mac` (host
->   cable), 13 cases in `tests/test_auth.cpp`. **Not yet wired in `m0_main.cpp`:** next is `set_trust` with a
->   boot-time identity snapshot, `trusted_mac = kHostMac`, a `CONFIG_POT_REQUIRE_AUTH` (off for CAN builds),
->   an `{"t":"auth"}` stats line; then flash all three, enrol A, leave B unenrolled and show it refused.
-> - **Unfinished check:** the mutation run on step 3 (break "require", break the stale-epoch check) failed
->   to compile the mutant (MSVC flags the dead code), so it proved nothing. Redo with mutations that
->   compile, e.g. flip the condition instead of returning early.
-> - **Open design points:** beacons and HELLO_ACK are unauthenticated (step 4 must decide); a signed
->   SAFE_STATE costs ~9 ms + ~27 ms and does not fit M4's one CAN frame (step 5); CAN builds admit by
->   beacon and have no auth yet.
-> - **GitHub:** pushes failed at 01:10 (no connection to github.com); retry `git push`.
+> - **The bench now:** all three on **`84a4763`**, verify-flash matched. **A (COM3) and C (COM5) enrolled**
+>   under `keys/ca.key` (fp `ef76cc2e`); **B (COM4) deliberately not enrolled** — it is the refused board,
+>   keep it that way until the demo is no longer needed (`python -m potluck.enrol --port COM4 --ca-key
+>   keys/ca.key`, then reset it). CP2102 on COM6 to A; SN65HVD230 modules still wired to B and C, idle.
+> - **Crypto runs on the console task** via `NodeHal::run_heavy` — the link task's 4 KB overflowed when it
+>   did it itself. Never call Monocypher from the link task.
+> - **Static DRAM 61.0 KB of 64 KB.** Price step 4's per-peer replay state before writing it.
+> - **Step 4 design constraint (from M5.1):** `auth_tag` end-to-end over header + payload, per-pair session
+>   key, **not over the MAC**, so a future relay can forward byte for byte. Also decide beacons and
+>   HELLO_ACK (still unauthenticated).
+> - **Owner constraint for some sessions:** no Ollama, WSL or Docker. `tools\run_all_tests.ps1` calls
+>   `bash`, which is WSL here; run the gates separately and the portability gate via Git Bash (Xtensa GCC).
+> - **M5.1 "sharing the radio"** is planned in ARCHITECTURE section 13, from
+>   `D:\Projects\poor-mans-extender\CR for Potluck.md`. Read-only for us: do not edit that project.
 >
 > ## M4 ACCEPTED ON TWO BOARDS — READ THIS FIRST (handover, 2026-10-05)
 >

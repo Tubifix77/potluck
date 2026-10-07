@@ -3391,3 +3391,49 @@ verifications.
 **Not done before the pause:** wiring it into `m0_main.cpp` and the boards; a mutation check whose
 mutants did not compile, so it proved nothing (CLAUDE.md lists the redo). Paused by the owner at
 2026-10-05 ~01:30 for token budget.
+
+## Session 22 — 2026-10-07, M5 step 3 on the boards: the cell admits only what its CA enrolled
+
+Owner's terms for the session: no Ollama, WSL or Docker. So the gate list ran from PowerShell and the
+strict portability gate under Git Bash, where it falls back to ESP-IDF's Xtensa GCC instead of WSL's
+g++ — a substitute instrument, said so here. Both clean.
+
+**The mutation check owed from session 21, redone with mutants that compile.** Admitting an unsigned
+HELLO under `require` fails two cases; dropping the stale-epoch check fails the replay case.
+
+**Wired in (`5e44950`):** `CONFIG_POT_REQUIRE_AUTH` (default on; CAN builds skip auth entirely, they
+admit by beacon), the node runs on a boot-time identity snapshot (a console enrolment applies at the
+next boot), the host's serial cable is the trusted link, and an `{"t":"auth"}` line every 10 s.
+
+**And it crashed.** First enrolled boot: `A stack overflow in task pot_link has been detected` on A and
+C, boot-looping (`captures/m5-step3-overflow-5e44950.log`). B, unenrolled, never verified anything
+and survived — which is what made the cause plain. The link task has 4 KB; an Ed25519 operation
+needs ~2-3 KB on top of what it already uses, and section 6 has no room to grow it (+4 KB would cross
+the 64 KB cap). The host tests could not see this: a PC stack is megabytes. **Fix (`84a4763`):**
+`NodeHal::run_heavy`, through which the node hands every signing, verification and key derivation to
+the console task — idle, 4 KB, and inside section 6's 8 KB crypto line — and waits. The console task
+now starts before the link task. A host test counts the hook's calls (4 for two nodes) so an inline
+crypto call cannot return unnoticed.
+
+**Result, all three boards on `84a4763`, verify-flash matched by MAC** (`captures/m5-step3-auth-84a4763.log`):
+
+| | A (enrolled) | C (enrolled) | B (not enrolled) |
+|---|---|---|---|
+| peers alive | 1 (C) | 1 (A) | **0** |
+| verified peers | 1 | 1 | 0 |
+| refusals logged | B: `unsigned`, once per 10 s | B: `unsigned`, once per 10 s | A and C: `not_enrolled` |
+| full check, worst | 87.1 ms | 80.7 ms | — |
+| stack free: link / crypto | 748 / 1,252 B | 748 / 1,300 B | 1,164 / — |
+
+A verified C twice because C was reset mid-capture by the flash verification, so its HELLO changed.
+The host, unenrolled, still reaches the cell over A's cable: `potctl read` of A returns its value,
+`watch` of C returns value, age and quality through A, and B reads `UNAVAILABLE` — it is no member.
+**M5's first acceptance line is met: an unenrolled board on the same channel is refused and logged.**
+
+Static DRAM is now **61.0 KB of 64 KB**. Steps 4 and 5 add per-peer replay state and a persisted
+high-water mark, so the next session should price them before writing them.
+
+**Planned, not built: M5.1, "sharing the radio"**, from the owner's `poor-mans-extender` change
+request, recorded in ARCHITECTURE section 13 between M5 and M6. One constraint it places on M5 now:
+step 4's frame tag must not cover the sender's MAC, or a later single-hop relay cannot forward a
+frame byte for byte.

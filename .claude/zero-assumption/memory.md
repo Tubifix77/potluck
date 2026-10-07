@@ -546,3 +546,11 @@ missing.
 | **The ESP32-S3 has an MPI (bignum) accelerator and no ECC/ECDSA peripheral** | `SOC_MPI_SUPPORTED 1`, `SOC_SHA_SUPPORTED 1`; no `SOC_ECDSA_SUPPORTED` / `SOC_ECC_SUPPORTED` | `components/soc/esp32s3/include/soc/soc_caps.h` | 2026-10-05 | per IDF version | verified |
 | **Monocypher 4.0.3: dual 2-clause BSD / CC-0; Ed25519 (RFC 8032, SHA-512) is the optional module** | Vendored byte-identical, blob ids recorded | `firmware/components/monocypher/PROVENANCE.md`, upstream tag 4.0.3 | 2026-10-05 | pinned | verified |
 | **Measured: Ed25519 verify 27.0 ms, P-256 ECDSA verify 441.5 ms (160 MHz, -Os); 39.0 / 325.9 ms with -O2** | Also sign 9.3 / 222.8 ms; X25519 19.0 ms (Monocypher) vs 209.3 ms (mbedTLS) vs P-256 ECDH 205.4 ms; HMAC-SHA256 64 B 0.17 ms; known-answer checks passed first | `captures/m5-crypto-bench-size-2e69038.log`, `-perf-` | 2026-10-05 | bench | measured |
+
+### M5 step 3 on the boards — 2026-10-07
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **An Ed25519 operation does not fit in the link task's 4 KB stack alongside its own work** | fw `5e44950`, first enrolled boot: `A stack overflow in task pot_link has been detected` on A and C, boot loop; B (unenrolled, no verification) unaffected | `captures/m5-step3-overflow-5e44950.log` | 2026-10-07 | stable per build | measured |
+| **With crypto on the console task: link task keeps 748 B free, crypto worker 1,252-1,300 B** | fw `84a4763`, 70 s, two enrolled peers verified, one unenrolled refused | `captures/m5-step3-auth-84a4763.log` | 2026-10-07 | volatile | measured |
+| **A full HELLO check (certificate + signature + X25519 session key) costs 81-87 ms on the board** | includes up to 10 ms of waiting for the worker's console poll; once per peer per boot, repeats recognised by digest | same | 2026-10-07 | volatile | measured |

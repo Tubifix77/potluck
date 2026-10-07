@@ -1,0 +1,25 @@
+# fw 5e44950, first enrolled boot: board A's console (board C showed the same). Verbatim excerpt.
+17:37:14 A 
+17:37:14 A ***ERROR*** A stack overflow in task pot_link has been detected.
+17:37:14 A 
+17:37:14 A 
+17:37:14 A Backtrace: 0x4037da69:0x3fca00c0 0x4037da35:0x3fca00e0 0x42086b20:0x3fca0100 0x4037e93b:0x3fca0180 0x4037e1b8:0x3fca01a0 0x4037e1ae:0x00000000 |<-CORRUPTED
+17:37:14 A 
+17:37:14 A 
+17:37:14 A 
+17:37:14 A 
+17:37:14 A ELF file SHA256: a73e1c2a6
+17:37:14 A 
+17:37:14 A Rebooting...
+17:37:14 A ���ESP-ROM:esp32s3-20210327
+17:37:14 A Build:Mar 27 2021
+17:37:14 A rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+17:37:14 A Saved PC:0x4037db8c
+17:37:14 A SPIWP:0xee
+17:37:14 A mode:DIO, clock div:1
+17:37:14 A load:0x3fce2820,len:0x14f0
+17:37:14 A load:0x403c8700,len:0xda0
+17:37:14 A load:0x403cb700,len:0x2f54
+17:37:14 A entry 0x403c8908
+17:37:14 A I (29) boot: ESP-IDF v6.0.2 2nd stage bootloader
+17:37:14 A I (29) boot: compile time Oct  7 2026 17:33:23
