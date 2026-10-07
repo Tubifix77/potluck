@@ -3618,3 +3618,9 @@ time" rests on the owner's phone. A long soak with streaming is the stronger cla
 **Board B is still the router**, with the owner's Wi-Fi credentials in its flash (its wiki: settings
 survive reflashing). Restoring it is: `esptool erase-flash` on B (wipes them), Potluck flash, re-enrol
 — to be done when the owner no longer needs the hotspot, not while his phone may depend on it.
+
+**Restored, the same evening:** once the owner's phone was back on the house Wi-Fi, B was erased whole
+(`esptool erase-flash`, 55 s — the owner's credentials with it), all three boards were flashed with a
+clean `ff61f66`, and B re-enrolled with a fresh key. All three verify both others. The erase reset B's
+deploy state (no module, floor 0); A and C keep counter 4.
+

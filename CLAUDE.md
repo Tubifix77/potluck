@@ -41,11 +41,11 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > M5.1 "sharing the radio"** (section 13, from `D:\Projects\poor-mans-extender\CR for Potluck.md`;
 > read-only for us), starting with its zero-code experiment.
 >
-> - **BOARD B (COM4) IS CURRENTLY A WI-FI REPEATER** (`esp32_nat_router`, session 25) **holding the owner's house
->   Wi-Fi credentials in its flash.** Before it becomes a Potluck node again: `python -m esptool --chip esp32s3 -p COM4
->   erase-flash` (wipes them -- its own wiki says settings survive a plain reflash), then flash Potluck and re-enrol.
->   Ask first: the owner's phone may be using the hotspot. A (`8032bc2` + `POT! scan`) and C (`8032bc2`) are the cell.
-> - **Was:** all three on **`8032bc2`**, cell on channel 1, **all three enrolled** (B since session 24 --
+> - **The bench now (2026-10-07, after step 0):** all three on **`ff61f66`**, cell on channel 1, all three enrolled and
+>   verifying each other. B was the step-0 repeater, then **flash-erased** (the owner's Wi-Fi credentials are gone), reflashed
+>   and re-enrolled with a new key. The erase also reset B's deploy state: **B runs no module and its anti-downgrade floor
+>   is 0; A and C run `m3-purple` at counter 4.** The next package (counter 5+) levels all three.
+> - **Earlier:** all three on **`8032bc2`**, cell on channel 1, **all three enrolled** (B since session 24 --
 >   it was the refused board until then). No deafness, no relay set. `POT! relay 1` on C and `POT! deaf <id>`
 >   pairs recreate the relay test (`scratchpad`-style script in M0-LOG session 24). **A (COM3) and C (COM5) enrolled** (CA fp `ef76cc2e`);
 >   **B (COM4) deliberately unenrolled** (the refused board). A and C run the deployed `m3-purple` at
