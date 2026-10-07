@@ -142,3 +142,41 @@ TEST(trust, the_id_reply_carries_the_key_and_the_cluster) {
     CHECK(std::string(buf, n).find("\"enrolled\":1,\"ca_fp\":\"ed4242ea\"") != std::string::npos);
     CHECK(format_enrol_id(id, 0x7368, buf, 20) == 0);  // never a truncated line
 }
+
+// ---- M5 step 6: the deploy trailer. Golden bytes built by host/potluck/tests/test_deploy.py ----
+
+namespace {
+const char* kGoldenImage = "504f54440101000003000000bfba6702f4f20e6d0a00000000630106a000c801dc05";
+const char* kGoldenTrailer =
+    "504e433101020000ed4242ea803bb16a2543b92ff1095511476adc8369db6ddc933665a11978dda1404ee1066ca9559d"
+    "b1d3a333735e10e016f05892d472bb8410ea752f25e182ce8d79a8654d385ac61e0f65630acebf8463daea22f39da958"
+    "b7e4df70610768f218429d943da07d0d277f273e2cf62ae780e46ede3e0f1806dc49497500fcc0f932ac4ddfc6828e3f"
+    "bb99ee43db7bd5dffd2aa27a5b6de345a6b0782844c6b745574e82cae9e23807";
+}  // namespace
+
+TEST(trust, the_host_tools_signed_image_verifies_here) {
+    Golden g;
+    uint8_t img[34], tr[kImageTrailerLen];
+    hex(kGoldenImage, img, sizeof(img));
+    hex(kGoldenTrailer, tr, sizeof(tr));
+    CHECK(image_trailer_check(g.ca, img, sizeof(img), tr, sizeof(tr)) == CertError::Ok);
+    for (size_t i = 0; i < sizeof(img); ++i) {
+        img[i] ^= 1;
+        CHECK(image_trailer_check(g.ca, img, sizeof(img), tr, sizeof(tr)) == CertError::BadSignature);
+        img[i] ^= 1;
+    }
+    uint8_t other_ca[32] = {};
+    CHECK(image_trailer_check(other_ca, img, sizeof(img), tr, sizeof(tr)) == CertError::OtherCa);
+    CHECK(image_trailer_check(g.ca, img, sizeof(img), tr, sizeof(tr) - 1) == CertError::Length);
+}
+
+TEST(trust, a_node_certificate_cannot_stand_in_for_a_deploy_certificate) {
+    // The golden NODE certificate is genuine and from the same CA -- but its role is node, so it
+    // cannot authorise an image, whatever signature follows it.
+    Golden g;
+    uint8_t img[34], tr[kImageTrailerLen];
+    hex(kGoldenImage, img, sizeof(img));
+    hex(kGoldenTrailer, tr, sizeof(tr));
+    std::memcpy(tr, g.cert, kNodeCertLen);
+    CHECK(image_trailer_check(g.ca, img, sizeof(img), tr, sizeof(tr)) == CertError::Role);
+}

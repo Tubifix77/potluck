@@ -189,6 +189,8 @@ const char* deploy_status_str(DeployStatus s) {
         case DeployStatus::StoreFailed: return "STORE_FAILED";
         case DeployStatus::Malformed: return "MALFORMED";
         case DeployStatus::Busy: return "BUSY";
+        case DeployStatus::Unsigned: return "UNSIGNED";
+        case DeployStatus::BadSignature: return "BAD_SIGNATURE";
     }
     return "?";
 }
@@ -345,8 +347,24 @@ DeployReply DeployReceiver::commit(uint32_t crc) {
     if (crc != begin_.image_crc || crc32(buf_, received_) != crc) {
         return reply(DeployStatus::CrcMismatch);
     }
+    // The image's own header says where it ends; anything after it is the M5 signature trailer.
+    if (received_ < kImageHeaderLen) {
+        return reply(DeployStatus::BadImage);
+    }
+    const uint32_t body = static_cast<uint32_t>(buf_[20]) | (static_cast<uint32_t>(buf_[21]) << 8) |
+                          (static_cast<uint32_t>(buf_[22]) << 16) | (static_cast<uint32_t>(buf_[23]) << 24);
+    if (body > received_ - kImageHeaderLen) {
+        return reply(DeployStatus::BadImage);
+    }
+    const size_t image_len = kImageHeaderLen + body;
+    if (verifier_ != nullptr) {
+        const DeployStatus v = verifier_(verifier_ctx_, buf_, image_len, buf_ + image_len, received_ - image_len);
+        if (v != DeployStatus::Ok) {
+            return reply(v);
+        }
+    }
     DeployImage img{};
-    if (!parse_image(buf_, received_, img, nullptr) || img.rollback_counter != begin_.rollback_counter) {
+    if (!parse_image(buf_, image_len, img, nullptr) || img.rollback_counter != begin_.rollback_counter) {
         return reply(DeployStatus::BadImage);
     }
     DeployState s{};
@@ -354,7 +372,7 @@ DeployReply DeployReceiver::commit(uint32_t crc) {
     if (s.pending != 0) {
         return reply(DeployStatus::TrialInProgress);
     }
-    if (!store_.write_slot(target_, buf_, received_)) {
+    if (!store_.write_slot(target_, buf_, image_len)) {
         return reply(DeployStatus::StoreFailed);
     }
     s.previous = s.active;  // confirmed, since a pending one was refused above

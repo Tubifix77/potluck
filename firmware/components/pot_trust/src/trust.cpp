@@ -74,10 +74,33 @@ void ca_fingerprint(const uint8_t ca_pub[kEdPubLen], uint8_t fp[kCaFpLen]) {
 }
 
 CertError node_cert_check(const uint8_t* raw, size_t len, const uint8_t ca_pub[kEdPubLen], NodeCert& out) {
+    return key_cert_check(raw, len, ca_pub, kRoleNode, out);
+}
+
+CertError image_trailer_check(const uint8_t ca_pub[kEdPubLen], const uint8_t* image, size_t image_len,
+                              const uint8_t* trailer, size_t trailer_len) {
+    if (trailer == nullptr || trailer_len != kImageTrailerLen) return CertError::Length;
+    NodeCert c{};
+    const CertError e = key_cert_check(trailer, kNodeCertLen, ca_pub, kCertRoleDeploy, c);
+    if (e != CertError::Ok) return e;
+    static const char kImageDomain[] = "potluck-image-v1";  // sizeof includes the NUL
+    // Ed25519 over domain || SHA-512(image): 81 bytes, so the check never needs a copy of the image on
+    // the stack of the task that runs it (the crypto worker on the board, ~1.2 KB spare).
+    uint8_t msg[sizeof(kImageDomain) + 64];
+    std::memcpy(msg, kImageDomain, sizeof(kImageDomain));
+    crypto_sha512(msg + sizeof(kImageDomain), image, image_len);
+    if (crypto_ed25519_check(trailer + kNodeCertLen, c.node_pub, msg, sizeof(msg)) != 0) {
+        return CertError::BadSignature;
+    }
+    return CertError::Ok;
+}
+
+CertError key_cert_check(const uint8_t* raw, size_t len, const uint8_t ca_pub[kEdPubLen], uint8_t role,
+                         NodeCert& out) {
     if (raw == nullptr || len != kNodeCertLen) return CertError::Length;
     if (std::memcmp(raw, kMagic, sizeof(kMagic)) != 0) return CertError::Magic;
     if (raw[4] != kVersion) return CertError::Version;
-    if (raw[5] != kRoleNode) return CertError::Role;
+    if (raw[5] != role) return CertError::Role;
     uint8_t fp[kCaFpLen];
     ca_fingerprint(ca_pub, fp);
     if (std::memcmp(raw + 8, fp, kCaFpLen) != 0) return CertError::OtherCa;

@@ -182,6 +182,8 @@ enum class DeployStatus : uint16_t {
     StoreFailed = 8,
     Malformed = 9,      // payload too short for its opcode
     Busy = 10,          // already passing an image on to peers, or about to reboot into one
+    Unsigned = 11,      // M5: this node checks signatures and the image carried none
+    BadSignature = 12,  // M5: the deploy certificate or the image signature did not verify
 };
 const char* deploy_status_str(DeployStatus s);
 
@@ -220,6 +222,17 @@ class DeployReceiver {
     DeployReply commit(uint32_t crc);
     void abort();
 
+    // M5 step 6: check the received stream before anything is written. Called at COMMIT with the
+    // image (its length from its own header) and whatever followed it -- the signature trailer, or
+    // nothing. Return Ok to proceed, or the status to refuse with. Null: no check (an unenrolled
+    // node, or a host test); any trailer is then ignored.
+    using Verifier = DeployStatus (*)(void* ctx, const uint8_t* image, size_t image_len, const uint8_t* trailer,
+                                      size_t trailer_len);
+    void set_verifier(Verifier fn, void* ctx) {
+        verifier_ = fn;
+        verifier_ctx_ = ctx;
+    }
+
     bool in_progress() const { return started_; }
     bool distribute() const { return (begin_.flags & kDeployFlagDistribute) != 0; }
     const DeployBegin& header() const { return begin_; }
@@ -237,6 +250,8 @@ class DeployReceiver {
     bool started_ = false;
     uint8_t target_ = kSlotNone;
     bool committed_ = false;
+    Verifier verifier_ = nullptr;
+    void* verifier_ctx_ = nullptr;
 };
 
 }  // namespace pot

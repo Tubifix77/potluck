@@ -39,7 +39,24 @@ BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT}
 
 #: pot::DeployStatus, in order.
 STATUS_NAMES = ("OK", "TOO_LARGE", "DOWNGRADE", "NOT_STARTED", "BAD_OFFSET", "CRC_MISMATCH",
-                "BAD_IMAGE", "TRIAL_IN_PROGRESS", "STORE_FAILED", "MALFORMED", "BUSY")
+                "BAD_IMAGE", "TRIAL_IN_PROGRESS", "STORE_FAILED", "MALFORMED", "BUSY", "UNSIGNED",
+                "BAD_SIGNATURE")
+
+#: M5 step 6: what an enrolled node checks before it commits. The trailer follows the image on the
+#: wire: a 112-byte deploy-key certificate (potluck.enrol, role 2) and the deploy key's Ed25519
+#: signature over IMAGE_DOMAIN + SHA-512(image). firmware/components/pot_trust checks the same bytes.
+IMAGE_DOMAIN = b"potluck-image-v1\0"
+TRAILER_LEN = 176
+
+
+def image_trailer(img: bytes, deploy_secret: bytes, deploy_cert: bytes) -> bytes:
+    from . import ed25519_ref as ed
+
+    if len(deploy_cert) != 112:
+        raise DeployError("a deploy certificate is 112 bytes (python -m potluck.enrol --deploy-cert)")
+    import hashlib
+
+    return deploy_cert + ed.sign(deploy_secret, IMAGE_DOMAIN + hashlib.sha512(img).digest())
 
 SLOT_NAMES = {0: "none", 1: "A", 2: "B"}
 

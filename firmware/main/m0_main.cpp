@@ -1367,6 +1367,34 @@ void persist_floors(void* ctx, const void* table, size_t bytes) {
     run_heavy(ctx, &persist_job, &j);  // NVS work belongs on the worker's stack, like the crypto
 }
 
+// M5 step 6: an enrolled node checks every deploy itself -- a deploy-key certificate under its CA, and
+// that key's signature over the image -- before writing anything. The check runs on this worker.
+struct ImageJob {
+    const uint8_t* img;
+    size_t n;
+    const uint8_t* tr;
+    size_t tn;
+    CertError e;
+};
+void image_job(void* a) {
+    ImageJob& j = *static_cast<ImageJob*>(a);
+    j.e = image_trailer_check(g_id_boot.ca_pub, j.img, j.n, j.tr, j.tn);
+}
+DeployStatus verify_image(void*, const uint8_t* img, size_t n, const uint8_t* tr, size_t tn) {
+    if (tn == 0) {
+        ESP_LOGW(kTag, "deploy: refused, the image is not signed");
+        return DeployStatus::Unsigned;
+    }
+    ImageJob j{img, n, tr, tn, CertError::Ok};
+    run_heavy(nullptr, &image_job, &j);
+    if (j.e != CertError::Ok) {
+        ESP_LOGW(kTag, "deploy: refused, image signature check failed (%s)", cert_error_name(j.e));
+        return DeployStatus::BadSignature;
+    }
+    ESP_LOGI(kTag, "deploy: image signature verified");
+    return DeployStatus::Ok;
+}
+
 void print_id() {
     char line[200];
     if (format_enrol_id(g_id, g_node_id, line, sizeof(line)) > 0) {
@@ -1713,6 +1741,9 @@ extern "C" void app_main(void) {
     trust_rt::boot(cfg.node_id, espnow_up());
     trust_rt::g_id_boot = trust_rt::g_id;
     trust_rt::load_floors();
+    if (trust_rt::g_id_boot.enrolled) {
+        deploy_rt::g_rx.set_verifier(&trust_rt::verify_image, nullptr);
+    }
 #if !CONFIG_POT_CAN
 #if CONFIG_POT_REQUIRE_AUTH
     g_node->set_trust(&trust_rt::g_id_boot, true);

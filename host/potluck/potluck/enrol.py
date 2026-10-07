@@ -60,6 +60,7 @@ from .signing import KeyPair, SigningError, read_key
 MAGIC = b"PNC1"
 VERSION = 1
 ROLE_NODE = 1
+ROLE_DEPLOY = 2  # the same format certifies a deploy key (M5 step 6); node_id is 0
 CERT_LEN = 112
 SIGNED_LEN = 48
 DOMAIN = b"potluck-node-cert-v1\0"
@@ -82,7 +83,8 @@ class NodeCert:
     ca_sig: bytes
 
 
-def build_cert(ca: KeyPair, node_id: int, node_pub: bytes, issued: int | None = None) -> bytes:
+def build_cert(ca: KeyPair, node_id: int, node_pub: bytes, issued: int | None = None,
+               role: int = ROLE_NODE) -> bytes:
     if ca.secret is None:
         raise EnrolError("the CA key given is a public key; signing needs the .key file")
     if ca.role != "ca":
@@ -93,28 +95,28 @@ def build_cert(ca: KeyPair, node_id: int, node_pub: bytes, issued: int | None = 
         raise EnrolError("node id out of range")
     if issued is None:
         issued = int(time.time())
-    body = (MAGIC + struct.pack("<BBH", VERSION, ROLE_NODE, node_id) + ca_fingerprint(ca.public) +
+    body = (MAGIC + struct.pack("<BBH", VERSION, role, node_id) + ca_fingerprint(ca.public) +
             struct.pack("<I", issued & 0xFFFFFFFF) + node_pub)
     assert len(body) == SIGNED_LEN
     return body + ed.sign(ca.secret, DOMAIN + body)
 
 
-def parse_cert(raw: bytes) -> NodeCert:
+def parse_cert(raw: bytes, role: int = ROLE_NODE) -> NodeCert:
     if len(raw) != CERT_LEN:
         raise EnrolError(f"a node certificate is {CERT_LEN} bytes, this is {len(raw)}")
     if raw[:4] != MAGIC:
         raise EnrolError("not a node certificate (magic)")
-    version, role, node_id = struct.unpack_from("<BBH", raw, 4)
+    version, cert_role, node_id = struct.unpack_from("<BBH", raw, 4)
     if version != VERSION:
         raise EnrolError(f"certificate version {version}, this tool knows {VERSION}")
-    if role != ROLE_NODE:
-        raise EnrolError(f"certificate role {role} is not a node")
+    if cert_role != role:
+        raise EnrolError(f"certificate role {cert_role}, expected {role}")
     (issued,) = struct.unpack_from("<I", raw, 12)
     return NodeCert(node_id=node_id, ca_fp=raw[8:12], issued=issued, node_pub=raw[16:48], ca_sig=raw[48:112])
 
 
-def verify_cert(raw: bytes, ca_public: bytes) -> NodeCert:
-    c = parse_cert(raw)
+def verify_cert(raw: bytes, ca_public: bytes, role: int = ROLE_NODE) -> NodeCert:
+    c = parse_cert(raw, role)
     if c.ca_fp != ca_fingerprint(ca_public):
         raise EnrolError("certificate is from a different CA (fingerprint)")
     if not ed.verify(ca_public, DOMAIN + raw[:SIGNED_LEN], c.ca_sig):
@@ -199,6 +201,17 @@ def main(argv: list[str] | None = None) -> int:
             ca = read_key(_flag(argv, "--ca") or "")
             c = verify_cert(bytes.fromhex(_flag(argv, "--check-cert") or ""), ca.public)
             print(f"ok: node 0x{c.node_id:04x}, key {c.node_pub.hex()}, issued {c.issued}")
+            return 0
+        if "--deploy-cert" in argv:
+            # Once, with the CA key: certify the deploy key for node-side image checks (M5 step 6).
+            deploy = read_key(_flag(argv, "--deploy-cert") or "")
+            ca = read_key(_flag(argv, "--ca-key") or "")
+            cert = build_cert(ca, 0, deploy.public, role=ROLE_DEPLOY)
+            verify_cert(cert, ca.public, ROLE_DEPLOY)
+            out = _flag(argv, "--out") or ""
+            with open(out, "w", encoding="ascii") as f:
+                f.write(cert.hex() + "\n")
+            print(f"deploy key {deploy.id} certified by CA {ca.id} -> {out}")
             return 0
         port = _flag(argv, "--port")
         if not port:

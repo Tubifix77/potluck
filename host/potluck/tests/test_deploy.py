@@ -130,5 +130,40 @@ class BridgeRoutesDeployReplies(unittest.TestCase):
 
 
 
+class TestImageSignature(unittest.TestCase):
+    """M5 step 6. The golden trailer below is verified byte for byte by tests/test_trust.cpp."""
+
+    GOLDEN_TRAILER = (
+        "504e433101020000ed4242ea803bb16a2543b92ff1095511476adc8369db6ddc933665a11978dda1404ee1066ca9559d"
+        "b1d3a333735e10e016f05892d472bb8410ea752f25e182ce8d79a8654d385ac61e0f65630acebf8463daea22f39da958"
+        "b7e4df70610768f218429d943da07d0d277f273e2cf62ae780e46ede3e0f1806dc49497500fcc0f932ac4ddfc6828e3f"
+        "bb99ee43db7bd5dffd2aa27a5b6de345a6b0782844c6b745574e82cae9e23807"
+    )
+
+    def _keys(self):
+        from potluck import ed25519_ref as ed
+        from potluck import enrol as en
+        from potluck.signing import KeyPair
+
+        ca = KeyPair("ed25519", "ca", "test-ca", ed.public_key(bytes(range(32))), bytes(range(32)))
+        dsk = bytes(range(64, 96))
+        bcert = en.build_cert(ca, 0, ed.public_key(dsk), issued=1790000000, role=en.ROLE_DEPLOY)
+        return ca, dsk, bcert
+
+    def test_the_golden_trailer_is_what_the_signer_makes(self):
+        ca, dsk, bcert = self._keys()
+        img = bytes.fromhex("504f54440101000003000000bfba6702f4f20e6d0a00000000630106a000c801dc05")
+        self.assertEqual(dp.image_trailer(img, dsk, bcert).hex(), self.GOLDEN_TRAILER)
+        self.assertEqual(len(self.GOLDEN_TRAILER) // 2, dp.TRAILER_LEN)
+
+    def test_a_deploy_certificate_is_not_a_node_certificate(self):
+        from potluck import enrol as en
+
+        ca, dsk, bcert = self._keys()
+        en.verify_cert(bcert, ca.public, en.ROLE_DEPLOY)
+        with self.assertRaises(en.EnrolError):
+            en.verify_cert(bcert, ca.public)  # role node expected
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -57,6 +57,19 @@ void ca_fingerprint(const uint8_t ca_pub[kEdPubLen], uint8_t fp[kCaFpLen]);
 // Check a certificate against a CA public key. On Ok, `out` says what it binds.
 CertError node_cert_check(const uint8_t* raw, size_t len, const uint8_t ca_pub[kEdPubLen], NodeCert& out);
 
+// The same 112-byte format certifies a deploy key (M5 step 6): role 2, node_id 0. Section 9.3's
+// "Deploy key. Separate from the CA. Signs manifests." -- here it signs the compiled image itself.
+constexpr uint8_t kCertRoleNode = 1;
+constexpr uint8_t kCertRoleDeploy = 2;
+CertError key_cert_check(const uint8_t* raw, size_t len, const uint8_t ca_pub[kEdPubLen], uint8_t role,
+                         NodeCert& out);
+
+// The deploy trailer: a deploy-key certificate, then the deploy key's Ed25519 signature over
+// "potluck-image-v1\0" || SHA-512(image). Appended to the image on the wire; the slot stores the image alone.
+constexpr size_t kImageTrailerLen = kNodeCertLen + kEdSigLen;  // 176
+CertError image_trailer_check(const uint8_t ca_pub[kEdPubLen], const uint8_t* image, size_t image_len,
+                              const uint8_t* trailer, size_t trailer_len);
+
 struct Identity {
     bool has_key = false;
     uint8_t seed[kEdSeedLen] = {};  // the private key; never leaves the node

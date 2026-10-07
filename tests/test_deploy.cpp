@@ -498,3 +498,47 @@ TEST(deploy, the_host_compilers_golden_image_parses_here) {
     CHECK_EQ(static_cast<int>(lc.blink), 1);
     CHECK_EQ(static_cast<int>(lc.period_ms), 1500);
 }
+
+// ---- M5 step 6: the verifier hook ----
+
+namespace {
+int g_verify_calls = 0;
+size_t g_seen_image = 0, g_seen_trailer = 0;
+DeployStatus verify_refuse(void*, const uint8_t*, size_t image_len, const uint8_t*, size_t trailer_len) {
+    ++g_verify_calls;
+    g_seen_image = image_len;
+    g_seen_trailer = trailer_len;
+    return DeployStatus::BadSignature;
+}
+DeployStatus verify_accept(void*, const uint8_t*, size_t image_len, const uint8_t*, size_t trailer_len) {
+    ++g_verify_calls;
+    g_seen_image = image_len;
+    g_seen_trailer = trailer_len;
+    return DeployStatus::Ok;
+}
+}  // namespace
+
+TEST(deploy, a_refused_signature_writes_nothing_and_an_accepted_one_stores_the_image_alone) {
+    const std::vector<uint8_t> img = make_image(10, {{0x6300, 1, led_cfg(1, 2, 3, 0, 0)}});
+    std::vector<uint8_t> stream = img;
+    stream.resize(img.size() + 176, 0xAB);  // the verifier, not the receiver, judges the trailer
+    for (int round = 0; round < 2; ++round) {
+        RamStore store;
+        uint8_t buf[kMaxImageLen];
+        DeployReceiver rx(store, buf, sizeof(buf));
+        rx.set_verifier(round == 0 ? &verify_refuse : &verify_accept, nullptr);
+        g_verify_calls = 0;
+        const DeployStatus st = deliver(rx, stream, 10);
+        CHECK_EQ(g_verify_calls, 1);
+        CHECK_EQ(g_seen_image, img.size());
+        CHECK_EQ(g_seen_trailer, static_cast<size_t>(176));
+        if (round == 0) {
+            CHECK(st == DeployStatus::BadSignature);
+            CHECK(store.slots.empty());
+            CHECK_EQ(static_cast<int>(store.state.pending), 0);
+        } else {
+            CHECK(st == DeployStatus::Ok);
+            CHECK_EQ(store.slots.begin()->second.size(), img.size());  // the image, not the trailer
+        }
+    }
+}

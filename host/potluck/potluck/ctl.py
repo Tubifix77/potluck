@@ -112,6 +112,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="refuse packages below this rollback counter (the node refuses them too)")
     s.add_argument("--local-only", action="store_true",
                    help="deploy to the cabled node only, rather than to the whole cell through it")
+    s.add_argument("--key", help="the deploy key (.key): sign the image for node-side checking (M5)")
+    s.add_argument("--bcert", help="the deploy key's node-format certificate, hex (potluck.enrol --deploy-cert)")
 
     return p
 
@@ -300,6 +302,16 @@ def cmd_deploy(bridge: Bridge, node_id: int, args) -> int:
     except (SigningError, dp.DeployError, OSError) as exc:
         print(f"REFUSED before sending: {exc}")
         return 4
+    if args.key and args.bcert:
+        try:
+            dk = read_key(args.key)
+            with open(args.bcert, "r", encoding="ascii") as f:
+                bcert = bytes.fromhex(f.read().strip())
+            img = img + dp.image_trailer(img, dk.secret, bcert)
+        except (SigningError, dp.DeployError, OSError, ValueError) as exc:
+            print(f"REFUSED before sending: {exc}")
+            return 4
+        print(f"image signed for node-side checking ({dp.TRAILER_LEN} B trailer)")
     print(f"package '{v.manifest.system}' counter {v.rollback_counter}, signed by {v.signer.id} "
           f"('{v.signer.label}')")
     print(f"node image {len(img)} B, crc {dp.crc32(img):08x}, "

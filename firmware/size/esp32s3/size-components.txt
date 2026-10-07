@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xc0e80 bytes. Smallest app partition is 0x100000 bytes. 0x3f180 bytes (25%) free.
+potluck_m0.bin binary size 0xc1100 bytes. Smallest app partition is 0x100000 bytes. 0x3ef00 bytes (25%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -41,9 +41,9 @@ Executing "ninja size-components"...
 
 │ liblwip.a                       │      64925 │    0 │     0 │        0 │  2482 │  2470 │    12 │     0 │      59547 │  59547 │       2896 │      0 │    2896 │        0 │        0 │             0 │        0 │           0 │
 
-│ libesp_stdio.a                  │      61292 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      60882 │      0 │   60882 │        0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      61479 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      61069 │      0 │   61069 │        0 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      43773 │    0 │     0 │        0 │ 34450 │ 34432 │    18 │     0 │       9199 │   9199 │        124 │      0 │     124 │        0 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      43989 │    0 │     0 │        0 │ 34458 │ 34440 │    18 │     0 │       9407 │   9407 │        124 │      0 │     124 │        0 │        0 │             0 │        0 │           0 │
 
 │ libphy.a                        │      34375 │ 1516 │  1516 │        0 │  5005 │    86 │  1277 │  3642 │      27854 │  27854 │          0 │      0 │       0 │        0 │        0 │             0 │        0 │           0 │
 
@@ -87,11 +87,11 @@ Executing "ninja size-components"...
 
 │ libesp_mm.a                     │       3355 │  443 │   443 │        0 │   849 │    48 │   129 │   672 │       1897 │   1897 │        166 │      0 │     166 │        0 │        0 │             0 │        0 │           0 │
 
+│ libpot_trust.a                  │       3334 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       3017 │   3017 │        317 │      0 │     317 │        0 │        0 │             0 │        0 │           0 │
+
 │ libesp_wifi.a                   │       3278 │  203 │   203 │        0 │   567 │     6 │   480 │    81 │       1748 │   1748 │        760 │      0 │     760 │        0 │        0 │             0 │        0 │           0 │
 
 │ libvfs.a                        │       3248 │    0 │     0 │        0 │   236 │    44 │   192 │     0 │       2873 │   2873 │        139 │      0 │     139 │        0 │        0 │             0 │        0 │           0 │
-
-│ libpot_trust.a                  │       3181 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       2881 │   2881 │        300 │      0 │     300 │        0 │        0 │             0 │        0 │           0 │
 
 │ libesp_phy.a                    │       2977 │   89 │    89 │        0 │   196 │    43 │     9 │   144 │       2393 │   2393 │        299 │      0 │     299 │        0 │        0 │             0 │        0 │           0 │
 
@@ -99,9 +99,9 @@ Executing "ninja size-components"...
 
 │ libhal.a                        │       2656 │  398 │   398 │        0 │  2258 │     5 │   274 │  1979 │          0 │      0 │          0 │      0 │       0 │        0 │        0 │             0 │        0 │           0 │
 
-│ libesp_timer.a                  │       2543 │  248 │   248 │        0 │   823 │    36 │    32 │   755 │       1373 │   1373 │         99 │      0 │      99 │        0 │        0 │             0 │        0 │           0 │
+│ libpot_deploy.a                 │       2547 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       2515 │   2515 │         32 │      0 │      32 │        0 │        0 │             0 │        0 │           0 │
 
-│ libpot_deploy.a                 │       2454 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       2422 │   2422 │         32 │      0 │      32 │        0 │        0 │             0 │        0 │           0 │
+│ libesp_timer.a                  │       2543 │  248 │   248 │        0 │   823 │    36 │    32 │   755 │       1373 │   1373 │         99 │      0 │      99 │        0 │        0 │             0 │        0 │           0 │
 
 │ libesp_hal_gpio.a               │       2148 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │        867 │    867 │       1281 │      0 │    1281 │        0 │        0 │             0 │        0 │           0 │
 
