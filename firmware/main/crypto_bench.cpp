@@ -278,6 +278,63 @@ void kat_task(void* arg) {
 
 }  // namespace
 
+#if CONFIG_POT_MEM_BENCH
+#include "esp_attr.h"
+#include "esp_heap_caps.h"
+
+namespace {
+// In PSRAM's BSS, never touched by the node: the build's section 6 gate must not count it.
+EXT_RAM_BSS_ATTR uint8_t g_psram_bss[64 * 1024];
+
+uint32_t copy_kib_per_s(uint8_t* dst, const uint8_t* src, size_t n, int reps) {
+    const int64_t t0 = esp_timer_get_time();
+    for (int i = 0; i < reps; ++i) {
+        std::memcpy(dst, src, n);
+        g_sink = dst[i % n];
+    }
+    const int64_t us = esp_timer_get_time() - t0;
+    return us > 0 ? static_cast<uint32_t>((static_cast<int64_t>(n) * reps * 1000000 / 1024) / us) : 0;
+}
+}  // namespace
+
+void pot_mem_bench_run() {
+    std::printf("{\"t\":\"mem_bench\",\"psram_total\":%u,\"psram_free\":%u,\"internal_total\":%u,"
+                "\"internal_free\":%u,\"internal_largest\":%u,\"psram_bss_b\":%u,\"cpu_mhz\":%d}\n",
+                static_cast<unsigned>(heap_caps_get_total_size(MALLOC_CAP_SPIRAM)),
+                static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
+                static_cast<unsigned>(heap_caps_get_total_size(MALLOC_CAP_INTERNAL)),
+                static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                static_cast<unsigned>(sizeof(g_psram_bss)), CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ);
+    // Blocks larger than the data cache, or the cache is what gets measured: a first run with 16 KB
+    // blocks put PSRAM within 7 % of internal RAM, which is the cache talking, not the PSRAM.
+    constexpr size_t kInt = 64 * 1024;   // internal: two of these fit beside the radio
+    constexpr size_t kExt = 256 * 1024;  // PSRAM
+    uint8_t* i1 = static_cast<uint8_t*>(heap_caps_malloc(kInt, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+    uint8_t* i2 = static_cast<uint8_t*>(heap_caps_malloc(kInt, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+    uint8_t* p1 = static_cast<uint8_t*>(heap_caps_malloc(kExt, MALLOC_CAP_SPIRAM));
+    uint8_t* p2 = static_cast<uint8_t*>(heap_caps_malloc(kExt, MALLOC_CAP_SPIRAM));
+    if (i1 && i2 && p1 && p2) {
+        for (size_t k = 0; k < kInt; ++k) i1[k] = static_cast<uint8_t>(k);
+        for (size_t k = 0; k < kExt; ++k) p1[k] = static_cast<uint8_t>(k);
+        g_psram_bss[0] = p1[1];  // keeps the BSS buffer referenced
+        std::printf("{\"t\":\"mem_bench\",\"int_block_b\":%u,\"ext_block_b\":%u,\"internal_to_internal_kib_s\":%u,"
+                    "\"psram_to_psram_kib_s\":%u,\"psram_to_internal_kib_s\":%u,\"internal_to_psram_kib_s\":%u}\n",
+                    static_cast<unsigned>(kInt), static_cast<unsigned>(kExt),
+                    static_cast<unsigned>(copy_kib_per_s(i2, i1, kInt, 40)),
+                    static_cast<unsigned>(copy_kib_per_s(p2, p1, kExt, 10)),
+                    static_cast<unsigned>(copy_kib_per_s(i2, p1, kInt, 40)),
+                    static_cast<unsigned>(copy_kib_per_s(p2, i1, kInt, 40)));
+    } else {
+        std::printf("{\"t\":\"mem_bench\",\"error\":\"allocation failed\"}\n");
+    }
+    heap_caps_free(i1);
+    heap_caps_free(i2);
+    heap_caps_free(p1);
+    heap_caps_free(p2);
+}
+#endif
+
 int pot_crypto_bench_run() {
     for (size_t i = 0; i < sizeof(g_msg); ++i) g_msg[i] = static_cast<uint8_t>(i);
     std::printf("{\"t\":\"bench_cfg\",\"cpu_mhz\":%d,\"opt\":\"%s\",\"runs\":%d}\n", CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ,

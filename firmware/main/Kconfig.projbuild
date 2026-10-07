@@ -166,6 +166,15 @@ config POT_FRAME_TEE
         about 150 bytes, and the console UART's cost would land inside the very timing the soak is
         measuring. Turn it on to debug the wire, off to measure the link.
 
+config POT_MEM_BENCH
+    bool "M5.1 CR-5: measure internal RAM against PSRAM at boot, then run the node as usual"
+    default n
+    depends on SPIRAM
+    help
+        Prints heap totals for internal RAM and PSRAM and the copy throughput of each (internal to
+        internal, PSRAM to PSRAM, PSRAM to internal), and places a 64 KB buffer in PSRAM's BSS to show
+        the section 6 gate counts internal static RAM only. Build it with the psram variant.
+
 config POT_CRYPTO_BENCH
     bool "Run the M5 signature/key-exchange benchmark instead of the node"
     default n

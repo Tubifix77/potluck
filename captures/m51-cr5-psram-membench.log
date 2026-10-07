@@ -1,0 +1,25 @@
+# M5.1 CR-5: board B (COM4), psram variant built from the working tree after 3f74c84 (CR-3/4/5 uncommitted; committed next), 2026-10-07.
+# Run 1 used 16 KB blocks (inside the data cache, so not a PSRAM measurement); run 2 uses 64 KB internal / 256 KB PSRAM blocks.
+## run 1
+I (273) octal_psram: vendor id    : 0x0d (AP)
+I (273) octal_psram: dev id       : 0x02 (generation 3)
+I (273) octal_psram: density      : 0x03 (64 Mbit)
+I (275) octal_psram: good-die     : 0x01 (Pass)
+I (279) octal_psram: Latency      : 0x01 (Fixed)
+I (283) octal_psram: VCC          : 0x01 (3V)
+I (288) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (292) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (297) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (302) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (307) octal_psram: DriveStrength: 0x00 (1/1)
+I (311) esp_psram: Found 8MB PSRAM device
+I (315) esp_psram: Speed: 40MHz
+I (1052) esp_psram: SPI SRAM memory test OK
+I (1074) app_init: App version:      deploy-and-detach-32-g3f74c84-d
+I (1134) esp_psram: Adding pool of 8115K of PSRAM memory to heap allocator
+I (1183) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+{"t":"mem_bench","psram_total":8310244,"psram_free":8302304,"internal_total":338267,"internal_free":241023,"internal_largest":163840,"psram_bss_b":65536,"cpu_mhz":160}
+{"t":"mem_bench","block_b":16384,"internal_to_internal_kib_s":246685,"psram_to_psram_kib_s":228245,"psram_to_internal_kib_s":246704,"internal_to_psram_kib_s":246685}
+## run 2
+{"t":"mem_bench","psram_total":8375780,"psram_free":8367840,"internal_total":338267,"internal_free":241023,"internal_largest":163840,"psram_bss_b":65536,"cpu_mhz":160}
+{"t":"mem_bench","int_block_b":65536,"ext_block_b":262144,"internal_to_internal_kib_s":244788,"psram_to_psram_kib_s":11467,"psram_to_internal_kib_s":31879,"internal_to_psram_kib_s":17958}

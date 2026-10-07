@@ -40,6 +40,11 @@ namespace pot {
 
 constexpr uint8_t kHelloFlagWantAck = 1u << 0;
 
+// HELLO.caps (M5.1, CR-4). BUSY: a duty outside Potluck occupies this node (the garden extender
+// routing phone traffic), so placement should prefer other nodes -- a placement input, never an
+// exclusion (section 0.1). Nothing places work yet; M6's reconciler is the consumer.
+constexpr uint32_t kHelloCapBusy = 1u << 0;
+
 struct HelloPayload {
     uint32_t boot_epoch;
     uint32_t caps;

@@ -230,6 +230,22 @@ class Node {
     };
     const SafeStateCounters& safe_state_counters() const { return ss_counters_; }
 
+    // ---- M5.1 (CR-3): this node's declared heartbeat window, changed at run time --------------
+    // Peers judge a node by the window its HELLO declares, so the window can move while running. A
+    // TIGHTER window applies at once (peers are only more tolerant than needed until they hear). A
+    // LOOSER one is announced first -- three HELLOs, 100 ms apart -- and applied only after the old
+    // death window plus two ordinary HELLO intervals, so a peer that missed every announcement still
+    // hears beacons at the old rate until a periodic HELLO has told it too. HELLO carries the period in one byte of
+    // centiseconds: 10..2550 ms in steps of 10, miss limit 1..255. False if out of range.
+    bool set_heartbeat_window(uint32_t period_ms, uint8_t miss_limit);
+    uint32_t heartbeat_period_ms() const { return cfg_.hb_period_ms; }
+
+    // ---- M5.1 (CR-4): the BUSY capability ------------------------------------------------------
+    void set_busy(bool busy);
+    bool busy() const { return (caps_ & kHelloCapBusy) != 0; }
+    // The caps a peer's last admitted HELLO declared.
+    uint32_t peer_caps(const PeerLink* p) const;
+
     // Announce an intentional departure (§5.2) and stop participating. `rejoin()` undoes it.
     void depart();
     void rejoin();
@@ -497,6 +513,16 @@ class Node {
     bool check_frame_auth(PeerLink& p, const uint8_t* data, const Frame& f);
     void reject_frame(const PeerLink& p, uint32_t reason, uint32_t ext_seq);
     uint32_t last_reject_event_ms_ = 0;
+
+    // M5.1
+    void announce_change();
+    uint32_t caps_ = 0;
+    uint32_t peer_caps_[kMaxPeers]{};
+    uint32_t announced_period_ms_ = 0;  // what HELLO declares; differs from cfg_ while a looser window waits
+    uint8_t announced_miss_ = 0;
+    uint32_t window_apply_at_ms_ = 0;   // 0 = nothing pending
+    uint8_t announce_left_ = 0;
+    uint32_t next_announce_ms_ = 0;
     SafeStateFloor ss_floor_[kSafeStateSources]{};
     SafeStateCounters ss_counters_{};
     SafeStateFloor* ss_floor_for(uint16_t node_id, bool create);

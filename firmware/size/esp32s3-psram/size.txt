@@ -1,14 +1,14 @@
 Executing action: size
-Running ninja in directory D:\Projects\potluck\firmware\build
+Running ninja in directory D:\Projects\potluck\firmware\build-psram
 Executing "ninja all"...
-[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
+[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-psram && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-psram/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-psram/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xc14b0 bytes. Smallest app partition is 0x100000 bytes. 0x3eb50 bytes (24%) free.
+potluck_m0.bin binary size 0xc3660 bytes. Smallest app partition is 0x100000 bytes. 0x3c9a0 bytes (24%) free.
 
 
 [2/4] Performing build step for 'bootloader'
 
-[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Projects/potluck/firmware/build/bootloader/bootloader.bin"
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-psram\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Projects/potluck/firmware/build-psram/bootloader/bootloader.bin"
 
 
 Bootloader binary size 0x5240 bytes. 0x2dc0 bytes (36%) free.
@@ -19,9 +19,9 @@ Bootloader binary size 0x5240 bytes. 0x2dc0 bytes (36%) free.
 
 [4/4] Completed 'bootloader'
 
-Running ninja in directory D:\Projects\potluck\firmware\build
+Running ninja in directory D:\Projects\potluck\firmware\build-psram
 Executing "ninja size"...
-[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D MAP_FILE=D:/Projects/potluck/firmware/build/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
+[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-psram && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D MAP_FILE=D:/Projects/potluck/firmware/build-psram/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
 
                             Memory Type Usage Summary                             
 
@@ -31,21 +31,21 @@ Executing "ninja size"...
 
 ├─────────────────────┼──────────────┼──────────┼────────────────┼───────────────┤
 
-│ Flash Code          │       570312 │          │                │               │
+│ Flash Code          │       573304 │          │                │               │
 
-│    .text            │       570312 │          │                │               │
+│    .text            │       573304 │          │                │               │
 
-│ DIRAM               │       165391 │    48.39 │         176369 │        341760 │
+│ DIRAM               │       156628 │    45.83 │         185132 │        341760 │
 
-│    .bss             │        81032 │    23.71 │                │               │
+│    .bss             │        68288 │    19.98 │                │               │
 
-│    .text            │        63695 │    18.64 │                │               │
+│    .text            │        66843 │    19.56 │                │               │
 
-│    .data            │        20664 │     6.05 │                │               │
+│    .data            │        21497 │     6.29 │                │               │
 
-│ Flash Data          │       120524 │          │                │               │
+│ Flash Data          │       122172 │          │                │               │
 
-│    .rodata          │       120252 │          │                │               │
+│    .rodata          │       121900 │          │                │               │
 
 │    .appdesc         │          256 │          │                │               │
 
@@ -57,6 +57,10 @@ Executing "ninja size"...
 
 │    .vectors         │         1028 │     6.27 │                │               │
 
+│ External RAM        │        12828 │          │                │               │
+
+│    .bss             │        12828 │          │                │               │
+
 │ RTC SLOW            │           36 │     0.44 │           8156 │          8192 │
 
 │    .force_slow      │           36 │     0.44 │                │               │
@@ -67,7 +71,7 @@ Executing "ninja size"...
 
 └─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
 
-Total image size: 791615 bytes (.bin may be padded larger)
+Total image size: 800236 bytes (.bin may be padded larger)
 
 Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
 

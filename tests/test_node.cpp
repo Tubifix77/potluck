@@ -31,6 +31,7 @@ struct TestCell {
     std::vector<TestNode> nodes;
     uint32_t now_us = 0;
     bool partitioned = false;  // when true, nothing is delivered
+    bool drop_hello = false;   // when true, HELLOs are lost and everything else is delivered
     // Added to every send completion's timestamp. Negative models the radio's callback stamping a
     // completion before the node task submitted the probe it is then credited to.
     int32_t done_skew_us = 0;
@@ -94,6 +95,9 @@ struct TestCell {
         if (c->partitioned) {
             return 0;  // accepted by the transport, never delivered — a real and important case
         }
+        if (c->drop_hello && len > 6 && data[6] == kOpHello) {
+            return 0;
+        }
         const bool bcast = std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0;
         if (!bcast && c->done_before_delivery) {
             from->node->on_tx_done(mac, true, c->now_us + static_cast<uint32_t>(c->done_skew_us));
@@ -114,6 +118,78 @@ struct TestCell {
 size_t alive_peers(Node& n) { return n.peers().count_in_state(PeerState::Alive); }
 
 }  // namespace
+
+TEST(node, a_looser_window_is_announced_first_and_nobody_declares_the_node_dead) {
+    // M5.1 CR-3: node 0 relaxes from 100 ms x 6 to 1000 ms x 6 at run time.
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon);
+    c.start_all();
+    c.advance_ms(1000);
+    Node& a = *c.nodes[0].node;
+    Node& b = *c.nodes[1].node;
+    CHECK(a.set_heartbeat_window(1000, 6));
+    c.advance_ms(150);
+    // Peers learned the new window from the announcement ...
+    CHECK_EQ(b.peers().slot(0).hb_period_ms, 1000u);
+    // ... while node 0 still beacons at the old rate: old window 600 ms + 2 x 500 ms HELLO interval.
+    CHECK_EQ(a.heartbeat_period_ms(), 100u);
+    c.advance_ms(1500);
+    CHECK_EQ(a.heartbeat_period_ms(), 1000u);
+    c.advance_ms(20000);
+    CHECK_EQ(b.counters().deaths_declared, 0u);
+    CHECK_EQ(alive_peers(b), static_cast<size_t>(1));
+}
+
+TEST(node, a_peer_that_missed_every_announcement_still_does_not_declare_death) {
+    // CR-3's kill criterion: the announcements are all lost; a periodic HELLO must arrive before the
+    // node actually slows down. Probes are made rare, or their replies would keep the peer alive and
+    // hide the heartbeat question entirely.
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon, 1000000);
+    c.start_all();
+    c.advance_ms(1000);
+    c.drop_hello = true;
+    CHECK(c.nodes[0].node->set_heartbeat_window(1000, 6));
+    c.advance_ms(1250);  // the announcements AND the next periodic HELLOs, lost: longer than the old 600 ms grace
+    CHECK_EQ(c.nodes[1].node->peers().slot(0).hb_period_ms, 100u);
+    c.drop_hello = false;
+    c.advance_ms(20000);
+    CHECK_EQ(c.nodes[1].node->peers().slot(0).hb_period_ms, 1000u);
+    CHECK_EQ(c.nodes[1].node->counters().deaths_declared, 0u);
+}
+
+TEST(node, a_tighter_window_applies_at_once_and_the_range_is_enforced) {
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon);
+    c.start_all();
+    c.advance_ms(1000);
+    Node& a = *c.nodes[0].node;
+    CHECK(a.set_heartbeat_window(100, 3));
+    CHECK_EQ(a.heartbeat_period_ms(), 100u);
+    c.advance_ms(150);
+    CHECK_EQ(static_cast<int>(c.nodes[1].node->peers().slot(0).miss_limit), 3);
+    CHECK(!a.set_heartbeat_window(2560, 6));  // one byte of centiseconds: 2550 ms is the ceiling
+    CHECK(!a.set_heartbeat_window(0, 6));
+    CHECK(!a.set_heartbeat_window(105, 6));   // 10 ms steps
+    CHECK(!a.set_heartbeat_window(100, 0));
+    CHECK(a.set_heartbeat_window(2550, 6));
+}
+
+TEST(node, the_busy_bit_reaches_peers_within_one_hello) {
+    // M5.1 CR-4: a placement input. Nothing places work yet (M6); this proves the signal arrives.
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon);
+    c.start_all();
+    c.advance_ms(1000);
+    Node& b = *c.nodes[1].node;
+    CHECK_EQ(b.peer_caps(&b.peers().slot(0)) & kHelloCapBusy, 0u);
+    c.nodes[0].node->set_busy(true);
+    c.advance_ms(50);
+    CHECK((b.peer_caps(&b.peers().slot(0)) & kHelloCapBusy) != 0u);
+    c.nodes[0].node->set_busy(false);
+    c.advance_ms(50);
+    CHECK_EQ(b.peer_caps(&b.peers().slot(0)) & kHelloCapBusy, 0u);
+}
 
 TEST(node, two_nodes_discover_each_other) {
     TestCell c;

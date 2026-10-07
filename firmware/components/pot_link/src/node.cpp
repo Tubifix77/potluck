@@ -210,6 +210,50 @@ void sign_job(void* arg) {
 
 }  // namespace
 
+void Node::announce_change() {
+    // A HELLO that says something new: the cached signature covers the old content.
+    signed_hello_ok_[0] = signed_hello_ok_[1] = false;
+    announce_left_ = 3;
+    next_announce_ms_ = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+}
+
+bool Node::set_heartbeat_window(uint32_t period_ms, uint8_t miss_limit) {
+    if (period_ms < 10 || period_ms > 2550 || period_ms % 10 != 0 || miss_limit == 0) {
+        return false;
+    }
+    const uint32_t old_window = cfg_.hb_period_ms * cfg_.hb_miss_limit;
+    const bool looser = period_ms * miss_limit > old_window || period_ms > cfg_.hb_period_ms;
+    announced_period_ms_ = period_ms;
+    announced_miss_ = miss_limit;
+    if (looser) {
+        // Keep beaconing at the old rate while the news spreads: the old death window, plus two
+        // ordinary HELLO intervals, since every periodic HELLO carries the new window too. A peer
+        // is caught out only if it misses all three announcements AND two periodic HELLOs in a row.
+        const uint32_t now = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+        window_apply_at_ms_ = now + old_window + 2 * cfg_.hello_interval_ms;
+        if (window_apply_at_ms_ == 0) window_apply_at_ms_ = 1;
+    } else {
+        window_apply_at_ms_ = 0;
+        cfg_.hb_period_ms = period_ms;
+        cfg_.hb_miss_limit = miss_limit;
+    }
+    announce_change();
+    return true;
+}
+
+void Node::set_busy(bool b) {
+    const uint32_t next = b ? (caps_ | kHelloCapBusy) : (caps_ & ~kHelloCapBusy);
+    if (next == caps_) return;
+    caps_ = next;
+    announce_change();
+}
+
+uint32_t Node::peer_caps(const PeerLink* p) const {
+    if (p == nullptr) return 0;
+    const size_t i = peers_.index_of(p);
+    return (i < kMaxPeers) ? peer_caps_[i] : 0;
+}
+
 bool Node::is_trusted_link(const uint8_t mac[kMacLen]) const {
     return cfg_.has_trusted_mac && std::memcmp(mac, cfg_.trusted_mac, kMacLen) == 0;
 }
@@ -365,11 +409,14 @@ bool Node::check_frame_auth(PeerLink& p, const uint8_t* data, const Frame& f) {
 void Node::send_hello(bool want_ack) {
     HelloPayload h{};
     h.boot_epoch = cfg_.boot_epoch;
-    h.caps = 0;  // M1+ owns the capability bitfield
+    h.caps = caps_;
     h.node_id = cfg_.node_id;
     h.espnow_version = cfg_.espnow_version;
-    h.hb_period_cs = static_cast<uint8_t>(cfg_.hb_period_ms / 10);
-    h.hb_miss_limit = cfg_.hb_miss_limit;
+    // M5.1: the window being announced, which leads cfg_ while a looser window is pending.
+    const uint32_t period = announced_period_ms_ != 0 ? announced_period_ms_ : cfg_.hb_period_ms;
+    const uint8_t misses = announced_miss_ != 0 ? announced_miss_ : cfg_.hb_miss_limit;
+    h.hb_period_cs = static_cast<uint8_t>(period / 10);
+    h.hb_miss_limit = misses;
     h.flags = want_ack ? kHelloFlagWantAck : 0;
     const void* payload = &h;
     uint16_t plen = static_cast<uint16_t>(sizeof(h));
@@ -401,8 +448,8 @@ void Node::send_hello_ack(PeerLink& p, uint8_t decision, uint16_t ref_msg_id) {
     a.node_id = cfg_.node_id;
     a.espnow_version = cfg_.espnow_version;
     a.decision = decision;
-    a.hb_period_cs = static_cast<uint8_t>(cfg_.hb_period_ms / 10);
-    a.hb_miss_limit = cfg_.hb_miss_limit;
+    a.hb_period_cs = static_cast<uint8_t>((announced_period_ms_ != 0 ? announced_period_ms_ : cfg_.hb_period_ms) / 10);
+    a.hb_miss_limit = announced_miss_ != 0 ? announced_miss_ : cfg_.hb_miss_limit;
     if (send_frame(&p, p.mac, kOpHelloAck, &a, sizeof(a), false, ref_msg_id, p.node_id, false)) {
         ++tally_.hello_acks;
     }
@@ -576,6 +623,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         slot = fresh;
     }
     p->node_id = h.node_id;
+    peer_caps_[peers_.index_of(p)] = h.caps;
     p->hb_period_ms = (h.hb_period_cs != 0) ? h.hb_period_cs * 10u : cfg_.hb_period_ms;
     p->miss_limit = (h.hb_miss_limit != 0) ? h.hb_miss_limit : cfg_.hb_miss_limit;
     pin_version(*p, h.espnow_version);
@@ -1434,6 +1482,19 @@ void Node::tick(uint32_t now_ms) {
 
     pending_expire(now_ms);
 
+    // M5.1: repeat an announced change, then apply a looser window once the old one has run out.
+    if (announce_left_ != 0 && static_cast<int32_t>(now_ms - next_announce_ms_) >= 0) {
+        --announce_left_;
+        next_announce_ms_ = now_ms + 100;
+        if (!departed_) send_hello(true);
+    }
+    if (window_apply_at_ms_ != 0 && static_cast<int32_t>(now_ms - window_apply_at_ms_) >= 0) {
+        window_apply_at_ms_ = 0;
+        cfg_.hb_period_ms = announced_period_ms_;
+        cfg_.hb_miss_limit = announced_miss_;
+        next_beacon_ms_ = now_ms + cfg_.hb_period_ms;
+    }
+
     if (static_cast<int32_t>(now_ms - next_hello_ms_) >= 0) {
         next_hello_ms_ = now_ms + cfg_.hello_interval_ms;
         if (!departed_) {
@@ -1447,7 +1508,9 @@ uint32_t Node::next_deadline_in_ms(uint32_t now_ms) const {
         return cfg_.hb_period_ms;
     }
     uint32_t best = 0xFFFFFFFFu;
-    const uint32_t deadlines[] = {next_beacon_ms_, next_probe_ms_, next_hello_ms_};
+    const uint32_t announce = announce_left_ != 0 ? next_announce_ms_ : next_hello_ms_;
+    const uint32_t apply = window_apply_at_ms_ != 0 ? window_apply_at_ms_ : next_hello_ms_;
+    const uint32_t deadlines[] = {next_beacon_ms_, next_probe_ms_, next_hello_ms_, announce, apply};
     for (uint32_t d : deadlines) {
         const uint32_t in = (static_cast<int32_t>(d - now_ms) > 0) ? (d - now_ms) : 0;
         if (in < best) {

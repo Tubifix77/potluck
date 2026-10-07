@@ -1199,6 +1199,25 @@ void stats_task(void*) {
             const bool has = sp.get_i32(spv, spq);
             std::printf("{\"t\":\"act\",\"node\":%u,\"setpoint\":%d,\"has_value\":%d,\"writes_served\":%u}\n",
                         static_cast<unsigned>(node_id), static_cast<int>(spv), has ? 1 : 0, served);
+            // M5.1: each peer's declared window (CR-3) and caps (CR-4), as this node holds them.
+            std::printf("{\"t\":\"peers\",\"node\":%u,\"own_period_ms\":%u,\"own_busy\":%d,\"list\":[",
+                        static_cast<unsigned>(node_id), static_cast<unsigned>(g_node->heartbeat_period_ms()),
+                        g_node->busy() ? 1 : 0);
+            {
+                bool first_peer = true;
+                for (size_t i = 0; i < kMaxPeers; ++i) {
+                    xSemaphoreTake(g_mutex, portMAX_DELAY);
+                    const PeerLink pl = g_node->peers().slot(i);
+                    const uint32_t caps = g_node->peer_caps(&g_node->peers().slot(i));
+                    xSemaphoreGive(g_mutex);
+                    if (pl.state == PeerState::Free) continue;
+                    std::printf("%s{\"id\":%u,\"period_ms\":%u,\"misses\":%u,\"busy\":%d}", first_peer ? "" : ",",
+                                static_cast<unsigned>(pl.node_id), static_cast<unsigned>(pl.hb_period_ms),
+                                static_cast<unsigned>(pl.miss_limit), (caps & kHelloCapBusy) ? 1 : 0);
+                    first_peer = false;
+                }
+            }
+            std::printf("]}\n");
             Node::SafeStateCounters sc{};
             Node::SafeStateFloor fl[Node::kSafeStateSources];
             xSemaphoreTake(g_mutex, portMAX_DELAY);
@@ -1442,6 +1461,22 @@ bool handle_test(const char* line, size_t len) {
                     static_cast<unsigned>(id));
         return true;
     }
+    unsigned period = 0, misses = 0, flag = 0;
+    if (std::sscanf(buf, "POT! window %u %u", &period, &misses) == 2) {
+        lock_node();
+        const bool ok = g_node->set_heartbeat_window(period, static_cast<uint8_t>(misses));
+        xSemaphoreGive(g_mutex);
+        std::printf("{\"t\":\"test\",\"cmd\":\"window\",\"period_ms\":%u,\"misses\":%u,\"ok\":%d}\n", period,
+                    misses, ok ? 1 : 0);
+        return true;
+    }
+    if (std::sscanf(buf, "POT! busy %u", &flag) == 1) {
+        lock_node();
+        g_node->set_busy(flag != 0);
+        xSemaphoreGive(g_mutex);
+        std::printf("{\"t\":\"test\",\"cmd\":\"busy\",\"busy\":%u}\n", flag != 0 ? 1u : 0u);
+        return true;
+    }
     unsigned reason = 0;
     if (std::sscanf(buf, "POT! safe %u", &reason) == 1) {
         lock_node();
@@ -1562,7 +1597,7 @@ void start_console(BaseType_t core) {
 #if CONFIG_POT_SELFTEST
 extern "C" int pot_selftest_run(void);
 #endif
-#if CONFIG_POT_CRYPTO_BENCH
+#if CONFIG_POT_CRYPTO_BENCH || CONFIG_POT_MEM_BENCH
 #include "crypto_bench.hpp"
 #endif
 
@@ -1738,6 +1773,9 @@ extern "C" void app_main(void) {
     // §7.4: decide which slot this boot runs, persist the trial count, apply the actors -- all
     // before any task starts, so the first heartbeat already comes from the deployed behaviour.
     deploy_rt::boot(cfg.node_id);
+#if CONFIG_POT_MEM_BENCH
+    pot_mem_bench_run();  // with the radio already up, so internal RAM is what the node really has
+#endif
     trust_rt::boot(cfg.node_id, espnow_up());
     trust_rt::g_id_boot = trust_rt::g_id;
     trust_rt::load_floors();
