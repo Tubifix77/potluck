@@ -163,6 +163,7 @@ class Node {
     // counted and logged as a peer_refused event. With no identity the node behaves as before M5.
     void set_trust(const Identity* id, bool require);
     bool trust_required() const { return trust_ != nullptr && require_auth_; }
+    bool trust_enrolled() const { return trust_ != nullptr && trust_->enrolled; }
 
     struct PeerAuth {
         bool verified;

@@ -1128,6 +1128,30 @@ void stats_task(void*) {
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         m4::print_stats();
         xSemaphoreGive(g_mutex);
+#else
+        {
+            // M5: who this node has verified, and what the checking cost.
+            Node::AuthCounters ac{};
+            unsigned verified_peers = 0;
+            xSemaphoreTake(g_mutex, portMAX_DELAY);
+            ac = g_node->auth_counters();
+            for (size_t i = 0; i < kMaxPeers; ++i) {
+                const PeerLink& pl = g_node->peers().slot(i);
+                if (pl.state == PeerState::Free) continue;
+                const Node::PeerAuth* pa = g_node->peer_auth(&pl);
+                if (pa != nullptr && pa->verified) ++verified_peers;
+            }
+            const bool required = g_node->trust_required();
+            xSemaphoreGive(g_mutex);
+            std::printf("{\"t\":\"auth\",\"node\":%u,\"up_ms\":%u,\"enrolled\":%d,\"required\":%d,"
+                        "\"verified_peers\":%u,\"verified\":%u,\"cache_hits\":%u,\"refused\":%u,"
+                        "\"rate_limited\":%u,\"stale_epoch\":%u,\"verify_us_max\":%u}\n",
+                        static_cast<unsigned>(node_id), static_cast<unsigned>(now_ms_()),
+                        g_node->trust_enrolled() ? 1 : 0, required ? 1 : 0, verified_peers,
+                        static_cast<unsigned>(ac.verified), static_cast<unsigned>(ac.cache_hits),
+                        static_cast<unsigned>(ac.refused), static_cast<unsigned>(ac.rate_limited),
+                        static_cast<unsigned>(ac.stale_epoch), static_cast<unsigned>(ac.verify_us_max));
+        }
 #endif
         NodeCounters counters;
         size_t alive = 0, dead = 0;
@@ -1174,6 +1198,10 @@ void stats_task(void*) {
 namespace trust_rt {
 
 Identity g_id;
+// What the node runs on: a copy taken once at boot. The console may enrol the board while it runs;
+// that is saved and takes effect at the next boot, so the link task never reads a half-written
+// identity from another core.
+Identity g_id_boot;
 uint16_t g_node_id = 0;
 StaticTask_t g_console_tcb;
 // 4 KB: an Ed25519 verify measured 2.3 KB of stack on this board (M0-LOG session 21), and every
@@ -1223,7 +1251,7 @@ void handle(const char* line, size_t len) {
             if (e == CertError::Ok) {
                 if (trust_save(next)) {
                     g_id = next;
-                    ESP_LOGI(kTag, "identity: enrolled");
+                    ESP_LOGI(kTag, "identity: enrolled; takes effect at the next boot");
                 } else {
                     result = "save_failed";
                 }
@@ -1362,6 +1390,12 @@ extern "C" void app_main(void) {
 #if CONFIG_POT_CAN
     cfg.admit_on_beacon = true;  // a CAN bus carries no HELLO (§5.3.1)
 #endif
+#if CONFIG_POT_SERIAL_LINK
+    // M5: the host reaches this board over a cable plugged into it, so its HELLO is admitted
+    // unsigned. Deploys over that cable still need a signed package.
+    cfg.has_trusted_mac = true;
+    std::memcpy(cfg.trusted_mac, kHostMac, kMacLen);
+#endif
     // Polarity is "opt in to the bad one", because the knob is a plain bool rather than the Kconfig
     // `choice` it wants to be — a choice member cannot be set from an sdkconfig.defaults overlay and
     // fails *silently*, which for a knob whose only purpose is a scripted A/B measurement would mean
@@ -1439,6 +1473,16 @@ extern "C" void app_main(void) {
     // before any task starts, so the first heartbeat already comes from the deployed behaviour.
     deploy_rt::boot(cfg.node_id);
     trust_rt::boot(cfg.node_id, espnow_up());
+    trust_rt::g_id_boot = trust_rt::g_id;
+#if !CONFIG_POT_CAN
+#if CONFIG_POT_REQUIRE_AUTH
+    g_node->set_trust(&trust_rt::g_id_boot, true);
+#else
+    g_node->set_trust(&trust_rt::g_id_boot, false);
+#endif
+    ESP_LOGI(kTag, "auth: %s, %s", trust_rt::g_id_boot.enrolled ? "enrolled" : "NOT enrolled",
+             g_node->trust_required() ? "required" : "not required");
+#endif
 #if CONFIG_POT_CAN
     {
         CanPortConfig cc;
