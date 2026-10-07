@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xc67a0 bytes. Smallest app partition is 0x100000 bytes. 0x39860 bytes (22%) free.
+potluck_m0.bin binary size 0xc67d0 bytes. Smallest app partition is 0x100000 bytes. 0x39830 bytes (22%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -31,9 +31,9 @@ Executing "ninja size"...
 
 ├─────────────────────┼──────────────┼──────────┼────────────────┼───────────────┤
 
-│ Flash Code          │       584300 │          │                │               │
+│ Flash Code          │       584304 │          │                │               │
 
-│    .text            │       584300 │          │                │               │
+│    .text            │       584304 │          │                │               │
 
 │ DIRAM               │       142228 │    41.62 │         199532 │        341760 │
 
@@ -43,9 +43,13 @@ Executing "ninja size"...
 
 │    .data            │        21497 │     6.29 │                │               │
 
-│ Flash Data          │       123788 │          │                │               │
+Total image size: 812884 bytes (.bin may be padded larger)
 
-│    .rodata          │       123516 │          │                │               │
+Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
+
+│ Flash Data          │       123820 │          │                │               │
+
+│    .rodata          │       123548 │          │                │               │
 
 │    .appdesc         │          256 │          │                │               │
 
@@ -70,8 +74,4 @@ Executing "ninja size"...
 │    .rtc_reserved    │           24 │     0.29 │                │               │
 
 └─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
-
-Total image size: 812848 bytes (.bin may be padded larger)
-
-Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
 

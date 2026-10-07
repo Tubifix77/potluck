@@ -1,0 +1,23 @@
+[00:44:52] partition: isolate 0x8160
+[00:45:02] heal
+cycle 0: partition: isolate 0x8160: served by another node 0.552 s later
+cycle 0: Good reads carrying 0x8160's value from 1 s after the start to the end: 0
+    +0.537 0x7368 actor_owner    node 0x0000 b=0
+    +0.553 0x6300 actor_owner    node 0x0000 b=0
+    +0.553 0x6300 actor_started  node 0x6300 b=13
+    +0.553 0x6300 actor_owner    node 0x6300 b=13
+    +0.557 0x7368 actor_owner    node 0x6300 b=13
+   +10.379 0x8160 actor_owner    node 0x6300 b=13
+   +10.379 0x8160 actor_stopped  node 0x8160 b=1
+   +10.384 0x6300 actor_stopped  node 0x6300 b=2
+   +10.384 0x6300 actor_owner    node 0x0000 b=0
+   +10.387 0x8160 actor_owner    node 0x0000 b=0
+   +10.387 0x8160 actor_started  node 0x8160 b=14
+   +10.387 0x8160 actor_owner    node 0x8160 b=14
+   +10.389 0x7368 actor_owner    node 0x0000 b=0
+   +10.391 0x7368 actor_owner    node 0x8160 b=14
+   +10.392 0x6300 actor_owner    node 0x8160 b=14
+running intervals per board, s from the partition: 0x6300 +0.55..+10.38; 0x8160 +10.39..+46.65
+starts: 2; started while accepting another node's live claim: 0
+consumers that accepted a lower term than one they had accepted: 0
+reads: 702, Good 698, timeouts 0

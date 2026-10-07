@@ -3624,3 +3624,88 @@ survive reflashing). Restoring it is: `esptool erase-flash` on B (wipes them), P
 clean `ff61f66`, and B re-enrolled with a fresh key. All three verify both others. The erase reset B's
 deploy state (no module, floor 0); A and C keep counter 4.
 
+## Session 26 — 2026-10-07/08, M6: the reconciler, on three boards
+
+**Memory first, as the handover said.** Section 6's core was 63.6 KB of the 64 KB cap. The S3 build now
+enables PSRAM (`sdkconfig.defaults.esp32s3`), and buffers move there by a rule, not by size: only tasks
+touch them, at the host cable's speed -- the serial frame link's ring, reassembler and scratch, the
+stats line, the deploy image buffer, and the reconciler. Nothing an ISR touches and no task stack: with
+the flash cache off during a flash write PSRAM is off too (ESP-IDF external-ram guide), which only tasks
+are guaranteed to survive. Flash writes *from* a PSRAM buffer are safe because `esp_flash_write` copies
+through an internal bounce buffer when the source is not in DRAM (`esp_flash_api.c`, read in the local
+v6.0.2 tree). Result: **internal core 63.6 -> 49.4 KB**, 14.6 KB of headroom. The BSS option also moved
+part of ESP-IDF's own Wi-Fi state (net80211, wpa_supplicant) to PSRAM -- supported, and nothing on the
+bench changed (link stack margin 1,680 B as before, every peer verified, no deaths outside the kills).
+The cost, stated in the defaults file: with BSS in PSRAM, an S3 without PSRAM aborts at boot. A
+`CONFIG_SPIRAM=n` build is still built and still fits (63.6 KB): `CONFIG_POT_RECONCILER` then compiles
+out, and the node joins the cell but refuses an image with a portable actor.
+
+**The design** (`components/pot_reconcile`, section 7.7), through the zero-assumption contract:
+
+- *assign()* is a pure function of the actor and the live view: the eligible live node with the highest
+  data gravity, ties broken by rendezvous hashing -- Thaler and Ravishankar's HRW, which "always maps a
+  given object name to the same server within a given cluster". The weight is MurmurHash3's fmix32
+  finaliser applied twice (public domain, read from the smhasher source). The host has a bit-exact twin
+  (`potluck.reconcile`), held to the node's by a golden vector both suites assert.
+- *Claims*: a node running a portable actor sends its whole claim set, with a term per actor, to every
+  peer -- on every change, and round-robin every 250 ms as a refresh. They ride an authenticated unicast
+  CAST to a reserved hash, so no new opcode and no new trust path: section 9.3's per-pair tags cover
+  them. A claim lives exactly as long as its sender's membership.
+- *Fencing*: consumers take a portable actor's values only from the highest (term, node) live claim --
+  Kleppmann's fencing token, "a number that increases ... every time a client acquires the lock".
+  `Namespace::set_owner` moves the resource and drops the cached value; `Node::handle_reply` refuses a
+  value from a node that no longer owns the resource (`replies_fenced`).
+- *Handover*: when assign() names another node that is alive, settled and not itself running the
+  actor, the holder stops and withdraws its claim; the named node starts under a fresh term.
+- *Portability is derived* (host): not pinned, class L3 or looser, binds nothing below L3 and nothing
+  writable -- ADR-006's "actuator-owning actors are never portable".
+- The actor is `builtin:ticker` (ADR-003 Tier 0): it publishes `node_id << 16 | count` every 100 ms,
+  the count restarting at each activation, so a reader sees which instance answered and that it is fresh.
+
+**Host tests found two bugs before the boards did.** (1) A peer declared dead and heard again in the same
+incarnation (a partition healing) kept its pre-partition claims. (2) With a 3 ms channel latency in the
+test cell, a holder handed over to a node *still running the losing instance*, so consumers briefly
+accepted the older term. Both fixed. Mutation checks: removing the fence-stop, the stale-handover guard,
+or settling are each caught; **removing the claim-clearing of (1) is not** -- the guard of (2) now covers
+its only observed effect, so it stays as a defensive measure with no test that kills it. And the first
+version of the test cell delivered instantly, which let settling be deleted without a failure; the
+latency was added for that reason.
+
+**The boards found the third.** Run 1 (`207751e`): in 2 of 3 returns, board C started the ticker 2.3 s
+after reboot while A was running it -- fenced and handed back 7 ms after it admitted its peers, but two
+instances ran for about 1.5 s. Cause: "settled when every live peer has been heard from" is vacuously
+true when nobody has been admitted yet, and on the boards a signed HELLO takes 2-3.5 s to arrive and
+verify after a reboot. The simulator admits instantly and never showed it. **Fix (`02926e8`): a node
+waits for the nodes the image lists as eligible** -- desired state, known before anyone answers -- or
+6 s (three HELLO intervals) for one that never does. A new test delays admission by 3.5 s; it fails on
+the old rule.
+
+**Measurement fix, also mine.** The bench tool first placed board events on the host clock from stats
+lines that leave after up to ~3 KB of console output, and stamped lines when a 4 KB read returned --
+up to 0.2 s late. The firmware now prints a `{"t":"clk"}` line first in each stats period; the reader
+returns per byte. Spread of the clock samples afterwards: 5.0 ms. Starts are also checked causally, on
+the starter's own clock: it may start only when the last owner it accepted is nobody.
+
+**The acceptance runs** (`tools/m6_bench.py`, all three boards on `fd1478d`, package `m6-ticker` at
+counter 5 on all three, reading `potluck://lab/act/ticker/out` through A's cable at 10 Hz; "kill" is the
+running board's EN held low by its console's RTS line, as esptool does):
+
+| | result |
+|---|---|
+| kill the runner (C) -> reads served by another node | **0.46-0.69 s** over 15 kills (`207751e` x3, `02926e8` x4, `fd1478d` x5 + x3 -- the last eight after both fixes) |
+| Good reads carrying the dead node's value, 1 s after the kill | **0** in every cycle |
+| the killed node returns | handover in every one of 8 returns on `fd1478d`: A stops, C starts 3-6 ms later (clock spread 5 ms); **0** starts while accepting another node's live claim |
+| partition: C isolated by `POT! deaf` on all three, both directions, 10 s | A started its own instance 0.55 s in (duplication, as section 7.7 states) |
+| heal | **duplication ended 0.38 s after the heal**: C heard A's higher term and stopped (fenced), then A handed back to C under a fresh term |
+| consumers accepting a lower term than one already accepted | **0** (A and B: 13 -> none -> 14; C's losing term 12 never accepted) |
+| reads | 2,081 + 1,394 + 702, no timeouts; the non-Good ones are the death windows |
+
+**M6 is accepted on that evidence, with three caveats recorded rather than waived:** "kill" is a chip
+held in reset, not power removed (as in M5); the partition is the console instrument, symmetric and
+clean, not RF; and it is one portable actor on three boards, with A as the only consumer the host reads
+through (B's and C's acceptance is in their own events). Evidence: `captures/m6-failover-fd1478d*`,
+`captures/m6-partition-fd1478d*`, and the earlier runs that found the bug.
+
+**Bench now:** all three on `fd1478d` (PSRAM build), enrolled, cell on channel 1, package `m6-ticker`
+confirmed at **counter 5 on all three** -- B's floor caught up through the distributed deploy. The
+next package must be counter 6+.

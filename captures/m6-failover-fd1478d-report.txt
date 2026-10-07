@@ -1,0 +1,95 @@
+[00:40:50] kill 0x8160 (reset held)
+[00:41:00] release 0x8160
+[00:41:25] kill 0x8160 (reset held)
+[00:41:35] release 0x8160
+[00:42:00] kill 0x8160 (reset held)
+[00:42:10] release 0x8160
+[00:42:35] kill 0x8160 (reset held)
+[00:42:45] release 0x8160
+[00:43:10] kill 0x8160 (reset held)
+[00:43:20] release 0x8160
+cycle 0: kill 0x8160 (reset held): served by another node 0.674 s later
+cycle 0: Good reads carrying 0x8160's value from 1 s after the start to the end: 0
+cycle 1: kill 0x8160 (reset held): served by another node 0.657 s later
+cycle 1: Good reads carrying 0x8160's value from 1 s after the start to the end: 0
+cycle 2: kill 0x8160 (reset held): served by another node 0.457 s later
+cycle 2: Good reads carrying 0x8160's value from 1 s after the start to the end: 0
+cycle 3: kill 0x8160 (reset held): served by another node 0.573 s later
+cycle 3: Good reads carrying 0x8160's value from 1 s after the start to the end: 0
+cycle 4: kill 0x8160 (reset held): served by another node 0.485 s later
+cycle 4: Good reads carrying 0x8160's value from 1 s after the start to the end: 0
+    +0.973 0x7368 actor_owner    node 0x0000 b=0
+    +0.989 0x6300 actor_owner    node 0x0000 b=0
+    +0.989 0x6300 actor_started  node 0x6300 b=3
+    +0.989 0x6300 actor_owner    node 0x6300 b=3
+    +1.037 0x7368 actor_owner    node 0x6300 b=3
+   +15.130 0x6300 actor_stopped  node 0x6300 b=2
+   +15.130 0x6300 actor_owner    node 0x0000 b=0
+   +15.131 0x8160 actor_owner    node 0x6300 b=3
+   +15.135 0x7368 actor_owner    node 0x0000 b=0
+   +15.137 0x7368 actor_owner    node 0x8160 b=4
+   +15.139 0x6300 actor_owner    node 0x8160 b=4
+   +15.140 0x8160 actor_owner    node 0x0000 b=0
+   +15.140 0x8160 actor_started  node 0x8160 b=4
+   +15.140 0x8160 actor_owner    node 0x8160 b=4
+   +35.973 0x7368 actor_owner    node 0x0000 b=0
+   +35.988 0x6300 actor_owner    node 0x0000 b=0
+   +35.988 0x6300 actor_started  node 0x6300 b=5
+   +35.988 0x6300 actor_owner    node 0x6300 b=5
+   +36.050 0x7368 actor_owner    node 0x6300 b=5
+   +48.379 0x8160 actor_owner    node 0x6300 b=5
+   +50.576 0x6300 actor_stopped  node 0x6300 b=2
+   +50.576 0x6300 actor_owner    node 0x0000 b=0
+   +50.581 0x7368 actor_owner    node 0x0000 b=0
+   +50.583 0x6300 actor_owner    node 0x8160 b=6
+   +50.583 0x8160 actor_owner    node 0x0000 b=0
+   +50.583 0x8160 actor_started  node 0x8160 b=6
+   +50.583 0x8160 actor_owner    node 0x8160 b=6
+   +50.584 0x7368 actor_owner    node 0x8160 b=6
+   +70.871 0x7368 actor_owner    node 0x0000 b=0
+   +70.888 0x6300 actor_owner    node 0x0000 b=0
+   +70.888 0x6300 actor_started  node 0x6300 b=7
+   +70.888 0x6300 actor_owner    node 0x6300 b=7
+   +70.893 0x7368 actor_owner    node 0x6300 b=7
+   +85.275 0x8160 actor_owner    node 0x6300 b=7
+   +85.277 0x6300 actor_stopped  node 0x6300 b=2
+   +85.277 0x6300 actor_owner    node 0x0000 b=0
+   +85.282 0x7368 actor_owner    node 0x0000 b=0
+   +85.283 0x8160 actor_owner    node 0x0000 b=0
+   +85.283 0x8160 actor_started  node 0x8160 b=8
+   +85.283 0x8160 actor_owner    node 0x8160 b=8
+   +85.284 0x7368 actor_owner    node 0x8160 b=8
+   +85.287 0x6300 actor_owner    node 0x8160 b=8
+  +105.973 0x7368 actor_owner    node 0x0000 b=0
+  +105.988 0x6300 actor_owner    node 0x0000 b=0
+  +105.988 0x6300 actor_started  node 0x6300 b=9
+  +105.988 0x6300 actor_owner    node 0x6300 b=9
+  +106.064 0x7368 actor_owner    node 0x6300 b=9
+  +118.385 0x8160 actor_owner    node 0x6300 b=9
+  +120.484 0x6300 actor_stopped  node 0x6300 b=2
+  +120.484 0x6300 actor_owner    node 0x0000 b=0
+  +120.488 0x7368 actor_owner    node 0x0000 b=0
+  +120.489 0x8160 actor_owner    node 0x0000 b=0
+  +120.489 0x8160 actor_started  node 0x8160 b=10
+  +120.489 0x8160 actor_owner    node 0x8160 b=10
+  +120.491 0x6300 actor_owner    node 0x8160 b=10
+  +120.492 0x7368 actor_owner    node 0x8160 b=10
+  +140.871 0x7368 actor_owner    node 0x0000 b=0
+  +140.888 0x6300 actor_owner    node 0x0000 b=0
+  +140.888 0x6300 actor_started  node 0x6300 b=11
+  +140.888 0x6300 actor_owner    node 0x6300 b=11
+  +140.892 0x7368 actor_owner    node 0x6300 b=11
+  +155.230 0x8160 actor_owner    node 0x6300 b=11
+  +155.234 0x6300 actor_stopped  node 0x6300 b=2
+  +155.234 0x6300 actor_owner    node 0x0000 b=0
+  +155.238 0x8160 actor_owner    node 0x0000 b=0
+  +155.238 0x8160 actor_started  node 0x8160 b=12
+  +155.238 0x8160 actor_owner    node 0x8160 b=12
+  +155.238 0x7368 actor_owner    node 0x0000 b=0
+  +155.240 0x7368 actor_owner    node 0x8160 b=12
+  +155.242 0x6300 actor_owner    node 0x8160 b=12
+running intervals overlapping, across board clocks mapped to the host's: 0
+  (clock mapping: worst spread of a board's clk samples 11.6 ms)
+starts: 10; started while accepting another node's live claim: 0
+consumers that accepted a lower term than one they had accepted: 0
+reads: 2081, Good 2066, timeouts 0

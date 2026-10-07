@@ -76,7 +76,9 @@ class Console:
         buf = b""
         while not self.stop:
             try:
-                chunk = self.s.read(4096)
+                # As soon as anything is there: read(4096) would wait out its timeout for a full
+                # buffer and stamp a line up to 0.2 s late -- which is the clock mapping's error.
+                chunk = self.s.read(max(1, self.s.in_waiting))
             except serial.SerialException:
                 time.sleep(0.05)
                 continue

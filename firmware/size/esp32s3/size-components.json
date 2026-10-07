@@ -546,15 +546,15 @@
     },
     "esp-idf/esp_stdio/libesp_stdio.a": {
         "abbrev_name": "libesp_stdio.a",
-        "size": 63855,
+        "size": 63889,
         "size_diff": 0,
         "memory_types": {
             "Flash Data": {
-                "size": 63445,
+                "size": 63479,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 63445,
+                        "size": 63479,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -655,7 +655,7 @@
     },
     "esp-idf/main/libmain.a": {
         "abbrev_name": "libmain.a",
-        "size": 48080,
+        "size": 48104,
         "size_diff": 0,
         "memory_types": {
             "DIRAM": {
@@ -680,11 +680,11 @@
                 }
             },
             "Flash Code": {
-                "size": 11130,
+                "size": 11154,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 11130,
+                        "size": 11154,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -3816,15 +3816,15 @@
     },
     "esp-idf/pot_reconcile/libpot_reconcile.a": {
         "abbrev_name": "libpot_reconcile.a",
-        "size": 2691,
+        "size": 2673,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 2667,
+                "size": 2649,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 2667,
+                        "size": 2649,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }

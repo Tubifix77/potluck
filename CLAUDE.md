@@ -12,7 +12,7 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07.** M3: deploy to the cell through one board,
+**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07; M6 on 2026-10-08.** M3: deploy to the cell through one board,
 detach and power-cycle, and a broken module that all three nodes revert themselves (M0-LOG session 18). M2: a 10.05-minute three-board session over COM6
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
@@ -33,11 +33,22 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## HANDOVER, 2026-10-07 (late): M5 accepted, M5.1 complete except a 24 h streaming soak. NEXT: M6.
+> ## HANDOVER, 2026-10-08: M6 ACCEPTED on three boards (M0-LOG session 26). NEXT: M8.
 >
-> M6 (reconciler) is next in ARCHITECTURE section 13. Static DRAM is 63.6 KB of 64 KB, so M6 must start by deciding
-> what goes in PSRAM (the `psram` variant is measured: 11-31 MiB/s). Read M0-LOG sessions 21-25 first.
-> Design decisions go through the zero-assumption contract (memory: zero-assumption-for-design).
+> M7 stays gated (no named workload needs WASM). M8 (host services, `potluck-agent`) was gated on M5 only, so it is
+> next in section 13. Open soaks, not blocking: M5.1's 24 h streaming soak and the relay's 24 h soak.
+>
+> - **The bench now:** all three on **`fd1478d`**, which is the **PSRAM build** (`sdkconfig.defaults.esp32s3`
+>   enables it; an S3 without PSRAM needs `CONFIG_SPIRAM=n`, which compiles the reconciler out). Enrolled, cell on
+>   channel 1. Package **`m6-ticker` confirmed at counter 5 on all three** -- the next package must be **counter 6+**.
+> - **M6 tooling:** `components/pot_reconcile` (node), `potluck.reconcile` (host: portability, eligibility,
+>   gravity, the same HRW), `manifests/m6-ticker.json`, `tools/m6_bench.py failover|partition|analyze` (IDF
+>   Python; consoles at **115200**, the COM6 frame link at **921600**). Stats lines `rec` (per actor) and `clk`
+>   (board clock, printed first each period); events `actor_started`/`actor_stopped`/`actor_owner`.
+> - **Internal core 49.4 KB of 64 KB** (14.6 KB headroom) since buffers that only tasks touch moved to PSRAM.
+> - Design decisions go through the zero-assumption contract (memory: zero-assumption-for-design).
+>
+> ## HANDOVER, 2026-10-07 (late): M5 accepted, M5.1 complete except a 24 h streaming soak. (Was: NEXT: M6.)
 >
 > ## M5 ACCEPTED (handover, 2026-10-07)
 >
