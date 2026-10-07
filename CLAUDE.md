@@ -35,6 +35,14 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## 2026-10-08, later: M6.1 SCHEDULED (CR-6, "the application owns the radio"), ARCHITECTURE section 13. In progress.
+>
+> Run exactly as CR-6's "How to run CR-6" says, step 0 first. Step 0 firmware is built in the extender repo (its
+> git-ignored `firmware/build/`; 0 warnings, 824,272 B). **Board B is still Potluck (`fd1478d`, enrolled) until the
+> owner erases and flashes it** -- the erase was declined by the permission system, so the owner runs it. The owner
+> types every credential at `pme>` in their own monitor; captures start only after that monitor is closed (the REPL
+> echoes what is typed). Never patch `pme_hotspot`: report bugs to the owner.
+>
 > ## HANDOVER, 2026-10-08: M6 ACCEPTED on three boards (M0-LOG session 26). PAUSED; when resumed, NEXT: M8.
 >
 > **Paused at the owner's request** after M6 was accepted and synced: the sibling project `poor-mans-extender`
