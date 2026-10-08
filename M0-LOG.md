@@ -3929,3 +3929,16 @@ over the CP2102 at 921,600 baud, 12 us of it on the host.
 `28eeb1a`, no credentials): 60 minutes, **0 transmit errors**, 0 resets, 0 peer deaths seen by B, 62,864
 frames sent; free internal heap 242 KB. The old configuration wedged within 2.5-5 minutes of every boot.
 An overnight soak of the whole cell on these builds was started from the session at 05:13.
+
+**The overnight soak** (`captures/soak-2026-10-08-night-*`, report alongside; A and C on `db91dc6`, B on the
+fixed extender build of `28eeb1a` without credentials; packages `m8-svc`, so the M6 ticker and the M8
+clock client ran throughout -- the clock degraded, as designed, since no host was attached). Run from the
+session as 2-hour blocks, not through `tools/soak.ps1`: that launcher creates Windows scheduled tasks,
+and persistent system configuration is not something to create while the owner is asleep. The harness
+ends a background command at 2 hours and asks that it not be restarted, so **2.00 hours is the whole
+run.** Inside it: **0 deaths, 0 revivals, 0 reboots on every board** (the report now separates the window
+from counters since boot); `free_dram` flat to the byte on all three; heartbeat delivery **99.73-99.94 %**
+in all six directions (the 24-hour M0 soak: 99.69-99.84 %); RTT p50 4-8 ms, p99 11-22 ms, p99.9 42-60 ms
+over 21,558 samples. **Open:** B's inbound unicast PDR computes to 97.39 % with zero sequence gaps -- a
+figure the report derives across boards, not yet understood; and B's 27 RX queue drops predate the window.
+
