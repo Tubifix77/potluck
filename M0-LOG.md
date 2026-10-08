@@ -4077,3 +4077,89 @@ the owner to restore the real credentials afterwards.
 
 **Bench at the end of the session:** A, C on `4eb4f74`; B on the extender build of `cfe62aa` with the
 owner's credentials (kept by the owner's choice). Cell on channel 1.
+
+## Session 31 — 2026-10-08 (evening), the owner's status review: M8.1 scheduled and built, M9 and M10 scheduled
+
+**What came in.** A status review from the owner: the foundation is built, but the two things the vision
+promises a user -- attached hardware in the namespace, and idle cores doing work -- are the least built,
+and writing an application still means editing `m0_main.cpp`. Three unlocks, in order. Corrections agreed
+before anything was written: borrowing a core does not need ADR-005 amended to be scheduled (section 7.8
+already carries work units as application messages), it is the experiment that tests ADR-005's revisit
+trigger; that trigger also asks to beat host offload, so the acceptance runs with no host attached; actors
+"written against an API" are still compiled in (runtime-loaded code stays M7's); the CoreMark figure was
+unregistered. **Scheduled (`a08642b`):** M8.1 (attached hardware + the actor API, next), M9 (ADR-005's
+trigger as an experiment; ADR-005 amended only on a pass, closed with numbers on a fail), M10 (the PC as a
+placement node; the reconciler keeps hosts out on purpose today, and the entry says what changes). Section
+0.1 records one owner, one application package per cluster as a third knowing narrowing. **CoreMark,**
+looked up: Espressif's ESP32-S3 datasheet v2.2 (2026-03-05) gives "Two cores at 240 MHz: 1329.92
+CoreMark; 5.54 CoreMark/MHz" and no single-core figure; the 613.86 / 1181.60 pair the owner quoted is the
+pre-v2.0 figure ("Updated the CoreMark score", v2.0, 2025-04-24), still on distributor pages. Both
+registered; the current one is used.
+
+**M8.1 step 1, the actor API (`4178cad`, `774d4a9`).** `pot/actor.hpp`: an `Actor` (start, tick, CALL
+results, console test instruments, its own stats line) and an `ActorRuntime` that validates a node's pinned
+actors all-or-nothing against **one registration table** (`main/actor_table.cpp`), copies their configs out
+of the image buffer, and drives every instance the same way. Portable types add a placement hook, and the
+reconciler builds a fresh instance per activation through the same table and ticks it only while this node
+is the output's fenced owner (M6's behaviour, all its tests unchanged). The four built-ins moved onto it --
+the port being the API's test -- and `m0_main.cpp` now names no actor type at all. On the bench (A, C on
+`774d4a9`, B extender): the ticker started on A, handed over to C (term 87) and published there; A's
+`svc_client` printed its own line through the API.
+
+**M8.1 step 2, a real peripheral (`0c6ee51`).** `DieTempActor` publishes ESP-IDF's `temperature_sensor`
+reading (range -10..80 degC, the S3 table's error-1 range) as an f32 in Celsius to
+`potluck://<system>/node-<id>/hw/die_temp`, L4, stale after three periods. The driver sits behind two
+calls, faked in four host tests; a failed read or open publishes `FAULTY` (new `publish_faulty`), never the
+old number; `POT! die_temp fail 1|0` forces it for the bench. `potluck.deploy` compiles
+`builtin:die_temp`; `manifests/m81-die.json` (package counter 7) puts one on each board.
+
+**Two gaps the bench found on the way, both fixed:**
+- *A pinned actor's output on another board was unreadable through this one* (`162a7bf`): a host on A's
+  cable read B's `hw/die_temp` as UNAVAILABLE -- reads are single-hop, A answers from a replica, and A
+  held entries only for its own resources, peers' `sys/*` and portable outputs. Pinned rows now carry an
+  output hook, and every node declares the outputs of actors pinned elsewhere from the image (which every
+  node holds) as replicas.
+- *FAULTY never crossed the network* (`85eb0a0`), a gap since M1: with B's sensor forced faulty, A
+  answered B's last good number, ageing into STALE. A REPLY with quality FAULTY carries no value, and
+  `handle_reply` dropped every valueless reply; the namespace's `faulty` flag on the remote path was
+  unreachable. A FAULTY reply from the current owner now marks the replica faulty, dated with the owner's
+  age. Regression test red before, green after.
+
+**M8.1's acceptance, on the bench** (`captures/m81-die-temp-via-A*`; A, C on `5fc239c`,
+B on the extender build), read with `potctl` on A's cable throughout:
+
+| on B | what A answered |
+|---|---|
+| normal | `44.5 C [GOOD, age ~1 s]`, B's own timestamp advancing each second |
+| `POT! die_temp fail 1` | `FAULTY` within 1 s, no number |
+| `POT! die_temp fail 0` | `GOOD` within 2 s |
+| held in its ROM bootloader (gone) | `UNAVAILABLE` within 1 s |
+| released | `STALE` with the old value's true age, then `GOOD` 8 s after release |
+
+Die temperatures A/B/C 46-47 / 44.5 / 41 degC. **Met:** the read across the cell with age and quality,
+UNAVAILABLE, FAULTY, the four built-ins on the API with no special case in `m0_main.cpp`, and the sensor
+actor added without touching `m0_main.cpp` (its only change in step 2 is the generic console hook every
+actor's test instrument goes through). **Not yet shown:** "the value moves when B is warmed or cooled" --
+it needs a hand on the chip.
+
+**Found, not solved: the extender sometimes rejoins on the house mesh's other channel.** Rebooting B
+repeatedly showed its station joining either of two access points of the house mesh: channel 1, where
+the cell is, or **channel 11** (3 of 6 boots in one run; 0 of 16 an hour later). On 11 the cell split:
+A and C made the one sweep CR-1's authority rule allowed while B was still booting, went home, and
+stopped looking; B on 11 saw nobody. That is a gap in `3d2333a`. **Built (`5fc239c`):** after a fruitless
+sweep, single-channel visits, each 300 ms (shorter than the death window, so the members at home never
+miss the visitor), every 2 s for the first pass over the band, each later pass half as often, down to one
+a minute; two simulated tests (found after a reboot onto another channel; looked for ever more rarely
+with no false death over 35 minutes), mutation-checked. **On the bench it did not fix it:** with B on 11,
+A still read B UNAVAILABLE for the whole 44 s of each of three runs (`captures/m81-rejoin.txt`), and B
+then stopped landing on 11, so the run that would show why has not happened. The difference from the
+retest the sweep passed (session 29) is that B *rebooted*: its new epoch makes A ignore its beacons until
+a signed HELLO is verified both ways, and whether that fits a 300 ms visit is the open question. A
+cheaper remedy sits on the extender's side, to report, not patch: its fast scan from the last channel
+applies only to reconnects within a boot, so persisting that channel would make a reboot prefer the
+access point the cell is on.
+
+**Bench at the end of the session:** A, C on `5fc239c` (stamped `-d`: the extender's size reports were
+uncommitted when they were built; the code is the commit's), B on the extender build of `d6a2245` (the
+same code and a size-report commit), owner's credentials as before. Package `m81-die` at counter 7 on all
+three (the next must be 8+). Cell on channel 1.

@@ -1,0 +1,6 @@
+reset 1: B's router channel [1], UNAVAILABLE reads 8, GOOD again after 7 s
+reset 2: B's router channel [11], UNAVAILABLE reads 80, GOOD again after NEVER (within 44 s)
+reset 3: B's router channel [11], UNAVAILABLE reads 85, GOOD again after NEVER (within 44 s)
+reset 4: B's router channel [11], UNAVAILABLE reads 84, GOOD again after NEVER (within 44 s)
+reset 5: B's router channel [1], UNAVAILABLE reads 13, GOOD again after 7 s
+reset 6: B's router channel [1], UNAVAILABLE reads 9, GOOD again after 7 s

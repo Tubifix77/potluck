@@ -1,0 +1,142 @@
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 181 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 181, death window 100 ms x 6 = 600 ms
+19:02:44  45.5 C  [STALE, age 536400 ms, ts 43854, class L4]
+19:02:45  45.5 C  [GOOD, age 1044 ms, ts 179847, class L4]
+19:02:45  45.5 C  [GOOD, age 628 ms, ts 180847, class L4]
+19:02:46  45.5 C  [GOOD, age 1200 ms, ts 180847, class L4]
+19:02:46  45.5 C  [GOOD, age 752 ms, ts 181849, class L4]
+19:02:47  45.5 C  [GOOD, age 1318 ms, ts 181849, class L4]
+19:02:48  45.5 C  [GOOD, age 899 ms, ts 182849, class L4]
+19:02:48  45.5 C  [GOOD, age 1458 ms, ts 182849, class L4]
+19:02:49  45.5 C  [GOOD, age 1019 ms, ts 183849, class L4]
+19:02:49  45.5 C  [GOOD, age 578 ms, ts 184849, class L4]
+19:02:50  45.5 C  [GOOD, age 1177 ms, ts 184849, class L4]
+19:02:50  45.5 C  [GOOD, age 746 ms, ts 185849, class L4]
+19:02:51  45.5 C  [GOOD, age 1300 ms, ts 185849, class L4]
+19:02:52  45.5 C  [GOOD, age 899 ms, ts 186849, class L4]
+19:02:52  45.5 C  [GOOD, age 1457 ms, ts 186849, class L4]
+19:02:53  45.5 C  [GOOD, age 1019 ms, ts 187850, class L4]
+19:02:53  45.5 C  [GOOD, age 629 ms, ts 188850, class L4]
+19:02:54  45.5 C  [GOOD, age 1202 ms, ts 188850, class L4]
+19:02:54  45.5 C  [GOOD, age 745 ms, ts 189861, class L4]
+19:02:55  45.5 C  [GOOD, age 1346 ms, ts 189861, class L4]
+19:02:56  45.5 C  [GOOD, age 990 ms, ts 190861, class L4]
+19:02:56  45.5 C  [GOOD, age 1546 ms, ts 190861, class L4]
+19:02:57  45.5 C  [GOOD, age 1100 ms, ts 191871, class L4]
+19:02:57  FAULTY (age 657 ms, class L4)
+19:02:58  FAULTY (age 1259 ms, class L4)
+19:02:59  FAULTY (age 821 ms, class L4)
+19:02:59  FAULTY (age 1382 ms, class L4)
+19:03:00  FAULTY (age 981 ms, class L4)
+19:03:00  FAULTY (age 1536 ms, class L4)
+19:03:01  FAULTY (age 1101 ms, class L4)
+19:03:01  FAULTY (age 656 ms, class L4)
+19:03:02  FAULTY (age 1244 ms, class L4)
+19:03:03  FAULTY (age 800 ms, class L4)
+19:03:03  FAULTY (age 1359 ms, class L4)
+19:03:04  FAULTY (age 918 ms, class L4)
+19:03:04  FAULTY (age 1517 ms, class L4)
+19:03:05  FAULTY (age 1079 ms, class L4)
+19:03:05  FAULTY (age 633 ms, class L4)
+19:03:06  FAULTY (age 1199 ms, class L4)
+19:03:06  FAULTY (age 780 ms, class L4)
+19:03:07  FAULTY (age 1333 ms, class L4)
+19:03:08  FAULTY (age 978 ms, class L4)
+19:03:08  FAULTY (age 1533 ms, class L4)
+19:03:09  FAULTY (age 1100 ms, class L4)
+19:03:09  FAULTY (age 699 ms, class L4)
+19:03:10  FAULTY (age 1259 ms, class L4)
+19:03:11  45.5 C  [GOOD, age 818 ms, ts 205874, class L4]
+19:03:11  45.5 C  [GOOD, age 1380 ms, ts 205874, class L4]
+19:03:12  45.5 C  [GOOD, age 982 ms, ts 206874, class L4]
+19:03:12  45.5 C  [GOOD, age 1538 ms, ts 206874, class L4]
+19:03:13  45.5 C  [GOOD, age 1110 ms, ts 207874, class L4]
+19:03:13  45.5 C  [GOOD, age 710 ms, ts 208874, class L4]
+19:03:14  45.5 C  [GOOD, age 1281 ms, ts 208874, class L4]
+19:03:15  45.5 C  [GOOD, age 889 ms, ts 209874, class L4]
+19:03:15  45.5 C  [GOOD, age 1442 ms, ts 209874, class L4]
+19:03:16  45.5 C  [GOOD, age 998 ms, ts 210874, class L4]
+19:03:16  45.5 C  [GOOD, age 564 ms, ts 211874, class L4]
+19:03:17  45.5 C  [GOOD, age 1151 ms, ts 211874, class L4]
+19:03:17  45.5 C  [GOOD, age 718 ms, ts 212874, class L4]
+19:03:18  45.5 C  [GOOD, age 1283 ms, ts 212874, class L4]
+19:03:19  45.5 C  [GOOD, age 880 ms, ts 213874, class L4]
+19:03:19  45.5 C  [GOOD, age 1443 ms, ts 213874, class L4]
+19:03:20  45.5 C  [GOOD, age 998 ms, ts 214874, class L4]
+19:03:20  45.5 C  [GOOD, age 565 ms, ts 215875, class L4]
+19:03:21  45.5 C  [GOOD, age 1164 ms, ts 215875, class L4]
+19:03:21  45.5 C  [GOOD, age 710 ms, ts 216886, class L4]
+19:03:22  45.5 C  [GOOD, age 1273 ms, ts 216886, class L4]
+19:03:23  45.5 C  [GOOD, age 883 ms, ts 217886, class L4]
+19:03:23  UNAVAILABLE (age 1463 ms, class L4)
+19:03:24  UNAVAILABLE (age 2162 ms, class L4)
+19:03:24  UNAVAILABLE (age 2760 ms, class L4)
+19:03:25  UNAVAILABLE (age 3369 ms, class L4)
+19:03:26  UNAVAILABLE (age 3979 ms, class L4)
+19:03:26  UNAVAILABLE (age 4588 ms, class L4)
+19:03:27  UNAVAILABLE (age 5160 ms, class L4)
+19:03:27  UNAVAILABLE (age 5740 ms, class L4)
+19:03:28  UNAVAILABLE (age 6310 ms, class L4)
+19:03:29  UNAVAILABLE (age 6865 ms, class L4)
+19:03:29  UNAVAILABLE (age 7466 ms, class L4)
+19:03:30  UNAVAILABLE (age 8021 ms, class L4)
+19:03:30  UNAVAILABLE (age 8602 ms, class L4)
+19:03:31  UNAVAILABLE (age 9193 ms, class L4)
+19:03:31  UNAVAILABLE (age 9763 ms, class L4)
+19:03:32  UNAVAILABLE (age 10406 ms, class L4)
+19:03:33  UNAVAILABLE (age 10961 ms, class L4)
+19:03:33  UNAVAILABLE (age 11521 ms, class L4)
+19:03:34  UNAVAILABLE (age 12111 ms, class L4)
+19:03:34  UNAVAILABLE (age 12671 ms, class L4)
+19:03:35  UNAVAILABLE (age 13242 ms, class L4)
+19:03:36  UNAVAILABLE (age 13841 ms, class L4)
+19:03:36  UNAVAILABLE (age 14398 ms, class L4)
+19:03:37  UNAVAILABLE (age 14965 ms, class L4)
+19:03:37  UNAVAILABLE (age 15566 ms, class L4)
+19:03:38  UNAVAILABLE (age 16121 ms, class L4)
+19:03:38  UNAVAILABLE (age 16695 ms, class L4)
+19:03:39  UNAVAILABLE (age 17311 ms, class L4)
+19:03:40  UNAVAILABLE (age 17871 ms, class L4)
+19:03:40  UNAVAILABLE (age 18442 ms, class L4)
+19:03:41  UNAVAILABLE (age 19047 ms, class L4)
+19:03:41  UNAVAILABLE (age 19611 ms, class L4)
+19:03:42  UNAVAILABLE (age 20171 ms, class L4)
+19:03:42  UNAVAILABLE (age 20763 ms, class L4)
+19:03:43  UNAVAILABLE (age 21321 ms, class L4)
+19:03:44  UNAVAILABLE (age 21893 ms, class L4)
+19:03:44  UNAVAILABLE (age 22498 ms, class L4)
+19:03:45  UNAVAILABLE (age 23065 ms, class L4)
+19:03:45  45.5 C  [STALE, age 23621 ms, ts 217886, class L4]
+19:03:46  45.5 C  [STALE, age 24221 ms, ts 217886, class L4]
+19:03:47  45.5 C  [STALE, age 24779 ms, ts 217886, class L4]
+19:03:47  43.5 C  [GOOD, age 736 ms, ts 4821, class L4]
+19:03:48  43.5 C  [GOOD, age 1294 ms, ts 4821, class L4]
+19:03:48  43.5 C  [GOOD, age 891 ms, ts 5823, class L4]
+19:03:49  43.5 C  [GOOD, age 1456 ms, ts 5823, class L4]
+19:03:49  43.5 C  [GOOD, age 1013 ms, ts 6822, class L4]
+19:03:50  44.5 C  [GOOD, age 614 ms, ts 7823, class L4]
+19:03:51  44.5 C  [GOOD, age 1170 ms, ts 7823, class L4]
+19:03:51  43.5 C  [GOOD, age 736 ms, ts 8822, class L4]
+19:03:52  43.5 C  [GOOD, age 1292 ms, ts 8822, class L4]
+19:03:52  44.5 C  [GOOD, age 891 ms, ts 9823, class L4]
+19:03:53  44.5 C  [GOOD, age 1461 ms, ts 9823, class L4]
+19:03:53  43.5 C  [GOOD, age 1015 ms, ts 10831, class L4]
+19:03:54  44.5 C  [GOOD, age 595 ms, ts 11840, class L4]
+19:03:55  44.5 C  [GOOD, age 1154 ms, ts 11840, class L4]
+19:03:55  44.5 C  [GOOD, age 710 ms, ts 12839, class L4]
+19:03:56  44.5 C  [GOOD, age 1332 ms, ts 12839, class L4]
+19:03:56  44.5 C  [GOOD, age 887 ms, ts 13839, class L4]
+19:03:57  44.5 C  [GOOD, age 1453 ms, ts 13839, class L4]
+19:03:57  44.5 C  [GOOD, age 1052 ms, ts 14839, class L4]
+19:03:58  44.5 C  [GOOD, age 612 ms, ts 15839, class L4]
+19:03:59  44.5 C  [GOOD, age 1184 ms, ts 15839, class L4]
+19:03:59  44.5 C  [GOOD, age 784 ms, ts 16839, class L4]
+19:04:00  44.5 C  [GOOD, age 1354 ms, ts 16839, class L4]
+19:04:00  44.5 C  [GOOD, age 912 ms, ts 17840, class L4]
+19:04:01  44.5 C  [GOOD, age 1515 ms, ts 17840, class L4]
+19:04:01  44.5 C  [GOOD, age 1084 ms, ts 18841, class L4]
+19:04:02  44.5 C  [GOOD, age 647 ms, ts 19839, class L4]
+19:04:03  44.5 C  [GOOD, age 1238 ms, ts 19839, class L4]
+19:04:03  44.5 C  [GOOD, age 791 ms, ts 20839, class L4]
+19:04:04  44.5 C  [GOOD, age 1354 ms, ts 20839, class L4]

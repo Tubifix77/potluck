@@ -678,3 +678,11 @@ doc fetched as raw markdown from its repository), not from a summary.
 | **ESP32-S3 CoreMark (superseded)** | 613.86 single core, 1181.60 dual core at 240 MHz -- the figures before the datasheet's v2.0 (2025-04-24: "Updated the CoreMark score"); still on distributor pages | datasheet v2.2 revision history; Mouser ESP32-S3 product page (secondary) | 2026-10-08 | stable | verified (superseded) |
 | **ESP32-S3 internal temperature sensor** | driver `temperature_sensor_install/_enable/_get_celsius/_disable/_uninstall`; `_get_celsius` "Should not be called from interrupt"; S3 ranges (min, max, error): (50,125,3) (20,100,2) (-10,80,1) (-30,50,2) (-40,20,3) | ESP-IDF v6.0.2 source: `components/esp_driver_tsens/include/driver/temperature_sensor.h`, `components/esp_hal_ana_conv/esp32s3/temperature_sensor_periph.c` | 2026-10-08 | stable | verified |
 | **...measures the die, not the room** | "designed primarily to measure the temperature inside the silicon"; "not recommended to use it for ambient temperature measurement"; driver not thread-safe | https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/temp_sensor.html (page is v6.1) | 2026-10-08 | stable | verified |
+
+### M8.1 bench — 2026-10-08 (session 31)
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **Die temperatures, idle cell** | A 46-47, B 44.5, C 41 degC (ESP-IDF temperature_sensor, -10..80 range) | `captures/m81-die-temp-via-A.txt`, stats lines | 2026-10-08 | volatile | measured |
+| **Remote read of a pinned actor's output, through A** | GOOD with age ~1 s; FAULTY within 1 s of the fault, no number; UNAVAILABLE within 1 s of B leaving; GOOD 8 s after B returns | `captures/m81-die-temp-via-A*` | 2026-10-08 | volatile | measured |
+| **The house mesh offers the SSID on channels 1 and 11** | B's station joined 11 on 3 of 6 boots in one run, 0 of 16 an hour later | `captures/m81-rejoin.txt`, session 31 | 2026-10-08 | volatile | measured |

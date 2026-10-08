@@ -19,8 +19,8 @@ the owner's two-storey house in which the kill criterion did not fire. M1: potct
 board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **M4 is ACCEPTED (2026-10-05)**, with
 one caveat: the arbitration was not recorded by an instrument outside the boards (M0-LOG session 20). **M5 and M6 are
 accepted too** (sessions 21-22 and 26), and so are **M6.1** (CR-6, the combined extender node, session 29) and **M8**
-(host services, session 28). **Next: M8.1** (attached hardware -- B's die temperature read from A -- and a compiled-in actor
-API), then **M9** (borrowing an idle core: ADR-005's revisit trigger as an experiment, accepted only with no host
+(host services, session 28). **M8.1 is built** (attached hardware -- B's die temperature read from A -- and a compiled-in actor
+API; one acceptance line left, session 31), then **M9** (borrowing an idle core: ADR-005's revisit trigger as an experiment, accepted only with no host
 attached) and **M10** (the PC as a placement node), all scheduled 2026-10-08 from the owner's status review; M7
 stays gated. Also open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6's
 combined node; a 2-hour combined run is clean, session 30) and the extender's hunting window mid-run (needs the
@@ -41,6 +41,15 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-08 (evening): M8.1 built and mostly shown on the bench (M0-LOG session 31).
+>
+> Actor API (`pot/actor.hpp`, one table in `main/actor_table.cpp`; `m0_main.cpp` names no actor type), the
+> die-temperature actor on all three, and two fixes (replicas of other boards' pinned outputs; FAULTY now
+> crosses the wire). Left for M8.1: B's value moving when warmed (needs a hand). **Open:** after a reboot B's
+> station may join the mesh's channel-11 access point and split the cell; `5fc239c`'s continued search
+> passes in simulation but not yet on the bench. Bench: A, C on `5fc239c`, B extender `d6a2245`. Package
+> `m81-die` at counter 7 (next 8+). `tools/console_send.py` sends a `POT!` line without a reset.
+>
 > ## HANDOVER, 2026-10-08 (midday, owner away): poor-mans-extender's f1624de answered (M0-LOG session 30).
 >
 > Router gone: deaths of B 12x rarer with the extender's back-off, still one per attempt (each never-associated
