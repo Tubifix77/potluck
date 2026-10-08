@@ -58,6 +58,7 @@
 
 #include "pot/deploy.hpp"
 #include "pot/namespace.hpp"
+#include "pot/actor.hpp"
 #include "pot/node.hpp"
 
 namespace pot {
@@ -96,13 +97,30 @@ struct ReconcileConfig {
     uint32_t orphan_step_ms = 1000;   // rank r starts an unclaimed actor after r x this
 };
 
+// M8.1: one portable actor as the reconciler holds it -- where it may run (`place`), and what to build
+// when it runs here (`kind` and its declaration, whose cfg is the spec's own copy).
+struct PortableSpec {
+    TickerConfig place;
+    const ActorKind* kind = nullptr;
+    ActorDecl decl{};
+    uint8_t cfg[kMaxActorCfg] = {};
+};
+
+// Collect an image's portable actors through a registration table. False sets `why`: a type with no
+// row, or no placement hook, or a config its row refuses, or more than `cap`.
+bool collect_portable(const DeployImage& img, const ActorKind* table, size_t n_kinds, PortableSpec* out,
+                      size_t cap, size_t& count, const char** why);
+
 class Reconciler {
   public:
     Reconciler(Node& node, const ReconcileConfig& cfg = ReconcileConfig{});
 
     // Load the image's portable actors. Each one's output resource is declared in the namespace,
     // ownerless until a claim says otherwise. Call before start(). False if more than kMaxPortable.
+    bool load(const PortableSpec* actors, size_t n);
+    // Tickers only (kTickerKind), from their configs: what M6's tests and tools hold.
     bool load(const TickerConfig* actors, size_t n);
+    ~Reconciler();
 
     void start(uint32_t now_ms);
 
@@ -123,7 +141,6 @@ class Reconciler {
         uint32_t activations;
         uint32_t fenced;     // stopped because a higher claim appeared
         uint32_t released;   // stopped to hand over to the assigned node
-        uint32_t ticks;      // values published by this activation
     };
     size_t actor_count() const { return count_; }
     ActorView view(size_t i) const;
@@ -141,7 +158,12 @@ class Reconciler {
 
   private:
     struct Slot {
-        TickerConfig cfg;
+        TickerConfig cfg;          // the placement
+        const ActorKind* kind;
+        ActorDecl decl;            // cfg -> decl_cfg
+        uint8_t decl_cfg[kMaxActorCfg];
+        alignas(std::max_align_t) uint8_t mem[kActorSlotBytes];
+        Actor* inst;               // while running here
         bool running;
         uint32_t term;
         uint32_t max_term;
@@ -149,8 +171,6 @@ class Reconciler {
         uint32_t owner_term;
         uint32_t unclaimed_since;  // 0 = claimed, or not yet settled
         uint16_t released_to;      // handover already offered to this node in the current view
-        uint32_t next_publish_ms;
-        uint32_t ticks;
         uint32_t activations, fenced, released;
     };
     // What we last heard from one peer, keyed by node id and incarnation.
@@ -171,7 +191,7 @@ class Reconciler {
     void resolve_owner(size_t i);
     void activate(size_t i, uint32_t now);
     void stop(size_t i, uint32_t why);  // 1 fenced, 2 handed over
-    void publish(size_t i, uint32_t now);
+    void run(size_t i, uint32_t now);  // tick the instance, while we are the fenced owner
     size_t encode(uint8_t* out, size_t cap) const;
     void send_to(uint16_t node);
     void send_all();

@@ -2,5 +2,5 @@
 idf_component_register(
   SRCS "src/reconcile.cpp"
   INCLUDE_DIRS "include"
-  REQUIRES pot_link pot_ns pot_deploy
+  REQUIRES pot_link pot_ns pot_deploy pot_actors
 )

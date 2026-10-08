@@ -192,6 +192,22 @@ bool ticker_config(const ActorDecl& a, TickerConfig& out) {
     return true;
 }
 
+size_t encode_ticker_config(const TickerConfig& c, uint8_t* out, size_t cap) {
+    const size_t len = kTickerCfgFixed + 3u * c.count;
+    if (c.count > kMaxEligible || cap < len) return 0;
+    for (int k = 0; k < 4; ++k) out[k] = static_cast<uint8_t>(c.out_hash >> (8 * k));
+    out[4] = static_cast<uint8_t>(c.period_ms);
+    out[5] = static_cast<uint8_t>(c.period_ms >> 8);
+    out[6] = c.count;
+    for (uint8_t i = 0; i < c.count; ++i) {
+        uint8_t* e = out + kTickerCfgFixed + 3u * i;
+        e[0] = static_cast<uint8_t>(c.node[i]);
+        e[1] = static_cast<uint8_t>(c.node[i] >> 8);
+        e[2] = c.gravity[i];
+    }
+    return len;
+}
+
 // ---------------------------------------------------------------------------------------------
 
 const char* boot_outcome_str(BootOutcome o) {

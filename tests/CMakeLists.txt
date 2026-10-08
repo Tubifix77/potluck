@@ -56,6 +56,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_reconcile/src/reconcile.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/svc_client.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/actor_runtime.cpp"
+  "${POT_FIRMWARE}/components/pot_actors/src/ticker.cpp"
 )
 target_link_libraries(pot_portable PUBLIC monocypher)
 target_include_directories(pot_portable PUBLIC

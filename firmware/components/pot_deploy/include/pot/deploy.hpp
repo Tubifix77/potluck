@@ -120,6 +120,9 @@ struct TickerConfig {
 };
 constexpr uint8_t kTickerCfgFixed = 7;
 bool ticker_config(const ActorDecl& a, TickerConfig& out);
+// The inverse, for code that holds a TickerConfig and needs its declaration bytes (tests, and the
+// reconciler's TickerConfig overload). Returns the length written, 0 if `cap` is too small.
+size_t encode_ticker_config(const TickerConfig& c, uint8_t* out, size_t cap);
 
 // SvcClient (M8, section 7.5): every period_ms, CALL the service `svc_hash` on node `provider` -- a
 // host's potluck-agent -- and publish the answer to `out_hash`, a resource this node owns. Pinned:

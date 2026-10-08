@@ -7,6 +7,7 @@
 
 #include "esp_log.h"
 #include "pot/svc_client.hpp"
+#include "pot/ticker.hpp"
 
 namespace pot {
 namespace {
@@ -79,6 +80,7 @@ const ActorKind kActorTable[] = {
     {ActorType::Led, "led", &led_check, &led_create},
     {ActorType::Fault, "fault", &fault_check, &fault_create},
     kSvcClientKind,
+    kTickerKind,  // portable: the reconciler places it
 };
 const size_t kActorTableLen = sizeof(kActorTable) / sizeof(kActorTable[0]);
 }  // namespace app

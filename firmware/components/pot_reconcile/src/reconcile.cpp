@@ -2,6 +2,8 @@
 
 #include "pot/reconcile.hpp"
 
+#include "pot/ticker.hpp"
+
 #include <cstring>
 
 namespace pot {
@@ -71,7 +73,7 @@ size_t rank_nodes(const TickerConfig& cfg, LiveFn live, void* ctx, uint16_t out[
 
 Reconciler::Reconciler(Node& node, const ReconcileConfig& cfg) : node_(node), cfg_(cfg) {}
 
-bool Reconciler::load(const TickerConfig* actors, size_t n) {
+bool Reconciler::load(const PortableSpec* actors, size_t n) {
     if (n > kMaxPortable) {
         return false;
     }
@@ -79,11 +81,18 @@ bool Reconciler::load(const TickerConfig* actors, size_t n) {
     for (size_t i = 0; i < n; ++i) {
         Slot& s = slots_[count_];
         s = Slot{};
-        s.cfg = actors[i];
+        s.cfg = actors[i].place;
+        s.kind = actors[i].kind;
+        if (s.kind == nullptr || actors[i].decl.cfg_len > kMaxActorCfg) {
+            return false;
+        }
+        std::memcpy(s.decl_cfg, actors[i].cfg, actors[i].decl.cfg_len);
+        s.decl = actors[i].decl;
+        s.decl.cfg = s.decl_cfg;
         NsDecl d;
         d.path_hash = s.cfg.out_hash;
         d.owner_node = 0;  // nobody, until a claim says otherwise
-        d.type = ValueType::U32;
+        d.type = ValueType::None;  // whatever the actor publishes (M8.1: any portable type)
         d.unit = Unit::None;
         d.kind = ResourceKind::Sampled;
         d.access = Access::Read;
@@ -95,6 +104,63 @@ bool Reconciler::load(const TickerConfig* actors, size_t n) {
             return false;
         }
         ++count_;
+    }
+    return true;
+}
+
+bool Reconciler::load(const TickerConfig* actors, size_t n) {
+    if (n > kMaxPortable) {
+        return false;
+    }
+    PortableSpec specs[kMaxPortable];
+    for (size_t i = 0; i < n; ++i) {
+        specs[i].place = actors[i];
+        specs[i].kind = &kTickerKind;
+        const size_t len = encode_ticker_config(actors[i], specs[i].cfg, sizeof(specs[i].cfg));
+        if (len == 0) return false;
+        specs[i].decl = ActorDecl{kPortableNode, ActorType::Ticker, static_cast<uint8_t>(len), specs[i].cfg};
+    }
+    return load(specs, n);
+}
+
+Reconciler::~Reconciler() {
+    for (size_t i = 0; i < count_; ++i) {
+        if (slots_[i].inst != nullptr) slots_[i].inst->~Actor();
+    }
+}
+
+bool collect_portable(const DeployImage& img, const ActorKind* table, size_t n_kinds, PortableSpec* out,
+                      size_t cap, size_t& count, const char** why) {
+    count = 0;
+    for (uint8_t i = 0; i < img.actor_count; ++i) {
+        const ActorDecl& a = img.actors[i];
+        if (a.node_id != kPortableNode) continue;
+        const ActorKind* k = find_actor_kind(table, n_kinds, a.type);
+        const char* w = nullptr;
+        if (k == nullptr || k->placement == nullptr) {
+            w = "portable actor of a type this build cannot place";
+        } else if (count >= cap) {
+            w = "more portable actors than kMaxPortable";
+        } else if (a.cfg_len > kMaxActorCfg) {
+            w = "actor config longer than kMaxActorCfg";
+        } else {
+            ActorEnv env;
+            PortableSpec& p = out[count];
+            if (!k->check(a, env, &w) || !k->placement(a, p.place)) {
+                if (w == nullptr) w = "portable actor config invalid";
+            } else {
+                p.kind = k;
+                std::memcpy(p.cfg, a.cfg, a.cfg_len);
+                p.decl = a;
+                p.decl.cfg = p.cfg;
+                ++count;
+            }
+        }
+        if (w != nullptr) {
+            count = 0;
+            if (why != nullptr) *why = w;
+            return false;
+        }
     }
     return true;
 }
@@ -318,9 +384,16 @@ void Reconciler::activate(size_t i, uint32_t now) {
     s.running = true;
     s.term = s.max_term + 1;
     s.max_term = s.term;
-    s.ticks = 0;
-    s.next_publish_ms = now;
     s.unclaimed_since = 0;
+    // M8.1: a fresh instance per activation -- section 7.7's "re-activation restarts from the actor's
+    // declared initial state" by construction.
+    ActorEnv env;
+    env.node = &node_;
+    s.inst = s.kind->create(s.mem, s.decl, env);
+    if (s.inst != nullptr && !s.inst->start(now)) {
+        s.inst->~Actor();
+        s.inst = nullptr;
+    }
     ++s.activations;
     dirty_ = true;
     node_.record_event(EventKind::ActorStarted, node_.config().node_id, s.cfg.out_hash, s.term);
@@ -328,6 +401,10 @@ void Reconciler::activate(size_t i, uint32_t now) {
 
 void Reconciler::stop(size_t i, uint32_t why) {
     slots_[i].running = false;
+    if (slots_[i].inst != nullptr) {
+        slots_[i].inst->~Actor();
+        slots_[i].inst = nullptr;
+    }
     dirty_ = true;
     node_.record_event(EventKind::ActorStopped, node_.config().node_id, slots_[i].cfg.out_hash, why);
 }
@@ -392,18 +469,14 @@ void Reconciler::decide(size_t i, uint32_t now) {
     }
 }
 
-void Reconciler::publish(size_t i, uint32_t now) {
+void Reconciler::run(size_t i, uint32_t now) {
     Slot& s = slots_[i];
-    if (!s.running || s.owner != node_.config().node_id) {
+    // Only the fenced owner's instance runs: a node that started an actor and has not yet seen that
+    // a higher claim exists must not publish over the winner (section 7.7).
+    if (!s.running || s.inst == nullptr || s.owner != node_.config().node_id) {
         return;
     }
-    if (static_cast<int32_t>(now - s.next_publish_ms) < 0) {
-        return;
-    }
-    s.next_publish_ms = now + s.cfg.period_ms;
-    ++s.ticks;
-    const uint32_t v = (static_cast<uint32_t>(node_.config().node_id) << 16) | (s.ticks & 0xFFFFu);
-    node_.publish(s.cfg.out_hash, Value::of_u32(v));
+    s.inst->tick(now);
 }
 
 size_t Reconciler::encode(uint8_t* out, size_t cap) const {
@@ -455,7 +528,7 @@ void Reconciler::tick(uint32_t now) {
             decide(i, now);
             resolve_owner(i);
         }
-        publish(i, now);
+        run(i, now);
     }
     if (dirty_) {
         dirty_ = false;
@@ -488,7 +561,6 @@ Reconciler::ActorView Reconciler::view(size_t i) const {
     v.activations = s.activations;
     v.fenced = s.fenced;
     v.released = s.released;
-    v.ticks = s.ticks;
     return v;
 }
 

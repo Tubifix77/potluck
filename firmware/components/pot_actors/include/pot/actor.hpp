@@ -78,6 +78,11 @@ struct ActorKind {
     // Construct the actor in `mem` (kActorSlotBytes, max-aligned) from a declaration that passed
     // check(). The declaration's cfg is the runtime's copy and outlives the actor.
     Actor* (*create)(void* mem, const ActorDecl& decl, const ActorEnv& env);
+    // Portable types only (declared with node_id kPortableNode): where the actor may run. Fills the
+    // placement fields the reconciler ranks by -- out_hash (the actor's identity and its output),
+    // period_ms (its output's publication period, which sets the staleness bound), and the eligible
+    // nodes with their data-gravity scores. nullptr: the type is pinned-only.
+    bool (*placement)(const ActorDecl& decl, TickerConfig& out) = nullptr;
 };
 
 // Find a type's row, or nullptr.

@@ -552,7 +552,7 @@ bool g_trial = false;            // running a pending slot, not yet confirmed
 uint32_t g_reboot_at_ms = 0;     // 0 = no reboot scheduled
 uint16_t g_node_id = 0;
 // M6: the image's portable actors, handed to the reconciler once the node exists.
-TickerConfig g_portable[kMaxPortable];
+EXT_RAM_BSS_ATTR PortableSpec g_portable[kMaxPortable];  // M8.1: any portable actor type
 size_t g_portable_n = 0;
 
 const char* slot_name(uint8_t s) { return s == kSlotA ? "A" : s == kSlotB ? "B" : "none"; }
@@ -576,25 +576,21 @@ bool load_and_apply(const char** why) {
         return false;
     }
     g_actor_env.trial_window_ms = kTrialHeartbeats * static_cast<uint32_t>(CONFIG_POT_HB_PERIOD_MS);
+    // Every node takes every portable actor: section 7.7's "code moves at deploy time, not at failure
+    // time". The reconciler decides where each one runs; the registration table says what each is.
     size_t portable_n = 0;
-    for (uint8_t i = 0; i < img.actor_count; ++i) {
-        const ActorDecl& a = img.actors[i];
-        if (a.node_id == kPortableNode) {
-            // Every node takes every portable actor: section 7.7's "code moves at deploy time, not at
-            // failure time". The reconciler decides where each one runs.
 #if CONFIG_POT_RECONCILER
-            if (portable_n >= kMaxPortable || !ticker_config(a, g_portable[portable_n])) {
-                *why = "portable actor invalid, or more than kMaxPortable";
-                return false;
-            }
-            ++portable_n;
-            continue;
+    if (!collect_portable(img, app::kActorTable, app::kActorTableLen, g_portable, kMaxPortable, portable_n, why)) {
+        return false;
+    }
 #else
+    for (uint8_t i = 0; i < img.actor_count; ++i) {
+        if (img.actors[i].node_id == kPortableNode) {
             *why = "portable actor, and this build has no reconciler (CONFIG_POT_RECONCILER)";
             return false;
-#endif
         }
     }
+#endif
     // M8.1: this node's pinned actors, every one validated against its row in the registration table
     // before any is kept. Last, so that a refusal anywhere above leaves nothing of this image held.
     if (!g_actors.load(img, g_node_id, g_actor_env, why)) {
@@ -1389,12 +1385,12 @@ void stats_task(void*) {
                             static_cast<unsigned>(fenced_replies));
                 for (size_t i = 0; i < na; ++i) {
                     std::printf("%s{\"key\":%u,\"running\":%d,\"term\":%u,\"owner\":%u,\"owner_term\":%u,"
-                                "\"assigned\":%u,\"starts\":%u,\"fenced\":%u,\"released\":%u,\"ticks\":%u}",
+                                "\"assigned\":%u,\"starts\":%u,\"fenced\":%u,\"released\":%u}",
                                 i == 0 ? "" : ",", static_cast<unsigned>(av[i].key), av[i].running ? 1 : 0,
                                 static_cast<unsigned>(av[i].term), static_cast<unsigned>(av[i].owner),
                                 static_cast<unsigned>(av[i].owner_term), static_cast<unsigned>(av[i].assigned),
                                 static_cast<unsigned>(av[i].activations), static_cast<unsigned>(av[i].fenced),
-                                static_cast<unsigned>(av[i].released), static_cast<unsigned>(av[i].ticks));
+                                static_cast<unsigned>(av[i].released));
                 }
                 std::printf("]}\n");
             }

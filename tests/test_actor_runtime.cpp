@@ -186,3 +186,57 @@ TEST(actor_runtime, the_svc_client_row_builds_a_service_client) {
     CHECK(std::strncmp(line, "{\"t\":\"svc\",\"node\":256,\"up_ms\":5,", 32) == 0);
     CHECK(std::strstr(line, "\"state\":\"waiting\"") != nullptr);
 }
+
+// ---- portable actors: the reconciler builds them from the same table (M8.1 step 1b) ----------------
+
+#include "pot/reconcile.hpp"
+
+namespace {
+bool probe_place(const ActorDecl&, TickerConfig& out) {
+    out = TickerConfig{};
+    out.out_hash = path_hash("potluck://lab/test/probe");
+    out.period_ms = 100;
+    out.count = 1;
+    out.node[0] = 0x100;  // only here
+    out.gravity[0] = 0;
+    return true;
+}
+const ActorKind kPortableTable[] = {
+    {ActorType::Led, "probe", &probe_check, &probe_create, &probe_place},
+    {ActorType::Fault, "pinned_only", &probe_check, &probe_create},
+};
+}  // namespace
+
+TEST(actor_runtime, a_portable_actor_of_any_type_is_placed_and_run_by_the_reconciler) {
+    OneNode n;
+    const uint8_t cfg[3] = {5, 0, 0};
+    const DeployImage img = image({{kPortableNode, ActorType::Led, 3, cfg}});
+    PortableSpec specs[kMaxPortable];
+    size_t count = 0;
+    const char* why = nullptr;
+    CHECK(collect_portable(img, kPortableTable, 2, specs, kMaxPortable, count, &why));
+    CHECK_EQ(count, static_cast<size_t>(1));
+    {
+        Reconciler rec(*n.node);
+        CHECK(rec.load(specs, count));
+        g_now = 1000;
+        rec.start(g_now);
+        CHECK_EQ(Probe::alive, 0);
+        for (int k = 0; k < 2000 && Probe::alive == 0; ++k) rec.tick(++g_now);
+        CHECK_EQ(Probe::alive, 1);  // settled alone, the only eligible node: activated
+        for (int k = 0; k < 10; ++k) rec.tick(++g_now);
+        CHECK(rec.view(0).running);
+    }
+    CHECK_EQ(Probe::alive, 0);  // the reconciler destroys what it built
+}
+
+TEST(actor_runtime, a_type_without_a_placement_hook_cannot_be_portable) {
+    const uint8_t cfg[3] = {5, 0, 0};
+    const DeployImage img = image({{kPortableNode, ActorType::Fault, 3, cfg}});
+    PortableSpec specs[kMaxPortable];
+    size_t count = 7;
+    const char* why = nullptr;
+    CHECK(!collect_portable(img, kPortableTable, 2, specs, kMaxPortable, count, &why));
+    CHECK_EQ(count, static_cast<size_t>(0));
+    CHECK(why != nullptr);
+}
