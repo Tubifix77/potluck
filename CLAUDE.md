@@ -37,8 +37,9 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 
 > ## 2026-10-08, overnight: M8 ACCEPTED on the bench (M0-LOG session 28). Package `m8-svc` at counter 6 on all three
 > (next: 7+). `python -m potluck.agent --port COM6 --service time`; `tools/m8_bench.py`. **OPEN, blocking M6.1 step 2:**
-> board B on the extender build stopped transmitting (`ESP_ERR_ESPNOW_NO_MEM` on every send, heap fine) -- the
-> extender's forced static TX buffers; run it down before step 2. Known noise: the host never answers A's RTT probes.
+> ~~board B stopped transmitting~~ **run down and fixed (`28eeb1a`, M0-LOG session 28):** static TX buffers + AMPDU
+> wedge ESP-NOW 2.5-5 min into a boot; the extender now keeps AMPDU with dynamic TX (Wi-Fi/lwIP out of PSRAM) -- one
+> setting differs from step 0's baseline. The host now answers RTT probes (52-72 ms over the CP2102).
 >
 > ## 2026-10-08, later: M6.1 SCHEDULED (CR-6, "the application owns the radio"), ARCHITECTURE section 13. In progress.
 >

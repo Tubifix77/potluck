@@ -3895,3 +3895,32 @@ elsewhere reaches the host only through a relay, not tried); host loss by link c
    reset B ran 100 s without one failure, so it is not simply time; what wedged it (the deploy and
    reboot just before, its trial, or something rarer) is not known yet. **This blocks M6.1's step 2** --
    the combined node is exactly that configuration -- and is the first thing to run down next.
+
+### Session 28, continued -- board B's transmit stall, run down
+
+**What it was not.** Not the heap (224 KB internal, 8.3 MB PSRAM free throughout). Not one peer
+rebooting: six outages of A or C in a row (`tools/txleak_probe.py` counts frames ESP-NOW accepted
+against send completions) and every frame completed, failed sends as `cb_fail`. Not both peers away
+at once, for 2 s or for 6 s with B scanning. Not the deploys that preceded the first two stalls: on a
+third repro B had stalled before the deploy reached it. The onsets were 157, 230 and 275 s into a boot:
+on the extender build, B wedged on its own **2.5-5 minutes into every boot**, and only those boards'
+static TX pool (16 buffers) was ever empty.
+
+**Bisection, board B, 10 minutes each** (`captures/m8-bisect-*`): the extender configuration with
+**aggregation off** -- 0 failures; with aggregation on but **dynamic TX buffers** (Wi-Fi/lwIP not in
+PSRAM, which is what forces static buffers) -- 0 failures. The wedge needs both: static TX buffers and
+AMPDU. No ESP-IDF documentation found linking them (searched `esp_now.rst` and the Wi-Fi driver
+guides); recorded as a bench finding. Potluck's own builds were never exposed: they run AMPDU off and
+dynamic TX.
+
+**Decision (`28eeb1a`).** The extender keeps aggregation -- it is what a NAT router's throughput rests
+on, CR-6 item 3 -- and takes Wi-Fi/lwIP buffers out of PSRAM, so TX buffers are dynamic (32). Section
+6's static core is untouched (49.6 KB); the buffers are heap, of which B had over 200 KB. The cost,
+stated: one Wi-Fi setting now differs from step 0's baseline, so step 3's comparison carries that
+caveat -- or the baseline is rebuilt with the same setting (the extender repository's build directory
+is git-ignored, so that is allowed without editing it). Reported to the extender project: the
+configuration CR-6 asked for wedges ESP-NOW; on its own, without ESP-NOW, the baseline never saw it.
+
+**Also fixed (`28eeb1a`): the host now answers RTT probes**, as a node does. On the boards, A's record
+for the host went from a probe timeout every 3 s to 0 timeouts and a measured round trip: 52-72 ms
+over the CP2102 at 921,600 baud, 12 us of it on the host.
