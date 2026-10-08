@@ -223,6 +223,22 @@ NsError Namespace::apply_remote(uint32_t hash, const Value& v, uint32_t sampled_
     return NsError::Ok;
 }
 
+NsError Namespace::apply_remote_faulty(uint32_t hash, uint32_t sampled_ms, uint32_t local_now_ms,
+                                       uint32_t owner_age_ms) {
+    NsEntry* e = find(hash);
+    if (e == nullptr) {
+        return NsError::NotFound;
+    }
+    const ValueType t = e->value.type;
+    e->value = Value{};  // the last good number must not survive the owner calling its sensor broken
+    e->value.type = t;
+    e->updated_ms = sampled_ms;
+    ++e->update_count;
+    e->flags |= kNsFlagFaulty;
+    arrived_ms_[static_cast<size_t>(e - entries_)] = local_now_ms - owner_age_ms;
+    return NsError::Ok;
+}
+
 NsError Namespace::read(uint32_t hash, uint32_t now_ms, bool owner_alive, Reading& out) const {
     const NsEntry* e = find(hash);
     if (e == nullptr) {

@@ -1374,9 +1374,10 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
     if (static_cast<NsError>(rep.status) != NsError::Ok) {
         return;  // the owner refused; nothing to cache
     }
-    if (!quality_has_value(static_cast<Quality>(rep.quality))) {
-        // The owner had nothing to give - unavailable, strict-and-stale, or faulty. Caching a
-        // value it declined to send is not an option, because it did not send one.
+    const Quality rq = static_cast<Quality>(rep.quality);
+    if (!quality_has_value(rq) && rq != Quality::Faulty) {
+        // The owner had nothing to give - unavailable, or strict-and-stale. Caching a value it
+        // declined to send is not an option, because it did not send one.
         return;
     }
 
@@ -1390,6 +1391,15 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
             ++ns_counters_.replies_fenced;
             return;
         }
+    }
+
+    if (rq == Quality::Faulty) {
+        // M8.1: the owner says its sensor is broken, and sends no number. Until the bench showed
+        // otherwise (M0-LOG session 30) this reply was dropped with the valueless ones above, so the
+        // replica kept the last good number and aged it into STALE: the old number this rule forbids.
+        ns_.apply_remote_faulty(rep.path_hash, rep.timestamp_ms, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0,
+                                rep.age_ms);
+        return;
     }
 
     const Value v = value_from_wire(rep.value_type, rep.value_len, rep.value_raw);

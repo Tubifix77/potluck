@@ -166,6 +166,10 @@ class Namespace {
                          uint32_t owner_age_ms,
                          bool faulty);
 
+    // M8.1: the owning node answered that its sensor is faulty. The replica keeps no value -- the
+    // owner sent none -- and reads FAULTY, dated as apply_remote() dates a value, until the next value.
+    NsError apply_remote_faulty(uint32_t hash, uint32_t sampled_ms, uint32_t local_now_ms, uint32_t owner_age_ms);
+
     // M6 (section 7.7): the resource moved to another node -- a portable actor was re-placed. The
     // cached value goes with the old owner: it came from an instance that consumers now fence out,
     // and a reading must never present the loser's last value as the winner's. No-op if unchanged.

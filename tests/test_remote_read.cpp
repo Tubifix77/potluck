@@ -176,6 +176,41 @@ TEST(m1, one_remote_read) {
     CHECK_EQ(owner.ns_counters().reads_served, 1u);
 }
 
+TEST(m1, an_owner_reporting_its_sensor_faulty_makes_the_replica_faulty_not_stale) {
+    // Found on the bench (M0-LOG session 30, M8.1): B's die-temperature sensor forced faulty, and a
+    // host reading it through A got B's last good number, ageing into STALE -- the reply said FAULTY
+    // and carried no value, and the reader dropped every reply without one. A sensor its own owner
+    // calls broken must read FAULTY everywhere, with no number, not as an old one.
+    Cell2 c;
+    c.build(2);
+    c.start();
+    c.advance_ms(300);
+    Node& reader = *c.slots[0].node;
+    Node& owner = *c.slots[1].node;
+    declare_both(c, owner.config().node_id, /*bound_ms=*/5000);
+    CHECK_EQ(static_cast<int>(owner.publish(kAdc0, Value::of_f32(1.5f))), static_cast<int>(NsError::Ok));
+    CHECK(reader.request_read(owner.config().node_id, kAdc0) != 0);
+    c.advance_ms(50);
+    Reading r;
+    reader.read(kAdc0, r);
+    CHECK_EQ(static_cast<int>(r.quality), static_cast<int>(Quality::Good));
+
+    CHECK_EQ(static_cast<int>(owner.publish_faulty(kAdc0)), static_cast<int>(NsError::Ok));
+    CHECK(reader.request_read(owner.config().node_id, kAdc0) != 0);
+    c.advance_ms(50);
+    reader.read(kAdc0, r);
+    CHECK_EQ(static_cast<int>(r.quality), static_cast<int>(Quality::Faulty));
+    CHECK_EQ(static_cast<int>(r.value.type), static_cast<int>(ValueType::None));  // no number at all
+    CHECK(r.age_ms <= 50);
+
+    // And the next good sample clears it.
+    CHECK_EQ(static_cast<int>(owner.publish(kAdc0, Value::of_f32(1.6f))), static_cast<int>(NsError::Ok));
+    CHECK(reader.request_read(owner.config().node_id, kAdc0) != 0);
+    c.advance_ms(50);
+    reader.read(kAdc0, r);
+    CHECK_EQ(static_cast<int>(r.quality), static_cast<int>(Quality::Good));
+}
+
 TEST(m1, unplug_the_owner_and_the_read_stops_claiming_freshness) {
     // The acceptance sentence, entire: "Unplug node 2 — the read returns STALE, never a cached
     // number presented as fresh."
