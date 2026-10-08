@@ -4163,3 +4163,22 @@ access point the cell is on.
 uncommitted when they were built; the code is the commit's), B on the extender build of `d6a2245` (the
 same code and a size-report commit), owner's credentials as before. Package `m81-die` at counter 7 on all
 three (the next must be 8+). Cell on channel 1.
+
+**CR-7, wired and run (poor-mans-extender `b1d9b65`; Potluck `5fd0eab`, then `a8cbb1e`).** The extender build
+calls `pme_hotspot_set_preferred_channel(<cell's saved channel>, 0)` before starting the hotspot, and the
+`hs` line carries `boot_pick`. Nine reboots of B (`captures/m81-cr7-reboots.txt`; pme's log line, channel
+and RSSI only): **every pick "preferred", channel 11 at -51..-53 dBm, against the strongest, channel 1 at
+-46..-50 dBm, 4 access points seen each time** -- the preferred access point 1 to 6 dB weaker, inside the
+10 dB default. The preferred channel was 11, not 1: B had saved 11 during the earlier stuck boots, alone
+on it, because every board saved every channel change. So a split was what got remembered, and the cell
+had to move to B. **Fixed (`a8cbb1e`):** a board saves its channel only while a radio peer is alive on it.
+In the first six reboots the cell was already on 11 with B, and A read B GOOD again 7-17 s after each.
+
+**Then the stuck case reproduced on demand,** after all three were flashed with `a8cbb1e`: A and C came
+up on 1 (their saved channel), B on 11 (its saved preference): three reboots, B never readmitted within
+44 s. A had made 40 search visits and C 32. B *hears* them on each visit (it logs A and C revived, then
+dead 0.6 s later), but A rejects B's frames as a bad tag and B counts 7 bad tags of its own: **the
+per-pair session keys are stale after a reboot that happened while the two were apart,** and a
+300 ms meeting does not re-establish them. That fits every stuck case in this session -- each followed
+a reboot on one side of a split. Not CR-7's doing; CR-7 only makes this bench reproduce it reliably.
+Next: reproduce it in the simulator with trust on, then fix the re-key. Bench left split: A, C on 1, B on 11.

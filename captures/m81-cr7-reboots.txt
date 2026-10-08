@@ -1,0 +1,10 @@
+reboot 1: boot pick: preferred, channel 11 at -52 dBm (strongest: channel 1 at -46 dBm, 4 APs seen); boot_pick=1; router channel [11]; A reads B GOOD again after 7 s
+reboot 2: boot pick: preferred, channel 11 at -53 dBm (strongest: channel 1 at -47 dBm, 4 APs seen); boot_pick=1; router channel [11]; A reads B GOOD again after 7 s
+reboot 3: boot pick: preferred, channel 11 at -51 dBm (strongest: channel 1 at -50 dBm, 4 APs seen); boot_pick=1; router channel [11]; A reads B GOOD again after 17 s
+reboot 4: boot pick: preferred, channel 11 at -52 dBm (strongest: channel 1 at -49 dBm, 4 APs seen); boot_pick=1; router channel [11]; A reads B GOOD again after 8 s
+reboot 5: boot pick: preferred, channel 11 at -52 dBm (strongest: channel 1 at -48 dBm, 4 APs seen); boot_pick=1; router channel [11]; A reads B GOOD again after 7 s
+reboot 6: boot pick: preferred, channel 11 at -51 dBm (strongest: channel 1 at -47 dBm, 4 APs seen); boot_pick=1; router channel [11]; A reads B GOOD again after 17 s
+--- after a8cbb1e (cell channel saved only with a radio peer alive), all three flashed
+reboot 7: boot pick: preferred, channel 11 at -53 dBm (strongest: channel 1 at -49 dBm, 4 APs seen); boot_pick=1; router channel [11]; A reads B GOOD again after NEVER (within 44 s)
+reboot 8: boot pick: preferred, channel 11 at -51 dBm (strongest: channel 1 at -49 dBm, 4 APs seen); boot_pick=1; router channel [11]; A reads B GOOD again after NEVER (within 44 s)
+reboot 9: boot pick: preferred, channel 11 at -51 dBm (strongest: channel 1 at -48 dBm, 4 APs seen); boot_pick=1; router channel [11]; A reads B GOOD again after NEVER (within 44 s)
