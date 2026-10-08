@@ -1,0 +1,18 @@
+{"t": "hs", "up_s": 110, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 2, "int_free": 243195, "psram_free": 8316936, "host_ts": 1791415553.8341627}
+{"t": "hs", "up_s": 120, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 2, "int_free": 243195, "psram_free": 8316904, "host_ts": 1791415563.8346052}
+{"t": "hs", "up_s": 130, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 3, "int_free": 243267, "psram_free": 8316888, "host_ts": 1791415573.8352273}
+{"t": "hs", "up_s": 140, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 3, "int_free": 243195, "psram_free": 8316960, "host_ts": 1791415583.8358822}
+{"t": "hs", "up_s": 150, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 3, "int_free": 243195, "psram_free": 8316936, "host_ts": 1791415593.8364582}
+{"t": "hs", "up_s": 160, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 3, "int_free": 243195, "psram_free": 8316920, "host_ts": 1791415603.8370597}
+{"t": "hs", "up_s": 170, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 3, "int_free": 243231, "psram_free": 8316920, "host_ts": 1791415613.8416123}
+{"t": "hs", "up_s": 190, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 4, "int_free": 243195, "psram_free": 8316960, "host_ts": 1791415633.8389544}
+{"t": "hs", "up_s": 200, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 4, "int_free": 243183, "psram_free": 8316944, "host_ts": 1791415643.8395252}
+{"t": "hs", "up_s": 210, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 4, "int_free": 243195, "psram_free": 8316928, "host_ts": 1791415653.84025}
+{"t": "hs", "up_s": 220, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 4, "int_free": 243195, "psram_free": 8316912, "host_ts": 1791415663.8408687}
+{"t": "sta_lost", "reason": 15, "retry_s": 2, "host_ts": 1791415667.8170497}
+{"t": "hs", "up_s": 230, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 5, "int_free": 243195, "psram_free": 8316960, "host_ts": 1791415673.8414042}
+{"t": "hs", "up_s": 240, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 5, "int_free": 243195, "psram_free": 8316944, "host_ts": 1791415683.8420186}
+{"t": "hs", "up_s": 250, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 5, "int_free": 243195, "psram_free": 8316928, "host_ts": 1791415693.8426619}
+{"t": "hs", "up_s": 260, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 5, "int_free": 243195, "psram_free": 8316912, "host_ts": 1791415703.8432717}
+{"t": "sta_lost", "reason": 15, "retry_s": 2, "host_ts": 1791415710.459996}
+{"t": "hs", "up_s": 270, "running": 1, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 6, "int_free": 243267, "psram_free": 8316896, "host_ts": 1791415713.8437867}

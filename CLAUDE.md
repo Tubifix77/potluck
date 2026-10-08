@@ -37,11 +37,12 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 
 > ## 2026-10-08, later: M6.1 SCHEDULED (CR-6, "the application owns the radio"), ARCHITECTURE section 13. In progress.
 >
-> Run exactly as CR-6's "How to run CR-6" says, step 0 first. Step 0 firmware is built in the extender repo (its
-> git-ignored `firmware/build/`; 0 warnings, 824,272 B). **Board B is still Potluck (`fd1478d`, enrolled) until the
-> owner erases and flashes it** -- the erase was declined by the permission system, so the owner runs it. The owner
-> types every credential at `pme>` in their own monitor; captures start only after that monitor is closed (the REPL
-> echoes what is typed). Never patch `pme_hotspot`: report bugs to the owner.
+> Run exactly as CR-6's "How to run CR-6" says. **Step 0 PASSED** (M0-LOG session 27; 18-19/14-15 Mbps, 10-min stream,
+> no reboot). B is back on `fd1478d`, re-enrolled, no package (floor 0). **NEXT: step 1, the seam** (extender build
+> variant pulling in `pme_hotspot` via `EXTRA_COMPONENT_DIRS`). Erasing a board is the owner's to run (the permission
+> system declines it for the session). The owner types every credential at `pme>` in their own monitor, then closes it;
+> `tools/hs_capture.py` records only status lines. The `pme>` console wants CR LF and answers to `ESC[6n` -- see the
+> log before scripting it. Never patch `pme_hotspot`: report bugs to the owner. Setup notes for step 2 still owed.
 >
 > ## HANDOVER, 2026-10-08: M6 ACCEPTED on three boards (M0-LOG session 26). PAUSED; when resumed, NEXT: M8.
 >

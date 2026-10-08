@@ -3709,3 +3709,51 @@ through (B's and C's acceptance is in their own events). Evidence: `captures/m6-
 **Bench now:** all three on `fd1478d` (PSRAM build), enrolled, cell on channel 1, package `m6-ticker`
 confirmed at **counter 5 on all three** -- B's floor caught up through the distributed deploy. The
 next package must be counter 6+.
+
+## Session 27 — 2026-10-08, M6.1 (CR-6) step 0: the extender's hotspot on its own, and it carries a stream
+
+**Scheduled first.** CR-6 ("let an application own the Wi-Fi association", from `poor-mans-extender`)
+is M6.1 in section 13, after M6 and in M5.1's form. It is run in the request's own order, step 0 first:
+a hotspot baseline with no Potluck at all, so the combined node later has something to be compared with.
+
+**The firmware.** Built from `D:\Projects\poor-mans-extender\firmware` (`eaf29d6`) with ESP-IDF v6.0.2:
+0 warnings, 824,272 B (the request expected about 824 KB). Only that repository's git-ignored `build/`
+and `sdkconfig` were written; its git status stayed clean. Board B was erased and flashed **by the
+owner**: the session's erase was declined by the permission system, which is right for a command that
+destroys a board's enrolment key.
+
+**Credentials stayed the owner's.** The owner typed them at `pme>`; the session never saw them. The
+REPL echoes what is typed, so recording started only after the owner's monitor closed, and the
+recorder (`tools/hs_capture.py`) keeps only the `{"t":"hs"}` status lines and the reason number of
+`router lost` warnings, dropping every other line unread (the Wi-Fi driver names the network on
+association). Both captures were checked for the words "pass" and "ssid": none.
+
+**Two setup snags, both recorded because both will recur in step 2.** (1) The first `sta` had a typo:
+the board found the network and failed with **reason 15**, a 4-way handshake timeout -- which is what a
+wrong password looks like (`esp_wifi_types_generic.h`). (2) A helper the owner could run to send the
+credentials from a file (`tools/pme_set_wifi.py`) failed three times, each a lesson about ESP-IDF's
+console: it accepts only CR LF; started under a real terminal its linenoise asks the terminal for the
+cursor position (`ESC[6n`) before every line and swallows input until answered, and a prompt left
+waiting by an earlier session stays wedged; started with nothing answering, it falls back to a plain
+mode. The helper now restarts the board and sends into the plain mode, checked end to end with a made-up
+network. The owner retyped the line by hand in the end, which is also fine.
+
+**The run** (`captures/m61-step0-*`): station joined on **channel 1**, RSSI -49..-51 dBm, 0 reconnects;
+the phone joined the hotspot and loaded a web page through it. Speed tests, fast.com, three in a row:
+
+| run | download | upload | latency unloaded / loaded |
+|---|---|---|---|
+| 1 | 18 Mbps | 14 Mbps | 8 / 43 ms |
+| 2 | 18 Mbps | 15 Mbps | 12 / 47 ms |
+| 3 | 19 Mbps | 15 Mbps | 12 / 47 ms |
+
+Then a **10-minute video stream**: no reboot, associated and addressed throughout, one client throughout,
+RSSI -50..-47 dBm, reconnects 0, lowest internal free 242,507 B, lowest PSRAM free 8,212,624 B.
+**Accept met, kill not fired.** The throughput is above the 5-15 Mbps that `esp32_nat_router` (M5.1's
+repeater) quotes for itself; with AMPDU on and Wi-Fi/lwIP buffers in PSRAM, that is the baseline step 2
+must be compared against. **Open:** the setup notes (board position and orientation, phone distance,
+which house access point) are the owner's to give, and step 2 must repeat them.
+
+**Clean-up, as the request says:** the owner ran `forget` and erased B. B was reflashed with `fd1478d`
+(verify-flash matched by MAC) and re-enrolled; all three verify both others. The erase reset B's deploy
+state: B runs no package and its floor is 0; A and C keep `m6-ticker` at counter 5.
