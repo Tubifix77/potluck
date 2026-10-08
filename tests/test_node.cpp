@@ -650,6 +650,55 @@ TEST(node, when_the_station_dies_the_others_sweep_once_and_come_home) {
     CHECK_EQ(c.nodes[2].node->channel_counters().authority_sweeps, 1u);
 }
 
+TEST(node, a_station_that_comes_back_on_another_channel_after_the_sweep_is_found) {
+    // Found on the bench (M0-LOG session 30): the extender rebooted, and its station joined the house
+    // mesh's OTHER access point -- channel 11, not 1. Its reboot outlasted the one sweep the others
+    // made for it, they went home and stopped looking, and the cell stayed split until the extender
+    // happened to reboot onto channel 1. After a failed sweep the others now keep looking, one
+    // channel per visit, each visit shorter than the death window.
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);
+    c.start_all();
+    c.advance_ms(2000);
+    c.deaf = {{0, 1}, {0, 2}};          // the station goes away (a reboot) ...
+    c.advance_ms(600 + 10 * 300 + 2000);  // ... for longer than the sweep, which finds nothing
+    for (size_t i = 1; i < 3; ++i) {
+        CHECK_EQ(static_cast<int>(c.nodes[i].chan), 1);
+        CHECK_EQ(c.nodes[i].node->channel_counters().authority_found, 0u);
+    }
+    c.nodes[0].node->set_channel_now(9);  // ... and comes back on the other access point's channel
+    c.deaf.clear();
+    // Bound: one visit to each of ten channels, every 2 s, plus CR-1's scan for the node left behind.
+    c.advance_ms(10 * 2000 + 11 * 300 + 3000);
+    for (size_t i = 1; i < 3; ++i) {
+        CHECK_EQ(static_cast<int>(c.nodes[i].chan), 9);
+        CHECK_EQ(alive_peers(*c.nodes[i].node), static_cast<size_t>(2));
+    }
+}
+
+TEST(node, a_station_gone_for_good_is_looked_for_ever_more_rarely) {
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);
+    c.start_all();
+    c.advance_ms(2000);
+    c.deaf = {{0, 1}, {0, 2}};
+    c.advance_ms(600 + 10 * 300 + 25000);  // the sweep, then the first pass of visits
+    const uint32_t first = c.nodes[1].node->channel_counters().search_visits;
+    CHECK(first >= 9u);
+    c.advance_ms(60000);  // the second pass, at half the rate
+    const uint32_t second = c.nodes[1].node->channel_counters().search_visits - first;
+    CHECK(second >= 8u && second <= 16u);
+    c.advance_ms(30u * 60000u);  // half an hour on, the rate has fallen to one visit a minute
+    const uint32_t before = c.nodes[1].node->channel_counters().search_visits;
+    c.advance_ms(5u * 60000u);
+    const uint32_t late = c.nodes[1].node->channel_counters().search_visits - before;
+    CHECK(late >= 4u && late <= 6u);
+    CHECK_EQ(alive_peers(*c.nodes[1].node), static_cast<size_t>(1));  // 1 and 2 still together
+    CHECK_EQ(c.nodes[1].node->counters().deaths_declared, 1u);       // only the station's
+}
+
 TEST(node, a_node_that_boots_on_the_wrong_channel_finds_the_cell) {
     TestCell c;
     c.build(3, BeaconMode::BroadcastBeacon);

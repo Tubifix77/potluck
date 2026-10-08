@@ -363,11 +363,18 @@ void Node::tick_channel(uint32_t now) {
         if (static_cast<int32_t>(now - scan_next_ms_) >= 0) {
             if (sweep_left_ == 0) {
                 sweeping_ = false;
-                authority_id_ = 0;  // one sweep per loss: until a channel authority is heard again
                 retune(sweep_home_);
                 last_alive_ms_ = now;
                 emit(EventKind::ChannelChanged, nullptr, sweep_home_, 7);
                 if (!departed_) send_hello(true);
+                // Not found anywhere *now*. It may be rebooting: keep looking, gently (node.hpp).
+                searching_ = true;
+                visiting_ = false;
+                search_home_ = sweep_home_;
+                search_cursor_ = sweep_home_;
+                search_in_pass_ = 0;
+                search_interval_ms_ = kSearchFirstMs;
+                search_next_ms_ = now + search_interval_ms_;
                 return;
             }
             const uint8_t next = (channel_ >= cfg_.channel_hi || channel_ < cfg_.channel_lo)
@@ -381,7 +388,54 @@ void Node::tick_channel(uint32_t now) {
         }
         return;
     }
-    if (authority_id_ != 0 && alive > 0 && !scanning_) {
+    if (searching_) {
+        const PeerLink* a = peers_.find_by_node_id(authority_id_);
+        if (a != nullptr && a->state == PeerState::Alive) {
+            // Heard again. On a visit: it is here, so stay, and the members at home find us by CR-1's
+            // scan once they have lost everyone. At home: it came back where we are.
+            searching_ = false;
+            if (visiting_) {
+                visiting_ = false;
+                ++ch_counters_.authority_found;
+                settle_until_ms_ = now + 2 * cfg_.hello_interval_ms + 500;
+                last_alive_ms_ = now;
+                emit(EventKind::ChannelChanged, nullptr, channel_, 6);
+                if (!departed_) send_hello(true);
+            }
+            return;
+        }
+        if (visiting_) {
+            if (static_cast<int32_t>(now - visit_end_ms_) >= 0) {
+                visiting_ = false;
+                retune(search_home_);
+            }
+            return;
+        }
+        if (alive == 0 || scanning_) {
+            searching_ = false;  // everyone is gone: CR-1's scan is the search now
+        } else if (static_cast<int32_t>(now - search_next_ms_) >= 0) {
+            if (channel_ != search_home_) search_home_ = channel_;  // the cell moved meanwhile
+            uint8_t next = search_cursor_;
+            for (int k = 0; k <= cfg_.channel_hi - cfg_.channel_lo + 1; ++k) {
+                next = (next >= cfg_.channel_hi || next < cfg_.channel_lo) ? cfg_.channel_lo
+                                                                           : static_cast<uint8_t>(next + 1);
+                if (next != search_home_) break;
+            }
+            search_cursor_ = next;
+            retune(next);
+            visiting_ = true;
+            visit_end_ms_ = now + cfg_.scan_dwell_ms;
+            ++ch_counters_.search_visits;
+            send_hello(true);
+            if (++search_in_pass_ >= cfg_.channel_hi - cfg_.channel_lo) {
+                search_in_pass_ = 0;
+                search_interval_ms_ = search_interval_ms_ * 2 > kSearchMaxMs ? kSearchMaxMs : search_interval_ms_ * 2;
+            }
+            search_next_ms_ = now + search_interval_ms_;
+            return;
+        }
+    }
+    if (authority_id_ != 0 && alive > 0 && !scanning_ && !searching_) {
         const PeerLink* a = peers_.find_by_node_id(authority_id_);
         if (a == nullptr || a->state == PeerState::Dead) {
             sweeping_ = true;

@@ -285,6 +285,9 @@ class Node {
         // M6.1: sweeps after losing the cell's channel authority while other peers were still here.
         uint32_t authority_sweeps;
         uint32_t authority_found;        // ... that found it on some channel and stayed
+        // M8.1 bench: after a fruitless sweep, single-channel visits looking for it (each shorter
+        // than the death window), first every 2 s, then ever more rarely.
+        uint32_t search_visits;
     };
     const ChannelCounters& channel_counters() const { return ch_counters_; }
 
@@ -618,6 +621,21 @@ class Node {
     bool sweeping_ = false;
     uint8_t sweep_home_ = 0;   // where to return if one sweep does not find it
     uint8_t sweep_left_ = 0;   // channels still to visit
+    // After a sweep that found nothing, keep looking -- the authority may be rebooting, and come
+    // back on another channel (a mesh with access points on several channels: M0-LOG session 30).
+    // One channel per visit, scan_dwell_ms long, so the members that stay home never miss us for a
+    // death window; a pass over the band every 2 s per visit at first, each later pass half as often,
+    // down to one visit a minute.
+    bool searching_ = false;
+    bool visiting_ = false;
+    uint8_t search_home_ = 0;
+    uint8_t search_cursor_ = 0;
+    uint8_t search_in_pass_ = 0;
+    uint32_t search_interval_ms_ = 0;
+    uint32_t search_next_ms_ = 0;
+    uint32_t visit_end_ms_ = 0;
+    static constexpr uint32_t kSearchFirstMs = 2000;
+    static constexpr uint32_t kSearchMaxMs = 60000;
     bool settling(uint32_t now) const { return scanning_ || static_cast<int32_t>(settle_until_ms_ - now) > 0; }
     uint8_t pending_channel_ = 0;
     uint32_t pending_channel_at_ms_ = 0;
