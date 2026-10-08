@@ -273,6 +273,7 @@ class Node {
     void set_channel_fixed(bool fixed) { cfg_.channel_fixed = fixed; }
     uint8_t channel() const { return channel_; }
     bool scanning() const { return scanning_; }
+    bool sweeping_for_authority() const { return sweeping_; }
     struct ChannelCounters {
         uint32_t moves_sent;
         uint32_t moves_followed;
@@ -281,6 +282,9 @@ class Node {
         uint32_t scan_hops;
         uint32_t found_by_scan;
         uint32_t last_lost_to_found_ms;  // how long the last scan took to find the cell
+        // M6.1: sweeps after losing the cell's channel authority while other peers were still here.
+        uint32_t authority_sweeps;
+        uint32_t authority_found;        // ... that found it on some channel and stayed
     };
     const ChannelCounters& channel_counters() const { return ch_counters_; }
 
@@ -603,6 +607,15 @@ class Node {
     uint32_t scan_next_ms_ = 0;
     uint32_t scan_started_ms_ = 0;
     uint32_t settle_until_ms_ = 0;  // after a scan finds the cell: defer to stable peers' channel until then
+    // M6.1: the cell's channel authority -- a peer whose HELLO declares its channel fixed (a Wi-Fi
+    // station: its router owns the channel). When it moves with its router, nobody hears it go: it
+    // announces on the new channel. CR-1's scan starts only when EVERY peer is lost, so a cell whose
+    // other members still hear each other would stay behind for good (found on the bench, M0-LOG
+    // session 29). So losing the authority while others remain starts one bounded sweep.
+    uint16_t authority_id_ = 0;
+    bool sweeping_ = false;
+    uint8_t sweep_home_ = 0;   // where to return if one sweep does not find it
+    uint8_t sweep_left_ = 0;   // channels still to visit
     bool settling(uint32_t now) const { return scanning_ || static_cast<int32_t>(settle_until_ms_ - now) > 0; }
     uint8_t pending_channel_ = 0;
     uint32_t pending_channel_at_ms_ = 0;

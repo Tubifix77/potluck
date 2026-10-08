@@ -345,6 +345,55 @@ void Node::tick_channel(uint32_t now) {
     }
     if (cfg_.channel_fixed || hal_.set_channel == nullptr || departed_) return;
     const size_t alive = peers_.count_in_state(PeerState::Alive);
+
+    // M6.1: a sweep for the channel authority (see node.hpp). It ends when the authority is heard
+    // again -- on whatever channel the sweep, or its HELLO's declared channel, brought us to -- or after
+    // one pass over the band, when we go home: it really died, and the others are there.
+    if (sweeping_) {
+        const PeerLink* a = peers_.find_by_node_id(authority_id_);
+        if (a != nullptr && a->state == PeerState::Alive) {
+            sweeping_ = false;
+            ++ch_counters_.authority_found;
+            settle_until_ms_ = now + 2 * cfg_.hello_interval_ms + 500;
+            last_alive_ms_ = now;
+            emit(EventKind::ChannelChanged, nullptr, channel_, 6);
+            if (!departed_) send_hello(true);
+            return;
+        }
+        if (static_cast<int32_t>(now - scan_next_ms_) >= 0) {
+            if (sweep_left_ == 0) {
+                sweeping_ = false;
+                authority_id_ = 0;  // one sweep per loss: until a channel authority is heard again
+                retune(sweep_home_);
+                last_alive_ms_ = now;
+                emit(EventKind::ChannelChanged, nullptr, sweep_home_, 7);
+                if (!departed_) send_hello(true);
+                return;
+            }
+            const uint8_t next = (channel_ >= cfg_.channel_hi || channel_ < cfg_.channel_lo)
+                                     ? cfg_.channel_lo
+                                     : static_cast<uint8_t>(channel_ + 1);
+            --sweep_left_;
+            retune(next);
+            ++ch_counters_.scan_hops;
+            scan_next_ms_ = now + cfg_.scan_dwell_ms;
+            send_hello(true);
+        }
+        return;
+    }
+    if (authority_id_ != 0 && alive > 0 && !scanning_) {
+        const PeerLink* a = peers_.find_by_node_id(authority_id_);
+        if (a == nullptr || a->state == PeerState::Dead) {
+            sweeping_ = true;
+            sweep_home_ = channel_;
+            // Every other channel once, home last: if it is not anywhere, it is not anywhere.
+            sweep_left_ = static_cast<uint8_t>(cfg_.channel_hi - cfg_.channel_lo);
+            scan_next_ms_ = now;
+            ++ch_counters_.authority_sweeps;
+            return;
+        }
+    }
+
     if (alive > 0) {
         if (scanning_) {
             scanning_ = false;
@@ -885,6 +934,11 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         // id; and a stable node never follows a settling one, so a scan's guess cannot drag the cell.
         const uint8_t declared = static_cast<uint8_t>((h.caps & kHelloCapChannelMask) >> kHelloCapChannelShift);
         const bool peer_fixed = (h.caps & kHelloCapChannelFixed) != 0;
+        if (peer_fixed) {
+            authority_id_ = h.node_id;  // M6.1: this peer's channel is its router's; follow it if it moves
+        } else if (authority_id_ == h.node_id) {
+            authority_id_ = 0;
+        }
         const bool peer_settling = (h.caps & kHelloCapSettling) != 0;
         const uint32_t hnow = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
         const bool me_settling = settling(hnow);

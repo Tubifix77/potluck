@@ -1315,13 +1315,16 @@ void stats_task(void*) {
             const Node::ChannelCounters chc = g_node->channel_counters();
             std::printf("{\"t\":\"peers\",\"node\":%u,\"own_period_ms\":%u,\"own_busy\":%d,\"channel\":%u,"
                         "\"scanning\":%d,\"scans\":%u,\"hops\":%u,\"found\":%u,\"lost_to_found_ms\":%u,"
-                        "\"moves_followed\":%u,\"moves_refused\":%u,\"relay\":%d,\"fwd_u\":%u,\"fwd_b\":%u,"
+                        "\"moves_followed\":%u,\"moves_refused\":%u,\"sweeps\":%u,\"sweep_found\":%u,\"sweeping\":%d,"
+                        "\"relay\":%d,\"fwd_u\":%u,\"fwd_b\":%u,"
                         "\"fwd_h\":%u,\"relay_dup\":%u,\"list\":[",
                         static_cast<unsigned>(node_id), static_cast<unsigned>(g_node->heartbeat_period_ms()),
                         g_node->busy() ? 1 : 0, static_cast<unsigned>(g_node->channel()), g_node->scanning() ? 1 : 0,
                         static_cast<unsigned>(chc.scans_started), static_cast<unsigned>(chc.scan_hops),
                         static_cast<unsigned>(chc.found_by_scan), static_cast<unsigned>(chc.last_lost_to_found_ms),
                         static_cast<unsigned>(chc.moves_followed), static_cast<unsigned>(chc.moves_refused),
+                        static_cast<unsigned>(chc.authority_sweeps), static_cast<unsigned>(chc.authority_found),
+                        g_node->sweeping_for_authority() ? 1 : 0,
                         g_node->relay() ? 1 : 0, static_cast<unsigned>(g_node->relay_counters().unicast_forwarded),
                         static_cast<unsigned>(g_node->relay_counters().broadcast_forwarded),
                         static_cast<unsigned>(g_node->relay_counters().hello_forwarded),

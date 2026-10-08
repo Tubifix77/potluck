@@ -567,6 +567,52 @@ TEST(node, a_node_whose_router_moved_is_found_again_by_scanning) {
     CHECK_EQ(c.nodes[0].node->channel_counters().scan_hops, 0u);
 }
 
+TEST(node, when_the_station_moves_with_its_router_the_whole_cell_follows_it) {
+    // Found on the bench (M0-LOG session 29): the router restarted on another channel, the extender
+    // (the station) went with it, and the other two -- still hearing each other -- never looked for it,
+    // because CR-1's scan starts only when every peer is lost. The two-node test above could not show
+    // it: with two nodes, losing the station IS losing every peer.
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);
+    c.start_all();
+    c.advance_ms(2000);
+    CHECK_EQ(alive_peers(*c.nodes[1].node), static_cast<size_t>(2));
+    c.nodes[0].node->set_channel_now(9);
+    // Bound: the 600 ms death window, one sweep of 10 channels at 300 ms, and a HELLO round.
+    c.advance_ms(600 + 10 * 300 + 2000);
+    for (size_t i = 1; i < 3; ++i) {
+        CHECK_EQ(static_cast<int>(c.nodes[i].chan), 9);
+        CHECK_EQ(alive_peers(*c.nodes[i].node), static_cast<size_t>(2));
+        CHECK_EQ(c.nodes[i].node->channel_counters().authority_sweeps, 1u);
+        CHECK_EQ(c.nodes[i].node->channel_counters().authority_found, 1u);
+        CHECK(!c.nodes[i].node->sweeping_for_authority());
+    }
+    CHECK_EQ(static_cast<int>(c.nodes[0].chan), 9);  // the station itself never hopped
+    CHECK_EQ(c.nodes[0].node->channel_counters().scan_hops, 0u);
+}
+
+TEST(node, when_the_station_dies_the_others_sweep_once_and_come_home) {
+    // The other half of the same rule: a station that is gone, not moved. One sweep, then back to the
+    // channel the rest of the cell is on -- and no sweeping for ever after.
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);
+    c.start_all();
+    c.advance_ms(2000);
+    c.deaf = {{0, 1}, {0, 2}};  // the station goes silent
+    c.advance_ms(600 + 10 * 300 + 3000);
+    for (size_t i = 1; i < 3; ++i) {
+        CHECK_EQ(static_cast<int>(c.nodes[i].chan), 1);  // home
+        CHECK_EQ(c.nodes[i].node->channel_counters().authority_sweeps, 1u);
+        CHECK_EQ(c.nodes[i].node->channel_counters().authority_found, 0u);
+    }
+    c.advance_ms(10000);
+    CHECK_EQ(alive_peers(*c.nodes[1].node), static_cast<size_t>(1));  // 1 and 2 have each other again
+    CHECK_EQ(c.nodes[1].node->channel_counters().authority_sweeps, 1u);  // and did not sweep again
+    CHECK_EQ(c.nodes[2].node->channel_counters().authority_sweeps, 1u);
+}
+
 TEST(node, a_node_that_boots_on_the_wrong_channel_finds_the_cell) {
     TestCell c;
     c.build(3, BeaconMode::BroadcastBeacon);
