@@ -41,6 +41,15 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-08 (late evening): M8.2 (CR2, passive-sensor) under way (M0-LOG session 32).
+>
+> RSSI tee, PS-1 (external components, -AppComponents, potluck.modules, -OutDir), PS-2 (Actor::on_rx_sample)
+> and PS-3 (outputs(d,node,peer), adoption on demand, path_hash_from) are built and pushed (50118d0).
+> passive-sensor writes rf_link next, then PS-0 (the owner walks a script; capture polls through A).
+> Talk to it directly (SendMessage "Passive sensor ESP32-S3 project"); the owner gave a standing go-ahead.
+> Bench: A, C on the appdemo build, B on extender-appdemo (code = 50118d0); package m82-demo at counter 8
+> (next 9+). Never type `bash` in PowerShell: it is WSL.
+>
 > ## HANDOVER, 2026-10-08 (evening): M8.1 built and mostly shown on the bench (M0-LOG session 31).
 >
 > Actor API (`pot/actor.hpp`, one table in `main/actor_table.cpp`; `m0_main.cpp` names no actor type), the

@@ -1,0 +1,21 @@
+# M8.2 PS-3 regression on the bench: all three on 9a4321e-d builds carrying PS-3 (code = 50118d0); package m82-demo at counter 8. Read through A's cable.
+## potluck://lab/node-7368/app/count
+23:27:35  NO_DATA (age 0 ms, class L4)
+23:27:35  106  [GOOD, age 954 ms, ts 54408, class L4]
+23:27:36  107  [GOOD, age 1077 ms, ts 54908, class L4]
+23:27:36  109  [GOOD, age 640 ms, ts 55908, class L4]
+## potluck://lab/act/roamer/out
+23:27:43  1660946043  [GOOD, age 191 ms, ts 118377, class L3]
+23:27:44  1660946052  [GOOD, age 191 ms, ts 118977, class L3]
+23:27:44  1660946061  [GOOD, age 191 ms, ts 119577, class L3]
+23:27:45  1660946070  [GOOD, age 168 ms, ts 120177, class L3]
+## potluck://lab/node-7368/hw/die_temp
+23:27:52  NO_DATA (age 0 ms, class L4)
+23:27:52  44.5 C  [GOOD, age 1480 ms, ts 70908, class L4]
+23:27:53  44.5 C  [GOOD, age 1055 ms, ts 71908, class L4]
+23:27:53  44.5 C  [GOOD, age 659 ms, ts 72908, class L4]
+## potluck://lab/node-8160/hw/die_temp
+23:28:00  NO_DATA (age 0 ms, class L4)
+23:28:00  44 C  [GOOD, age 854 ms, ts 107860, class L4]
+23:28:01  44 C  [GOOD, age 1456 ms, ts 107860, class L4]
+23:28:01  43 C  [GOOD, age 1025 ms, ts 108860, class L4]
