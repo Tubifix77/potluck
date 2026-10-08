@@ -115,7 +115,7 @@ const ActorKind kActorTable[] = {
     {ActorType::Fault, "fault", &fault_check, &fault_create},
     kSvcClientKind,
     kTickerKind,  // portable: the reconciler places it
-    {ActorType::DieTemp, "die_temp", &die_temp_check, &die_temp_create},
+    {ActorType::DieTemp, "die_temp", &die_temp_check, &die_temp_create, nullptr, &die_temp_output},
 };
 const size_t kActorTableLen = sizeof(kActorTable) / sizeof(kActorTable[0]);
 }  // namespace app

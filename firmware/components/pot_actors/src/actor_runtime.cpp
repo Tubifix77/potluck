@@ -15,11 +15,20 @@ const ActorKind* find_actor_kind(const ActorKind* table, size_t n, ActorType typ
 
 bool ActorRuntime::load(const DeployImage& img, uint16_t node_id, const ActorEnv& env, const char** why) {
     n_decl_ = 0;
+    n_remote_ = 0;
     const char* w = nullptr;
     for (uint8_t i = 0; i < img.actor_count && w == nullptr; ++i) {
         const ActorDecl& a = img.actors[i];
         if (a.node_id == kPortableNode) continue;  // the reconciler's
-        if (a.node_id != node_id && a.node_id != kEveryNode) continue;
+        if (a.node_id != node_id && a.node_id != kEveryNode) {
+            // Another node's actor: not ours to run, but its output is ours to know about.
+            const ActorKind* k = find_actor_kind(table_, n_kinds_, a.type);
+            NsDecl d;
+            if (k != nullptr && k->output != nullptr && n_remote_ < kMaxActors && k->output(a, d)) {
+                remote_[n_remote_++] = d;
+            }
+            continue;
+        }
         const ActorKind* k = find_actor_kind(table_, n_kinds_, a.type);
         if (k == nullptr) {
             w = "actor type this build has no row for";
@@ -39,6 +48,7 @@ bool ActorRuntime::load(const DeployImage& img, uint16_t node_id, const ActorEnv
     }
     if (w != nullptr) {
         n_decl_ = 0;
+        n_remote_ = 0;
         if (why != nullptr) *why = w;
         return false;
     }
@@ -47,6 +57,9 @@ bool ActorRuntime::load(const DeployImage& img, uint16_t node_id, const ActorEnv
 
 size_t ActorRuntime::start(const ActorEnv& env, uint32_t now_ms, const char** failed) {
     if (failed != nullptr) *failed = nullptr;
+    if (env.node != nullptr) {
+        for (size_t i = 0; i < n_remote_; ++i) env.node->ns().declare(remote_[i]);
+    }
     for (size_t i = 0; i < n_decl_ && n_run_ < kMaxPinnedActors; ++i) {
         const Held& h = held_[i];
         Actor* a = h.kind->create(mem_[n_run_], h.decl, env);

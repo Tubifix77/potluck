@@ -90,6 +90,12 @@ struct ActorKind {
     // period_ms (its output's publication period, which sets the staleness bound), and the eligible
     // nodes with their data-gravity scores. nullptr: the type is pinned-only.
     bool (*placement)(const ActorDecl& decl, TickerConfig& out) = nullptr;
+    // Pinned types that publish: the resource the actor publishes, owner_node = decl.node_id. Every
+    // node declares the outputs of the actors pinned on OTHER nodes from the image (which every node
+    // holds), so it has an entry -- a replica, refreshed by single-hop READs -- for a host or an actor
+    // here to read: section 4's tuple for a value on another board. The actor itself declares the same
+    // resource on its own node in start(). nullptr: the type publishes nothing others read.
+    bool (*output)(const ActorDecl& decl, NsDecl& out) = nullptr;
 };
 
 // Find a type's row, or nullptr.
@@ -117,6 +123,7 @@ class ActorRuntime {
                         const Value& v);
 
     size_t loaded() const { return n_decl_; }
+    size_t remote_outputs() const { return n_remote_; }
     size_t running() const { return n_run_; }
     Actor* actor(size_t i) { return i < n_run_ ? run_[i] : nullptr; }
     const char* name(size_t i) const { return i < n_run_ ? run_kind_[i]->name : "?"; }
@@ -133,6 +140,8 @@ class ActorRuntime {
     size_t n_kinds_;
     Held held_[kMaxPinnedActors] = {};
     size_t n_decl_ = 0;
+    NsDecl remote_[kMaxActors] = {};  // outputs of actors pinned elsewhere, declared by start()
+    size_t n_remote_ = 0;
     alignas(max_align_t) uint8_t mem_[kMaxPinnedActors][kActorSlotBytes] = {};
     Actor* run_[kMaxPinnedActors] = {};
     const ActorKind* run_kind_[kMaxPinnedActors] = {};

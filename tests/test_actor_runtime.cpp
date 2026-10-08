@@ -240,3 +240,31 @@ TEST(actor_runtime, a_type_without_a_placement_hook_cannot_be_portable) {
     CHECK_EQ(count, static_cast<size_t>(0));
     CHECK(why != nullptr);
 }
+
+#include "pot/die_temp.hpp"
+
+TEST(actor_runtime, the_output_of_an_actor_pinned_elsewhere_is_declared_here_as_the_owners) {
+    // So a host cabled to this node, or an actor here, can read another board's value with its age
+    // and quality (single-hop: we hold a replica, refreshed by our own READ to the owner).
+    OneNode n;
+    const uint32_t out = path_hash("potluck://lab/node-0200/hw/die_temp");
+    const uint8_t cfg[6] = {static_cast<uint8_t>(out), static_cast<uint8_t>(out >> 8),
+                            static_cast<uint8_t>(out >> 16), static_cast<uint8_t>(out >> 24), 0xE8, 0x03};
+    const DeployImage img = image({{0x200, ActorType::DieTemp, 6, cfg}});
+    const ActorKind table[] = {{ActorType::DieTemp, "die_temp", &die_temp_check, nullptr, nullptr, &die_temp_output}};
+    ActorRuntime rt(table, 1);
+    ActorEnv env;
+    env.node = n.node;
+    CHECK(rt.load(img, 0x100, env, nullptr));
+    CHECK_EQ(rt.loaded(), static_cast<size_t>(0));  // not ours to run
+    CHECK_EQ(rt.remote_outputs(), static_cast<size_t>(1));
+    rt.start(env, 0, nullptr);
+    const NsEntry* e = n.node->ns().find(out);
+    CHECK(e != nullptr);
+    if (e == nullptr) return;
+    CHECK_EQ(static_cast<unsigned>(e->owner_node), 0x200u);
+    CHECK_EQ(static_cast<int>(e->unit), static_cast<int>(Unit::Celsius));
+    Reading r;
+    n.node->read(out, r);
+    CHECK_EQ(static_cast<int>(r.quality), static_cast<int>(Quality::Unavailable));  // its owner is no peer of ours
+}

@@ -86,7 +86,8 @@ class SvcClient : public Actor {
     bool started_ = false;
 };
 
-// M8.1: svc_client's row for a registration table.
+// M8.1: svc_client's row for a registration table, and the resource it publishes.
 extern const ActorKind kSvcClientKind;
+NsDecl svc_client_decl(uint16_t owner, const SvcClientConfig& c);
 
 }  // namespace pot

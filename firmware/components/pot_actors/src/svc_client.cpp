@@ -10,19 +10,23 @@ namespace pot {
 
 SvcClient::SvcClient(Node& node, const SvcClientConfig& cfg) : node_(node), cfg_(cfg) {}
 
-bool SvcClient::start(uint32_t now_ms) {
+NsDecl svc_client_decl(uint16_t owner, const SvcClientConfig& c) {
     NsDecl d;
-    d.path_hash = cfg_.out_hash;
-    d.owner_node = node_.config().node_id;
+    d.path_hash = c.out_hash;
+    d.owner_node = owner;
     d.type = ValueType::None;  // whatever the service answers
     d.unit = Unit::None;
     d.kind = ResourceKind::Sampled;
     d.access = Access::Read;
     d.latency_class = kClassL4;  // section 7.5: "the class is L4 by definition"
     // Three periods: one late answer is not staleness; a host that has stopped answering soon is.
-    d.staleness_bound_ms = 3u * cfg_.period_ms;
+    d.staleness_bound_ms = 3u * c.period_ms;
     d.staleness_policy = StalenessPolicy::Informative;
-    if (node_.ns().declare(d) != NsError::Ok) return false;
+    return d;
+}
+
+bool SvcClient::start(uint32_t now_ms) {
+    if (node_.ns().declare(svc_client_decl(node_.config().node_id, cfg_)) != NsError::Ok) return false;
     next_call_ms_ = now_ms;
     started_ = true;
     return true;
@@ -143,8 +147,14 @@ Actor* svc_create(void* mem, const ActorDecl& d, const ActorEnv& env) {
     if (env.node == nullptr || !svc_client_config(d, c)) return nullptr;
     return new (mem) SvcClient(*env.node, c);
 }
+bool svc_output(const ActorDecl& d, NsDecl& out) {
+    SvcClientConfig c{};
+    if (!svc_client_config(d, c)) return false;
+    out = svc_client_decl(d.node_id, c);
+    return true;
+}
 }  // namespace
 
-const ActorKind kSvcClientKind = {ActorType::SvcClient, "svc_client", &svc_check, &svc_create};
+const ActorKind kSvcClientKind = {ActorType::SvcClient, "svc_client", &svc_check, &svc_create, nullptr, &svc_output};
 
 }  // namespace pot

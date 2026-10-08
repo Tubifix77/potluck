@@ -7,19 +7,30 @@
 
 namespace pot {
 
-bool DieTempActor::start(uint32_t now_ms) {
+NsDecl die_temp_decl(uint16_t owner, const DieTempConfig& c) {
     NsDecl d;
-    d.path_hash = cfg_.out_hash;
-    d.owner_node = node_.config().node_id;
+    d.path_hash = c.out_hash;
+    d.owner_node = owner;
     d.type = ValueType::F32;
     d.unit = Unit::Celsius;
     d.kind = ResourceKind::Sampled;
     d.access = Access::Read;
     d.latency_class = kClassL4;  // it moves over seconds; nothing binds to it tightly
     // Three periods: one late sample is not staleness, a stopped actor soon is.
-    d.staleness_bound_ms = 3u * cfg_.period_ms;
+    d.staleness_bound_ms = 3u * c.period_ms;
     d.staleness_policy = StalenessPolicy::Informative;
-    if (node_.ns().declare(d) != NsError::Ok) return false;
+    return d;
+}
+
+bool die_temp_output(const ActorDecl& d, NsDecl& out) {
+    DieTempConfig c{};
+    if (!die_temp_config(d, c)) return false;
+    out = die_temp_decl(d.node_id, c);
+    return true;
+}
+
+bool DieTempActor::start(uint32_t now_ms) {
+    if (node_.ns().declare(die_temp_decl(node_.config().node_id, cfg_)) != NsError::Ok) return false;
     open_ = drv_.open != nullptr && drv_.open(drv_.ctx);
     next_ms_ = now_ms;
     return true;
