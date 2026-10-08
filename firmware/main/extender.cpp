@@ -73,7 +73,7 @@ bool fits(const char* ssid, const char* pass) {
 
 }  // namespace
 
-bool start() {
+bool start(uint8_t cell_channel) {
     // ESP-IDF's Wi-Fi driver logs "wifi:connected with <network name>, ..." at INFO on every association
     // (seen on board B, M0-LOG session 30). pme_hotspot no longer names networks; neither may the
     // console under it, since a soak captures the console whole. Warnings and errors still print.
@@ -88,6 +88,9 @@ bool start() {
     }
     cfg.ap_max_conn = CONFIG_POT_EXTENDER_AP_MAX_CONN;
     pme_hotspot_set_channel_cb(&on_channel, nullptr);
+    // CR-7 (poor-mans-extender b1d9b65): found on the bench, M0-LOG session 31 -- the house mesh serves
+    // the SSID on channels 1 and 11, and a reboot onto the one the cell is not on split the cell.
+    pme_hotspot_set_preferred_channel(cell_channel, 0);  // 0: CONFIG_PME_PREFERRED_MARGIN_DB
     const esp_err_t err = pme_hotspot_start(&cfg);
     std::memset(&cfg, 0, sizeof(cfg));  // the only copy at rest is pme_creds' NVS
     if (err != ESP_OK) {
@@ -117,13 +120,15 @@ void print_status() {
     if (g_active) pme_hotspot_get_status(&st);
     // Field for field the baseline's line (poor-mans-extender firmware/main/main.c). Never a credential.
     std::printf("{\"t\":\"hs\",\"up_s\":%llu,\"running\":%d,\"sta\":%d,\"has_ip\":%d,\"ch\":%u,"
-                "\"rssi\":%d,\"clients\":%u,\"reconnects\":%lu,\"int_free\":%u,\"psram_free\":%u}\n",
+                "\"rssi\":%d,\"clients\":%u,\"reconnects\":%lu,\"int_free\":%u,\"psram_free\":%u,"
+                "\"boot_pick\":%u}\n",
                 static_cast<unsigned long long>(esp_timer_get_time() / 1000000), g_active ? 1 : 0,
                 st.sta_connected ? 1 : 0, st.sta_has_ip ? 1 : 0, static_cast<unsigned>(st.channel),
                 static_cast<int>(st.rssi), static_cast<unsigned>(st.clients),
                 static_cast<unsigned long>(st.reconnects),
                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
-                static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
+                static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
+                static_cast<unsigned>(st.boot_pick));  // CR-7: 0 none, 1 preferred, 2 strongest, 3 scan failed
 }
 
 bool handle_console(const char* line, size_t len) {
@@ -160,7 +165,7 @@ bool handle_console(const char* line, size_t len) {
 
 #else  // !CONFIG_POT_EXTENDER
 
-bool start() { return false; }
+bool start(uint8_t) { return false; }
 bool active() { return false; }
 uint8_t take_channel() { return 0; }
 bool associated() { return false; }

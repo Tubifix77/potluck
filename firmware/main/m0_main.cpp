@@ -1882,7 +1882,7 @@ extern "C" void app_main(void) {
     // M6.1: the hotspot owns Wi-Fi when it has credentials, and ESP-NOW only attaches to it. Its
     // credentials live in NVS, so NVS comes up first.
     nvs_init_once();
-    ecfg.attach = extender::start();
+    ecfg.attach = extender::start(saved_channel);
 #endif
     const EspNowInitReport rep = espnow_start(ecfg);
 #endif

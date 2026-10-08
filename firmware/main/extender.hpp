@@ -19,7 +19,10 @@ namespace pot::extender {
 // Bring the hotspot up if this is an extender build and it has credentials. True if the application
 // now owns Wi-Fi, so ESP-NOW must attach. False otherwise -- an ordinary build, or an extender with
 // nothing saved yet, which then runs as an ordinary member until it is given credentials.
-bool start();
+// `cell_channel` (CR-7): the cell's saved channel, 0 if none. At boot the hotspot then prefers an access
+// point of the house mesh on that channel, within a signal margin of the strongest -- a tie-breaker
+// among the mesh's access points, not a pin (pme/hotspot.h).
+bool start(uint8_t cell_channel);
 
 // start() returned true.
 bool active();
