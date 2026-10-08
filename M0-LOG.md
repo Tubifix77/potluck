@@ -4041,7 +4041,7 @@ channel) after the hunting window it declared, so the cell follows about 6 s lat
 measured in session 29. What it does not touch: B's own view of A and C, which still lapses during a
 scan (B recorded 35 deaths of its peers in the router-gone run).
 
-**B's low inbound PDR, explained and fixed (`<fix>`).** Session 28 left open a 97.39 % inbound unicast PDR
+**B's low inbound PDR, explained and fixed (`c70756f`).** Session 28 left open a 97.39 % inbound unicast PDR
 for B with zero sequence gaps; this session's soak, twelve minutes in, showed 47 % from both peers, still
 with zero gaps in the window. B's own counters: `lost_seqgap` about 12,500 per peer, set once just after
 boot and flat ever since -- not loss. The HELLO that creates a peer is a broadcast, and `handle_hello`
