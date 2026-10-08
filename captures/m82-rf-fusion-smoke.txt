@@ -1,0 +1,16 @@
+# M8.2 rf_fusion smoke (passive-sensor 5e06556 on Potluck dbd582f; ps-room at counter 11). rf_fusion held by C (0x8160). Read through A.
+## potluck://lab/act/rf_fusion/out
+01:13:52  NO_DATA (age 0 ms, class L4)
+01:13:53  false  [GOOD, age 1709 ms, ts 136074, class L4]
+01:13:54  false  [GOOD, age 2789 ms, ts 136074, class L4]
+01:13:55  false  [GOOD, age 1879 ms, ts 138072, class L4]
+## potluck://lab/act/rf_fusion/confidence
+01:13:59  NO_DATA (age 0 ms, class L4)
+01:14:00  0  [GOOD, age 2856 ms, ts 142074, class L4]
+01:14:01  0  [GOOD, age 1914 ms, ts 144074, class L4]
+01:14:02  0  [GOOD, age 2986 ms, ts 144074, class L4]
+## potluck://lab/act/rf_fusion/motion
+01:14:06  NO_DATA (age 0 ms, class L4)
+01:14:07  0  [GOOD, age 1918 ms, ts 150075, class L4]
+01:14:08  0  [GOOD, age 3004 ms, ts 150075, class L4]
+01:14:09  0  [GOOD, age 2098 ms, ts 152074, class L4]

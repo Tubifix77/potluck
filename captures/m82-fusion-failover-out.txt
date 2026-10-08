@@ -1,0 +1,91 @@
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 196 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 196, death window 100 ms x 6 = 600 ms
+01:14:26  false  [STALE, age 28334 ms, ts 142074, class L4]
+01:14:28  false  [GOOD, age 2390 ms, ts 170075, class L4]
+01:14:30  false  [GOOD, age 2456 ms, ts 172074, class L4]
+01:14:32  false  [GOOD, age 2513 ms, ts 174074, class L4]
+01:14:34  false  [GOOD, age 2575 ms, ts 176074, class L4]
+01:14:36  NO_DATA (age 0 ms, class L4)
+01:14:38  NO_DATA (age 0 ms, class L4)
+01:14:40  NO_DATA (age 0 ms, class L4)
+01:14:42  NO_DATA (age 0 ms, class L4)
+01:14:44  NO_DATA (age 0 ms, class L4)
+01:14:46  NO_DATA (age 0 ms, class L4)
+01:14:48  NO_DATA (age 0 ms, class L4)
+01:14:50  NO_DATA (age 0 ms, class L4)
+01:14:52  NO_DATA (age 0 ms, class L4)
+01:14:54  NO_DATA (age 0 ms, class L4)
+01:14:56  NO_DATA (age 0 ms, class L4)
+01:14:59  NO_DATA (age 0 ms, class L4)
+01:15:01  NO_DATA (age 0 ms, class L4)
+01:15:03  NO_DATA (age 0 ms, class L4)
+01:15:05  NO_DATA (age 0 ms, class L4)
+01:15:07  NO_DATA (age 0 ms, class L4)
+01:15:09  NO_DATA (age 0 ms, class L4)
+01:15:11  NO_DATA (age 0 ms, class L4)
+01:15:13  NO_DATA (age 0 ms, class L4)
+01:15:15  NO_DATA (age 0 ms, class L4)
+01:15:17  NO_DATA (age 0 ms, class L4)
+01:15:19  NO_DATA (age 0 ms, class L4)
+01:15:21  NO_DATA (age 0 ms, class L4)
+01:15:23  NO_DATA (age 0 ms, class L4)
+01:15:25  NO_DATA (age 0 ms, class L4)
+01:15:28  NO_DATA (age 0 ms, class L4)
+01:15:30  NO_DATA (age 0 ms, class L4)
+01:15:32  NO_DATA (age 0 ms, class L4)
+01:15:34  NO_DATA (age 0 ms, class L4)
+01:15:36  NO_DATA (age 0 ms, class L4)
+01:15:38  NO_DATA (age 0 ms, class L4)
+01:15:40  NO_DATA (age 0 ms, class L4)
+01:15:42  false  [GOOD, age 3878 ms, ts 243002, class L4]
+01:15:44  false  [GOOD, age 3958 ms, ts 245002, class L4]
+01:15:46  false  [GOOD, age 4017 ms, ts 247002, class L4]
+01:15:48  false  [GOOD, age 2080 ms, ts 251002, class L4]
+01:15:50  false  [GOOD, age 2137 ms, ts 253002, class L4]
+01:15:52  false  [GOOD, age 2194 ms, ts 255002, class L4]
+01:15:54  false  [GOOD, age 2264 ms, ts 257002, class L4]
+01:15:56  false  [GOOD, age 2317 ms, ts 259002, class L4]
+01:15:58  false  [GOOD, age 2374 ms, ts 261002, class L4]
+01:16:01  false  [GOOD, age 2446 ms, ts 263002, class L4]
+01:16:03  false  [GOOD, age 2517 ms, ts 265002, class L4]
+01:16:05  false  [GOOD, age 2576 ms, ts 267002, class L4]
+01:16:07  false  [GOOD, age 2642 ms, ts 269002, class L4]
+01:16:09  false  [GOOD, age 2718 ms, ts 271002, class L4]
+01:16:11  NO_DATA (age 0 ms, class L4)
+01:16:13  NO_DATA (age 0 ms, class L4)
+01:16:15  NO_DATA (age 0 ms, class L4)
+01:16:17  NO_DATA (age 0 ms, class L4)
+01:16:19  NO_DATA (age 0 ms, class L4)
+01:16:21  NO_DATA (age 0 ms, class L4)
+01:16:23  NO_DATA (age 0 ms, class L4)
+01:16:25  NO_DATA (age 0 ms, class L4)
+01:16:27  NO_DATA (age 0 ms, class L4)
+01:16:29  NO_DATA (age 0 ms, class L4)
+01:16:31  NO_DATA (age 0 ms, class L4)
+01:16:33  NO_DATA (age 0 ms, class L4)
+01:16:36  NO_DATA (age 0 ms, class L4)
+01:16:38  NO_DATA (age 0 ms, class L4)
+01:16:40  NO_DATA (age 0 ms, class L4)
+01:16:42  NO_DATA (age 0 ms, class L4)
+01:16:44  NO_DATA (age 0 ms, class L4)
+01:16:46  NO_DATA (age 0 ms, class L4)
+01:16:48  NO_DATA (age 0 ms, class L4)
+01:16:50  NO_DATA (age 0 ms, class L4)
+01:16:52  NO_DATA (age 0 ms, class L4)
+01:16:54  NO_DATA (age 0 ms, class L4)
+01:16:56  NO_DATA (age 0 ms, class L4)
+01:16:58  NO_DATA (age 0 ms, class L4)
+01:17:00  NO_DATA (age 0 ms, class L4)
+01:17:02  NO_DATA (age 0 ms, class L4)
+01:17:04  NO_DATA (age 0 ms, class L4)
+01:17:06  NO_DATA (age 0 ms, class L4)
+01:17:09  NO_DATA (age 0 ms, class L4)
+01:17:11  NO_DATA (age 0 ms, class L4)
+01:17:13  NO_DATA (age 0 ms, class L4)
+01:17:15  false  [GOOD, age 3058 ms, ts 64317, class L4]
+01:17:17  false  [GOOD, age 3117 ms, ts 66318, class L4]
+01:17:19  false  [GOOD, age 3174 ms, ts 68320, class L4]
+01:17:21  false  [GOOD, age 3239 ms, ts 70318, class L4]
+01:17:23  false  [GOOD, age 3396 ms, ts 72318, class L4]
+01:17:25  false  [GOOD, age 3456 ms, ts 74320, class L4]
