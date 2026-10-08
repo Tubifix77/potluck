@@ -1309,15 +1309,15 @@
     },
     "esp-idf/pot_link/libpot_link.a": {
         "abbrev_name": "libpot_link.a",
-        "size": 18021,
+        "size": 18070,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 17927,
+                "size": 17976,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 17927,
+                        "size": 17976,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -3705,28 +3705,28 @@
             }
         }
     },
-    "esp-idf/pot_deploy/libpot_deploy.a": {
-        "abbrev_name": "libpot_deploy.a",
-        "size": 3105,
+    "esp-idf/pot_ns/libpot_ns.a": {
+        "abbrev_name": "libpot_ns.a",
+        "size": 3109,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 3073,
+                "size": 3015,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 3073,
+                        "size": 3015,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
                 }
             },
             "Flash Data": {
-                "size": 32,
+                "size": 94,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 32,
+                        "size": 94,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -3814,28 +3814,28 @@
             }
         }
     },
-    "esp-idf/pot_ns/libpot_ns.a": {
-        "abbrev_name": "libpot_ns.a",
-        "size": 3023,
+    "esp-idf/pot_deploy/libpot_deploy.a": {
+        "abbrev_name": "libpot_deploy.a",
+        "size": 3105,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 2929,
+                "size": 3073,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 2929,
+                        "size": 3073,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
                 }
             },
             "Flash Data": {
-                "size": 94,
+                "size": 32,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 94,
+                        "size": 32,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
