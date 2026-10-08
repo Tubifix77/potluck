@@ -1,14 +1,14 @@
 Executing action: size-components
-Running ninja in directory D:\Projects\potluck\firmware\build
+Running ninja in directory D:\Projects\potluck\firmware\build-rssi-tee
 Executing "ninja all"...
-[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
+[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-rssi-tee && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-rssi-tee/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-rssi-tee/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xc93b0 bytes. Smallest app partition is 0x100000 bytes. 0x36c50 bytes (21%) free.
+potluck_m0.bin binary size 0xc94a0 bytes. Smallest app partition is 0x100000 bytes. 0x36b60 bytes (21%) free.
 
 
 [2/4] Performing build step for 'bootloader'
 
-[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Projects/potluck/firmware/build/bootloader/bootloader.bin"
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-rssi-tee\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Projects/potluck/firmware/build-rssi-tee/bootloader/bootloader.bin"
 
 
 Bootloader binary size 0x5240 bytes. 0x2dc0 bytes (36%) free.
@@ -19,9 +19,9 @@ Bootloader binary size 0x5240 bytes. 0x2dc0 bytes (36%) free.
 
 [4/4] Completed 'bootloader'
 
-Running ninja in directory D:\Projects\potluck\firmware\build
+Running ninja in directory D:\Projects\potluck\firmware\build-rssi-tee
 Executing "ninja size-components"...
-[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D IDF_SIZE_MODE=--archives -D MAP_FILE=D:/Projects/potluck/firmware/build/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
+[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-rssi-tee && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D IDF_SIZE_MODE=--archives -D MAP_FILE=D:/Projects/potluck/firmware/build-rssi-tee/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
 
                                                                                                         Per-archive contributions to ELF file                                                                                                         
 
@@ -37,13 +37,13 @@ Executing "ninja size-components"...
 
 │ libwpa_supplicant.a             │      67011 │    0 │     0 │        0 │     8 │     0 │     8 │     0 │      63802 │  63802 │       1838 │      0 │    1838 │        0 │         1363 │  1363 │        0 │             0 │        0 │           0 │
 
-│ libesp_stdio.a                  │      65913 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      65503 │      0 │   65503 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      66026 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      65616 │      0 │   65616 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libpp.a                         │      65300 │    0 │     0 │        0 │ 17348 │     0 │  2640 │ 14708 │      42764 │  42764 │       3954 │      0 │    3954 │        0 │         1234 │  1234 │        0 │             0 │        0 │           0 │
 
 │ liblwip.a                       │      64933 │    0 │     0 │        0 │    12 │     0 │    12 │     0 │      59555 │  59555 │       2896 │      0 │    2896 │        0 │         2470 │  2470 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      55430 │    0 │     0 │        0 │ 32469 │ 32331 │   138 │     0 │      12683 │  12683 │        248 │      0 │     248 │        0 │        10030 │ 10030 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      55568 │    0 │     0 │        0 │ 32473 │ 32335 │   138 │     0 │      12801 │  12801 │        264 │      0 │     264 │        0 │        10030 │ 10030 │        0 │             0 │        0 │           0 │
 
 │ libphy.a                        │      34403 │ 1152 │  1152 │        0 │  5365 │    86 │  1277 │  4002 │      27886 │  27886 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

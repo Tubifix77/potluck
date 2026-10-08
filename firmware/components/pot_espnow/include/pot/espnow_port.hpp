@@ -28,7 +28,11 @@ struct RxSlot {
     uint8_t src_mac[kMacLen];
     uint16_t len;
     int8_t rssi;         // from wifi_pkt_rx_ctrl_t; useful for correlating the §3 range cliff
-    uint8_t reserved0;
+    // M8.2 (PS-0): more of wifi_pkt_rx_ctrl_t, as ESP-IDF v6.0.2 defines it for the S3 --
+    // noise_floor (signed, dBm), sig_mode (0 non-HT 11b/g, 1 HT, 3 VHT) and rate (non-HT only).
+    int8_t noise_floor;
+    uint8_t sig_mode;
+    uint8_t rate;
     uint32_t recv_us;    // esp_timer_get_time() truncated to 32 bits, on our clock
     uint8_t data[kEspNowV2LinkMtu];
 };

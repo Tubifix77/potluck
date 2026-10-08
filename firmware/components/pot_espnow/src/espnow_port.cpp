@@ -86,7 +86,9 @@ void on_recv(const esp_now_recv_info_t* info, const uint8_t* data, int len) {
     g_rx_scratch.recv_us = static_cast<uint32_t>(esp_timer_get_time());
     g_rx_scratch.len = static_cast<uint16_t>(len);
     g_rx_scratch.rssi = (info->rx_ctrl != nullptr) ? static_cast<int8_t>(info->rx_ctrl->rssi) : 0;
-    g_rx_scratch.reserved0 = 0;
+    g_rx_scratch.noise_floor = (info->rx_ctrl != nullptr) ? static_cast<int8_t>(info->rx_ctrl->noise_floor) : 0;
+    g_rx_scratch.sig_mode = (info->rx_ctrl != nullptr) ? static_cast<uint8_t>(info->rx_ctrl->sig_mode) : 0;
+    g_rx_scratch.rate = (info->rx_ctrl != nullptr) ? static_cast<uint8_t>(info->rx_ctrl->rate) : 0;
     std::memcpy(g_rx_scratch.src_mac, info->src_addr, kMacLen);
     std::memcpy(g_rx_scratch.data, data, static_cast<size_t>(len));
 

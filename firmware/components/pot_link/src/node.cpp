@@ -1811,6 +1811,21 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         } else {
             account_rx_seq(*p, f.hdr.seq);
         }
+        if (hal_.on_rx_sample != nullptr) {
+            RxSample s{};
+            s.recv_us = recv_us;
+            s.node_id = f.hdr.src;
+            s.rssi = rssi;
+            s.relayed = rx_via_relay_;
+            if (was_broadcast && f.hdr.opcode == kOpHeartbeat) {
+                s.kind = kRxKindBeacon;
+                BeaconPayload b{};
+                if (load_beacon(f.payload, f.payload_len, b)) s.hb_seq = b.hb_seq;
+            } else {
+                s.kind = was_broadcast ? kRxKindOtherBroadcast : kRxKindUnicast;
+            }
+            hal_.on_rx_sample(hal_.ctx, s);
+        }
     }
 
     switch (f.hdr.opcode) {

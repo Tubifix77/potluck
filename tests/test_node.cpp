@@ -26,6 +26,7 @@ struct TestNode {
     Node* node = nullptr;
     NodeHal hal{};
     NodeConfig cfg{};  // kept so a test can reboot the node
+    std::vector<RxSample> samples;  // M8.2: what on_rx_sample reported
 };
 
 // A cell with a perfect channel and a clock the test advances by hand.
@@ -76,6 +77,7 @@ struct TestCell {
             t.hal.now_ms = &TestCell::now_ms;
             t.hal.now_us = &TestCell::now_us_cb;
             t.hal.set_channel = [](void* ctx, uint8_t ch) { static_cast<TestNode*>(ctx)->chan = ch; };
+            t.hal.on_rx_sample = [](void* ctx, const RxSample& rs) { static_cast<TestNode*>(ctx)->samples.push_back(rs); };
             t.cfg = cfg;
             t.node = new Node(cfg, t.hal);
         }
@@ -350,6 +352,38 @@ TEST(node, a_peer_first_heard_by_broadcast_hello_is_not_charged_a_unicast_gap) {
     uint32_t ppm = 0;
     CHECK(p->pdr_rx_ppm(ppm));
     CHECK_EQ(ppm, 1000000u);
+}
+
+TEST(node, every_frame_accepted_from_a_peer_is_reported_with_its_rssi_and_kind) {
+    // M8.2 (passive-sensor's PS-0, and PS-2's raw material): one sample per accepted frame, never one
+    // per pass of the link task -- so the count matches the link's own rx_frames.
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon, /*probe_ms=*/100);
+    c.start_all();
+    c.advance_ms(3000);
+    const PeerLink& p = c.nodes[0].node->peers().slot(0);
+    const std::vector<RxSample>& got = c.nodes[0].samples;
+    // All but one: the HELLO that introduced the peer is counted by the link but arrives before the
+    // peer is known, so there is no peer to report it for. PS-2's acceptance compares deltas.
+    CHECK_EQ(static_cast<uint32_t>(got.size()), p.rx_frames - 1u);
+    size_t beacons = 0, unicast = 0;
+    uint16_t last_seq = 0;
+    bool seq_rises = true;
+    for (const RxSample& rs : got) {
+        CHECK_EQ(static_cast<unsigned>(rs.node_id), 0x101u);
+        CHECK_EQ(static_cast<int>(rs.rssi), -50);  // what the test cell's radio reports
+        CHECK(!rs.relayed);
+        if (rs.kind == kRxKindBeacon) {
+            if (beacons > 0 && static_cast<uint16_t>(rs.hb_seq - last_seq) != 1u) seq_rises = false;
+            last_seq = rs.hb_seq;
+            ++beacons;
+        } else if (rs.kind == kRxKindUnicast) {
+            ++unicast;
+        }
+    }
+    CHECK(beacons > 20u);  // a 100 ms heartbeat for ~3 s
+    CHECK(unicast > 20u);  // the probes and their replies
+    CHECK(seq_rises);      // consecutive beacons, consecutive sequence numbers: nothing skipped
 }
 
 TEST(node, bye_marks_a_peer_left_not_dead) {

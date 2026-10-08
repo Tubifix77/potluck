@@ -120,6 +120,22 @@ uint32_t now_us_() { return static_cast<uint32_t>(esp_timer_get_time()); }
 // Frame tee — §7.6's capture stream at M0's scale. Off by default: at ~40 lines/second the console
 // UART's cost lands inside the timing being measured. On to debug the wire, off to measure it.
 // ---------------------------------------------------------------------------------------------
+#if CONFIG_POT_RSSI_TEE
+// M8.2 (PS-0): the radio metadata of the frame on_rx is handling now. The drain loop sets it around
+// each on_rx call; the node's sample hook, called synchronously inside, adds what only the node knows.
+const RxSlot* g_rx_now = nullptr;
+void rssi_tee(void*, const RxSample& s) {
+    static const char* const kKind[] = {"?", "beacon", "unicast", "bcast"};
+    std::printf("{\"t\":\"rssi\",\"us\":%u,\"peer\":%u,\"rssi\":%d,\"nf\":%d,\"sig\":%u,\"rate\":%u,"
+                "\"kind\":\"%s\",\"seq\":%u,\"rel\":%d}\n",
+                static_cast<unsigned>(s.recv_us), static_cast<unsigned>(s.node_id), static_cast<int>(s.rssi),
+                g_rx_now != nullptr ? static_cast<int>(g_rx_now->noise_floor) : 0,
+                g_rx_now != nullptr ? static_cast<unsigned>(g_rx_now->sig_mode) : 0u,
+                g_rx_now != nullptr ? static_cast<unsigned>(g_rx_now->rate) : 0u,
+                kKind[s.kind < 4 ? s.kind : 0], static_cast<unsigned>(s.hb_seq), s.relayed ? 1 : 0);
+}
+#endif
+
 #if CONFIG_POT_FRAME_TEE
 void tee_frame(const char* dir, const uint8_t mac[kMacLen], int8_t rssi, const uint8_t* data,
                size_t len) {
@@ -989,11 +1005,17 @@ void link_task(void*) {
         if (espnow_rx_pop(rx, wait_ms)) {
             xSemaphoreTake(g_mutex, portMAX_DELAY);
             tee_frame("rx", rx.src_mac, rx.rssi, rx.data, rx.len);
+#if CONFIG_POT_RSSI_TEE
+            g_rx_now = &rx;
+#endif
             if (!deaf_to(rx.src_mac)) g_node->on_rx(rx.src_mac, rx.data, rx.len, rx.recv_us, rx.rssi);
             for (size_t drained = 1; drained < kRxRingSlots && espnow_rx_pop(rx, 0); ++drained) {
                 tee_frame("rx", rx.src_mac, rx.rssi, rx.data, rx.len);
                 if (!deaf_to(rx.src_mac)) g_node->on_rx(rx.src_mac, rx.data, rx.len, rx.recv_us, rx.rssi);
             }
+#if CONFIG_POT_RSSI_TEE
+            g_rx_now = nullptr;  // anything after this (the host's serial link) carries no radio metadata
+#endif
             xSemaphoreGive(g_mutex);
         }
 
@@ -1999,6 +2021,9 @@ extern "C" void app_main(void) {
     hal.now_us = &hal_now_us;
     hal.free_dram = &hal_free_dram;
     hal.on_event = &hal_on_event;
+#if CONFIG_POT_RSSI_TEE
+    hal.on_rx_sample = &rssi_tee;
+#endif
     hal.run_heavy = &trust_rt::run_heavy;
 #if !CONFIG_POT_RADIO_DISABLE && !CONFIG_POT_CAN
     hal.set_channel = [](void*, uint8_t ch) { espnow_set_channel(ch); };

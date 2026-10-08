@@ -35,6 +35,21 @@ namespace pot {
 // and it is callable from C glue if a later port needs that. `ctx` is the caller's own state.
 // ---------------------------------------------------------------------------------------------
 
+// M8.2 (PS-0, and PS-2's raw material): one frame accepted from a peer this node knows, as on_rx saw
+// it. `rssi` is the radio's figure for the last hop; on a relayed frame that is the relay's, so a
+// consumer measuring a link must leave relayed samples out.
+struct RxSample {
+    uint32_t recv_us;
+    uint16_t node_id;    // the member that sent it (the header's src, not the hop)
+    uint16_t hb_seq;     // a beacon's 16-bit heartbeat sequence; 0 for other frames
+    int8_t rssi;
+    uint8_t kind;        // kRxKindBeacon, kRxKindUnicast, kRxKindOtherBroadcast
+    bool relayed;
+};
+constexpr uint8_t kRxKindBeacon = 1;
+constexpr uint8_t kRxKindUnicast = 2;
+constexpr uint8_t kRxKindOtherBroadcast = 3;
+
 struct NodeHal {
     void* ctx = nullptr;
 
@@ -59,6 +74,10 @@ struct NodeHal {
 
     // Human-readable log line. May be null.
     void (*log)(void* ctx, const char* msg) = nullptr;
+
+    // M8.2: called for every frame accepted from a known peer, after authentication, before it is
+    // handled -- on the link task, with the node's lock held, so it must return at once. May be null.
+    void (*on_rx_sample)(void* ctx, const RxSample& s) = nullptr;
 
     // M5: run `fn(arg)` to completion, then return -- on a task with room for it. Every Ed25519 and
     // X25519 operation the node does goes through here: each needs ~2-3 KB of stack, and on the board

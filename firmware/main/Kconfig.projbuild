@@ -154,6 +154,18 @@ config POT_SERIAL_BAUD
     depends on POT_SERIAL_LINK
     default 921600
 
+config POT_RSSI_TEE
+    bool "M8.2: one short console line per frame received from a known peer (RSSI and radio metadata)"
+    default n
+    help
+        For passive-sensor's PS-0: every frame accepted from a peer, as
+        {"t":"rssi","us":..,"peer":..,"rssi":..,"nf":..,"sig":..,"rate":..,"kind":"beacon","seq":..,"rel":0}
+        -- about 110 bytes, against the frame tee's ~250 of hex per frame in both directions, which
+        would saturate the 115200-baud console the link task shares. us is this board's clock;
+        nf the noise floor and sig the signal mode (0 non-HT 11b/g, 1 HT) from the S3's rx_ctrl;
+        seq a beacon's heartbeat sequence (0 otherwise); rel 1 when the frame came through the
+        relay, whose RSSI it then is.
+
 config POT_FRAME_TEE
     bool "Tee every frame to the serial console as hex"
     default n
