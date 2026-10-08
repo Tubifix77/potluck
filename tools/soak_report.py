@@ -121,14 +121,21 @@ def main(argv):
         hours = (last["up_ms"] - first["up_ms"]) / 3.6e6
         worst_h = hours if worst_h is None else min(worst_h, hours)
         m = last["membership"]
+        m0 = first["membership"]
         epochs = set(r["epoch"] for r in b["node"])
         flags = []
+        # The counters run from the board's boot, which may predate the capture (a soak started on a
+        # cell that has been up for hours). What happened inside the window is the difference; the
+        # lifetime figure is shown beside it when they differ, so neither can be mistaken for the other.
+        for key in ("deaths", "revivals", "reboots_seen"):
+            if m[key] != m0[key]:
+                flags.append(f"{key}_in_window={m[key] - m0[key]}")
         if m["deaths"]:
-            flags.append(f"deaths={m['deaths']}")
+            flags.append(f"deaths_since_boot={m['deaths']}")
         if m["revivals"]:
             flags.append(f"revivals={m['revivals']}")
         if m["reboots_seen"]:
-            flags.append(f"reboots_seen={m['reboots_seen']}")
+            flags.append(f"reboots_seen_since_boot={m['reboots_seen']}")
         if m["table_full"]:
             flags.append(f"table_full={m['table_full']}")
         if m["events_dropped"]:
@@ -220,7 +227,8 @@ def main(argv):
             print(f"    0x{src:04x} -> 0x{dst:04x}   {v['state']}, ESP-NOW v{v['ver']}, "
                   f"MTU {v['mtu']}, RSSI {v['rssi']} dBm, misses {v['misses']}")
             print(f"      outbound  {v['d_tx']:>9,} frames  cb_fail {v['cb_fail']}  "
-                  f"enqueue_err {v['enq']}   unicast PDR {v['tx_pdr']/1e4:.4f}%")
+                  f"enqueue_err {v['enq']}   unicast PDR "
+                  + ("unmeasured (no delivery signal on this link)" if v['tx_pdr'] is None else f"{v['tx_pdr']/1e4:.4f}%"))
             print(f"      inbound   {v['d_rx']:>9,} frames  seq gaps {v['d_gap']}  "
                   f"bad {v['bad']}   unicast PDR {v['rx_pdr']/1e4:.4f}%")
             print(f"      heartbeat {v['hb_expected']:>9,} expected ({v['hb_source']})  "
