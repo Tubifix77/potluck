@@ -667,3 +667,5 @@ doc fetched as raw markdown from its repository), not from a summary.
 | **Router gone, with pme_hotspot's back-off (f1624de)** | 15 / 19 deaths of B (A / C) in 10.9 min, reconnects 2 -> 15; was 10 deaths in 32 s | `captures/m61-norouter-*` | 2026-10-08 | volatile | measured |
 | **Off-channel time of one never-associated reconnect attempt** | 3.7-4.0 s of silence (death at 0.6 s, revived 2.2-3.3 s later) | `captures/m61-norouter-COM3.jsonl` | 2026-10-08 | volatile | measured |
 | **Hotspot alone on the aligned config (pme f1624de)** | 16-18 / 16-17 Mbps, latency 7-11 / 26-33 ms; 10-min stream clean, 0 reconnects | `captures/m61-step0b-*` | 2026-10-08 | volatile | measured |
+| **Combined node, 1.96 h soak** | 0 deaths / revivals / reboots; 0 reconnects; heartbeat delivery 99.74-99.91 %; RTT p50 4-6, p99 8-11 ms | `captures/soak-2026-10-08-combined-*` | 2026-10-08 | volatile | measured |
+| **Phantom unicast loss of a late-joining board** | ~12,500 per peer before `c70756f`; 0 after (B reset into a running cell) | `captures/soak-2026-10-08-combined-COM4.jsonl`, `captures/s30-verify-COM4.jsonl` | 2026-10-08 | stable | measured |

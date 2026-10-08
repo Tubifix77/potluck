@@ -4053,3 +4053,27 @@ cell already running shows it, which is why the soak's last-booted board always 
 failed before the fix and passes after; 289 cases. Every inbound unicast PDR from a board that booted
 into a running cell, in any capture before this fix, carries this artefact; the heartbeat delivery
 figures, computed from `hb_seq`, never did.
+
+**The combined soak, two hours of it** (`captures/soak-2026-10-08-combined-*`, report alongside; owner
+away; A and C on `7ec8229`, B on the extender build of `c87c9e1`, associated to the house router and
+serving the hotspot). The owner left the session running and asked it to do what it could alone; the
+24-hour run CR-6 names needs `tools/soak.ps1`'s scheduled tasks, which are persistent system
+configuration and were not approved, and the harness ends a background command at two hours -- so
+**1.96 hours is this run**, from 10:14 to 12:12. Inside it: **0 deaths, 0 revivals, 0 reboots** on every
+board; B associated throughout (0 reconnects, RSSI -49..-46 dBm, channel 1; a phone joined the hotspot
+at some point); `free_dram` flat to the byte on A and C, and B's moving with the Wi-Fi driver's dynamic
+buffers (largest block 131-139 KB, ending 2.4 KB higher than it started); heartbeat delivery
+**99.74-99.91 %** in all six directions; RTT p50 4-6 ms, p99 8-11 ms, p99.9 42-60 ms over 21,213
+samples. No capture names a network.
+
+**On the bench afterwards.** A and C flashed with `4eb4f74`, B with the extender build of `cfe62aa` (the
+same code and a size-report commit); verify-flash matched on all three. **The PDR fix:** B reset into the
+running cell and, 232 s later, `lost_seqgap` 0 and PDR 100 % from both peers (`captures/s30-verify-*`).
+**The hunting window, at boot:** B's log (read for these lines only, then deleted) says
+`heartbeat 100 ms x 60 misses = 6000 ms` at 2.9 s, then `station associated; declaring 6 x 100 ms` at
+4.6 s. A station that loses its router *mid-run* -- the case the window is for -- needs a router to go
+away, so it waits for the owner; and the router-gone test, with a network that does not exist, needs
+the owner to restore the real credentials afterwards.
+
+**Bench at the end of the session:** A, C on `4eb4f74`; B on the extender build of `cfe62aa` with the
+owner's credentials (kept by the owner's choice). Cell on channel 1.

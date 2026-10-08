@@ -21,8 +21,9 @@ one caveat: the arbitration was not recorded by an instrument outside the boards
 accepted too** (sessions 21-22 and 26), and so are **M6.1** (CR-6, the combined extender node, session 29) and **M8**
 (host services, session 28). **The roadmap's remaining milestone, M7, is gated** (no named workload needs WASM), so
 there is no next milestone: what is open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6's
-combined node), a rebuilt step-0 baseline with the extender's buffer setting, and B's 97.4 % inbound PDR figure in
-the soak report. A new example system from the owner is what would open new work.
+combined node; a 2-hour combined run is clean, session 30) and the extender's hunting window mid-run (needs the
+owner to take the router away). The step-0 rerun and B's low inbound PDR are closed (session 30; the PDR was an
+accounting bug, fixed in `c70756f`). A new example system from the owner is what would open new work.
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
@@ -38,6 +39,15 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-08 (midday, owner away): poor-mans-extender's f1624de answered (M0-LOG session 30).
+>
+> Router gone: deaths of B 12x rarer with the extender's back-off, still one per attempt (each never-associated
+> scan is 3.7-4.0 s off-channel), so the extender build now declares 60 x 100 ms while its station hunts
+> (`e641bd4`; shown at boot, mid-run untested). Step 0 rerun on the aligned config: 16-18/16-17 Mbps, loaded
+> latency 26-33 ms. A 1.96 h combined soak: 0 deaths, 0 reconnects. A late-joining board's phantom unicast loss
+> fixed (`c70756f`). Bench: A, C on `4eb4f74`; B on the extender build of `cfe62aa` with the owner's credentials.
+> The 24 h soak needs `tools/soak.ps1` (scheduled tasks): ask the owner first.
+>
 > ## HANDOVER, 2026-10-08 (late morning): M6.1 and M8 ACCEPTED; synced to GitHub. No milestone is next (M7 gated).
 >
 > Bench left running by the owner's choice: A, C on `7ec8229`; B on the extender build of `7ec8229`, still holding

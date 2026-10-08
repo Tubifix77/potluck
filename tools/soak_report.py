@@ -28,6 +28,15 @@ heartbeat is a fixed-period timer, so over an interval it must have sent interva
 That is sound only while the peer did not reboot, which is checked (reboots_seen and a constant
 epoch) and reported. Every figure derived this way is labelled RECONSTRUCTED. It is evidence, not
 acceptance.
+
+THE UNICAST PDR OF A LATE-JOINING BOARD, BEFORE c70756f
+
+Firmware before c70756f seeded a new peer's unicast seq baseline from the broadcast HELLO that
+created it, so a board that booted into a running cell charged each peer with one phantom gap the
+size of the distance between that peer's two counters (M0-LOG session 30: ~12,500, 47 % "PDR" with
+zero gaps in the window). The inbound unicast PDR the firmware prints is cumulative since boot, so in
+such captures read the window's seq gaps instead. Heartbeat delivery comes from hb_seq and was never
+affected.
 """
 
 import collections
