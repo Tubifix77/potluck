@@ -19,11 +19,13 @@ the owner's two-storey house in which the kill criterion did not fire. M1: potct
 board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **M4 is ACCEPTED (2026-10-05)**, with
 one caveat: the arbitration was not recorded by an instrument outside the boards (M0-LOG session 20). **M5 and M6 are
 accepted too** (sessions 21-22 and 26), and so are **M6.1** (CR-6, the combined extender node, session 29) and **M8**
-(host services, session 28). **The roadmap's remaining milestone, M7, is gated** (no named workload needs WASM), so
-there is no next milestone: what is open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6's
+(host services, session 28). **Next: M8.1** (attached hardware -- B's die temperature read from A -- and a compiled-in actor
+API), then **M9** (borrowing an idle core: ADR-005's revisit trigger as an experiment, accepted only with no host
+attached) and **M10** (the PC as a placement node), all scheduled 2026-10-08 from the owner's status review; M7
+stays gated. Also open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6's
 combined node; a 2-hour combined run is clean, session 30) and the extender's hunting window mid-run (needs the
 owner to take the router away). The step-0 rerun and B's low inbound PDR are closed (session 30; the PDR was an
-accounting bug, fixed in `c70756f`). A new example system from the owner is what would open new work.
+accounting bug, fixed in `c70756f`). One owner, one application package per cluster is a recorded scope choice (ARCHITECTURE section 0.1).
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and

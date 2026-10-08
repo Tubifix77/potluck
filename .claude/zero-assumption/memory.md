@@ -669,3 +669,12 @@ doc fetched as raw markdown from its repository), not from a summary.
 | **Hotspot alone on the aligned config (pme f1624de)** | 16-18 / 16-17 Mbps, latency 7-11 / 26-33 ms; 10-min stream clean, 0 reconnects | `captures/m61-step0b-*` | 2026-10-08 | volatile | measured |
 | **Combined node, 1.96 h soak** | 0 deaths / revivals / reboots; 0 reconnects; heartbeat delivery 99.74-99.91 %; RTT p50 4-6, p99 8-11 ms | `captures/soak-2026-10-08-combined-*` | 2026-10-08 | volatile | measured |
 | **Phantom unicast loss of a late-joining board** | ~12,500 per peer before `c70756f`; 0 after (B reset into a running cell) | `captures/soak-2026-10-08-combined-COM4.jsonl`, `captures/s30-verify-COM4.jsonl` | 2026-10-08 | stable | measured |
+
+### Roadmap review — 2026-10-08 (M8.1, M9, M10)
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **ESP32-S3 CoreMark (current)** | "Two cores at 240 MHz: 1329.92 CoreMark; 5.54 CoreMark/MHz" -- no single-core figure given | Espressif, *ESP32-S3 Series Datasheet* v2.2 (2026-03-05), section CPU and Memory; https://documentation.espressif.com/esp32-s3_datasheet_en.pdf | 2026-10-08 | stable | verified |
+| **ESP32-S3 CoreMark (superseded)** | 613.86 single core, 1181.60 dual core at 240 MHz -- the figures before the datasheet's v2.0 (2025-04-24: "Updated the CoreMark score"); still on distributor pages | datasheet v2.2 revision history; Mouser ESP32-S3 product page (secondary) | 2026-10-08 | stable | verified (superseded) |
+| **ESP32-S3 internal temperature sensor** | driver `temperature_sensor_install/_enable/_get_celsius/_disable/_uninstall`; `_get_celsius` "Should not be called from interrupt"; S3 ranges (min, max, error): (50,125,3) (20,100,2) (-10,80,1) (-30,50,2) (-40,20,3) | ESP-IDF v6.0.2 source: `components/esp_driver_tsens/include/driver/temperature_sensor.h`, `components/esp_hal_ana_conv/esp32s3/temperature_sensor_periph.c` | 2026-10-08 | stable | verified |
+| **...measures the die, not the room** | "designed primarily to measure the temperature inside the silicon"; "not recommended to use it for ambient temperature measurement"; driver not thread-safe | https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/temp_sensor.html (page is v6.1) | 2026-10-08 | stable | verified |
