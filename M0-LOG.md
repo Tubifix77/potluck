@@ -3924,3 +3924,8 @@ configuration CR-6 asked for wedges ESP-NOW; on its own, without ESP-NOW, the ba
 **Also fixed (`28eeb1a`): the host now answers RTT probes**, as a node does. On the boards, A's record
 for the host went from a probe timeout every 3 s to 0 timeouts and a measured round trip: 52-72 ms
 over the CP2102 at 921,600 baud, 12 us of it on the host.
+
+**The fix, held for an hour** (`captures/m8-ext-fixed-60min.jsonl`, B on the fixed extender build of
+`28eeb1a`, no credentials): 60 minutes, **0 transmit errors**, 0 resets, 0 peer deaths seen by B, 62,864
+frames sent; free internal heap 242 KB. The old configuration wedged within 2.5-5 minutes of every boot.
+An overnight soak of the whole cell on these builds was started from the session at 05:13.
