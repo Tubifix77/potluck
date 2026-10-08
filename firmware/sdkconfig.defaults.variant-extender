@@ -1,0 +1,38 @@
+# M6.1 (CR-6): the extender build. Read on top of sdkconfig.defaults and sdkconfig.defaults.esp32s3.
+#
+#   tools\build_firmware.ps1 -Variant extender -PmeHotspot D:\Projects\poor-mans-extender\firmware\components
+#
+# One chip that is a Potluck member, a station on the house router and a hotspot for phones. The
+# Wi-Fi and lwIP settings below are copied from poor-mans-extender's own firmware (its
+# sdkconfig.defaults and the sdkconfig it generated, read 2026-10-08), which is the build M6.1's step 0
+# measured. They match on purpose: step 3 compares step 0 with step 2, and the difference must be the
+# radio being shared, not a different Wi-Fi configuration or a slower CPU.
+#
+# Section 6's internal core budget is unaffected: these are ESP-IDF's buffers, and with
+# SPIRAM_TRY_ALLOCATE_WIFI_LWIP they are allocated in PSRAM first ("Try to allocate memories of WiFi
+# and LWIP in SPIRAM firstly. If failed, allocate internal memory", esp_psram Kconfig, v6.0.2).
+# Whether the router is fast enough with its buffers there was step 0's [MEASURE]: 18-19 Mbps down.
+
+CONFIG_POT_EXTENDER=y
+
+# The baseline's CPU clock.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+
+# A NAT router: forwarding and NAPT, as the baseline.
+CONFIG_LWIP_IP_FORWARD=y
+CONFIG_LWIP_IPV4_NAPT=y
+
+# Wi-Fi and lwIP buffers in PSRAM first.
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+
+# Aggregation on, as the baseline: Potluck's own builds turn it off to save internal RAM.
+CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=y
+CONFIG_ESP_WIFI_TX_BA_WIN=6
+CONFIG_ESP_WIFI_AMPDU_RX_ENABLED=y
+CONFIG_ESP_WIFI_RX_BA_WIN=16
+
+# The baseline's buffer counts (Potluck's own builds: 6 / 16 / dynamic TX).
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=32
+CONFIG_ESP_WIFI_STATIC_TX_BUFFER=y
+CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=16

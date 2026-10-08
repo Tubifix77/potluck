@@ -53,6 +53,7 @@ EspNowQueueStats g_queue_stats{};
 // brought up its frame link, and then rebooted in a loop, with the boot epoch counting up as the
 // only evidence.
 bool g_espnow_up = false;
+bool g_attached = false;  // M6.1: an application owns the Wi-Fi driver; we only attached
 
 // ---------------------------------------------------------------------------------------------
 // Callbacks.
@@ -160,19 +161,9 @@ bool nvs_init_once() {
     return true;
 }
 
-EspNowInitReport espnow_start(const EspNowConfig& cfg) {
-    EspNowInitReport rep;
-    g_dram_profile.at_boot = free_internal_dram();
-
-    // --- NVS ---------------------------------------------------------------------------------
-    // Wi-Fi calibration data lives here, and so does the boot epoch (see boot_epoch.cpp).
-    if (!nvs_init_once()) {
-        rep.last_error = ESP_FAIL;
-        rep.failed_at = "nvs_flash_init";
-        return rep;
-    }
-    g_dram_profile.after_nvs = free_internal_dram();
-
+// The radio bring-up Potluck does when it owns Wi-Fi: netif, the event loop, the driver in station
+// mode, no power save, the fixed channel. False (with `rep` filled in) on the first failure.
+static bool wifi_bring_up(const EspNowConfig& cfg, EspNowInitReport& rep) {
     esp_err_t err = ESP_OK;
 
     // --- netif and the default event loop ------------------------------------------------------
@@ -184,13 +175,13 @@ EspNowInitReport espnow_start(const EspNowConfig& cfg) {
     if (err != ESP_OK) {
         rep.last_error = err;
         rep.failed_at = "esp_netif_init";
-        return rep;
+        return false;
     }
     err = esp_event_loop_create_default();
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         rep.last_error = err;
         rep.failed_at = "esp_event_loop_create_default";
-        return rep;
+        return false;
     }
     g_dram_profile.after_netif = free_internal_dram();
 
@@ -200,7 +191,7 @@ EspNowInitReport espnow_start(const EspNowConfig& cfg) {
     if (err != ESP_OK) {
         rep.last_error = err;
         rep.failed_at = "esp_wifi_init";
-        return rep;
+        return false;
     }
     g_dram_profile.after_wifi_init = free_internal_dram();
 
@@ -212,7 +203,7 @@ EspNowInitReport espnow_start(const EspNowConfig& cfg) {
     if (err != ESP_OK) {
         rep.last_error = err;
         rep.failed_at = "esp_wifi_start";
-        return rep;
+        return false;
     }
 
     // No power save. M0 is measuring delay, and modem sleep would add a wake latency that has
@@ -234,6 +225,40 @@ EspNowInitReport espnow_start(const EspNowConfig& cfg) {
         ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(cfg.tx_power_qdbm));
     }
     g_dram_profile.after_wifi_start = free_internal_dram();
+    return true;
+}
+
+EspNowInitReport espnow_start(const EspNowConfig& cfg) {
+    EspNowInitReport rep;
+    g_dram_profile.at_boot = free_internal_dram();
+
+    // --- NVS ---------------------------------------------------------------------------------
+    // Wi-Fi calibration data lives here, and so does the boot epoch (see boot_epoch.cpp).
+    if (!nvs_init_once()) {
+        rep.last_error = ESP_FAIL;
+        rep.failed_at = "nvs_flash_init";
+        return rep;
+    }
+    g_dram_profile.after_nvs = free_internal_dram();
+
+    esp_err_t err = ESP_OK;
+
+    // M6.1: the application has brought Wi-Fi up already. Skip straight to the queues and ESP-NOW;
+    // nothing about the driver's mode, power save, channel or PHY is ours to set.
+    if (cfg.attach) {
+        wifi_mode_t mode = WIFI_MODE_NULL;
+        err = esp_wifi_get_mode(&mode);
+        if (err != ESP_OK || (mode != WIFI_MODE_STA && mode != WIFI_MODE_APSTA)) {
+            rep.last_error = err != ESP_OK ? err : ESP_ERR_INVALID_STATE;
+            rep.failed_at = "attach: Wi-Fi not started in STA or STA+AP mode by the application";
+            return rep;
+        }
+        g_attached = true;
+        g_dram_profile.after_netif = g_dram_profile.after_wifi_init = g_dram_profile.after_wifi_start =
+            free_internal_dram();
+    } else if (!wifi_bring_up(cfg, rep)) {
+        return rep;
+    }
 
     // --- queues ------------------------------------------------------------------------------
     g_rx_queue = xQueueCreateStatic(kRxRingSlots, sizeof(RxSlot), g_rx_queue_storage,
@@ -270,8 +295,10 @@ EspNowInitReport espnow_start(const EspNowConfig& cfg) {
     rep.free_dram_after_espnow = g_dram_profile.after_espnow;
     rep.ok = true;
 
-    ESP_LOGI(kTag, "esp-now v%u up on channel %u, mac %02x:%02x:%02x:%02x:%02x:%02x",
-             static_cast<unsigned>(rep.espnow_version), static_cast<unsigned>(cfg.channel),
+    ESP_LOGI(kTag, "esp-now v%u up on channel %u%s, mac %02x:%02x:%02x:%02x:%02x:%02x",
+             static_cast<unsigned>(rep.espnow_version),
+             static_cast<unsigned>(g_attached ? espnow_current_channel() : cfg.channel),
+             g_attached ? " (attached: the application owns Wi-Fi)" : "",
              rep.mac[0], rep.mac[1], rep.mac[2], rep.mac[3], rep.mac[4], rep.mac[5]);
     return rep;
 }
@@ -298,13 +325,22 @@ bool espnow_add_peer(const uint8_t mac[kMacLen], uint8_t channel) {
     return true;
 }
 
+uint8_t espnow_current_channel() {
+    uint8_t primary = 0;
+    wifi_second_chan_t second = WIFI_SECOND_CHAN_NONE;
+    if (!g_espnow_up || esp_wifi_get_channel(&primary, &second) != ESP_OK) return 0;
+    return primary;
+}
+
+bool espnow_attached() { return g_attached; }
+
 bool espnow_set_channel(uint8_t channel) {
-    if (!g_espnow_up) return false;
+    if (!g_espnow_up || g_attached) return false;
     return esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) == ESP_OK;
 }
 
 bool espnow_scan_for(const char* ssid, uint8_t& channel, int8_t& rssi) {
-    if (!g_espnow_up || ssid == nullptr) return false;
+    if (!g_espnow_up || g_attached || ssid == nullptr) return false;
     wifi_scan_config_t sc{};
     sc.ssid = reinterpret_cast<uint8_t*>(const_cast<char*>(ssid));
     sc.show_hidden = false;

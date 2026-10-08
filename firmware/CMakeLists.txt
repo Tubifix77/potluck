@@ -9,5 +9,11 @@
 
 cmake_minimum_required(VERSION 3.16)
 
+# M6.1: the extender variant takes poor-mans-extender's components directory from the environment
+# (tools\build_firmware.ps1 -PmeHotspot). Read from there, never copied: that repository stays its own.
+if(DEFINED ENV{POT_PME_HOTSPOT_DIR})
+  set(EXTRA_COMPONENT_DIRS "$ENV{POT_PME_HOTSPOT_DIR}")
+endif()
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(potluck_m0)

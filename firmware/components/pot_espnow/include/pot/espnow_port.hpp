@@ -51,6 +51,12 @@ struct EspNowConfig {
     uint8_t channel = 1;      // must match the channel the local device is on (§3)
     bool long_range = false;  // ESP-IDF's LR PHY; off at M0 so measurements match §3's 802.11b/g
     int8_t tx_power_qdbm = 0; // 0 = leave the driver default alone
+    // M6.1 (CR-6): an application already owns the Wi-Fi driver -- mode, association, channel (the
+    // extender's station + SoftAP). Potluck only attaches: queues, esp_now_init, callbacks. Every
+    // field above is ignored, and the channel is whatever the association put the radio on. ESP-IDF:
+    // ESP-NOW data can be sent "via both the Station and the SoftAP interface", and a peer on channel
+    // 0 is sent to "on the current channel" (esp_now.rst, v6.0.2).
+    bool attach = false;
 };
 
 // Result of bringing the radio up, including the numbers §6's [MEASURE] item asks for.
@@ -79,9 +85,16 @@ EspNowInitReport espnow_start(const EspNowConfig& cfg);
 bool espnow_add_peer(const uint8_t mac[kMacLen], uint8_t channel);
 bool espnow_del_peer(const uint8_t mac[kMacLen]);
 // M5.1 CR-1: retune. Peers registered with channel 0 follow ("use the current channel", esp_now.h).
+// M6.1: refused (false) when attached. The router owns the channel then, and ESP-IDF says
+// esp_wifi_set_channel "should not be called when STA is scanning or connecting to an external AP or
+// softAP has connected to external STAs" (esp_wifi.h, STA+softAP mode).
 bool espnow_set_channel(uint8_t channel);
+// The radio's current primary channel, 0 if unknown. What an attached node reports.
+uint8_t espnow_current_channel();
+bool espnow_attached();
 // M5.1 bench helper: scan for ONE network by name (the SSID filter keeps every other network out of
-// the result, and so out of any log). Blocking, a few seconds. False if not seen.
+// the result, and so out of any log). Blocking, a few seconds. False if not seen. M6.1: refused when
+// attached -- a scan would take the radio off the router's channel under the application's feet.
 bool espnow_scan_for(const char* ssid, uint8_t& channel, int8_t& rssi);
 
 // Submit a frame. Returns the esp_err_t from esp_now_send() — ESP_OK means queued, not delivered.

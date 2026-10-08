@@ -24,6 +24,7 @@
 #include <cstring>
 #include <new>  // placement new, for constructing the Node into static storage
 
+#include "extender.hpp"
 #include "pot/boot_epoch.hpp"
 #if CONFIG_POT_CAN
 #include "pot/can_port.hpp"
@@ -1006,6 +1007,16 @@ void link_task(void*) {
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         g_node->tick(nt);
         if (g_rec != nullptr) g_rec->tick(nt);
+        // M6.1: the router put the radio on a channel. Tell the cell (M5.1's signed announcement), and
+        // declare it from now on. The radio is already there: by the time a station knows its new
+        // channel it has associated on it, so the announcement goes out on the NEW channel, and members
+        // still on the old one find this node by CR-1's scan rather than by hearing it.
+        if (const uint8_t rch = extender::take_channel(); rch != 0 && rch != g_node->channel()) {
+            if (!g_node->move_cell(rch, 0)) {
+                ESP_LOGW(kTag, "extender: router is on channel %u, outside the cell's range; not announced",
+                         static_cast<unsigned>(rch));
+            }
+        }
         xSemaphoreGive(g_mutex);
 
         if (static_cast<int32_t>(nt - next_assess_ms) >= 0) {
@@ -1161,6 +1172,7 @@ void stats_task(void*) {
         // behind up to ~3 KB of output at 115200 baud, and so is a poor timestamp.
         std::printf("{\"t\":\"clk\",\"node\":%u,\"up_ms\":%u}\n", static_cast<unsigned>(node_id),
                     static_cast<unsigned>(now_ms_()));
+        extender::print_status();  // M6.1: the baseline's {"t":"hs"} line, on an extender build only
 
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         refresh_sys_resources();
@@ -1674,6 +1686,7 @@ bool handle_test(const char* line, size_t len) {
 }
 
 void handle(const char* line, size_t len) {
+    if (extender::handle_console(line, len)) return;  // M6.1: credentials; prints a result, never them
     if (handle_test(line, len)) return;
     const EnrolRequest r = parse_enrol_line(line, len);
     char out[200];
@@ -1726,6 +1739,7 @@ void console_task(void*) {
         if (uart_read_bytes(static_cast<uart_port_t>(uart), &c, 1, pdMS_TO_TICKS(10)) != 1) continue;
         if (c == '\n') {
             if (!overflow) handle(line, n);
+            std::memset(line, 0, n);  // M6.1: a line may have carried a Wi-Fi password; keep no copy
             n = 0;
             overflow = false;
         } else if (n < sizeof(line)) {
@@ -1794,6 +1808,12 @@ extern "C" void app_main(void) {
     nvs_init_once();
     ESP_LOGW(kTag, "built with CONFIG_POT_RADIO_DISABLE: serial and namespace only");
 #else
+#if CONFIG_POT_EXTENDER
+    // M6.1: the hotspot owns Wi-Fi when it has credentials, and ESP-NOW only attaches to it. Its
+    // credentials live in NVS, so NVS comes up first.
+    nvs_init_once();
+    ecfg.attach = extender::start();
+#endif
     const EspNowInitReport rep = espnow_start(ecfg);
 #endif
     if (!rep.ok) {
@@ -1830,6 +1850,13 @@ extern "C" void app_main(void) {
     cfg.hb_miss_limit = CONFIG_POT_HB_MISS_LIMIT;
     cfg.hello_interval_ms = CONFIG_POT_HELLO_INTERVAL_MS;
     cfg.channel = kChannel;
+    if (extender::active()) {
+        // M6.1: the router owns this radio's channel. Declare what it is on now (0 until the station
+        // first associates), never hop, never follow an announcement -- CR-1's station case.
+        const uint8_t now_ch = espnow_current_channel();
+        if (now_ch >= cfg.channel_lo && now_ch <= cfg.channel_hi) cfg.channel = now_ch;
+        cfg.channel_fixed = true;
+    }
 #if CONFIG_POT_CAN
     cfg.admit_on_beacon = true;  // a CAN bus carries no HELLO (§5.3.1)
 #endif
@@ -1889,6 +1916,7 @@ extern "C" void app_main(void) {
     hal.run_heavy = &trust_rt::run_heavy;
 #if !CONFIG_POT_RADIO_DISABLE && !CONFIG_POT_CAN
     hal.set_channel = [](void*, uint8_t ch) { espnow_set_channel(ch); };
+    if (extender::active()) hal.set_channel = nullptr;  // M6.1: nothing here may retune the router's radio
 #endif
     hal.persist_safe_state_floors = &trust_rt::persist_floors;
 
@@ -1979,6 +2007,13 @@ extern "C" void app_main(void) {
         g_node->set_safe_state_handler(&m4::on_safe_state, nullptr);
     }
 #endif
+    if (extender::active()) {
+        // M6.1 / CR-6 item 4: the garden node is busy by nature (it forwards phones' traffic) and the
+        // cell's relay by construction (ADR-009): it is the member out where the others cannot reach.
+        g_node->set_busy(true);
+        g_node->set_relay(true);
+        ESP_LOGI(kTag, "extender: declared BUSY and RELAY; channel %u from the router", static_cast<unsigned>(g_node->channel()));
+    }
     g_node->set_deploy_server(&deploy_rt::on_deploy, nullptr);
     g_node->set_deploy_result(&deploy_rt::on_result, nullptr);
 

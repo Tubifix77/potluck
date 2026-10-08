@@ -243,6 +243,31 @@ config POT_TRIAL_MAX_BOOTS
         A module that crashes its node is retried this many times, then the node goes back to its
         previous slot by itself.
 
+config POT_EXTENDER
+    bool "M6.1: the extender build -- poor-mans-extender's hotspot owns Wi-Fi, Potluck attaches"
+    default n
+    help
+        Pulls in poor-mans-extender's pme_hotspot component (station on the house router, SoftAP for
+        phones, NAT) and lets it own the Wi-Fi driver; ESP-NOW only attaches, never retunes or scans,
+        and the node announces the router's channel to the cell. Build it with
+        tools\build_firmware.ps1 -Variant extender -PmeHotspot <poor-mans-extender\firmware\components>.
+        Credentials: POT! pme sta / ap / forget on the console. Without credentials the node runs as an
+        ordinary member.
+
+config POT_EXTENDER_AP_SSID_DEFAULT
+    string "Hotspot name when none is saved"
+    depends on POT_EXTENDER
+    default "garden-extender"
+    help
+        The same default as poor-mans-extender's own firmware. There is no default password: the
+        hotspot does not start until one is saved, so a fresh board never offers an open network.
+
+config POT_EXTENDER_AP_MAX_CONN
+    int "Maximum phones on the hotspot"
+    depends on POT_EXTENDER
+    range 1 10
+    default 4
+
 config POT_RECONCILER
     bool "Run portable actors: the section 7.7 reconciler (M6)"
     default y if SPIRAM
