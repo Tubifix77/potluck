@@ -121,6 +121,10 @@ uint32_t now_us_() { return static_cast<uint32_t>(esp_timer_get_time()); }
 // UART's cost lands inside the timing being measured. On to debug the wire, off to measure it.
 // ---------------------------------------------------------------------------------------------
 void rx_sample_hook(void* ctx, const RxSample& s);  // below: the RSSI tee, then the actors (PS-2)
+// M8.2: true only while the link task hands the node frames that came off the ESP-NOW radio. A sample's
+// RSSI is a radio measurement; a frame from the host's cable or a CAN bus carries none, and on board A
+// the cabled host became a third "link" in rf_link (found by passive-sensor in the smoke capture).
+bool g_rx_from_radio = false;
 
 #if CONFIG_POT_RSSI_TEE
 // M8.2 (PS-0): the radio metadata of the frame on_rx is handling now. The drain loop sets it around
@@ -1012,6 +1016,7 @@ void link_task(void*) {
 #if CONFIG_POT_RSSI_TEE
             g_rx_now = &rx;
 #endif
+            g_rx_from_radio = true;
             if (!deaf_to(rx.src_mac)) g_node->on_rx(rx.src_mac, rx.data, rx.len, rx.recv_us, rx.rssi);
             for (size_t drained = 1; drained < kRxRingSlots && espnow_rx_pop(rx, 0); ++drained) {
                 tee_frame("rx", rx.src_mac, rx.rssi, rx.data, rx.len);
@@ -1020,6 +1025,7 @@ void link_task(void*) {
 #if CONFIG_POT_RSSI_TEE
             g_rx_now = nullptr;  // anything after this (the host's serial link) carries no radio metadata
 #endif
+            g_rx_from_radio = false;
             xSemaphoreGive(g_mutex);
         }
 
@@ -1859,6 +1865,7 @@ void start_console(BaseType_t core) {
 namespace {
 // M8.2 (PS-2): every frame the node accepted from a known peer. On the link task, lock held.
 void rx_sample_hook(void* ctx, const RxSample& s) {
+    if (!g_rx_from_radio) return;  // the host's cable, a CAN bus: no radio, no sample
 #if CONFIG_POT_RSSI_TEE
     rssi_tee(ctx, s);
 #else

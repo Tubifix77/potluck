@@ -51,14 +51,15 @@ class Actor {
         return false;
     }
 
-    // M8.2 (PS-2): one frame accepted from a peer this node knows -- every one, in arrival order, as
+    // M8.2 (PS-2): one frame accepted over the RADIO from a peer this node knows -- every one, in arrival order, as
     // the link task handles it (RxSample, pot/node.hpp): its sender, RSSI, local receive time,
     // beacon or unicast, the beacon's heartbeat sequence, and whether it came through the relay
     // (then the RSSI is the relay's). Synchronous, with the node's lock held, before the frame is
     // handled: record and return. Do not send from here; do anything heavier in tick(). Nothing is
     // queued in between, so an actor never misses a sample the node accepted; frames the radio
     // queue dropped before the node saw them are counted there ("queue_dropped" in the link stats).
-    // Pinned actors only: a portable actor is not offered samples.
+    // Pinned actors only: a portable actor is not offered samples. Frames from the host's cable or a
+    // CAN bus produce none: their RSSI is not a measurement.
     virtual void on_rx_sample(const RxSample& s) { (void)s; }
 
     // A console line, for test instruments (e.g. "POT! die_temp fail 1"). True if it was this
