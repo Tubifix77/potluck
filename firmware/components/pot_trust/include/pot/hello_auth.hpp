@@ -50,6 +50,11 @@ const char* hello_auth_error_name(HelloAuthError e);
 
 // Append the certificate and signature to a 24-byte HELLO. `out` receives all 200 bytes. Requires an
 // enrolled identity.
+// The issue time of the certificate a signed HELLO carries (node certificate offset 12), without
+// verifying anything: callers use it only to decide whether a full verification is worth doing, and
+// trust it only after one passed. False if the payload is too short to carry a certificate.
+bool hello_cert_issued(const uint8_t* payload, size_t len, uint32_t& issued);
+
 bool hello_sign(const Identity& id, const uint8_t mac[6], const uint8_t hello[kHelloBaseLen],
                 uint8_t out[kHelloSignedLen]);
 

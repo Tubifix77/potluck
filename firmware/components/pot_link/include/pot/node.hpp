@@ -195,6 +195,10 @@ class Node {
     struct PeerAuth {
         bool verified;
         uint32_t epoch;  // the boot epoch the signature covered, and the session key was derived for
+        // The issue time of the certificate that verified. The fence is (issued, epoch), not epoch
+        // alone: a board whose flash was erased and re-enrolled restarts its epoch counter with its
+        // flash, and only its newer certificate tells that apart from a replay (M0-LOG session 27).
+        uint32_t issued;
         uint8_t pub[kEdPubLen];
         uint8_t key[kSessionKeyLen];
         uint8_t digest[kHelloDigestLen];  // of the exact HELLO verified, to skip identical repeats
@@ -227,7 +231,10 @@ class Node {
     // persist_safe_state_floors wrote, before start().
     struct SafeStateFloor {
         uint16_t node_id;  // 0 = free
-        uint16_t reserved;
+        // Two bytes of the public key that set this floor (0 = not known: an entry persisted before
+        // M6.1). A different key means the sender was re-enrolled; nothing signed by the old key can
+        // verify under the new one, so the fence restarts for it rather than refusing it for ever.
+        uint16_t key_tag;
         uint32_t epoch;
         uint32_t counter;
         uint32_t last_try_ms;  // per-source verification rate limit; not meaningful across boots

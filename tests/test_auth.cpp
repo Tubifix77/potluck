@@ -29,7 +29,7 @@ struct TestCa {
         std::memcpy(s, seed, 32);
         crypto_ed25519_key_pair(sk, pub, s);
     }
-    void issue(uint16_t node_id, const uint8_t node_pub[32], uint8_t cert[kNodeCertLen]) const {
+    void issue(uint16_t node_id, const uint8_t node_pub[32], uint8_t cert[kNodeCertLen], uint32_t issued = 0) const {
         std::memset(cert, 0, kNodeCertLen);
         cert[0] = 'P';
         cert[1] = 'N';
@@ -40,6 +40,7 @@ struct TestCa {
         cert[6] = static_cast<uint8_t>(node_id);
         cert[7] = static_cast<uint8_t>(node_id >> 8);
         ca_fingerprint(pub, cert + 8);
+        for (int k = 0; k < 4; ++k) cert[12 + k] = static_cast<uint8_t>(issued >> (8 * k));
         std::memcpy(cert + 16, node_pub, 32);
         static const char kDomain[] = "potluck-node-cert-v1";
         uint8_t msg[sizeof(kDomain) + 48];
@@ -49,13 +50,13 @@ struct TestCa {
     }
 };
 
-Identity enrolled_identity(const TestCa& ca, uint16_t node_id, uint8_t salt) {
+Identity enrolled_identity(const TestCa& ca, uint16_t node_id, uint8_t salt, uint32_t issued = 0) {
     Identity id;
     uint8_t seed[32];
     for (int i = 0; i < 32; ++i) seed[i] = static_cast<uint8_t>(salt ^ (7 * i));
     identity_from_seed(id, seed);
     uint8_t cert[kNodeCertLen];
-    ca.issue(node_id, id.pub, cert);
+    ca.issue(node_id, id.pub, cert, issued);
     CHECK(identity_install_cert(id, node_id, ca.pub, cert, kNodeCertLen) == CertError::Ok);
     return id;
 }
@@ -828,4 +829,66 @@ TEST(auth, through_the_relay_admission_is_verified_end_to_end_and_a_write_lands)
     CHECK_EQ(setpoint_of(g), 77);
     CHECK_EQ(g.auth_counters().bad_tag, 0u);
     CHECK(g.auth_counters().tags_ok > 0u);
+}
+
+TEST(auth, a_board_erased_and_re_enrolled_is_admitted_again_though_its_epoch_restarted) {
+    // Found on the bench (M0-LOG session 27): board B's flash was erased for M6.1's step 0 and B was
+    // re-enrolled. The erase took its boot-epoch counter too, so B came back at a LOWER epoch than A
+    // and C remembered, under a new key and a newer certificate -- and they refused it as a ghost of
+    // its old self, for as long as they stayed up, with every frame between them failing its tag.
+    TestCa ca(1);
+    AuthCell c;
+    std::vector<std::unique_ptr<Identity>> ids;
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x100, 0x11, 1000)));
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x101, 0x22, 1000)));
+    c.build(std::move(ids), true, {1, 50});
+    c.start_all();
+    c.advance_ms(1500);
+    Node& a = *c.nodes[0].node;
+    CHECK(c.nodes[1].node->send_safe_state(3) == 1u);
+    CHECK_EQ(a.safe_state_counters().accepted, 1u);  // A now holds a floor for B at epoch 50
+    const std::vector<uint8_t> old_hello = c.last_hello_from[1];
+    const std::vector<uint8_t> old_safe_state = c.last_safe_state;
+
+    // B: flash erased, a new key, enrolled again later, epoch counter back to 1.
+    AuthNode& bn = c.nodes[1];
+    delete bn.node;
+    bn.id = std::make_unique<Identity>(enrolled_identity(ca, 0x101, 0x33, 2000));
+    NodeConfig cfg;
+    cfg.node_id = 0x101;
+    cfg.boot_epoch = 1;
+    std::memcpy(cfg.mac, bn.mac, kMacLen);
+    cfg.hello_interval_ms = 500;
+    bn.node = new Node(cfg, bn.hal);
+    bn.node->set_trust(bn.id.get(), true);
+    bn.node->start();
+    c.advance_ms(3000);
+
+    const PeerLink* pb = peer_by_id(a, 0x101);
+    const Node::PeerAuth* pa = a.peer_auth(pb);
+    CHECK(pa != nullptr && pa->verified);
+    CHECK_EQ(pa->epoch, 1u);
+    CHECK_EQ(pa->issued, 2000u);
+    CHECK(pb != nullptr && pb->state == PeerState::Alive && pb->boot_epoch == 1u);
+    // Tagged frames flow both ways under the new key.
+    CHECK_EQ(a.auth_counters().bad_tag, 0u);
+    CHECK_EQ(bn.node->auth_counters().bad_tag, 0u);
+    CHECK(bn.node->auth_counters().tags_ok > 0u);
+    // B's safety messages are heard again: the floor set under its old key restarts.
+    CHECK(bn.node->send_safe_state(5) == 1u);
+    CHECK_EQ(a.safe_state_counters().accepted, 2u);
+
+    // The old enrolment's HELLO, replayed: a higher epoch, an older certificate. Refused, and the
+    // new key stands.
+    uint8_t key_now[32];
+    std::memcpy(key_now, pa->key, 32);
+    const uint32_t stale_before = a.auth_counters().stale_epoch;
+    inject_hello(a, bn.mac, 0x101, old_hello.data(), old_hello.size(), c.now_us);
+    CHECK_EQ(a.auth_counters().stale_epoch, stale_before + 1);
+    CHECK_EQ(pa->issued, 2000u);
+    CHECK(std::memcmp(pa->key, key_now, 32) == 0);
+    // And its SAFE_STATE, replayed: it was signed by the old key, so it cannot pass.
+    const uint32_t accepted = a.safe_state_counters().accepted;
+    a.on_rx(bn.mac, old_safe_state.data(), old_safe_state.size(), c.now_us, -50);
+    CHECK_EQ(a.safe_state_counters().accepted, accepted);
 }

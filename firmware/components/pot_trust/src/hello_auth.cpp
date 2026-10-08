@@ -205,4 +205,12 @@ bool channel_verify(const uint8_t pub[kEdPubLen], uint16_t node_id, const uint8_
     return crypto_ed25519_check(sig, pub, msg, n) == 0;
 }
 
+bool hello_cert_issued(const uint8_t* payload, size_t len, uint32_t& issued) {
+    if (payload == nullptr || len < kHelloBaseLen + kNodeCertLen) return false;
+    const uint8_t* p = payload + kHelloBaseLen + 12;
+    issued = static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) |
+             (static_cast<uint32_t>(p[3]) << 24);
+    return true;
+}
+
 }  // namespace pot

@@ -534,14 +534,19 @@ Node::AuthOutcome Node::authenticate_hello(PeerLink* p, const uint8_t mac[kMacLe
     const PeerAuth* known = peer_auth(p);
     uint8_t dg[kHelloDigestLen];
     hello_digest(mac, f.payload, f.payload_len, dg);
+    uint32_t issued = 0;
+    hello_cert_issued(f.payload, f.payload_len, issued);  // unverified: only decides whether to verify
     if (known != nullptr && known->verified) {
         if (std::memcmp(dg, known->digest, kHelloDigestLen) == 0) {
             ++auth_counters_.cache_hits;
             return AuthOutcome::Cached;
         }
-        if (h.boot_epoch < known->epoch) {
-            // An older incarnation's HELLO -- late, or replayed after the peer rebooted. Never let
-            // it roll the verified epoch, and the session key with it, backwards.
+        // The fence is (certificate issue time, boot epoch). An older incarnation's HELLO -- late, or
+        // replayed after the peer rebooted -- never rolls the verified epoch, and the session key with
+        // it, backwards; nor does a HELLO under an OLDER certificate, whatever its epoch (a recording
+        // from before the peer was re-enrolled). A NEWER certificate is a new lineage: the board was
+        // erased and enrolled again, and its epoch counter restarted with its flash (M0-LOG session 27).
+        if (issued < known->issued || (issued == known->issued && h.boot_epoch < known->epoch)) {
             ++auth_counters_.stale_epoch;
             return AuthOutcome::Ignore;
         }
@@ -582,6 +587,7 @@ Node::AuthOutcome Node::authenticate_hello(PeerLink* p, const uint8_t mac[kMacLe
     std::memset(job.key, 0, kSessionKeyLen);
     out.verified = true;
     out.epoch = h.boot_epoch;
+    out.issued = issued;  // now authentic: the certificate verified
     std::memcpy(out.pub, r.peer_pub, kEdPubLen);
     std::memcpy(out.digest, dg, kHelloDigestLen);
     ++auth_counters_.verified;
@@ -855,6 +861,13 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
 
     if (outcome == AuthOutcome::Fresh) {
         PeerAuth& slot = auth_[peers_.index_of(p)];
+        if (slot.verified && fresh.issued > slot.issued) {
+            // Re-enrolled (a newer certificate). Its epoch counter may have restarted below the one
+            // membership remembers, which would otherwise take every frame of it for a ghost.
+            peer_new_lineage(*p);
+            ++counters_.reboots_seen;
+            emit(EventKind::PeerRebooted, p, h.boot_epoch, 1);
+        }
         if (slot.verified && std::memcmp(slot.key, fresh.key, kSessionKeyLen) == 0) {
             // Same two epochs, so the same key: a HELLO that differs only in what it announces must
             // not reset the replay window, or every recent frame would become replayable.
@@ -2077,6 +2090,17 @@ void Node::handle_safe_state(PeerLink* p, const Frame& f) {
         }
         const uint32_t ep = rd32le(f.payload + kSafeStateBaseLen);
         SafeStateFloor* fl = ss_floor_for(f.hdr.src, true);
+        // Two bytes of the verifying key (never 0, which means "not known"). A floor set under another
+        // key belongs to a lineage that ended when the sender was re-enrolled: nothing it signed can
+        // verify under the key we now hold, so the fence restarts rather than refusing the new one.
+        const uint16_t ktag = static_cast<uint16_t>(pa->pub[0] | (pa->pub[1] << 8)) == 0
+                                  ? uint16_t{1}
+                                  : static_cast<uint16_t>(pa->pub[0] | (pa->pub[1] << 8));
+        if (fl != nullptr && fl->key_tag != 0 && fl->key_tag != ktag) {
+            fl->epoch = 0;
+            fl->counter = 0;
+            fl->key_tag = 0;
+        }
         if (fl != nullptr && (ep < fl->epoch || (ep == fl->epoch && s.counter <= fl->counter))) {
             // Cheap, and before the signature: an old frame is refused without costing a verify.
             ++ss_counters_.replayed;
@@ -2103,6 +2127,7 @@ void Node::handle_safe_state(PeerLink* p, const Frame& f) {
         if (fl != nullptr) {
             fl->epoch = ep;
             fl->counter = s.counter;
+            fl->key_tag = ktag;
             if (hal_.persist_safe_state_floors != nullptr) {
                 hal_.persist_safe_state_floors(hal_.ctx, ss_floor_, sizeof(ss_floor_));
             }

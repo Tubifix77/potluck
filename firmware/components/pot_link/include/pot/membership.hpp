@@ -56,6 +56,12 @@ const char* membership_change_str(MembershipChange c);
 
 // A fixed-size peer table. No heap: §6 budgets the table statically and ESP-NOW caps peers at 20
 // anyway (§3), so a growable container would buy nothing and cost the budget.
+// The peer was re-enrolled (a newer certificate verified, M6.1): forget its old incarnation's epoch
+// and sequence expectations, so its restarted epoch counter is not taken for a ghost of the past.
+// Liveness and counters are kept.
+struct PeerLink;
+void peer_new_lineage(PeerLink& p);
+
 class PeerTable {
   public:
     PeerTable();

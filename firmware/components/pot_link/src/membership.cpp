@@ -127,6 +127,15 @@ MembershipChange peer_on_tick(PeerLink& p, uint32_t now_ms) {
     return MembershipChange::None;
 }
 
+void peer_new_lineage(PeerLink& p) {
+    p.boot_epoch = 0;
+    p.seq_rx_valid = false;
+    p.seq_rx_last = 0;
+    p.hb_seq_last = 0;
+    p.probe_msg_id = 0;
+    p.owed_msg_id = 0;
+}
+
 MembershipChange peer_on_frame(PeerLink& p, uint32_t now_ms, uint32_t boot_epoch) {
     const PeerState was = p.state;
 
