@@ -1,0 +1,34 @@
+# M8.2 rf_link smoke test 5: B held in its ROM bootloader, then released. Read through A.
+00:39:12 B held
+## node-7368/rf/link-8160/count (B's own link: B gone)
+00:39:18  UNAVAILABLE (age 145671 ms, class L4)
+00:39:19  UNAVAILABLE (age 146226 ms, class L4)
+00:39:19  UNAVAILABLE (age 146780 ms, class L4)
+00:39:20  UNAVAILABLE (age 147397 ms, class L4)
+00:39:21  UNAVAILABLE (age 147961 ms, class L4)
+00:39:21  UNAVAILABLE (age 148529 ms, class L4)
+## node-6300/rf/link-7368/count (A's link to B)
+00:39:24  0  [GOOD, age 705 ms, ts 255743, class L4]
+00:39:25  0  [GOOD, age 305 ms, ts 256744, class L4]
+00:39:26  0  [GOOD, age 859 ms, ts 256744, class L4]
+00:39:26  0  [GOOD, age 414 ms, ts 257743, class L4]
+00:39:27  0  [GOOD, age 981 ms, ts 257743, class L4]
+00:39:27  0  [GOOD, age 533 ms, ts 258744, class L4]
+## node-6300/rf/link-7368/mean (A's link to B)
+00:39:31  -23  [STALE, age 17800 ms, ts 244735, class L4]
+00:39:31  -23  [STALE, age 18368 ms, ts 244735, class L4]
+00:39:32  -23  [STALE, age 18921 ms, ts 244735, class L4]
+00:39:32  -23  [STALE, age 19521 ms, ts 244735, class L4]
+00:39:33  -23  [STALE, age 20088 ms, ts 244735, class L4]
+00:39:33  -23  [STALE, age 20642 ms, ts 244735, class L4]
+00:39:36 B released
+## node-7368/rf/link-8160/count (after B returned)
+00:40:03  12  [STALE, age 190704 ms, ts 104754, class L4]
+00:40:04  12  [GOOD, age 1301 ms, ts 23769, class L4]
+00:40:05  12  [GOOD, age 854 ms, ts 24769, class L4]
+00:40:05  12  [GOOD, age 1411 ms, ts 24769, class L4]
+## node-6300/rf/link-7368/mean (after B returned)
+00:40:09  -23.3333  [GOOD, age 699 ms, ts 300737, class L4]
+00:40:10  -23.3  [GOOD, age 266 ms, ts 301737, class L4]
+00:40:11  -23.3  [GOOD, age 866 ms, ts 301737, class L4]
+00:40:11  -23  [GOOD, age 419 ms, ts 302737, class L4]

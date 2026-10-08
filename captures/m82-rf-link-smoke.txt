@@ -1,0 +1,33 @@
+# M8.2 rf_link smoke test (passive-sensor 79b4e8e on Potluck 5fad4bc; package ps0-rf-link counter 9). Boards on the desk, cell on channel 1. Read with potctl through A.
+## potluck://lab/node-6300/rf/link-7368/seq
+00:36:18  64  [GOOD, age 120 ms, ts 69738, class L4]
+00:36:18  64  [GOOD, age 723 ms, ts 69738, class L4]
+00:36:19  65  [GOOD, age 290 ms, ts 70739, class L4]
+## potluck://lab/node-6300/rf/link-7368/count
+00:36:24  12  [GOOD, age 219 ms, ts 75739, class L4]
+00:36:25  12  [GOOD, age 820 ms, ts 75739, class L4]
+00:36:25  11  [GOOD, age 390 ms, ts 76739, class L4]
+## potluck://lab/node-6300/rf/link-7368/mean
+00:36:30  -23  [GOOD, age 349 ms, ts 81740, class L4]
+00:36:31  -23  [GOOD, age 917 ms, ts 81740, class L4]
+00:36:31  -23  [GOOD, age 520 ms, ts 82739, class L4]
+## potluck://lab/node-6300/rf/link-7368/var
+00:36:36  0  [GOOD, age 469 ms, ts 87740, class L4]
+00:36:37  0.0826446  [GOOD, age 69 ms, ts 88740, class L4]
+00:36:37  0.0826446  [GOOD, age 622 ms, ts 88740, class L4]
+## potluck://lab/node-7368/rf/link-8160/seq
+00:36:42  NO_DATA (age 0 ms, class L4)
+00:36:43  88  [GOOD, age 1208 ms, ts 93756, class L4]
+00:36:43  89  [GOOD, age 807 ms, ts 94756, class L4]
+## potluck://lab/node-7368/rf/link-8160/count
+00:36:48  NO_DATA (age 0 ms, class L4)
+00:36:49  12  [GOOD, age 1332 ms, ts 99758, class L4]
+00:36:50  12  [GOOD, age 935 ms, ts 100758, class L4]
+## potluck://lab/node-7368/rf/link-8160/mean
+00:36:55  NO_DATA (age 0 ms, class L4)
+00:36:55  -19  [GOOD, age 1436 ms, ts 105755, class L4]
+00:36:56  -18.6667  [GOOD, age 1035 ms, ts 106754, class L4]
+## potluck://lab/node-8160/rf/link-6300/mean
+00:37:01  NO_DATA (age 0 ms, class L4)
+00:37:01  -31.3  [GOOD, age 1456 ms, ts 111748, class L4]
+00:37:02  -31.4  [GOOD, age 1016 ms, ts 112748, class L4]
