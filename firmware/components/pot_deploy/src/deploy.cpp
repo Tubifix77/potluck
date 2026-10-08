@@ -108,6 +108,14 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                 }
                 break;
             }
+            case ActorType::SvcClient: {
+                SvcClientConfig sc{};
+                if (a.node_id == kPortableNode || a.node_id == kEveryNode || !svc_client_config(a, sc)) {
+                    w = "svc_client must be pinned, with a valid service, provider and period";
+                    return false;
+                }
+                break;
+            }
             default:
                 w = "unknown actor type";
                 return false;
@@ -141,6 +149,20 @@ bool fault_config(const ActorDecl& a, FaultConfig& out) {
     }
     out.panic_after_ms = rd32(a.cfg);
     return out.panic_after_ms > 0;
+}
+
+bool svc_client_config(const ActorDecl& a, SvcClientConfig& out) {
+    if (a.type != ActorType::SvcClient || a.cfg_len != kSvcClientCfgLen) {
+        return false;
+    }
+    out.svc_hash = rd32(a.cfg);
+    out.provider = rd16(a.cfg + 4);
+    out.out_hash = rd32(a.cfg + 6);
+    out.period_ms = rd16(a.cfg + 10);
+    out.on_host_loss = a.cfg[12];
+    return out.svc_hash != 0 && out.out_hash != 0 && out.svc_hash != out.out_hash && out.provider != 0 &&
+           out.provider < kPortableNode && out.period_ms >= 100 && out.period_ms <= 60000 &&
+           out.on_host_loss <= 1;
 }
 
 bool ticker_config(const ActorDecl& a, TickerConfig& out) {

@@ -83,6 +83,7 @@ class BridgeStats:
     heartbeats_tx: int = 0
     hellos_rx: int = 0
     errs_rx: int = 0
+    requests_rx: int = 0  # M8: CALL / CAST / READ addressed to this host
 
     def as_dict(self) -> dict[str, int]:
         return dict(vars(self))
@@ -113,6 +114,7 @@ class Bridge:
         hb_miss_limit: int = DEFAULT_HB_MISS_LIMIT,
         on_frame: Callable[[fr.Frame, str], None] | None = None,
         on_log: Callable[[str], None] | None = None,
+        on_request: Callable[[fr.Frame], None] | None = None,
     ) -> None:
         self.transport = transport
         self.node_id = node_id
@@ -122,6 +124,9 @@ class Bridge:
         self.hb_miss_limit = hb_miss_limit
         self.on_frame = on_frame
         self.on_log = on_log
+        #: M8: a node's request to this host -- CALL, CAST or READ. potluck-agent answers them; with
+        #: no handler they are dropped, as before (a plain bridge offers no services).
+        self.on_request = on_request
 
         self.stats = BridgeStats()
         self.reassembler = SerialReassembler()
@@ -413,6 +418,11 @@ class Bridge:
             return
         if f.opcode == fr.Op.HEARTBEAT:
             self._on_heartbeat(f)
+            return
+        if f.opcode in (fr.Op.CALL, fr.Op.CAST, fr.Op.READ):
+            self.stats.requests_rx += 1
+            if self.on_request is not None:
+                self.on_request(f)
             return
         if f.opcode == fr.Op.ERR:
             self.stats.errs_rx += 1

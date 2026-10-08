@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xc6c50 bytes. Smallest app partition is 0x100000 bytes. 0x393b0 bytes (22%) free.
+potluck_m0.bin binary size 0xc7530 bytes. Smallest app partition is 0x100000 bytes. 0x38ad0 bytes (22%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -31,21 +31,21 @@ Executing "ninja size"...
 
 ├─────────────────────┼──────────────┼──────────┼────────────────┼───────────────┤
 
-│ Flash Code          │       585128 │          │                │               │
+│ Flash Code          │       586880 │          │                │               │
 
-│    .text            │       585128 │          │                │               │
+│    .text            │       586880 │          │                │               │
 
-│ DIRAM               │       142228 │    41.62 │         199532 │        341760 │
+│ DIRAM               │       142452 │    41.68 │         199308 │        341760 │
 
 │    .text            │        66843 │    19.56 │                │               │
 
-│    .bss             │        53888 │    15.77 │                │               │
+│    .bss             │        54112 │    15.83 │                │               │
 
 │    .data            │        21497 │     6.29 │                │               │
 
-│ Flash Data          │       124156 │          │                │               │
+│ Flash Data          │       124668 │          │                │               │
 
-│    .rodata          │       123884 │          │                │               │
+│    .rodata          │       124396 │          │                │               │
 
 │    .appdesc         │          256 │          │                │               │
 
@@ -59,11 +59,7 @@ Executing "ninja size"...
 
 │    .text            │        15356 │    93.73 │                │               │
 
-Total image size: 814044 bytes (.bin may be padded larger)
-
 │    .vectors         │         1028 │     6.27 │                │               │
-
-Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
 
 │ RTC SLOW            │           36 │     0.44 │           8156 │          8192 │
 
@@ -74,4 +70,8 @@ Note: The reported total sizes may be smaller than those in the technical refere
 │    .rtc_reserved    │           24 │     0.29 │                │               │
 
 └─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+
+Total image size: 816308 bytes (.bin may be padded larger)
+
+Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
 

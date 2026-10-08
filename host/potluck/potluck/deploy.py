@@ -41,7 +41,12 @@ FLAG_DISTRIBUTE = 0x01
 ACTOR_LED = 1
 ACTOR_FAULT = 2
 ACTOR_TICKER = 3  # M6: portable; placed at run time by the reconciler (potluck.reconcile)
-BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER}
+ACTOR_SVC_CLIENT = 4  # M8: calls a host's named service and publishes the answer
+BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER,
+            "builtin:svc_client": ACTOR_SVC_CLIENT}
+#: Section 8.3's menu, as the node encodes it for a service client. The stop and safe-state entries
+#: concern actuators, which a service client never owns.
+SVC_HOST_LOSS = {"continue": 0, "hold": 1}
 
 #: pot::DeployStatus, in order.
 STATUS_NAMES = ("OK", "TOO_LARGE", "DOWNGRADE", "NOT_STARTED", "BAD_OFFSET", "CRC_MISMATCH",
@@ -121,6 +126,32 @@ def _ticker_config(m: Manifest, a, where: str) -> bytes:
     return cfg
 
 
+def _svc_client_config(m: Manifest, a, where: str) -> bytes:
+    """M8. The service is the actor's one binding; the provider is the node that owns it (a host)."""
+    from . import reconcile as rc
+
+    extra = set(a.config) - {"period_ms"}
+    if extra:
+        raise DeployError(f"{where}: unknown svc_client config key(s) {sorted(extra)}")
+    if a.pin is None:
+        raise DeployError(f"{where}: a svc_client is pinned to the node that consumes the service")
+    if len(a.needs) != 1 or "/svc/" not in a.needs[0]:
+        raise DeployError(f"{where}: a svc_client binds exactly one potluck://<cluster>/svc/<name> path")
+    provider = m.owner_of(a.needs[0])
+    if provider is None:
+        raise DeployError(f"{where}: no node in the package owns {a.needs[0]}")
+    period = int(a.config.get("period_ms", 1000))
+    if not 100 <= period <= 60000:
+        raise DeployError(f"{where}: svc_client period_ms={period} is outside 100..60000")
+    loss = a.on_host_loss or "hold"  # section 8.3's default for what a host feeds
+    if loss not in SVC_HOST_LOSS:
+        raise DeployError(f"{where}: on_host_loss '{loss}' is for actuators; a svc_client takes "
+                          f"{sorted(SVC_HOST_LOSS)}")
+    svc = path_hash(m.bindings.get(a.needs[0], a.needs[0]))
+    out = path_hash(rc.output_path(m, a))
+    return struct.pack("<IHIHB", svc, provider.node_id, out, period, SVC_HOST_LOSS[loss])
+
+
 def compile_image(m: Manifest, counter: int) -> bytes:
     """The node image for a manifest at a rollback counter. Deterministic: same input, same bytes."""
     body = b""
@@ -141,6 +172,14 @@ def compile_image(m: Manifest, counter: int) -> bytes:
         node = m.placement_of(a)
         if node is None:
             raise DeployError(f"{where}: not placed -- pin it, or resolve placement first")
+        spec = m.node(node)
+        if spec is not None and spec.kind == "host":
+            raise DeployError(f"{where}: placed on '{spec.label}', a host: built-in actors run on firmware")
+        if a.module == "builtin:svc_client":
+            cfg = _svc_client_config(m, a, where)
+            body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+            count += 1
+            continue
         cfg = _actor_config(a.module, a.config, where)
         body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
         count += 1

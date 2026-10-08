@@ -76,6 +76,10 @@ TRANSPORTS = ("uart", "can", "espnow", "host")
 RESOURCE_KINDS = ("sampled", "event")
 ACCESS_MODES = ("read", "write", "read_write")
 
+#: M8: what a node is. A `host` (a PC or a Pi running potluck-agent, section 7.1) offers named
+#: services and runs no firmware, so no built-in actor can be placed or pinned on it.
+NODE_KINDS = ("mcu", "host")
+
 #: Section 7.8: "Battery and solar nodes are excluded from background pools by default and opt in via
 #: manifest -- the section 1.2 home's garden node stays sleepy unless told otherwise."
 POWER_SOURCES = ("mains", "battery", "solar")
@@ -163,6 +167,7 @@ class NodeSpec:
     #: battery and solar nodes are out of it unless they say otherwise.
     allow_background: bool | None = None
     owns: tuple[ResourceSpec, ...] = ()
+    kind: str = "mcu"
 
     def background_allowed(self) -> bool:
         if self.allow_background is not None:
@@ -297,6 +302,7 @@ class Manifest:
                     "power": n.power,
                     "headroom_bytes": n.headroom_bytes,
                     **({} if n.allow_background is None else {"allow_background": n.allow_background}),
+                    **({} if n.kind == "mcu" else {"kind": n.kind}),
                     "owns": [
                         {
                             "path": r.path,
@@ -433,7 +439,7 @@ def check_path(path: Any, where: str, errors: list[ManifestError]) -> str | None
 
 _RESOURCE_KEYS = ("path", "unit", "kind", "access", "latency_class", "staleness_bound_ms",
                   "staleness_policy")
-_NODE_KEYS = ("node_id", "label", "power", "headroom_bytes", "allow_background", "owns")
+_NODE_KEYS = ("node_id", "label", "power", "headroom_bytes", "allow_background", "owns", "kind")
 _ACTOR_KEYS = ("name", "module", "latency_class", "needs", "headroom_bytes", "priority",
                "on_host_loss", "pin", "config")
 _TOP_KEYS = ("schema", "system", "min_core_version", "nodes", "actors", "bindings", "links",
@@ -469,6 +475,7 @@ def _parse_node(d: Any, where: str, errors: list[ManifestError]) -> NodeSpec | N
     label = _str(d.get("label"), f"{where}.label", errors)
     power = _enum(d.get("power", "mains"), POWER_SOURCES, f"{where}.power", errors)
     headroom = _int(d.get("headroom_bytes", 0), f"{where}.headroom_bytes", errors, low=0)
+    kind = _enum(d.get("kind", "mcu"), NODE_KINDS, f"{where}.kind", errors)
 
     allow = d.get("allow_background")
     if allow is not None and not isinstance(allow, bool):
@@ -485,10 +492,10 @@ def _parse_node(d: Any, where: str, errors: list[ManifestError]) -> NodeSpec | N
             if parsed is not None:
                 owns.append(parsed)
 
-    if node_id is None or label is None or power is None or headroom is None:
+    if node_id is None or label is None or power is None or headroom is None or kind is None:
         return None
     return NodeSpec(node_id=node_id, label=label, power=power, headroom_bytes=headroom,
-                    allow_background=allow, owns=tuple(owns))
+                    allow_background=allow, owns=tuple(owns), kind=kind)
 
 
 def _parse_actor(d: Any, where: str, errors: list[ManifestError]) -> ActorSpec | None:

@@ -58,6 +58,7 @@ enum class ActorType : uint8_t {
     Led = 1,    // the status LED's healthy-state appearance
     Fault = 2,  // test actor: aborts the node after a delay, to exercise trial-and-revert
     Ticker = 3, // M6: publishes a counter to one resource; portable, so the reconciler places it
+    SvcClient = 4,  // M8: calls a host's named service (section 7.5) and publishes what it answers
 };
 
 struct ActorDecl {
@@ -119,6 +120,27 @@ struct TickerConfig {
 };
 constexpr uint8_t kTickerCfgFixed = 7;
 bool ticker_config(const ActorDecl& a, TickerConfig& out);
+
+// SvcClient (M8, section 7.5): every period_ms, CALL the service `svc_hash` on node `provider` -- a
+// host's potluck-agent -- and publish the answer to `out_hash`, a resource this node owns. Pinned:
+// node_id names the node it runs on.
+//
+// on_host_loss (section 8.3) is the manifest's policy for when the provider is gone. A service client
+// owns no actuator, so the menu's stop and safe-state entries do not apply to it, and its two meanings
+// are the same mechanism: it stops publishing, its output keeps its last value with its true age, and
+// past the staleness bound every read of it says STALE -- never a host's answer presented as fresh.
+// It keeps trying, and the next answer after the provider returns is published at once.
+//
+//   svc_hash u32, provider u16, out_hash u32, period_ms u16, on_host_loss u8 (0 continue, 1 hold)
+constexpr uint8_t kSvcClientCfgLen = 13;
+struct SvcClientConfig {
+    uint32_t svc_hash;
+    uint16_t provider;
+    uint32_t out_hash;
+    uint16_t period_ms;  // 100..60000
+    uint8_t on_host_loss;
+};
+bool svc_client_config(const ActorDecl& a, SvcClientConfig& out);
 
 // ---------------------------------------------------------------------------------------------
 // The A/B state machine, persisted in NVS.

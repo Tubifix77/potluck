@@ -54,6 +54,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_trust/src/hello_auth.cpp"
   "${POT_FIRMWARE}/components/pot_trust/src/frame_auth.cpp"
   "${POT_FIRMWARE}/components/pot_reconcile/src/reconcile.cpp"
+  "${POT_FIRMWARE}/components/pot_actors/src/svc_client.cpp"
 )
 target_link_libraries(pot_portable PUBLIC monocypher)
 target_include_directories(pot_portable PUBLIC
@@ -64,6 +65,7 @@ target_include_directories(pot_portable PUBLIC
   "${POT_FIRMWARE}/components/pot_can/include"
   "${POT_FIRMWARE}/components/pot_trust/include"
   "${POT_FIRMWARE}/components/pot_reconcile/include"
+  "${POT_FIRMWARE}/components/pot_actors/include"
 )
 
 add_executable(pot_tests
@@ -88,6 +90,7 @@ add_executable(pot_tests
   test_auth.cpp
   test_frame_auth.cpp
   test_reconcile.cpp
+  test_svc_client.cpp
 )
 target_link_libraries(pot_tests PRIVATE pot_portable)
 target_include_directories(pot_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
