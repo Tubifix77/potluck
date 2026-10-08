@@ -233,11 +233,15 @@ uint32_t hal_free_dram(void*) { return free_internal_dram(); }
 // M6.1: the cell's channel survives a reboot. Every board used to boot on CONFIG_POT_CHANNEL, so a
 // deploy -- which reboots the whole cell -- put everyone back on the default while a router-owned
 // station stayed on its router's channel, and a freshly booted node knows of no channel authority to
-// sweep for. Found thinking through M6.1 step 2's retest (M0-LOG session 29). The link task only notes
-// the change; the stats task, which has the stack for an NVS write, saves it.
+// sweep for. Found thinking through M6.1 step 2's retest (M0-LOG session 29). The stats task, which has
+// the stack for an NVS write, saves it.
+//
+// Only a channel the CELL is on: one with at least one radio peer alive on it (M0-LOG session 31). It
+// used to save every change, so the extender -- whose channel is its router's -- saved channel 11 while
+// it sat alone there, split from a cell on 1; with CR-7 that saved value then became its preferred
+// channel at the next boot, pulling the cell after it instead of keeping it where it was.
 namespace chan_store {
 constexpr const char* kNs = "potchan";
-std::atomic<uint8_t> g_pending{0};
 uint8_t load() {
     nvs_handle_t h;
     uint8_t ch = 0;
@@ -246,9 +250,10 @@ uint8_t load() {
     nvs_close(h);
     return ch;
 }
-void save_pending() {
-    const uint8_t ch = g_pending.exchange(0);
-    if (ch == 0) return;
+void save_if_with_cell(uint8_t ch, size_t radio_peers_alive) {
+    static uint8_t s_saved = 0;  // this boot's last write, to spare NVS a read every period
+    if (ch < 1 || ch > 14 || radio_peers_alive == 0 || ch == s_saved) return;
+    s_saved = ch;
     nvs_handle_t h;
     if (nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) return;
     uint8_t old = 0;
@@ -261,9 +266,6 @@ void save_pending() {
 }  // namespace chan_store
 
 void hal_on_event(void*, const Event& e) {
-    if (e.kind == EventKind::ChannelChanged && e.detail_a >= 1 && e.detail_a <= 14) {
-        chan_store::g_pending.store(static_cast<uint8_t>(e.detail_a));
-    }
     // The loud ones go to the log as they happen; all of them are in the event ring for the JSON
     // stream regardless. §4 rule 4 wants demotion to be loud, and a membership transition buried in
     // a statistics dump ten seconds later is not loud.
@@ -1209,7 +1211,17 @@ void stats_task(void*) {
         std::printf("{\"t\":\"clk\",\"node\":%u,\"up_ms\":%u}\n", static_cast<unsigned>(node_id),
                     static_cast<unsigned>(now_ms_()));
         extender::print_status();  // M6.1: the baseline's {"t":"hs"} line, on an extender build only
-        chan_store::save_pending();
+        {
+            xSemaphoreTake(g_mutex, portMAX_DELAY);
+            const uint8_t ch = g_node->channel();
+            size_t radio_alive = 0;  // a host on the cable is on no channel, so it does not count
+            for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+                const PeerLink& q = g_node->peers().slot(i);
+                if (q.state == PeerState::Alive && std::memcmp(q.mac, kHostMac, kMacLen) != 0) ++radio_alive;
+            }
+            xSemaphoreGive(g_mutex);
+            chan_store::save_if_with_cell(ch, radio_alive);
+        }
         // M8.1: each actor's own stats line (svc_client's {"t":"svc"}, ...), through the actor API.
         for (size_t i = 0; i < g_actors.running(); ++i) {
             static char line[512];  // the stats task's only; static keeps it off a 4 KB stack

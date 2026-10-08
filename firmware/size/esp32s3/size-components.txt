@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xc9370 bytes. Smallest app partition is 0x100000 bytes. 0x36c90 bytes (21%) free.
+potluck_m0.bin binary size 0xc9300 bytes. Smallest app partition is 0x100000 bytes. 0x36d00 bytes (21%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -43,7 +43,7 @@ Executing "ninja size-components"...
 
 │ liblwip.a                       │      64933 │    0 │     0 │        0 │    12 │     0 │    12 │     0 │      59555 │  59555 │       2896 │      0 │    2896 │        0 │         2470 │  2470 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      55363 │    0 │     0 │        0 │ 32469 │ 32331 │   138 │     0 │      12616 │  12616 │        248 │      0 │     248 │        0 │        10030 │ 10030 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      55436 │    0 │     0 │        0 │ 32469 │ 32331 │   138 │     0 │      12689 │  12689 │        248 │      0 │     248 │        0 │        10030 │ 10030 │        0 │             0 │        0 │           0 │
 
 │ libphy.a                        │      34403 │ 1152 │  1152 │        0 │  5365 │    86 │  1277 │  4002 │      27886 │  27886 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -73,11 +73,11 @@ Executing "ninja size-components"...
 
 │ libesp_hal_mspi.a               │       5584 │   88 │    88 │        0 │  4937 │     0 │    36 │  4901 │        559 │    559 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libesp_libc.a                   │       5062 │  874 │   874 │        0 │  2565 │   540 │   332 │  1693 │       1471 │   1471 │        152 │     16 │     136 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
-
 │ libesp_driver_gpio.a            │       5035 │    0 │     0 │        0 │    36 │     0 │    36 │     0 │       4428 │   4428 │        571 │      0 │     571 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_driver_dma.a             │       4930 │   28 │    28 │        0 │  1222 │     0 │    12 │  1210 │       3457 │   3457 │        223 │      0 │     223 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+
+│ libesp_libc.a                   │       4880 │  874 │   874 │        0 │  2383 │   540 │   332 │  1511 │       1471 │   1471 │        152 │     16 │     136 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_ringbuf.a                │       4521 │  180 │   180 │        0 │  2122 │     0 │     0 │  2122 │       1682 │   1682 │        537 │      0 │     537 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

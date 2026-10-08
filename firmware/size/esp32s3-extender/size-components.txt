@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build-extender
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-extender && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-extender/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-extender/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xd2940 bytes. Smallest app partition is 0x100000 bytes. 0x2d6c0 bytes (18%) free.
+potluck_m0.bin binary size 0xd2990 bytes. Smallest app partition is 0x100000 bytes. 0x2d670 bytes (18%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -43,7 +43,7 @@ Executing "ninja size-components"...
 
 │ libpp.a                         │      65395 │    0 │     0 │        0 │ 17348 │     0 │  2640 │ 14708 │      42859 │  42859 │       3954 │      0 │    3954 │        0 │         1234 │  1234 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      56580 │    0 │     0 │        0 │ 32471 │ 32333 │   138 │     0 │      13821 │  13821 │        258 │      0 │     258 │        0 │        10030 │ 10030 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      56657 │    0 │     0 │        0 │ 32471 │ 32333 │   138 │     0 │      13898 │  13898 │        258 │      0 │     258 │        0 │        10030 │ 10030 │        0 │             0 │        0 │           0 │
 
 │ libphy.a                        │      34435 │  572 │   572 │        0 │  5945 │    86 │  1277 │  4582 │      27918 │  27918 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
