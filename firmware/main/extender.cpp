@@ -74,6 +74,10 @@ bool fits(const char* ssid, const char* pass) {
 }  // namespace
 
 bool start() {
+    // ESP-IDF's Wi-Fi driver logs "wifi:connected with <network name>, ..." at INFO on every association
+    // (seen on board B, M0-LOG session 30). pme_hotspot no longer names networks; neither may the
+    // console under it, since a soak captures the console whole. Warnings and errors still print.
+    esp_log_level_set("wifi", ESP_LOG_WARN);
     pme_hotspot_config_t cfg{};
     if (pme_creds_load(&cfg) != ESP_OK) {
         ESP_LOGW(kTag, "credentials unreadable; running as an ordinary member");
