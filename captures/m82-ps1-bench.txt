@@ -1,0 +1,15 @@
+# M8.2 PS-1 on the bench: A, C on the appdemo build of 32e2ec1, B on extender-appdemo (pme_hotspot + pot_app_demo); package m82-demo at counter 8. Read with potctl through A's cable.
+## potluck://lab/node-7368/app/count
+21:51:42  88  [STALE, age 31739 ms, ts 45422, class L4]
+21:51:43  151  [GOOD, age 807 ms, ts 76956, class L4]
+21:51:43  152  [GOOD, age 879 ms, ts 77456, class L4]
+21:51:44  153  [GOOD, age 935 ms, ts 77956, class L4]
+21:51:45  154  [GOOD, age 1029 ms, ts 78456, class L4]
+21:51:45  156  [GOOD, age 600 ms, ts 79456, class L4]
+## potluck://lab/act/roamer/out
+21:51:51  1660945446  [GOOD, age 145 ms, ts 85295, class L3]
+21:51:51  1660945455  [GOOD, age 100 ms, ts 85895, class L3]
+21:51:52  1660945464  [GOOD, age 69 ms, ts 86499, class L3]
+21:51:52  1660945473  [GOOD, age 81 ms, ts 87099, class L3]
+21:51:53  1660945482  [GOOD, age 46 ms, ts 87699, class L3]
+21:51:53  1660945488  [GOOD, age 199 ms, ts 88099, class L3]
