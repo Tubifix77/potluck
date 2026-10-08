@@ -4,10 +4,15 @@
     <IDF python> tools/pme_set_wifi.py COM4 <path to your file>              the extender's own firmware
     <IDF python> tools/pme_set_wifi.py COM4 <path to your file> --potluck    Potluck's extender build (M6.1)
 
-The file holds two lines and nothing else:
+The file holds two lines, or four:
 
     line 1: the house Wi-Fi name
     line 2: the house Wi-Fi password
+    line 3: the hotspot's name        (optional, both or neither)
+    line 4: the hotspot's password    (8-64 characters: WPA2; the hotspot is never open)
+
+With four lines, both are sent and the board is restarted once, so nothing has to be typed into a
+console at all.
 
 Why this exists: a long name and a complex password are easy to mistype at the `pme>` prompt, and a
 mistyped password shows up only as the board failing to join (reason 15, a 4-way handshake timeout).
@@ -36,33 +41,36 @@ def quote(s: str) -> str:
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def potluck(port: str, line: str) -> int:
-    """Potluck's extender build takes `POT! pme sta ...` on its plain console: no prompt, no echo, no
-    cursor questions. Sends it, waits for the board's result line, then restarts the board so the
-    hotspot comes up with the new settings (saved settings survive the restart)."""
+def potluck(port: str, lines: list[tuple[str, str, str]]) -> int:
+    """Potluck's extender build takes `POT! pme sta|ap ...` on its plain console: no prompt, no echo, no
+    cursor questions. Sends each, waits for the board's result line, then restarts the board once so
+    the hotspot comes up with the new settings (saved settings survive the restart).
+    `lines` is [(command line, what it is, the result word that means saved)]."""
     s = serial.Serial()
     s.port, s.baudrate, s.timeout = port, 115200, 0.05
     s.dtr = False
     s.rts = False
     s.open()
     try:
-        s.reset_input_buffer()
-        s.write(b"POT! pme " + line.encode("utf-8") + b"\n")
-        reply = b""
-        end = time.time() + 5
-        while time.time() < end and b'"t":"pme"' not in reply:
-            reply += s.read(1024)
-        if b'"result":"sta_saved"' in reply:
-            print("board: house Wi-Fi saved")
-        elif b'"result":"refused_length"' in reply:
-            print("board: refused the values (length); nothing saved")
-            return 1
-        elif b'"t":"pme"' in reply:
-            print("board: did not save it (see its {\"t\":\"pme\"} line)")
-            return 1
-        else:
-            print("board: no answer within 5 s -- is this Potluck's extender build, and is a monitor open?")
-            return 1
+        for line, what, saved in lines:
+            s.reset_input_buffer()
+            s.write(b"POT! pme " + line.encode("utf-8") + b"\n")
+            reply = b""
+            end = time.time() + 5
+            while time.time() < end and b'"t":"pme"' not in reply:
+                reply += s.read(1024)
+            if f'"result":"{saved}"'.encode() in reply:
+                print(f"board: {what} saved")
+            elif b'"result":"refused_length"' in reply:
+                print(f"board: refused the {what} (length); nothing saved")
+                return 1
+            elif b'"t":"pme"' in reply:
+                print(f"board: did not save the {what}")
+                return 1
+            else:
+                print("board: no answer within 5 s -- is this Potluck's extender build, and is a monitor open?")
+                return 1
+            time.sleep(0.3)
         s.rts = True
         time.sleep(0.15)
         s.rts = False
@@ -83,10 +91,14 @@ def main() -> int:
     with open(path, encoding="utf-8-sig") as f:
         lines = [l.rstrip("\r\n") for l in f.readlines()]
     lines = [l for l in lines if l != ""]
-    if len(lines) != 2:
-        print(f"the file must hold exactly two non-empty lines (name, password); it holds {len(lines)}")
+    if len(lines) not in (2, 4):
+        print(f"the file must hold two non-empty lines (house name, password) or four (and the hotspot's "
+              f"name, password); it holds {len(lines)}")
         return 2
-    name, password = lines
+    if len(lines) == 4 and not to_potluck:
+        print("four lines are for --potluck; the extender's own firmware takes the hotspot at its pme> prompt")
+        return 2
+    name, password = lines[0], lines[1]
     if not 1 <= len(name.encode()) <= 32:
         print(f"the name is {len(name.encode())} bytes; Wi-Fi allows 1-32")
         return 2
@@ -98,7 +110,14 @@ def main() -> int:
         print("name and password together are too long for the board's 256-byte command line")
         return 2
     if to_potluck:
-        return potluck(port, line)
+        cmds = [(line, "house Wi-Fi", "sta_saved")]
+        if len(lines) == 4:
+            ap_name, ap_password = lines[2], lines[3]
+            if not 1 <= len(ap_name.encode()) <= 32 or not 8 <= len(ap_password) <= 64:
+                print("the hotspot name must be 1-32 bytes and its password 8-64 characters (WPA2)")
+                return 2
+            cmds.insert(0, ("ap " + quote(ap_name) + " " + quote(ap_password), "hotspot", "ap_saved"))
+        return potluck(port, cmds)
 
     s = serial.Serial()
     s.port, s.baudrate, s.timeout = port, 115200, 0.05
