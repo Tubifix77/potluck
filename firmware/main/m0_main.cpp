@@ -57,6 +57,7 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/message_buffer.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "sdkconfig.h"
@@ -130,15 +131,44 @@ bool g_rx_from_radio = false;
 // M8.2 (PS-0): the radio metadata of the frame on_rx is handling now. The drain loop sets it around
 // each on_rx call; the node's sample hook, called synchronously inside, adds what only the node knows.
 const RxSlot* g_rx_now = nullptr;
+// The line is handed to a message buffer and printed by a low-priority task, never by the link task:
+// ESP-IDF's console blocks until a line is out (~10 ms for these 111 bytes at 115200), and printing
+// here made board A's heartbeat round trips 3-4x slower (M0-LOG session 32, the PS-0 dry run). A
+// line the buffer has no room for is dropped and counted (tee_dropped), never waited for.
+constexpr size_t kTeeBufBytes = 16384;
+EXT_RAM_BSS_ATTR uint8_t g_tee_storage[kTeeBufBytes];
+StaticMessageBuffer_t g_tee_mb_ctl;
+MessageBufferHandle_t g_tee_mb = nullptr;
+std::atomic<uint32_t> g_tee_dropped{0};
+StackType_t g_tee_stack[3072 / sizeof(StackType_t)];
+StaticTask_t g_tee_tcb;
+void tee_task(void*) {
+    static char out[160];
+    for (;;) {
+        const size_t n = xMessageBufferReceive(g_tee_mb, out, sizeof(out), portMAX_DELAY);
+        if (n > 0) std::fwrite(out, 1, n, stdout);  // one whole line per write: no interleaving
+    }
+}
+void tee_start() {
+    g_tee_mb = xMessageBufferCreateStatic(sizeof(g_tee_storage), g_tee_storage, &g_tee_mb_ctl);
+    xTaskCreateStaticPinnedToCore(tee_task, "pot_tee", sizeof(g_tee_stack) / sizeof(StackType_t), nullptr, 1,
+                                  g_tee_stack, &g_tee_tcb, tskNO_AFFINITY);
+}
 void rssi_tee(void*, const RxSample& s) {
     static const char* const kKind[] = {"?", "beacon", "unicast", "bcast"};
-    std::printf("{\"t\":\"rssi\",\"us\":%u,\"peer\":%u,\"rssi\":%d,\"nf\":%d,\"sig\":%u,\"rate\":%u,"
+    char line[160];
+    const int n = std::snprintf(line, sizeof(line),
+                "{\"t\":\"rssi\",\"us\":%u,\"peer\":%u,\"rssi\":%d,\"nf\":%d,\"sig\":%u,\"rate\":%u,"
                 "\"kind\":\"%s\",\"seq\":%u,\"rel\":%d}\n",
                 static_cast<unsigned>(s.recv_us), static_cast<unsigned>(s.node_id), static_cast<int>(s.rssi),
                 g_rx_now != nullptr ? static_cast<int>(g_rx_now->noise_floor) : 0,
                 g_rx_now != nullptr ? static_cast<unsigned>(g_rx_now->sig_mode) : 0u,
                 g_rx_now != nullptr ? static_cast<unsigned>(g_rx_now->rate) : 0u,
                 kKind[s.kind < 4 ? s.kind : 0], static_cast<unsigned>(s.hb_seq), s.relayed ? 1 : 0);
+    if (n <= 0 || static_cast<size_t>(n) >= sizeof(line) || g_tee_mb == nullptr ||
+        xMessageBufferSend(g_tee_mb, line, static_cast<size_t>(n), 0) != static_cast<size_t>(n)) {
+        g_tee_dropped.fetch_add(1);
+    }
 }
 #endif
 
@@ -1243,6 +1273,10 @@ void stats_task(void*) {
         std::printf("{\"t\":\"clk\",\"node\":%u,\"up_ms\":%u}\n", static_cast<unsigned>(node_id),
                     static_cast<unsigned>(now_ms_()));
         extender::print_status();  // M6.1: the baseline's {"t":"hs"} line, on an extender build only
+#if CONFIG_POT_RSSI_TEE
+        std::printf("{\"t\":\"tee\",\"node\":%u,\"dropped\":%u}\n", static_cast<unsigned>(node_id),
+                    static_cast<unsigned>(g_tee_dropped.load()));
+#endif
         {
             xSemaphoreTake(g_mutex, portMAX_DELAY);
             const uint8_t ch = g_node->channel();
@@ -2045,6 +2079,9 @@ extern "C" void app_main(void) {
     hal.free_dram = &hal_free_dram;
     hal.on_event = &hal_on_event;
     hal.on_rx_sample = &rx_sample_hook;  // M8.2: every accepted frame, to the tee and the actors
+#if CONFIG_POT_RSSI_TEE
+    tee_start();
+#endif
     hal.run_heavy = &trust_rt::run_heavy;
 #if !CONFIG_POT_RADIO_DISABLE && !CONFIG_POT_CAN
     hal.set_channel = [](void*, uint8_t ch) { espnow_set_channel(ch); };
