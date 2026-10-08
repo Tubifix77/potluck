@@ -86,6 +86,7 @@ struct AuthNode {
     NodeHal hal{};
     std::vector<Event> events;
     bool muted = false;  // drops everything this node sends
+    uint8_t chan = 1;    // M8.1 bench: frames reach only nodes on the sender's channel
 };
 
 struct AuthCell {
@@ -101,6 +102,7 @@ struct AuthCell {
 
     // `ids[i]` null means: no identity at all (pre-M5 behaviour). `require` applies to every node
     // that has one.
+    bool channels = false;  // M8.1 bench: give every node a retunable radio (set before build)
     void build(std::vector<std::unique_ptr<Identity>> ids, bool require, std::vector<uint32_t> epochs = {}) {
         nodes.resize(ids.size());
         for (size_t i = 0; i < ids.size(); ++i) {
@@ -120,6 +122,7 @@ struct AuthCell {
             t.hal.now_ms = [](void* c) { return static_cast<AuthNode*>(c)->cell->now_us / 1000; };
             t.hal.now_us = [](void* c) { return static_cast<AuthNode*>(c)->cell->now_us; };
             t.hal.on_event = [](void* c, const Event& e) { static_cast<AuthNode*>(c)->events.push_back(e); };
+            if (channels) t.hal.set_channel = [](void* c, uint8_t ch) { static_cast<AuthNode*>(c)->chan = ch; };
             t.hal.persist_safe_state_floors = [](void* c, const void* table, size_t bytes) {
                 AuthNode* n = static_cast<AuthNode*>(c);
                 const uint8_t* b = static_cast<const uint8_t*>(table);
@@ -164,6 +167,7 @@ struct AuthCell {
                 if ((d.first == from->index && d.second == i) || (d.first == i && d.second == from->index)) is_deaf = true;
             }
             if (is_deaf) continue;
+            if (c->nodes[i].chan != from->chan) continue;
             if (bcast || std::memcmp(c->nodes[i].mac, mac, kMacLen) == 0) {
                 c->nodes[i].node->on_rx(from->mac, data, len, c->now_us, -50);
             }
@@ -891,4 +895,44 @@ TEST(auth, a_board_erased_and_re_enrolled_is_admitted_again_though_its_epoch_res
     const uint32_t accepted = a.safe_state_counters().accepted;
     a.on_rx(bn.mac, old_safe_state.data(), old_safe_state.size(), c.now_us, -50);
     CHECK_EQ(a.safe_state_counters().accepted, accepted);
+}
+
+// ---------------------------------------------------------------------------------------------
+// M8.1 bench (M0-LOG session 31): the extender rebooted onto the house mesh's other channel
+// ---------------------------------------------------------------------------------------------
+
+TEST(auth, a_channel_authority_that_reboots_onto_another_channel_is_found_and_readmitted) {
+    // The bench: B (the extender, whose channel is its router's) rebooted and its station joined the
+    // mesh's channel-11 access point; A and C, on 1, never readmitted it. Here node 0 is B.
+    TestCa ca(1);
+    AuthCell c;
+    c.channels = true;
+    std::vector<std::unique_ptr<Identity>> ids;
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x100, 0x11)));
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x101, 0x22)));
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x102, 0x33)));
+    c.build(std::move(ids), true);
+    c.nodes[0].node->set_channel_fixed(true);
+    c.start_all();
+    c.advance_ms(3000);
+    CHECK_EQ(alive(*c.nodes[1].node), static_cast<size_t>(2));
+
+    // B goes dark (its reboot), long enough for the others' one sweep to find nothing.
+    c.nodes[0].muted = true;
+    c.advance_ms(600 + 10 * 300 + 1000);
+    // ... and comes back as a new incarnation, on another channel, owning it.
+    c.nodes[0].muted = false;
+    c.nodes[0].chan = 9;
+    power_cycle(c, 0, 2, false);
+    c.nodes[0].node->set_channel_fixed(true);
+    c.nodes[0].node->set_channel_now(9);
+
+    c.advance_ms(10 * 2000 + 11 * 300 + 5000);
+    for (size_t i = 1; i < 3; ++i) {
+        CHECK_EQ(static_cast<int>(c.nodes[i].chan), 9);
+        CHECK_EQ(alive(*c.nodes[i].node), static_cast<size_t>(2));
+        const Node::PeerAuth* pa = c.nodes[i].node->peer_auth(peer_by_id(*c.nodes[i].node, 0x100));
+        CHECK(pa != nullptr && pa->verified && pa->epoch == 2u);
+    }
+    CHECK_EQ(alive(*c.nodes[0].node), static_cast<size_t>(2));
 }

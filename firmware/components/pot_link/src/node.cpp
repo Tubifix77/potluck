@@ -969,8 +969,10 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         p->last_rssi = rssi;
     }
 
+    bool new_incarnation = false;  // first verified contact with this peer, or it rebooted or re-enrolled
     if (outcome == AuthOutcome::Fresh) {
         PeerAuth& slot = auth_[peers_.index_of(p)];
+        new_incarnation = !slot.verified || slot.epoch != fresh.epoch || slot.issued != fresh.issued;
         if (slot.verified && fresh.issued > slot.issued) {
             // Re-enrolled (a newer certificate). Its epoch counter may have restarted below the one
             // membership remembers, which would otherwise take every frame of it for a ghost.
@@ -1019,6 +1021,18 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
     if ((h.flags & kHelloFlagWantAck) != 0 && !departed_) {
         send_hello_ack(*p, kAdmitOk, f.hdr.msg_id);
         emit(EventKind::PeerAdmitted, p);
+        if (new_incarnation) {
+            // First contact with this incarnation of the asker. It may still hold the key of OUR
+            // previous incarnation, and then drops every unicast frame we send it -- the ack above
+            // included -- as a replay; only a signed broadcast HELLO can replace that key. Without
+            // this it waited for our periodic one, which a peer visiting our channel for 300 ms rarely
+            // catches: the extender that rebooted onto another channel was never readmitted (M0-LOG
+            // session 31). Not on every fresh verification: a HELLO's signature covers its flags, so
+            // that would echo between two settled peers. Want-ack, the variant already signed and
+            // cached: no extra signing here, and the asker recognises it from its cache, so it answers
+            // with an ack and nothing more -- no loop.
+            send_hello(true);
+        }
     }
 }
 
