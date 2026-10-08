@@ -1194,6 +1194,9 @@ void Node::pending_expire(uint32_t now_ms) {
 
 NsError Node::read(uint32_t path_hash, Reading& out, bool* is_local) {
     const NsEntry* e = ns_.find(path_hash);
+    if (e == nullptr && adopt_ != nullptr && adopt_(adopt_ctx_, path_hash)) {
+        e = ns_.find(path_hash);  // M8.2: an actor output on another node, declared on demand
+    }
     if (e == nullptr) {
         if (is_local != nullptr) {
             *is_local = false;

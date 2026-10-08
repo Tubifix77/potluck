@@ -22,11 +22,11 @@ NsDecl die_temp_decl(uint16_t owner, const DieTempConfig& c) {
     return d;
 }
 
-bool die_temp_output(const ActorDecl& d, NsDecl& out) {
+size_t die_temp_outputs(const ActorDecl& d, uint16_t node, uint16_t peer, NsDecl* out, size_t cap) {
     DieTempConfig c{};
-    if (!die_temp_config(d, c)) return false;
-    out = die_temp_decl(d.node_id, c);
-    return true;
+    if (peer != 0 || cap == 0 || node != d.node_id || !die_temp_config(d, c)) return 0;
+    out[0] = die_temp_decl(node, c);
+    return 1;
 }
 
 bool DieTempActor::start(uint32_t now_ms) {

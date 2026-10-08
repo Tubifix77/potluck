@@ -59,6 +59,6 @@ class DieTempActor : public Actor {
 bool die_temp_check(const ActorDecl& d, const ActorEnv& env, const char** why);
 // The resource a die_temp actor publishes, on whichever node it is pinned to (the row's output hook).
 NsDecl die_temp_decl(uint16_t owner, const DieTempConfig& c);
-bool die_temp_output(const ActorDecl& d, NsDecl& out);
+size_t die_temp_outputs(const ActorDecl& d, uint16_t node, uint16_t peer, NsDecl* out, size_t cap);
 
 }  // namespace pot

@@ -4203,3 +4203,56 @@ from before (A, C on 1, B on 11) **healed by itself within a minute of the flash
 (was: never, 3 of 3). Boot picks all "preferred", channel 11 at -50..-55 dBm against the strongest,
 channel 1 at -45..-49: the preferred access point 1 to 8 dB weaker over 15 reboots, inside the 10 dB
 default. Bench now: all three on channel 11, saved there with peers alive.
+
+## Session 32 — 2026-10-08 (late evening), M8.2 begins: CR2 from passive-sensor, the RSSI tee, PS-1, PS-2, PS-3
+
+**The request.** The owner's `passive-sensor` project (its own repository and agent; the owner asked the
+two agents to work directly, and gave a standing go-ahead to act on each other's requests) sent
+`CR2 for Potluck.md`: three boards around one room publishing presence and motion from the RSSI of the
+cell's own heartbeats. Scheduled as M8.2 (`6f8c79d`). The owner's answers set the order: the boards
+around the room cannot all be cabled to the PC, so PS-0 records through the namespace from A's cable,
+which puts PS-2 and PS-3 *before* PS-0. The fleet is three boards, not seven (the README said seven;
+corrected), so PS-0b is dropped.
+
+**The RSSI tee instead of the frame tee (`f8f4c18`).** CR2 proposed `CONFIG_POT_FRAME_TEE` for PS-0; it
+prints every frame both ways in hex, ~250 B a line, and would saturate the 115200-baud console the link
+task shares. `CONFIG_POT_RSSI_TEE` prints one ~111-byte line per frame accepted from a known peer, fed
+by a new Node hook (`on_rx_sample`) that also carries the S3's rx_ctrl noise floor, sig_mode and rate
+(ESP-IDF v6.0.2's struct, read from the local headers). On A for 40 s (`captures/m82-rssi-tee-A-smoke.jsonl`):
+~28 lines/s (~3 KB/s); RSSI -24..-28 dBm at desk range; noise floor a constant -90; **sig_mode 0 and
+rate code 0 on every frame** -- `WIFI_PHY_RATE_1M_L`, 1 Mbps 802.11b (the mapping of rx_ctrl's "PHY
+rate encoding" onto that enum is a reading, labelled derived). That answers PS-0b's question for PS-6.
+
+**PS-1, the external-component seam (`32e2ec1`, bench `15c2161`).** `-AppComponents` adds an
+application's components directory to the build; each component with a `potluck-modules.json` joins it,
+and CMake generates the list of their `app_rows_<name>()` hooks -- no Potluck source names one.
+`merge_actor_tables` refuses two rows for one type (naming both components) and external rows below
+0x80. External types 0x80-0xFF pass the image parser opaquely; `portable_header()` is the standard
+header any portable type starts with. Host: `potluck.modules` reads the declarative descriptor (Potluck's
+tooling runs no code from another repository); `--modules` on signing and deploy. Manifest config may now
+carry floats and strings, which the descriptor types. A combined variant (`extender-<x>`) inherits the
+extender's defaults, so B builds with `pme_hotspot` plus an app component -- the "two external
+components" CR2 asked for. **On the bench** (A, C on the appdemo build, B on extender-appdemo; package
+`m82-demo` at counter 8, deployed in two tries -- the first ran while B and C were still rejoining after
+their flash, "0 committed, 1 failed", then "2 committed"): B's external pinned counter read through A
+as GOOD with its age, and the external portable actor placed by the reconciler on A, publishing.
+
+**PS-2, every frame to the actors (`9a4321e`).** `Actor::on_rx_sample` gets every frame the node accepted
+from a known peer, synchronously, before the frame is handled -- nothing queued in between, so a prompt
+actor misses nothing; frames the radio queue dropped before the node saw them are counted there.
+
+**PS-3, several outputs, per link, on demand.** `ActorKind::outputs(decl, node, peer, ...)` replaces the
+single `output` hook: per-node outputs (peer 0) or per-link ones (peer set), up to eight a call. Pinned
+per-node outputs are declared as replicas at boot; every-node and per-link ones are adopted on demand --
+`Node::read` asks an adopt handler when it finds no entry, and the runtime matches the hash against the
+image's declarations over this node and its peers, the way A already adopts peers' `sys/*`. A portable
+actor's outputs are all declared by the reconciler, and move and are fenced together. `path_hash_from()`
+lets a board hash paths it builds itself from a prefix state in its config (the descriptor's
+`system_prefix`), since the board does not know the cluster's name. Answered alongside: there is no push
+path on the boards (SUBSCRIBE is a reserved opcode only), so PS-0 polls, and passive-sensor adds a
+window sequence number so a capture shows every skip; SUBSCRIBE is held as PS-7.
+
+**A slip, recorded:** `bash` typed inside a PowerShell command is WSL's `bash.exe` on this machine. The
+portability gate ran that way several times today, and once more (a test-tail command) after the owner
+had asked for no WSL; that one timed out and left no VM running. Scripts now go through Git Bash only.
+

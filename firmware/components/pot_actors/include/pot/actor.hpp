@@ -100,13 +100,21 @@ struct ActorKind {
     // period_ms (its output's publication period, which sets the staleness bound), and the eligible
     // nodes with their data-gravity scores. nullptr: the type is pinned-only.
     bool (*placement)(const ActorDecl& decl, TickerConfig& out) = nullptr;
-    // Pinned types that publish: the resource the actor publishes, owner_node = decl.node_id. Every
-    // node declares the outputs of the actors pinned on OTHER nodes from the image (which every node
-    // holds), so it has an entry -- a replica, refreshed by single-hop READs -- for a host or an actor
-    // here to read: section 4's tuple for a value on another board. The actor itself declares the same
-    // resource on its own node in start(). nullptr: the type publishes nothing others read.
-    bool (*output)(const ActorDecl& decl, NsDecl& out) = nullptr;
+    // M8.2 (PS-3): the resources the actor publishes. Fills up to `cap` (kMaxOutputs) decls and
+    // returns how many; 0 for none.
+    //   peer == 0: its per-node outputs on `node`.   peer != 0: its per-link outputs on `node` about `peer`.
+    //   `node` is the actor's own node for a pinned actor, any member for an every-node one, and 0
+    //   for a portable one, whose outputs are node-free (act/<name>/...).
+    // What it is for: other nodes hold replicas of an actor's outputs, worked out from the deploy
+    // image -- which every node holds -- so a host on one board's cable, or an actor anywhere, reads
+    // a value on another board with section 4's tuple. Pinned per-node outputs are declared at boot;
+    // every-node and per-link ones on demand, when a read finds no entry (ActorRuntime::adopt). A
+    // portable actor's are declared and fenced by the reconciler. The actor itself declares its own
+    // on its own node (it may call this hook to do so). nullptr: the type publishes nothing others read.
+    size_t (*outputs)(const ActorDecl& decl, uint16_t node, uint16_t peer, NsDecl* out, size_t cap) = nullptr;
 };
+
+constexpr size_t kMaxOutputs = 8;
 
 // Find a type's row, or nullptr.
 const ActorKind* find_actor_kind(const ActorKind* table, size_t n, ActorType type);
@@ -161,6 +169,10 @@ class ActorRuntime {
 
     size_t loaded() const { return n_decl_; }
     size_t remote_outputs() const { return n_remote_; }
+
+    // M8.2 (PS-3): declare the replica for `path_hash` if it is an output of an actor in the image on
+    // one of `nodes` (this node and its peers), about one of them. True if it declared one.
+    bool adopt(Namespace& ns, uint32_t path_hash, const uint16_t* nodes, size_t n_nodes);
     size_t running() const { return n_run_; }
     Actor* actor(size_t i) { return i < n_run_ ? run_[i] : nullptr; }
     const char* name(size_t i) const { return i < n_run_ ? run_kind_[i]->name : "?"; }
@@ -177,7 +189,10 @@ class ActorRuntime {
     size_t n_kinds_;
     Held held_[kMaxPinnedActors] = {};
     size_t n_decl_ = 0;
-    NsDecl remote_[kMaxActors] = {};  // outputs of actors pinned elsewhere, declared by start()
+    // Every image declaration that runs, or may run, on other nodes: pinned elsewhere, or every-node.
+    // Their per-node outputs (pinned) are declared by start(); the rest are adopted on demand.
+    Held others_[kMaxActors] = {};
+    size_t n_others_ = 0;
     size_t n_remote_ = 0;
     alignas(max_align_t) uint8_t mem_[kMaxPinnedActors][kActorSlotBytes] = {};
     Actor* run_[kMaxPinnedActors] = {};

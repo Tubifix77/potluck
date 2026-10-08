@@ -117,7 +117,7 @@ const ActorKind kBuiltinRows[] = {
     {ActorType::Fault, "fault", &fault_check, &fault_create},
     kSvcClientKind,
     kTickerKind,  // portable: the reconciler places it
-    {ActorType::DieTemp, "die_temp", &die_temp_check, &die_temp_create, nullptr, &die_temp_output},
+    {ActorType::DieTemp, "die_temp", &die_temp_check, &die_temp_create, nullptr, &die_temp_outputs},
 };
 }  // namespace
 

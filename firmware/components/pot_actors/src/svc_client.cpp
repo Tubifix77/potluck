@@ -147,14 +147,14 @@ Actor* svc_create(void* mem, const ActorDecl& d, const ActorEnv& env) {
     if (env.node == nullptr || !svc_client_config(d, c)) return nullptr;
     return new (mem) SvcClient(*env.node, c);
 }
-bool svc_output(const ActorDecl& d, NsDecl& out) {
+size_t svc_outputs(const ActorDecl& d, uint16_t node, uint16_t peer, NsDecl* out, size_t cap) {
     SvcClientConfig c{};
-    if (!svc_client_config(d, c)) return false;
-    out = svc_client_decl(d.node_id, c);
-    return true;
+    if (peer != 0 || cap == 0 || node != d.node_id || !svc_client_config(d, c)) return 0;
+    out[0] = svc_client_decl(node, c);
+    return 1;
 }
 }  // namespace
 
-const ActorKind kSvcClientKind = {ActorType::SvcClient, "svc_client", &svc_check, &svc_create, nullptr, &svc_output};
+const ActorKind kSvcClientKind = {ActorType::SvcClient, "svc_client", &svc_check, &svc_create, nullptr, &svc_outputs};
 
 }  // namespace pot

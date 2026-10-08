@@ -402,6 +402,12 @@ class Node {
     void set_call_handler(CallHandler fn, void* ctx) { call_handler_ = fn; call_ctx_ = ctx; }
     void set_call_result(CallResultFn fn, void* ctx) { call_result_ = fn; result_ctx_ = ctx; }
 
+    // M8.2 (PS-3): a read -- a peer's READ, the host's through this board, or a local actor's -- found
+    // no entry for `path_hash`. The handler may declare one (a replica of an actor's output on
+    // another node, worked out from the deploy image) and return true; the read then proceeds.
+    using AdoptFn = bool (*)(void* ctx, uint32_t path_hash);
+    void set_adopt_handler(AdoptFn fn, void* ctx) { adopt_ = fn; adopt_ctx_ = ctx; }
+
     // §7.4 deploy. The node core only routes: the payload formats and the storage live in
     // pot_deploy, which this component does not depend on.
     //
@@ -535,6 +541,8 @@ class Node {
     void handle_read(PeerLink* p, const Frame& f);
     // Declare a peer's built-in resource on first demand; see handle_read(). True if declared.
     bool adopt_peer_sys_resource(uint32_t path_hash);
+    AdoptFn adopt_ = nullptr;
+    void* adopt_ctx_ = nullptr;
     void handle_write(PeerLink* p, const Frame& f);
     void handle_reply(PeerLink* p, const Frame& f);
     void handle_call(PeerLink* p, const Frame& f, bool wants_reply);

@@ -89,19 +89,30 @@ bool Reconciler::load(const PortableSpec* actors, size_t n) {
         std::memcpy(s.decl_cfg, actors[i].cfg, actors[i].decl.cfg_len);
         s.decl = actors[i].decl;
         s.decl.cfg = s.decl_cfg;
-        NsDecl d;
-        d.path_hash = s.cfg.out_hash;
-        d.owner_node = 0;  // nobody, until a claim says otherwise
-        d.type = ValueType::None;  // whatever the actor publishes (M8.1: any portable type)
-        d.unit = Unit::None;
-        d.kind = ResourceKind::Sampled;
-        d.access = Access::Read;
-        d.latency_class = kClassL3;  // section 7.7: portable actors are L3/L4 by construction
-        // Five periods: one lost publication is not staleness, a stopped instance soon is.
-        d.staleness_bound_ms = 5u * s.cfg.period_ms;
-        d.staleness_policy = StalenessPolicy::Informative;
-        if (node_.ns().declare(d) != NsError::Ok) {
-            return false;
+        NsDecl outs[kMaxOutputs];
+        size_t n_out = (s.kind->outputs != nullptr) ? s.kind->outputs(s.decl, 0, 0, outs, kMaxOutputs) : 0;
+        if (n_out == 0) {
+            // The one output at the header's out_hash, as since M6.
+            NsDecl& d = outs[0];
+            d = NsDecl{};
+            d.path_hash = s.cfg.out_hash;
+            d.type = ValueType::None;  // whatever the actor publishes (M8.1: any portable type)
+            d.unit = Unit::None;
+            d.kind = ResourceKind::Sampled;
+            d.access = Access::Read;
+            d.latency_class = kClassL3;  // section 7.7: portable actors are L3/L4 by construction
+            // Five periods: one lost publication is not staleness, a stopped instance soon is.
+            d.staleness_bound_ms = 5u * s.cfg.period_ms;
+            d.staleness_policy = StalenessPolicy::Informative;
+            n_out = 1;
+        }
+        s.n_out = 0;
+        for (size_t j = 0; j < n_out && j < kMaxOutputs; ++j) {
+            outs[j].owner_node = 0;  // nobody, until a claim says otherwise
+            if (node_.ns().declare(outs[j]) != NsError::Ok) {
+                return false;
+            }
+            s.out_hash[s.n_out++] = outs[j].path_hash;
         }
         ++count_;
     }
@@ -374,7 +385,7 @@ void Reconciler::resolve_owner(size_t i) {
     s.owner_term = term;
     if (s.owner != owner) {
         s.owner = owner;
-        node_.ns().set_owner(s.cfg.out_hash, owner);
+        for (uint8_t j = 0; j < s.n_out; ++j) node_.ns().set_owner(s.out_hash[j], owner);  // all fenced together
         node_.record_event(EventKind::ActorOwner, owner, s.cfg.out_hash, term);
     }
 }

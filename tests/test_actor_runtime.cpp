@@ -257,14 +257,14 @@ TEST(actor_runtime, the_output_of_an_actor_pinned_elsewhere_is_declared_here_as_
     const uint8_t cfg[6] = {static_cast<uint8_t>(out), static_cast<uint8_t>(out >> 8),
                             static_cast<uint8_t>(out >> 16), static_cast<uint8_t>(out >> 24), 0xE8, 0x03};
     const DeployImage img = image({{0x200, ActorType::DieTemp, 6, cfg}});
-    const ActorKind table[] = {{ActorType::DieTemp, "die_temp", &die_temp_check, nullptr, nullptr, &die_temp_output}};
+    const ActorKind table[] = {{ActorType::DieTemp, "die_temp", &die_temp_check, nullptr, nullptr, &die_temp_outputs}};
     ActorRuntime rt(table, 1);
     ActorEnv env;
     env.node = n.node;
     CHECK(rt.load(img, 0x100, env, nullptr));
     CHECK_EQ(rt.loaded(), static_cast<size_t>(0));  // not ours to run
-    CHECK_EQ(rt.remote_outputs(), static_cast<size_t>(1));
     rt.start(env, 0, nullptr);
+    CHECK_EQ(rt.remote_outputs(), static_cast<size_t>(1));  // declared at boot: a pinned actor's per-node output
     const NsEntry* e = n.node->ns().find(out);
     CHECK(e != nullptr);
     if (e == nullptr) return;
@@ -365,5 +365,134 @@ TEST(actor_runtime, every_rx_sample_reaches_every_running_actor) {
     for (size_t i = 0; i < 2; ++i) {
         CHECK_EQ(static_cast<Probe*>(rt.actor(i))->samples, 1000u);
         CHECK_EQ(static_cast<Probe*>(rt.actor(i))->last_rssi, -40 - 19);
+    }
+}
+
+// ---- M8.2 (PS-3): several outputs, per link, adopted on demand; and a portable actor's set ---------
+
+#include "pot/reconcile.hpp"
+
+namespace {
+// An every-node "link meter": per link, two outputs under potluck://lab/node-<on>/test/link-<peer>/.
+constexpr uint32_t kLabPrefix = path_hash("potluck://lab/");
+size_t meter_outputs(const ActorDecl&, uint16_t node, uint16_t peer, NsDecl* out, size_t cap) {
+    if (peer == 0 || cap < 2) return 0;
+    char buf[64];
+    const char* fields[2] = {"mean", "count"};
+    for (int i = 0; i < 2; ++i) {
+        std::snprintf(buf, sizeof(buf), "node-%04x/test/link-%04x/%s", static_cast<unsigned>(node),
+                      static_cast<unsigned>(peer), fields[i]);
+        out[i] = NsDecl{};
+        out[i].path_hash = path_hash_from(kLabPrefix, buf);
+        out[i].owner_node = node;
+        out[i].type = i == 0 ? ValueType::F32 : ValueType::U32;
+        out[i].kind = ResourceKind::Sampled;
+        out[i].access = Access::Read;
+        out[i].latency_class = kClassL4;
+        out[i].staleness_bound_ms = 3000;
+    }
+    return 2;
+}
+// A portable "fusion" with three outputs under act/fusion/.
+size_t fusion_outputs(const ActorDecl&, uint16_t, uint16_t peer, NsDecl* out, size_t cap) {
+    if (peer != 0 || cap < 3) return 0;
+    const char* paths[3] = {"potluck://lab/act/fusion/presence", "potluck://lab/act/fusion/confidence",
+                            "potluck://lab/act/fusion/motion"};
+    for (int i = 0; i < 3; ++i) {
+        out[i] = NsDecl{};
+        out[i].path_hash = path_hash(paths[i]);
+        out[i].type = ValueType::None;
+        out[i].kind = ResourceKind::Sampled;
+        out[i].access = Access::Read;
+        out[i].latency_class = kClassL4;
+        out[i].staleness_bound_ms = 1000;
+    }
+    return 3;
+}
+bool fusion_place(const ActorDecl&, TickerConfig& out) {
+    out = TickerConfig{};
+    out.out_hash = path_hash("potluck://lab/act/fusion/presence");
+    out.period_ms = 200;
+    out.count = 1;
+    out.node[0] = 0x100;
+    return true;
+}
+const ActorKind kPs3Table[] = {
+    {static_cast<ActorType>(0x80), "meter", &probe_check, &probe_create, nullptr, &meter_outputs},
+    {static_cast<ActorType>(0x81), "fusion", &probe_check, &probe_create, &fusion_place, &fusion_outputs},
+};
+}  // namespace
+
+TEST(actor_runtime, path_hash_from_continues_a_prefix) {
+    CHECK_EQ(path_hash_from(path_hash("potluck://lab/"), "node-7368/rf/link-8160/mean"),
+             path_hash("potluck://lab/node-7368/rf/link-8160/mean"));
+}
+
+TEST(actor_runtime, an_every_node_actors_per_link_output_on_another_node_is_adopted_on_demand) {
+    OneNode n;  // node 0x100, whose peers are 0x200 and 0x300
+    const uint8_t cfg[3] = {1, 0, 0};
+    const DeployImage img = image({{kEveryNode, static_cast<ActorType>(0x80), 3, cfg}});
+    ActorRuntime rt(kPs3Table, 2);
+    ActorEnv env;
+    env.node = n.node;
+    CHECK(rt.load(img, 0x100, env, nullptr));
+    CHECK_EQ(rt.start(env, 0, nullptr), static_cast<size_t>(1));  // runs here too
+    const uint16_t cell[3] = {0x100, 0x200, 0x300};
+    const uint32_t want = path_hash("potluck://lab/node-0200/test/link-0300/count");
+    CHECK(n.node->ns().find(want) == nullptr);           // nothing declared up front
+    CHECK(rt.adopt(n.node->ns(), want, cell, 3));
+    const NsEntry* e = n.node->ns().find(want);
+    CHECK(e != nullptr && e->owner_node == 0x200);       // a replica of node 0x200's output
+    CHECK(!rt.adopt(n.node->ns(), path_hash("potluck://lab/node-0200/test/link-0200/count"), cell, 3));  // no self-link
+    CHECK(!rt.adopt(n.node->ns(), path_hash("potluck://lab/nothing"), cell, 3));
+}
+
+TEST(actor_runtime, a_read_that_finds_no_entry_asks_the_adopt_handler) {
+    OneNode n;
+    static int asked = 0;
+    asked = 0;
+    const uint32_t h = path_hash("potluck://lab/node-0200/test/link-0300/mean");
+    n.node->set_adopt_handler(
+        [](void* ctx, uint32_t ph) {
+            ++asked;
+            NsDecl d;
+            d.path_hash = ph;
+            d.owner_node = 0x200;
+            d.type = ValueType::F32;
+            return static_cast<Node*>(ctx)->ns().declare(d) == NsError::Ok;
+        },
+        n.node);
+    Reading r;
+    CHECK_EQ(static_cast<int>(n.node->read(h, r)), static_cast<int>(NsError::Ok));  // not NotFound
+    CHECK_EQ(asked, 1);
+    CHECK_EQ(static_cast<int>(r.quality), static_cast<int>(Quality::Unavailable));  // 0x200 is no peer of ours
+    n.node->read(h, r);
+    CHECK_EQ(asked, 1);  // declared now: not asked again
+}
+
+TEST(actor_runtime, a_portable_actors_outputs_are_all_declared_and_move_together) {
+    OneNode n;
+    const uint8_t cfg[3] = {9, 0, 0};
+    const DeployImage img = image({{kPortableNode, static_cast<ActorType>(0x81), 3, cfg}});
+    PortableSpec specs[kMaxPortable];
+    size_t count = 0;
+    CHECK(collect_portable(img, kPs3Table, 2, specs, kMaxPortable, count, nullptr));
+    Reconciler rec(*n.node);
+    CHECK(rec.load(specs, count));
+    const uint32_t outs[3] = {path_hash("potluck://lab/act/fusion/presence"),
+                              path_hash("potluck://lab/act/fusion/confidence"),
+                              path_hash("potluck://lab/act/fusion/motion")};
+    for (uint32_t h : outs) {
+        const NsEntry* e = n.node->ns().find(h);
+        CHECK(e != nullptr && e->owner_node == 0);  // declared, nobody's yet
+    }
+    g_now = 1000;
+    rec.start(g_now);
+    for (int k = 0; k < 2000 && !rec.view(0).running; ++k) rec.tick(++g_now);
+    for (int k = 0; k < 10; ++k) rec.tick(++g_now);
+    CHECK(rec.view(0).running);
+    for (uint32_t h : outs) {
+        const NsEntry* e = n.node->ns().find(h);
+        CHECK(e != nullptr && e->owner_node == 0x100);  // every output moved to the holder
     }
 }

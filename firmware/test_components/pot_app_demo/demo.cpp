@@ -82,11 +82,11 @@ Actor* counter_create(void* mem, const ActorDecl& d, const ActorEnv& env) {
     CounterCfg c{};
     return (env.node != nullptr && counter_cfg(d, c)) ? new (mem) DemoCounter(*env.node, c) : nullptr;
 }
-bool counter_output(const ActorDecl& d, NsDecl& out) {
+size_t counter_outputs(const ActorDecl& d, uint16_t node, uint16_t peer, NsDecl* out, size_t cap) {
     CounterCfg c{};
-    if (!counter_cfg(d, c) || d.node_id == kEveryNode) return false;  // every-node replicas: PS-3
-    out = counter_decl(d.node_id, c);
-    return true;
+    if (peer != 0 || cap == 0 || node != d.node_id || !counter_cfg(d, c)) return 0;
+    out[0] = counter_decl(node, c);
+    return 1;
 }
 
 // ---- demo_roamer -----------------------------------------------------------------------------------
@@ -139,7 +139,7 @@ bool roamer_placement(const ActorDecl& d, TickerConfig& out) {
 }
 
 const ActorKind kRows[] = {
-    {kDemoCounter, "demo_counter", &counter_check, &counter_create, nullptr, &counter_output},
+    {kDemoCounter, "demo_counter", &counter_check, &counter_create, nullptr, &counter_outputs},
     {kDemoRoamer, "demo_roamer", &roamer_check, &roamer_create, &roamer_placement, nullptr},
 };
 

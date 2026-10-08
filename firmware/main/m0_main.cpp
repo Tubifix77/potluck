@@ -2111,6 +2111,20 @@ extern "C" void app_main(void) {
         if (failed != nullptr) ESP_LOGE(kTag, "actors: %s could not start; dropped", failed);
         for (size_t i = 0; i < g_actors.running(); ++i) ESP_LOGI(kTag, "actors: %s running", g_actors.name(i));
     }
+    // M8.2 (PS-3): a read finding no entry may be for an actor output on another node -- the image
+    // says which; the candidates are this node and its peers.
+    g_node->set_adopt_handler(
+        [](void*, uint32_t hash) {
+            uint16_t ids[kMaxPeers + 1];
+            size_t n = 0;
+            ids[n++] = g_node->config().node_id;
+            for (size_t i = 0; i < PeerTable::capacity() && n < kMaxPeers + 1; ++i) {
+                const PeerLink& q = g_node->peers().slot(i);
+                if (q.state != PeerState::Free && std::memcmp(q.mac, kHostMac, kMacLen) != 0) ids[n++] = q.node_id;
+            }
+            return g_actors.adopt(g_node->ns(), hash, ids, n);
+        },
+        nullptr);
     if (g_actors.running() > 0) {
         g_node->set_call_result(
             [](void*, uint16_t from, uint16_t msg_id, uint32_t path, Node::CallOutcome o, const Value& v) {

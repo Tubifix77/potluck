@@ -164,6 +164,10 @@ class Reconciler {
         uint8_t decl_cfg[kMaxActorCfg];
         alignas(std::max_align_t) uint8_t mem[kActorSlotBytes];
         Actor* inst;               // while running here
+        // M8.2 (PS-3): its outputs (the kind's outputs(), or the one at cfg.out_hash), each declared
+        // here and moved and fenced together.
+        uint32_t out_hash[kMaxOutputs];
+        uint8_t n_out;
         bool running;
         uint32_t term;
         uint32_t max_term;

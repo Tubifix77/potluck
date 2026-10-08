@@ -54,19 +54,23 @@ bool merge_actor_tables(const ActorKind* builtins, size_t n_builtins, const AppR
 
 bool ActorRuntime::load(const DeployImage& img, uint16_t node_id, const ActorEnv& env, const char** why) {
     n_decl_ = 0;
+    n_others_ = 0;
     n_remote_ = 0;
     const char* w = nullptr;
     for (uint8_t i = 0; i < img.actor_count && w == nullptr; ++i) {
         const ActorDecl& a = img.actors[i];
         if (a.node_id == kPortableNode) continue;  // the reconciler's
-        if (a.node_id != node_id && a.node_id != kEveryNode) {
-            // Another node's actor: not ours to run, but its output is ours to know about.
+        if (a.node_id != node_id || a.node_id == kEveryNode) {
+            // It runs (also) on other nodes: not ours to run there, but its outputs are ours to know.
             const ActorKind* k = find_actor_kind(table_, n_kinds_, a.type);
-            NsDecl d;
-            if (k != nullptr && k->output != nullptr && n_remote_ < kMaxActors && k->output(a, d)) {
-                remote_[n_remote_++] = d;
+            if (k != nullptr && k->outputs != nullptr && n_others_ < kMaxActors && a.cfg_len <= kMaxActorCfg) {
+                Held& o = others_[n_others_++];
+                o.kind = k;
+                std::memcpy(o.cfg, a.cfg, a.cfg_len);
+                o.decl = a;
+                o.decl.cfg = o.cfg;
             }
-            continue;
+            if (a.node_id != kEveryNode) continue;
         }
         const ActorKind* k = find_actor_kind(table_, n_kinds_, a.type);
         if (k == nullptr) {
@@ -87,6 +91,7 @@ bool ActorRuntime::load(const DeployImage& img, uint16_t node_id, const ActorEnv
     }
     if (w != nullptr) {
         n_decl_ = 0;
+        n_others_ = 0;
         n_remote_ = 0;
         if (why != nullptr) *why = w;
         return false;
@@ -97,7 +102,16 @@ bool ActorRuntime::load(const DeployImage& img, uint16_t node_id, const ActorEnv
 size_t ActorRuntime::start(const ActorEnv& env, uint32_t now_ms, const char** failed) {
     if (failed != nullptr) *failed = nullptr;
     if (env.node != nullptr) {
-        for (size_t i = 0; i < n_remote_; ++i) env.node->ns().declare(remote_[i]);
+        // Pinned elsewhere: its per-node outputs are known now, so declare their replicas at boot.
+        for (size_t i = 0; i < n_others_; ++i) {
+            const Held& o = others_[i];
+            if (o.decl.node_id == kEveryNode) continue;  // adopted on demand: the members are not known yet
+            NsDecl out[kMaxOutputs];
+            const size_t n = o.kind->outputs(o.decl, o.decl.node_id, 0, out, kMaxOutputs);
+            for (size_t j = 0; j < n && j < kMaxOutputs; ++j) {
+                if (env.node->ns().declare(out[j]) == NsError::Ok) ++n_remote_;
+            }
+        }
     }
     for (size_t i = 0; i < n_decl_ && n_run_ < kMaxPinnedActors; ++i) {
         const Held& h = held_[i];
@@ -121,6 +135,29 @@ bool ActorRuntime::on_call_result(uint16_t from_node, uint16_t msg_id, uint32_t 
                                   Node::CallOutcome o, const Value& v) {
     for (size_t i = 0; i < n_run_; ++i) {
         if (run_[i]->on_call_result(from_node, msg_id, path_hash, o, v)) return true;
+    }
+    return false;
+}
+
+bool ActorRuntime::adopt(Namespace& ns, uint32_t path_hash, const uint16_t* nodes, size_t n_nodes) {
+    NsDecl out[kMaxOutputs];
+    for (size_t i = 0; i < n_others_; ++i) {
+        const Held& o = others_[i];
+        const bool every = o.decl.node_id == kEveryNode;
+        const size_t n_on = every ? n_nodes : 1;
+        for (size_t a = 0; a < n_on; ++a) {
+            const uint16_t on = every ? nodes[a] : o.decl.node_id;
+            for (size_t b = 0; b <= n_nodes; ++b) {
+                const uint16_t peer = (b == 0) ? 0 : nodes[b - 1];
+                if (peer == on) continue;  // no link to itself
+                const size_t n = o.kind->outputs(o.decl, on, peer, out, kMaxOutputs);
+                for (size_t j = 0; j < n && j < kMaxOutputs; ++j) {
+                    if (out[j].path_hash == path_hash) {
+                        return ns.declare(out[j]) == NsError::Ok;
+                    }
+                }
+            }
+        }
     }
     return false;
 }

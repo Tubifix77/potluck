@@ -50,6 +50,20 @@ constexpr uint32_t path_hash(const char* s) {
 
 uint32_t path_hash_n(const char* s, size_t n);
 
+// M8.2 (PS-3): FNV-1a continued from `state` -- the hash of a prefix -- over `rest`, so
+// path_hash_from(path_hash("potluck://lab/"), "node-7368/rf/link-8160/mean") equals the hash of the
+// whole path. An actor whose output paths are built on the board (one per peer) gets the state for
+// "potluck://<system>/" in its config (a descriptor's "system_prefix" field), since the board does
+// not know the cluster's name.
+constexpr uint32_t path_hash_from(uint32_t state, const char* rest) {
+    uint32_t h = state;
+    while (*rest != '\0') {
+        h ^= static_cast<uint8_t>(*rest++);
+        h *= kFnv1a32Prime;
+    }
+    return h;
+}
+
 // ---------------------------------------------------------------------------------------------
 // One namespace entry. §7.2: "Every entry carries kind, type, unit, access, latency_class,
 // staleness_bound_ms, owner_node, plus the cached value and timestamp."
