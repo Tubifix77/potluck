@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xc6b60 bytes. Smallest app partition is 0x100000 bytes. 0x394a0 bytes (22%) free.
+potluck_m0.bin binary size 0xc6c50 bytes. Smallest app partition is 0x100000 bytes. 0x393b0 bytes (22%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -55,9 +55,9 @@ Executing "ninja size-components"...
 
 │ libfreertos.a                   │      20643 │  340 │   340 │        0 │  8828 │   764 │  3108 │  4956 │       9842 │   9842 │       1633 │      0 │    1633 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libmonocypher.a                 │      17110 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      13266 │  13266 │       3844 │      0 │    3844 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_link.a                   │      17110 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      17016 │  17016 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_link.a                   │      16936 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      16842 │  16842 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libmonocypher.a                 │      17110 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      13266 │  13266 │       3844 │      0 │    3844 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_system.a                 │      14105 │ 2483 │  2483 │        0 │  1594 │   317 │   538 │   739 │       9348 │   9348 │        680 │      0 │     680 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -87,7 +87,7 @@ Executing "ninja size-components"...
 
 │ libxtensa.a                     │       3694 │ 2023 │  1596 │      427 │  1524 │     0 │  1060 │   464 │         99 │     99 │         48 │      0 │      48 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_trust.a                  │       3518 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       3182 │   3182 │        336 │      0 │     336 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_trust.a                  │       3580 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       3244 │   3244 │        336 │      0 │     336 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_wifi.a                   │       3389 │  203 │   203 │        0 │   567 │     6 │   480 │    81 │       1859 │   1859 │        760 │      0 │     760 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

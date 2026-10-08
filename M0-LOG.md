@@ -3757,3 +3757,80 @@ which house access point) are the owner's to give, and step 2 must repeat them.
 **Clean-up, as the request says:** the owner ran `forget` and erased B. B was reflashed with `fd1478d`
 (verify-flash matched by MAC) and re-enrolled; all three verify both others. The erase reset B's deploy
 state: B runs no package and its floor is 0; A and C keep `m6-ticker` at counter 5.
+
+### Session 27, continued (overnight, owner asleep) -- step 1, the seam, and a trust bug the erase uncovered
+
+**Step 1 built (`fb593ae`).** The extender build is a variant: `tools\build_firmware.ps1 -Variant extender
+-PmeHotspot D:\Projects\poor-mans-extender\firmware\components`. The extender repository is read in place
+through an environment variable (`POT_PME_HOTSPOT_DIR`, which unlike a Kconfig value is visible while
+ESP-IDF expands component requirements) and compiled into Potluck's own build directory; its git status
+stayed clean. The seam, against CR-6's items:
+
+1. *Radio ownership.* `EspNowConfig::attach`: `espnow_start()` checks the application started Wi-Fi in
+   STA or STA+AP mode, then only creates the queues and attaches ESP-NOW. Peers stay on the station
+   interface at channel 0 -- ESP-IDF: "You can send ESP-NOW data via both the Station and the SoftAP
+   interface", and channel 0 means "data will be sent on the current channel" (`esp_now.rst`, v6.0.2).
+2. *The channel flows inward only.* Attached, `espnow_set_channel` and `espnow_scan_for` refuse: ESP-IDF
+   says `esp_wifi_set_channel` "should not be called when STA is scanning or connecting to an external AP
+   or softAP has connected to external STAs" (`esp_wifi.h`). The node is channel-fixed (CR-1's station:
+   never hops, never follows) and has no `set_channel`. `pme_hotspot`'s channel callback runs on the event
+   task, so it only leaves the channel for the link task, which declares it and announces it with
+   M5.1's signed CHANNEL frame. **A design consequence the request does not state:** by the time a
+   station knows its new channel it has associated on it, so the announcement goes out on the *new*
+   channel, where the rest of the cell is not listening. Members follow by CR-1's scan (about 5 s on the
+   bench in session 23), not by hearing it. Step 2's forced channel change measures exactly that.
+3. *Two Wi-Fi configurations.* `firmware/sdkconfig.defaults.variant-extender` copies the baseline's
+   CPU clock (240 MHz), buffer counts (16/32 RX, 16 static TX), AMPDU (on, windows 6/16), Wi-Fi/lwIP in
+   PSRAM first, IP forwarding and NAPT -- each checked equal in the generated sdkconfig after the build --
+   so step 3's comparison measures the radio being shared, not a different configuration. Section 6's
+   internal core is unchanged (49.4 KB).
+4. *Roles.* Once the hotspot is up the node declares `BUSY` and `RELAY`.
+5. *Where the code lives.* `pme_hotspot` unmodified; Potluck's side is `firmware/main/extender.cpp`. It
+   prints the baseline's `{"t":"hs"}` line field for field, and takes credentials on Potluck's console as
+   `POT! pme sta|ap <name> <password>` / `POT! pme forget` (the `pme>` prompt's quoting rules), printing
+   only a result, never a value; the console's line buffer is now zeroed after every line. Without
+   credentials the node runs as an ordinary member.
+
+**The trust bug (`f6d7fdb`).** Flashing the extender build onto B showed `bad_tag` climbing and `tags_ok` 0.
+It was older than the build: **erasing B for step 0 took its boot-epoch counter with it**, so after
+re-enrolment B came back at a lower epoch than A and C remembered. They refused its new, correctly signed
+HELLO as stale (539 times), kept its old key, and every frame between them failed its tag. After M5.1's
+step 0 the same erase had not bitten, because all three boards were reflashed and forgot. The fix makes
+the fence (certificate issue time, boot epoch): a HELLO under a **newer** certificate is a new lineage --
+verified, and membership forgets the old incarnation's epoch; under an **older** certificate it is
+refused whatever its epoch, which also closes a hole the erase had opened (a recording of the old
+enrolment, with its higher epoch, used to pass as "newer"). The SAFE_STATE high-water entry now records
+two bytes of the key that set it (the old reserved field: same size, no format change); a floor set
+under another key restarts, since nothing the old key signed verifies under the new one, and entries
+persisted earlier carry 0 and keep their fence. A host test reproduces the bench case, and removing
+any one of the three parts fails it. On the boards afterwards: `bad_tag` 0 and `stale_epoch` 0 on all
+three, each verifying both others.
+
+**Smoke test of the attach path, with test values generated in the session** (a hotspot nobody joined,
+a house network that does not exist -- never the owner's): the hotspot came up, ESP-NOW attached on
+channel 1 ("attached: the application owns Wi-Fi"), the node declared BUSY and RELAY and kept verifying
+both peers, and the station failed with reason 201 (no network found) about every 4.8 s. **Finding:**
+each of those failures is a scan across every channel, which takes the radio off the cell's channel for
+longer than the 600 ms death window -- A and C declared B dead and revived it 10 times in 32 s. That is
+the no-router case (boot before association, or the gap after a router changes channel), not the
+associated steady state, and the acceptance line allows lost nodes to read `UNAVAILABLE` meanwhile.
+Two remedies, neither built: B could declare a looser window (M5.1 CR-3) while its station hunts, or
+`pme_hotspot` could retry more gently -- the second is the extender's code, so it is reported, not
+patched. Also reported, not patched: `pme_hotspot` logs both network names at start-up ("hotspot up:
+SoftAP ... joining ..."), against its header's "credentials never appear in a log line"; the passwords
+are never logged, and Potluck's recorders drop those lines.
+
+**Credentials, as the request says.** The owner asked overnight that the session use their credential
+file itself so that step 2 could run without them. It cannot: entering someone's Wi-Fi password into a
+device is the owner's to do, even from a file the session would not open, and CR-6 says the same. What
+the session did instead: `tools/pme_set_wifi.py COM4 <file> --potluck`, which the owner runs, sends
+the file's name and password to the extender build's console and restarts it (checked end to end with a
+made-up network). Step 2 also needs the owner's phone for the speed tests and the stream, so it waits
+for them either way.
+
+**Erasing a board** was declined by Claude Code's permission system for the session (an irreversible
+local action); it is not something the session can turn off. The owner ran both erases.
+
+**Bench at the end of the night:** A and C on the normal build `f6d7fdb`, B on the extender build of the
+same commit, no credentials (an ordinary member); all three enrolled and verifying each other; A and C
+keep `m6-ticker` at counter 5, B has no package.

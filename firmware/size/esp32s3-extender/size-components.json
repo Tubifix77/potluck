@@ -1307,28 +1307,28 @@
             }
         }
     },
-    "esp-idf/monocypher/libmonocypher.a": {
-        "abbrev_name": "libmonocypher.a",
-        "size": 17270,
+    "esp-idf/pot_link/libpot_link.a": {
+        "abbrev_name": "libpot_link.a",
+        "size": 17342,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 13426,
+                "size": 17248,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 13426,
+                        "size": 17248,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
                 }
             },
             "Flash Data": {
-                "size": 3844,
+                "size": 94,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 3844,
+                        "size": 94,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -1416,28 +1416,28 @@
             }
         }
     },
-    "esp-idf/pot_link/libpot_link.a": {
-        "abbrev_name": "libpot_link.a",
-        "size": 17152,
+    "esp-idf/monocypher/libmonocypher.a": {
+        "abbrev_name": "libmonocypher.a",
+        "size": 17290,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 17058,
+                "size": 13446,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 17058,
+                        "size": 13446,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
                 }
             },
             "Flash Data": {
-                "size": 94,
+                "size": 3844,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 94,
+                        "size": 3844,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -3271,15 +3271,15 @@
     },
     "esp-idf/pot_trust/libpot_trust.a": {
         "abbrev_name": "libpot_trust.a",
-        "size": 3574,
+        "size": 3636,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 3238,
+                "size": 3300,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 3238,
+                        "size": 3300,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Give a poor-mans-extender board the house Wi-Fi from a file -- run by the OWNER, not by Claude.
 
-    <IDF python> tools/pme_set_wifi.py COM4 <path to your file>
+    <IDF python> tools/pme_set_wifi.py COM4 <path to your file>              the extender's own firmware
+    <IDF python> tools/pme_set_wifi.py COM4 <path to your file> --potluck    Potluck's extender build (M6.1)
 
 The file holds two lines and nothing else:
 
@@ -35,11 +36,50 @@ def quote(s: str) -> str:
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+def potluck(port: str, line: str) -> int:
+    """Potluck's extender build takes `POT! pme sta ...` on its plain console: no prompt, no echo, no
+    cursor questions. Sends it, waits for the board's result line, then restarts the board so the
+    hotspot comes up with the new settings (saved settings survive the restart)."""
+    s = serial.Serial()
+    s.port, s.baudrate, s.timeout = port, 115200, 0.05
+    s.dtr = False
+    s.rts = False
+    s.open()
+    try:
+        s.reset_input_buffer()
+        s.write(b"POT! pme " + line.encode("utf-8") + b"\n")
+        reply = b""
+        end = time.time() + 5
+        while time.time() < end and b'"t":"pme"' not in reply:
+            reply += s.read(1024)
+        if b'"result":"sta_saved"' in reply:
+            print("board: house Wi-Fi saved")
+        elif b'"result":"refused_length"' in reply:
+            print("board: refused the values (length); nothing saved")
+            return 1
+        elif b'"t":"pme"' in reply:
+            print("board: did not save it (see its {\"t\":\"pme\"} line)")
+            return 1
+        else:
+            print("board: no answer within 5 s -- is this Potluck's extender build, and is a monitor open?")
+            return 1
+        s.rts = True
+        time.sleep(0.15)
+        s.rts = False
+        print("board: restarting to use it")
+        return 0
+    finally:
+        reply = b""
+        s.close()
+
+
 def main() -> int:
-    if len(sys.argv) != 3:
+    args = [a for a in sys.argv[1:] if a != "--potluck"]
+    to_potluck = "--potluck" in sys.argv[1:]
+    if len(args) != 2:
         print(__doc__.strip().splitlines()[2])
         return 2
-    port, path = sys.argv[1], sys.argv[2]
+    port, path = args
     with open(path, encoding="utf-8-sig") as f:
         lines = [l.rstrip("\r\n") for l in f.readlines()]
     lines = [l for l in lines if l != ""]
@@ -57,6 +97,8 @@ def main() -> int:
     if len(line) >= 256:
         print("name and password together are too long for the board's 256-byte command line")
         return 2
+    if to_potluck:
+        return potluck(port, line)
 
     s = serial.Serial()
     s.port, s.baudrate, s.timeout = port, 115200, 0.05

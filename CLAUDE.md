@@ -37,9 +37,14 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 
 > ## 2026-10-08, later: M6.1 SCHEDULED (CR-6, "the application owns the radio"), ARCHITECTURE section 13. In progress.
 >
-> Run exactly as CR-6's "How to run CR-6" says. **Step 0 PASSED** (M0-LOG session 27; 18-19/14-15 Mbps, 10-min stream,
-> no reboot). B is back on `fd1478d`, re-enrolled, no package (floor 0). **NEXT: step 1, the seam** (extender build
-> variant pulling in `pme_hotspot` via `EXTRA_COMPONENT_DIRS`). Erasing a board is the owner's to run (the permission
+> Run exactly as CR-6's "How to run CR-6" says. **Step 0 PASSED, step 1 BUILT** (M0-LOG session 27). **NEXT: step 2,
+> which needs the owner** (credentials, phone, setup notes). Owner's morning steps: (1) close monitors; (2) run
+> `& "C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe" D:\Projects\potluck\tools\pme_set_wifi.py COM4 C:\Users\tuebo\pme-wifi.txt --potluck`;
+> (3) in a monitor on COM4 type `POT! pme ap <hotspot name> <hotspot password>` and reset the board; (4) phone on
+> the hotspot; the session then runs step 0's protocol while the M0 soak runs, and forces a router channel change.
+> B runs the extender build (`build-extender`, flash with esptool `@flash_args` -- `idf.py flash` rebuilds without
+> the -PmeHotspot path and fails on purpose). A, C on `f6d7fdb`.
+> **Trust fix `f6d7fdb`:** the epoch fence is (certificate issue time, epoch); an erased, re-enrolled board is admitted. Erasing a board is the owner's to run (the permission
 > system declines it for the session). The owner types every credential at `pme>` in their own monitor, then closes it;
 > `tools/hs_capture.py` records only status lines. The `pme>` console wants CR LF and answers to `ESC[6n` -- see the
 > log before scripting it. Never patch `pme_hotspot`: report bugs to the owner. Setup notes for step 2 still owed.
