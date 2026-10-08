@@ -1,0 +1,118 @@
+======================================================================================
+POTLUCK SOAK REPORT -- figures for the 13-M0 acceptance table
+======================================================================================
+
+-- window and integrity --------------------------------------------------------------
+  0x6300    0.74 h observed,   254 samples   deaths_in_window=4  revivals_in_window=3  deaths_since_boot=12  revivals=3  reboots_seen_since_boot=8
+           node rx anomalies: {'unknown_peer': 3, 'queue_dropped': 3}
+           node tx anomalies: {'done_queue_dropped': 2}
+  0x7368    0.74 h observed,   256 samples   deaths_in_window=5  revivals_in_window=3  deaths_since_boot=6  revivals=4  events_dropped=5
+           node rx anomalies: {'unknown_peer': 6, 'queue_dropped': 5}
+           node tx anomalies: {'enqueue_err': 380}
+  0x8160    0.74 h observed,   257 samples   deaths_in_window=4  revivals_in_window=3  deaths_since_boot=12  revivals=3  reboots_seen_since_boot=8
+           node rx anomalies: {'unknown_peer': 4}
+
+  shortest observed window: 0.74 h   -- 24 h NOT reached
+
+-- static allocation holds (section 6: no growth, no fragmentation) -------------------------
+  0x6300  free_dram 258,911 -> 258,911   drift +0 B over 0.74 h   (min 258,507)
+           largest_block constant (180,224 B)
+           extrapolated +0 B/day
+  0x7368  free_dram 215,051 -> 214,519   drift -532 B over 0.74 h   (min 174,527)
+           largest_block VARIED 86,016..139,264
+           extrapolated -17,181 B/day
+  0x8160  free_dram 258,911 -> 258,911   drift +0 B over 0.74 h   (min 258,659)
+           largest_block constant (180,224 B)
+           extrapolated +0 B/day
+
+-- per link --------------------------------------------------------------------------
+  0x00fe <-> 0x6300
+    0x6300 -> 0x00fe   left, ESP-NOW v0, MTU 226, RSSI 0 dBm, misses 0
+      outbound          0 frames  cb_fail 0  enqueue_err 0   unicast PDR unmeasured (no delivery signal on this link)
+      inbound           0 frames  seq gaps 0  bad 0   unicast PDR 100.0000%
+      heartbeat         0 expected (measured)  lost 0   delivery unmeasured
+      duplicates 0 total, 0 inside this window
+      RTT  0 samples, 0 timeouts in this window   (min 52.00 / max 94.00 ms since boot)
+           p50 None   p99 None
+           local txq max 0.00 ms   peer turnaround 21 us (max 26 us)
+
+  0x6300 <-> 0x7368
+    0x6300 -> 0x7368   dead, ESP-NOW v2, MTU 1446, RSSI -23 dBm, misses 6
+      outbound      8,334 frames  cb_fail 204  enqueue_err 0   unicast PDR 99.6354%
+      inbound      32,333 frames  seq gaps 73  bad 0   unicast PDR 99.9671%
+      heartbeat    23,410 expected (measured)  lost 313   delivery 98.6630%
+      duplicates 1 total, 0 inside this window
+      RTT  1,162 samples, 175 timeouts in this window   (min 5.19 / max 582.32 ms since boot)
+           p50 4-6 ms   p99 42-60 ms
+           local txq max 561.84 ms   peer turnaround 3515 us (max 48606 us)
+    0x7368 -> 0x6300   dead, ESP-NOW v2, MTU 1446, RSSI -23 dBm, misses 6
+      outbound      8,346 frames  cb_fail 172  enqueue_err 69   unicast PDR 97.9496%
+      inbound      32,464 frames  seq gaps 0  bad 0   unicast PDR 100.0000%
+      heartbeat    23,498 expected (measured)  lost 386   delivery 98.3573%
+      duplicates 8298 total, 8195 inside this window
+      RTT  1,164 samples, 164 timeouts in this window   (min 5.35 / max 305.76 ms since boot)
+           p50 4-6 ms   p99 42-60 ms
+           local txq max 295.23 ms   peer turnaround 976 us (max 1471 us)
+
+  0x6300 <-> 0x8160
+    0x6300 -> 0x8160   alive, ESP-NOW v2, MTU 1446, RSSI -34 dBm, misses 0
+      outbound      9,992 frames  cb_fail 0  enqueue_err 0   unicast PDR 100.0000%
+      inbound      37,710 frames  seq gaps 2  bad 0   unicast PDR 99.9991%
+      heartbeat    26,741 expected (measured)  lost 342   delivery 98.7211%
+      duplicates 1 total, 0 inside this window
+      RTT  1,337 samples, 0 timeouts in this window   (min 5.54 / max 943.35 ms since boot)
+           p50 4-6 ms   p99 42-60 ms
+           local txq max 387.17 ms   peer turnaround 940 us (max 2446 us)
+    0x8160 -> 0x6300   alive, ESP-NOW v2, MTU 1446, RSSI -32 dBm, misses 0
+      outbound     10,031 frames  cb_fail 0  enqueue_err 0   unicast PDR 100.0000%
+      inbound      37,785 frames  seq gaps 0  bad 0   unicast PDR 100.0000%
+      heartbeat    26,820 expected (measured)  lost 371   delivery 98.6167%
+      duplicates 1 total, 0 inside this window
+      RTT  1,340 samples, 0 timeouts in this window   (min 5.50 / max 879.46 ms since boot)
+           p50 4-6 ms   p99 42-60 ms
+           local txq max 589.87 ms   peer turnaround 961 us (max 2292 us)
+
+  0x7368 <-> 0x8160
+    0x7368 -> 0x8160   dead, ESP-NOW v2, MTU 1446, RSSI -18 dBm, misses 6
+      outbound      8,348 frames  cb_fail 175  enqueue_err 88   unicast PDR 97.9089%
+      inbound      32,631 frames  seq gaps 0  bad 0   unicast PDR 100.0000%
+      heartbeat    23,495 expected (measured)  lost 224   delivery 99.0466%
+      duplicates 8304 total, 8201 inside this window
+      RTT  1,162 samples, 163 timeouts in this window   (min 5.31 / max 110.25 ms since boot)
+           p50 4-6 ms   p99 42-60 ms
+           local txq max 106.33 ms   peer turnaround 939 us (max 2265 us)
+    0x8160 -> 0x7368   dead, ESP-NOW v2, MTU 1446, RSSI -20 dBm, misses 6
+      outbound      8,376 frames  cb_fail 210  enqueue_err 0   unicast PDR 99.6250%
+      inbound      32,454 frames  seq gaps 93  bad 0   unicast PDR 99.9582%
+      heartbeat    23,503 expected (measured)  lost 311   delivery 98.6768%
+      duplicates 1 total, 0 inside this window
+      RTT  1,156 samples, 185 timeouts in this window   (min 5.17 / max 131.52 ms since boot)
+           p50 4-6 ms   p99 42-60 ms
+           local txq max 115.00 ms   peer turnaround 843 us (max 8858 us)
+
+-- delay histogram, every link pooled ------------------------------------------------
+        0-1 ms         0    0.00%    0.00% cum  
+        1-2 ms         0    0.00%    0.00% cum  
+        2-3 ms         0    0.00%    0.00% cum  
+        3-4 ms         0    0.00%    0.00% cum  
+        4-6 ms     5,214   71.22%   71.22% cum  ############################################################
+        6-8 ms     1,241   16.95%   88.17% cum  ##############
+       8-11 ms       340    4.64%   92.82% cum  ###
+      11-16 ms       149    2.04%   94.85% cum  #
+      16-22 ms        77    1.05%   95.90% cum  
+      22-30 ms        85    1.16%   97.06% cum  
+      30-42 ms       109    1.49%   98.55% cum  #
+      42-60 ms        75    1.02%   99.58% cum  
+      60-85 ms        16    0.22%   99.80% cum  
+     85-110 ms         4    0.05%   99.85% cum  
+    110-200 ms         4    0.05%   99.90% cum  
+       >200 ms         7    0.10%  100.00% cum  
+
+  7,321 samples   p50 4-6 ms   p99 42-60 ms   p99.9 110-200 ms
+  mode is 4-6 ms; tail decays without a gap -- long, not bimodal
+
+-- what still needs a human ----------------------------------------------------------
+  * A heartbeat denominator marked RECONSTRUCTED comes from uptime, not the firmware:
+    accept it only with the reboot check in the integrity section clean.
+  * A PDR figure without a geometry is not a measurement (M0-RUNBOOK section 8).
+    Record the physical arrangement next to these numbers.

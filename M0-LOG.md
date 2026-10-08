@@ -3942,3 +3942,52 @@ in all six directions (the 24-hour M0 soak: 99.69-99.84 %); RTT p50 4-8 ms, p99 
 over 21,558 samples. **Open:** B's inbound unicast PDR computes to 97.39 % with zero sequence gaps -- a
 figure the report derives across boards, not yet understood; and B's 27 RX queue drops predate the window.
 
+## Session 29 — 2026-10-08 (morning, owner present), M6.1 step 2: the combined node, and the cell that did not follow
+
+**The combined node ran.** The owner set credentials with `tools/pme_set_wifi.py --potluck` -- after a blind
+`POT! pme ap` typed into a monitor did not land, the script was extended to send the hotspot too from a
+four-line file, and typing into a console is no longer part of the procedure. B: station joined, hotspot
+up, BUSY, alive and verified in the cell. Recorded with `tools/json_capture.py` on B (its JSON records
+only: its ESP-IDF log names networks) and full captures on A and C; no capture holds a credential
+(checked).
+
+**Step 2 against step 0** (`captures/m61-step2-*`, `m61-step0-*`):
+
+| | step 0: hotspot alone | step 2: hotspot + Potluck on one chip |
+|---|---|---|
+| download / upload (fast.com x3) | 18-19 / 14-15 Mbps | 18-19 / 14-17 Mbps |
+| latency unloaded / loaded | 8-12 / 43-47 ms | 10-12 / 20-27 ms |
+| 10-minute stream | no reboot, 0 reconnects | no reboot, 0 reconnects, phone connected throughout |
+| B declared dead by A or C | -- | 0 in 14 minutes |
+| Potluck heartbeat delivery, B's links | -- | 98.4-99.4 % (unloaded cell: 99.7-99.9 %) |
+| Potluck RTT | -- | p50 4-6 ms, p99 22-60 ms |
+
+**The cost of sharing the radio**, which is what M6.1 exists to find: ESP-NOW waits for transmit buffers
+(1.4 % of B's sends found the pool full, in self-clearing bursts), heartbeat delivery drops about a point,
+and the tail of the round trip lengthens; nothing came near a false death. The house mesh direct does
+640 / 240 Mbps: the extender's ceiling is the S3. **Caveats:** 14 minutes, not the 24 hours CR-6 names;
+and the loaded latency *improved*, most likely the one Wi-Fi setting that differs from the baseline
+(dynamic TX buffers in internal RAM, session 28) -- a rebuilt baseline would tell, not done.
+
+**The router channel change found a design gap.** The owner restarted the Google Wifi network from its app;
+it came back on channel 11. B followed its router and announced the move -- on 11, where nobody was
+listening (predicted in session 27). A and C, still hearing each other on 1, never looked: **CR-1's scan
+starts only when every peer is lost**, and its only test had two nodes, where losing the station *is*
+losing every peer. The cell split. **Fix (`3d2333a`):** a node remembers the peer whose HELLO declares its
+channel fixed -- the cell's channel authority -- and on losing it while others remain, sweeps the band once
+(home last): heard again on some channel -> stay there, and every member doing the same gathers the cell;
+not heard -> home, and no more sweeps until an authority is heard again. Three-node tests for both halves,
+mutation-checked. **Second gap, found thinking through the retest (`7ec8229`):** every board booted on the
+build's default channel, so a deploy -- which reboots the cell -- scattered it off a router-owned channel,
+and a fresh node knows of no authority to sweep for. The cell's channel is now saved in NVS on every
+change and used at boot.
+
+**Retest** (`captures/m61-retest-*`, all three on `7ec8229`): first, unplanned, the sweep corrected a manual
+move -- A told to move the cell to 11 swept, found B (on 1 by then) and went back. Then the router was
+restarted again and again came back on 11: B re-associated and announced at 08:36:20, **A and C followed in
+about 2.7 s**, all three alive on 11. While the router was down, B's station hunted across channels and the
+others chased it (4-5 sweeps each, B dead meanwhile -- the acceptance line's "lost nodes UNAVAILABLE").
+
+**CR-6's acceptance is met on the bench, with the duration caveat:** one board runs Potluck, is associated
+to the house router and serves a phone hotspot with no false death; a router channel change moves the
+whole cell. The kill line (association and ESP-NOW cannot share the interface) did not fire.

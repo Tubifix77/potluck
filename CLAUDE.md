@@ -35,6 +35,12 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## 2026-10-08, morning: M6.1 (CR-6) ACCEPTED on the bench (M0-LOG session 29), 14 min not 24 h.
+> Combined node = 18-19/14-17 Mbps like the hotspot alone, 0 false deaths; router channel change 1 -> 11
+> moved the whole cell in ~2.7 s after two fixes (`3d2333a` channel-authority sweep, `7ec8229` channel in NVS).
+> Bench: A, C on `7ec8229`; B on the extender build of `7ec8229` WITH THE OWNER'S CREDENTIALS (house Wi-Fi +
+> hotspot) -- clean-up per CR-6 is `POT! pme forget` then an erase the owner runs. Cell on channel 11 (saved).
+>
 > ## 2026-10-08, overnight: M8 ACCEPTED on the bench (M0-LOG session 28). Package `m8-svc` at counter 6 on all three
 > (next: 7+). `python -m potluck.agent --port COM6 --service time`; `tools/m8_bench.py`. **OPEN, blocking M6.1 step 2:**
 > ~~board B stopped transmitting~~ **run down and fixed (`28eeb1a`, M0-LOG session 28):** static TX buffers + AMPDU

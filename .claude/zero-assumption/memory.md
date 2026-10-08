@@ -650,3 +650,12 @@ doc fetched as raw markdown from its repository), not from a summary.
 | **A board's service client degrades honestly when the host goes** | host pulled: degraded, output STALE 5 -> 37 s, never refreshed; host back: serving, GOOD; 130 calls served, 0 lost, 0 timed out | `captures/m8-svc-db91dc6*` | 2026-10-08 | volatile | measured |
 | **Static TX buffers + AMPDU wedge ESP-NOW on the S3 (bench)** | extender config on board B: every send `ESP_ERR_ESPNOW_NO_MEM` from 157-275 s into a boot, for good; AMPDU off -> 0 failures in 10 min; dynamic TX with AMPDU -> 0 failures in 10 min; no ESP-IDF documentation found linking them | `captures/m8-b-*`, `captures/m8-bisect-*`, M0-LOG session 28 | 2026-10-08 | volatile | measured |
 | **RTT host <-> board A over the CP2102 frame link** | 52-72 ms round trip at 921,600 baud; host turnaround 12-26 us | bench, M0-LOG session 28 | 2026-10-08 | volatile | measured |
+
+### M6.1 step 2 — 2026-10-08
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **Combined node vs hotspot alone** | 18-19 / 14-17 Mbps, latency 10-12 / 20-27 ms vs 18-19 / 14-15, 8-12 / 43-47; 10-min stream clean; 0 false deaths in 14 min; ESP-NOW NO_MEM 1.4 % of sends in self-clearing bursts; heartbeat delivery 98.4-99.4 % | `captures/m61-step2-*` | 2026-10-08 | volatile | measured |
+| **House mesh direct (Google Wifi)** | 640 / 240 Mbps, latency 10 / 44 ms (owner's phone, fast.com) | owner, 2026-10-08 | 2026-10-08 | volatile | measured (owner) |
+| **Google Wifi restart can change the 2.4 GHz channel** | twice from 1 to 11 | bench | 2026-10-08 | volatile | measured |
+| **Cell follows a router channel change (after the sweep fix)** | ~2.7 s from losing the station to finding it on the new channel | `captures/m61-retest-*` | 2026-10-08 | volatile | measured |
