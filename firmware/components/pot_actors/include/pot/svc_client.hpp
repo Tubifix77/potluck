@@ -23,22 +23,30 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "pot/actor.hpp"
 #include "pot/deploy.hpp"
 #include "pot/node.hpp"
 
 namespace pot {
 
-class SvcClient {
+class SvcClient : public Actor {
   public:
     SvcClient(Node& node, const SvcClientConfig& cfg);
 
     // Declare the output resource (owned here, untyped: it carries whatever the service answers).
-    bool start(uint32_t now_ms);
+    bool start(uint32_t now_ms) override;
 
     // Call after every Node::tick, under the same lock.
-    void tick(uint32_t now_ms);
+    void tick(uint32_t now_ms) override;
 
     // The node's call-result hook hands every result here. True if it was this client's.
+    // M8.1: the actor API's names for on_result and for the {"t":"svc"} stats line.
+    bool on_call_result(uint16_t from_node, uint16_t msg_id, uint32_t path_hash, Node::CallOutcome outcome,
+                        const Value& v) override {
+        return on_result(from_node, msg_id, path_hash, outcome, v);
+    }
+    size_t stats_json(char* buf, size_t cap, uint32_t now_ms) override;
+
     bool on_result(uint16_t from_node, uint16_t msg_id, uint32_t path_hash, Node::CallOutcome outcome,
                    const Value& v);
 
@@ -77,5 +85,8 @@ class SvcClient {
     uint32_t now_ = 0;            // the last tick's time: results arrive between ticks
     bool started_ = false;
 };
+
+// M8.1: svc_client's row for a registration table.
+extern const ActorKind kSvcClientKind;
 
 }  // namespace pot

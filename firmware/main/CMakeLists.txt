@@ -7,7 +7,7 @@ if(DEFINED ENV{POT_PME_HOTSPOT_DIR})
 endif()
 
 idf_component_register(
-  SRCS "m0_main.cpp" "selftest.cpp" "crypto_bench.cpp" "extender.cpp"
+  SRCS "m0_main.cpp" "selftest.cpp" "crypto_bench.cpp" "extender.cpp" "actor_table.cpp"
   INCLUDE_DIRS "."
   # esp_driver_gpio, not the old monolithic `driver`: ESP-IDF v6.0 split the drivers into
   # per-peripheral components and `driver` no longer re-exports driver/gpio.h.

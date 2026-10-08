@@ -25,6 +25,7 @@
 #include <cstring>
 #include <new>  // placement new, for constructing the Node into static storage
 
+#include "actor_table.hpp"
 #include "extender.hpp"
 #include "pot/boot_epoch.hpp"
 #if CONFIG_POT_CAN
@@ -38,7 +39,7 @@
 #include "pot/node.hpp"
 #include "pot/opcodes.hpp"
 #include "pot/reconcile.hpp"
-#include "pot/svc_client.hpp"
+#include "pot/actor.hpp"
 #include "pot/serial_port.hpp"
 #include "pot/stats_json.hpp"
 #include "pot/sys_resources.hpp"
@@ -83,12 +84,11 @@ EXT_RAM_BSS_ATTR alignas(Reconciler) uint8_t g_rec_storage[sizeof(Reconciler)];
 #endif
 Reconciler* g_rec = nullptr;
 
-// M8: the image's service clients pinned to this node (section 7.5). Two at most: a node that calls
-// more host services than that is a design to look at, not a table to grow.
-constexpr size_t kMaxSvcClients = 2;
-alignas(SvcClient) uint8_t g_svc_storage[kMaxSvcClients][sizeof(SvcClient)];
-SvcClient* g_svc[kMaxSvcClients] = {};
-size_t g_svc_n = 0;
+// M8.1: the image's actors pinned to this node, built from the registration table (actor_table.cpp)
+// and driven through the actor API -- tick, CALL results, stats -- with no type known here. PSRAM when
+// present: only tasks touch it.
+EXT_RAM_BSS_ATTR ActorRuntime g_actors(app::kActorTable, app::kActorTableLen);
+ActorEnv g_actor_env;
 
 StaticSemaphore_t g_mutex_buf;
 SemaphoreHandle_t g_mutex = nullptr;
@@ -549,15 +549,11 @@ EXT_RAM_BSS_ATTR uint8_t g_rx_buf[kMaxImageLen];  // M6: PSRAM when present; tas
 uint8_t* const g_image = g_rx_buf;
 DeployReceiver g_rx(g_store, g_rx_buf, sizeof(g_rx_buf));
 bool g_trial = false;            // running a pending slot, not yet confirmed
-uint32_t g_fault_at_ms = 0;      // 0 = no fault actor armed
 uint32_t g_reboot_at_ms = 0;     // 0 = no reboot scheduled
 uint16_t g_node_id = 0;
 // M6: the image's portable actors, handed to the reconciler once the node exists.
 TickerConfig g_portable[kMaxPortable];
 size_t g_portable_n = 0;
-// M8: service clients pinned here, handed to the node once it exists.
-SvcClientConfig g_svc_cfg[kMaxSvcClients];
-size_t g_svc_cfg_n = 0;
 
 const char* slot_name(uint8_t s) { return s == kSlotA ? "A" : s == kSlotB ? "B" : "none"; }
 
@@ -579,12 +575,8 @@ bool load_and_apply(const char** why) {
     if (!parse_image(g_image, len, img, why)) {
         return false;
     }
-    const uint32_t trial_ms = kTrialHeartbeats * static_cast<uint32_t>(CONFIG_POT_HB_PERIOD_MS);
-    bool have_led = false;
-    LedConfig led{};
-    uint32_t fault_at = 0;
+    g_actor_env.trial_window_ms = kTrialHeartbeats * static_cast<uint32_t>(CONFIG_POT_HB_PERIOD_MS);
     size_t portable_n = 0;
-    size_t svc_n = 0;
     for (uint8_t i = 0; i < img.actor_count; ++i) {
         const ActorDecl& a = img.actors[i];
         if (a.node_id == kPortableNode) {
@@ -602,38 +594,13 @@ bool load_and_apply(const char** why) {
             return false;
 #endif
         }
-        if (a.node_id != g_node_id && a.node_id != kEveryNode) {
-            continue;
-        }
-        if (a.type == ActorType::Led) {
-            if (!led_config(a, led)) {
-                *why = "led actor config out of range";
-                return false;
-            }
-            have_led = true;
-        } else if (a.type == ActorType::SvcClient) {
-            if (svc_n >= kMaxSvcClients || !svc_client_config(a, g_svc_cfg[svc_n])) {
-                *why = "svc_client invalid, or more than two on one node";
-                return false;
-            }
-            ++svc_n;
-        } else if (a.type == ActorType::Fault) {
-            FaultConfig fc{};
-            if (!fault_config(a, fc) || fc.panic_after_ms >= trial_ms) {
-                // A fault that fires after the trial window would let the node confirm a module
-                // that then crashes for ever, with no fallback slot left. Refused as invalid.
-                *why = "fault actor must fire inside the trial window";
-                return false;
-            }
-            fault_at = fc.panic_after_ms;
-        }
     }
-    if (have_led) {
-        status_led::set_healthy(led);
+    // M8.1: this node's pinned actors, every one validated against its row in the registration table
+    // before any is kept. Last, so that a refusal anywhere above leaves nothing of this image held.
+    if (!g_actors.load(img, g_node_id, g_actor_env, why)) {
+        return false;
     }
-    g_fault_at_ms = fault_at;
     g_portable_n = portable_n;
-    g_svc_cfg_n = svc_n;
     ESP_LOGI(kTag, "deploy: image counter %u, digest %02x%02x%02x%02x..., %u actor(s) in the image",
              static_cast<unsigned>(img.rollback_counter), img.package_digest[0],
              img.package_digest[1], img.package_digest[2], img.package_digest[3],
@@ -828,10 +795,6 @@ size_t on_deploy(void*, uint16_t from, uint16_t msg_id, uint8_t op, const uint8_
 
 // From link_task, every pass.
 void tick(uint32_t now) {
-    if (g_fault_at_ms != 0 && now >= g_fault_at_ms) {
-        ESP_LOGE(kTag, "deploy: fault actor firing at %u ms, as configured", static_cast<unsigned>(now));
-        abort();
-    }
     if (g_trial && g_node->tx_tally().beacons >= kTrialHeartbeats) {
         confirm(g_state);
         save();
@@ -1083,7 +1046,7 @@ void link_task(void*) {
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         g_node->tick(nt);
         if (g_rec != nullptr) g_rec->tick(nt);
-        for (size_t i = 0; i < g_svc_n; ++i) g_svc[i]->tick(nt);
+        g_actors.tick(nt);
         // M6.1: the router put the radio on a channel. Tell the cell (M5.1's signed announcement), and
         // declare it from now on. The radio is already there: by the time a station knows its new
         // channel it has associated on it, so the announcement goes out on the NEW channel, and members
@@ -1251,32 +1214,13 @@ void stats_task(void*) {
                     static_cast<unsigned>(now_ms_()));
         extender::print_status();  // M6.1: the baseline's {"t":"hs"} line, on an extender build only
         chan_store::save_pending();
-        for (size_t i = 0; i < g_svc_n; ++i) {
-            // M8: one line per service client -- its state, its counters, and its output exactly as a
-            // reader of the namespace would get it (quality and age included).
+        // M8.1: each actor's own stats line (svc_client's {"t":"svc"}, ...), through the actor API.
+        for (size_t i = 0; i < g_actors.running(); ++i) {
+            static char line[512];  // the stats task's only; static keeps it off a 4 KB stack
             xSemaphoreTake(g_mutex, portMAX_DELAY);
-            const SvcClient::Stats st = g_svc[i]->stats();
-            const SvcClient::State state = g_svc[i]->state();
-            const SvcClientConfig sc = g_svc[i]->config();
-            Reading r;
-            g_node->read(sc.out_hash, r);
+            const size_t n = g_actors.actor(i)->stats_json(line, sizeof(line), now_ms_());
             xSemaphoreGive(g_mutex);
-            uint64_t v = 0;
-            std::memcpy(&v, r.value.raw, sizeof(v));
-            std::printf("{\"t\":\"svc\",\"node\":%u,\"up_ms\":%u,\"svc\":%u,\"provider\":%u,\"state\":\"%s\","
-                        "\"calls\":%u,\"answered\":%u,\"refused\":%u,\"lost\":%u,\"timed_out\":%u,"
-                        "\"not_sent\":%u,\"degradations\":%u,\"recoveries\":%u,\"out_quality\":\"%s\","
-                        "\"out_age_ms\":%u,\"out_u64\":%llu}\n",
-                        static_cast<unsigned>(node_id), static_cast<unsigned>(now_ms_()),
-                        static_cast<unsigned>(sc.svc_hash), static_cast<unsigned>(sc.provider),
-                        state == SvcClient::State::Serving ? "serving"
-                                                           : (state == SvcClient::State::Degraded ? "degraded" : "waiting"),
-                        static_cast<unsigned>(st.calls), static_cast<unsigned>(st.answered),
-                        static_cast<unsigned>(st.refused), static_cast<unsigned>(st.lost),
-                        static_cast<unsigned>(st.timed_out), static_cast<unsigned>(st.not_sent),
-                        static_cast<unsigned>(st.degradations), static_cast<unsigned>(st.recoveries),
-                        quality_str(r.quality), static_cast<unsigned>(r.age_ms),
-                        static_cast<unsigned long long>(r.value.type == ValueType::U64 ? v : 0));
+            if (n > 0) std::printf("%s\n", line);
         }
 
         xSemaphoreTake(g_mutex, portMAX_DELAY);
@@ -1868,6 +1812,11 @@ void start_console(BaseType_t core) {
 }  // namespace trust_rt
 
 }  // namespace
+
+namespace board {
+void set_led_healthy(const LedConfig& c) { status_led::set_healthy(c); }
+}  // namespace board
+
 }  // namespace pot
 
 #if CONFIG_POT_SELFTEST
@@ -2093,23 +2042,20 @@ extern "C" void app_main(void) {
         ESP_LOGI(kTag, "reconciler: %u portable actor(s)", static_cast<unsigned>(g_rec->actor_count()));
     }
 #endif
-    for (size_t i = 0; i < deploy_rt::g_svc_cfg_n; ++i) {
-        g_svc[g_svc_n] = new (g_svc_storage[g_svc_n]) SvcClient(*g_node, deploy_rt::g_svc_cfg[i]);
-        if (g_svc[g_svc_n]->start(now_ms_())) {
-            ++g_svc_n;
-        } else {
-            ESP_LOGE(kTag, "svc_client: could not declare its output resource");
-        }
+    // M8.1: start this node's pinned actors, now that the node they publish through exists.
+    g_actor_env.node = g_node;
+    {
+        const char* failed = nullptr;
+        g_actors.start(g_actor_env, now_ms_(), &failed);
+        if (failed != nullptr) ESP_LOGE(kTag, "actors: %s could not start; dropped", failed);
+        for (size_t i = 0; i < g_actors.running(); ++i) ESP_LOGI(kTag, "actors: %s running", g_actors.name(i));
     }
-    if (g_svc_n > 0) {
+    if (g_actors.running() > 0) {
         g_node->set_call_result(
             [](void*, uint16_t from, uint16_t msg_id, uint32_t path, Node::CallOutcome o, const Value& v) {
-                for (size_t i = 0; i < g_svc_n; ++i) {
-                    if (g_svc[i]->on_result(from, msg_id, path, o, v)) return;
-                }
+                g_actors.on_call_result(from, msg_id, path, o, v);
             },
             nullptr);
-        ESP_LOGI(kTag, "svc_client: %u host service caller(s)", static_cast<unsigned>(g_svc_n));
     }
 #if CONFIG_POT_MEM_BENCH
     pot_mem_bench_run();  // with the radio already up, so internal RAM is what the node really has

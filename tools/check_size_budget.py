@@ -38,7 +38,8 @@ CORE_ARCHIVES = ("libpot_frame.a", "libpot_link.a", "libpot_espnow.a", "libmain.
                  # Listed since M6, when the reconciler arrived as its own component. The others have
                  # no static data today (their state lives in objects main.a owns), and would show
                  # "absent"; listing them means the day one grows a buffer, the gate sees it.
-                 "libpot_ns.a", "libpot_deploy.a", "libpot_trust.a", "libpot_can.a", "libpot_reconcile.a")
+                 "libpot_ns.a", "libpot_deploy.a", "libpot_trust.a", "libpot_can.a", "libpot_reconcile.a",
+                 "libpot_actors.a")
 
 # The memory type that holds static data, by target family.
 #

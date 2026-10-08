@@ -2,6 +2,10 @@
 
 #include "pot/svc_client.hpp"
 
+#include <cstdio>
+#include <cstring>
+#include <new>
+
 namespace pot {
 
 SvcClient::SvcClient(Node& node, const SvcClientConfig& cfg) : node_(node), cfg_(cfg) {}
@@ -97,5 +101,50 @@ bool SvcClient::on_result(uint16_t from_node, uint16_t msg_id, uint32_t path_has
     }
     return true;
 }
+
+// One line per service client: its state, its counters, and its output exactly as a reader of the
+// namespace would get it (quality and age included). Field for field the line m0_main printed in M8.
+size_t SvcClient::stats_json(char* buf, size_t cap, uint32_t now_ms) {
+    Reading r;
+    node_.read(cfg_.out_hash, r);
+    uint64_t v = 0;
+    std::memcpy(&v, r.value.raw, sizeof(v));
+    const char* st = state_ == State::Serving ? "serving" : (state_ == State::Degraded ? "degraded" : "waiting");
+    const int n = std::snprintf(
+        buf, cap,
+        "{\"t\":\"svc\",\"node\":%u,\"up_ms\":%u,\"svc\":%u,\"provider\":%u,\"state\":\"%s\","
+        "\"calls\":%u,\"answered\":%u,\"refused\":%u,\"lost\":%u,\"timed_out\":%u,"
+        "\"not_sent\":%u,\"degradations\":%u,\"recoveries\":%u,\"out_quality\":\"%s\","
+        "\"out_age_ms\":%u,\"out_u64\":%llu}",
+        static_cast<unsigned>(node_.config().node_id), static_cast<unsigned>(now_ms),
+        static_cast<unsigned>(cfg_.svc_hash), static_cast<unsigned>(cfg_.provider), st,
+        static_cast<unsigned>(stats_.calls), static_cast<unsigned>(stats_.answered),
+        static_cast<unsigned>(stats_.refused), static_cast<unsigned>(stats_.lost),
+        static_cast<unsigned>(stats_.timed_out), static_cast<unsigned>(stats_.not_sent),
+        static_cast<unsigned>(stats_.degradations), static_cast<unsigned>(stats_.recoveries),
+        quality_str(r.quality), static_cast<unsigned>(r.age_ms),
+        static_cast<unsigned long long>(r.value.type == ValueType::U64 ? v : 0));
+    return (n > 0 && static_cast<size_t>(n) < cap) ? static_cast<size_t>(n) : 0;
+}
+
+// The registration table's row (M8.1).
+namespace {
+bool svc_check(const ActorDecl& d, const ActorEnv&, const char** why) {
+    SvcClientConfig c{};
+    if (!svc_client_config(d, c)) {
+        *why = "svc_client config invalid";
+        return false;
+    }
+    return true;
+}
+Actor* svc_create(void* mem, const ActorDecl& d, const ActorEnv& env) {
+    static_assert(sizeof(SvcClient) <= kActorSlotBytes, "SvcClient outgrew its actor slot");
+    SvcClientConfig c{};
+    if (env.node == nullptr || !svc_client_config(d, c)) return nullptr;
+    return new (mem) SvcClient(*env.node, c);
+}
+}  // namespace
+
+const ActorKind kSvcClientKind = {ActorType::SvcClient, "svc_client", &svc_check, &svc_create};
 
 }  // namespace pot
