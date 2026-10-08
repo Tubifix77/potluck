@@ -45,10 +45,11 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 >
 > Actor API (`pot/actor.hpp`, one table in `main/actor_table.cpp`; `m0_main.cpp` names no actor type), the
 > die-temperature actor on all three, and two fixes (replicas of other boards' pinned outputs; FAULTY now
-> crosses the wire). Left for M8.1: B's value moving when warmed (needs a hand). **Open:** after a reboot B's
-> station may join the mesh's channel-11 access point and split the cell; `5fc239c`'s continued search
-> passes in simulation but not yet on the bench. Bench: A, C on `5fc239c`, B extender `d6a2245`. Package
-> `m81-die` at counter 7 (next 8+). `tools/console_send.py` sends a `POT!` line without a reset.
+> crosses the wire). Left for M8.1: B's value moving when warmed (needs a hand). The channel-11 split is
+> FIXED (`f802ac9` re-key, `a8cbb1e` save rule, `5fc239c` search, CR-7 wired in `5fd0eab`): 15 reboots
+> rejoined in 6-18 s. Bench: A, C on `f802ac9`, B extender `228cd5b`, cell on 11. Package `m81-die` at
+> counter 7 (next 8+). `tools/console_send.py` sends a `POT!` line without a reset. Waiting on the owner:
+> the 24 h combined soak (scheduled tasks), router gone mid-run (hunting window), garden placement.
 >
 > ## HANDOVER, 2026-10-08 (midday, owner away): poor-mans-extender's f1624de answered (M0-LOG session 30).
 >

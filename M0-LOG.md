@@ -4182,3 +4182,24 @@ per-pair session keys are stale after a reboot that happened while the two were 
 300 ms meeting does not re-establish them. That fits every stuck case in this session -- each followed
 a reboot on one side of a split. Not CR-7's doing; CR-7 only makes this bench reproduce it reliably.
 Next: reproduce it in the simulator with trust on, then fix the re-key. Bench left split: A, C on 1, B on 11.
+
+**The rejoin failure, run down and fixed (`f802ac9`).** Reproduced in the authentication harness, which
+gained channels for it (opt-in): three enrolled nodes, the channel authority power-cycled onto another
+channel after the others' sweep -- never readmitted, as on the bench. The events showed why. The node
+that kept the old incarnation's session key dropped every unicast frame from the new one -- the HELLO
+ack to its own want-ack HELLO included -- as a **replay**, before any handler saw it; only a signed
+*broadcast* HELLO can re-key, and the rebooted node sent one only on its timer (2 s on the boards), which
+a 300 ms visit rarely catches. On one channel that costs a few seconds and nobody noticed; across a
+split it never healed. **Fix:** a node that verifies a want-ack HELLO from a *new incarnation* (first
+contact, a reboot, a re-enrolment) answers with its own signed HELLO at once -- the want-ack variant,
+already signed and cached, so no extra crypto (the run_heavy count is unchanged) and no echo (the asker
+recognises it from its cache). A first cut that answered every fresh verification echoed between two
+settled peers, because a HELLO's signature covers its flags; the test that counts verifications caught
+it. 306 tests.
+
+**On the bench** (A, C on `f802ac9`, B on the extender build of `228cd5b`, same code): the split left
+from before (A, C on 1, B on 11) **healed by itself within a minute of the flash** -- A found B on its
+8th visit and the cell gathered on 11. Six more reboots of B: **readmitted in 6, 8, 16, 17, 17 and 18 s**
+(was: never, 3 of 3). Boot picks all "preferred", channel 11 at -50..-55 dBm against the strongest,
+channel 1 at -45..-49: the preferred access point 1 to 8 dB weaker over 15 reboots, inside the 10 dB
+default. Bench now: all three on channel 11, saved there with peers alive.

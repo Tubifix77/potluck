@@ -1309,15 +1309,15 @@
     },
     "esp-idf/pot_link/libpot_link.a": {
         "abbrev_name": "libpot_link.a",
-        "size": 18370,
+        "size": 18408,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 18276,
+                "size": 18314,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 18276,
+                        "size": 18314,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
