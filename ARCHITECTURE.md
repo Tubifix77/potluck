@@ -778,6 +778,7 @@ Portability derivation from the manifest, rendezvous assignment, pre-provisioned
 
 **M8 — Host services and Mode B.** *Gated on M5.*
 `potluck-agent` advertising `potluck://.../svc/*`; an MCU actor calling one and degrading correctly when the host is off.
+*Accepted on the bench, 2026-10-08 (M0-LOG session 28).* `potluck.agent` serves `potluck://lab/svc/time` to the cell through board A's cable, offering only the services its machine's user names; board A's built-in `svc_client` calls it every second and publishes the answer. Taken away without warning (link closed, no BYE) and politely (BYE), and brought back each time: the client went from serving to degraded within the host's death window, its output kept the host's last answer and read STALE with a growing age -- never presented as fresh -- and it recovered on its own when the host returned; 130 calls served, 0 lost, 0 timed out. A host is a manifest node of `kind: host`, owning its `svc/*` paths and never receiving a built-in actor. Caveats recorded: the advertisement is the frozen manifest, not runtime discovery; one service; the caller is on the board the host is cabled to.
 
 ---
 

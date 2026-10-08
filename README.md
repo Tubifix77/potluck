@@ -75,7 +75,7 @@ week on real hardware — three ESP32-S3 boards on a desk, then walked through a
 | **M6.1** — the application owns the radio | the same garden node as one chip: a Potluck member, a station on the house Wi-Fi, and a phone hotspot at once (CR-6 from the owner's `poor-mans-extender`) | **in progress (2026-10-08).** The baseline is done: on its own, the extender's hotspot gave a phone 18-19 Mbps down and 14-15 up through the house Wi-Fi, and carried a 10-minute video with no reboot. The change to Potluck that lets the hotspot code own the radio is built and smoke-tested; next, the same tests with both running on one board |
 | **M7** — [WebAssembly](https://webassembly.org/) tier | untrusted / hot-swappable code | gated: only if a named workload ever needs it |
 | *background compute* — not a milestone | a coordinator handing units of work to nodes that would otherwise sit idle, so a chip is not limited to watching one sensor. It is the answer to why an ESP32-S3 is worth clustering at all | **built, and measured in simulation**: 19 workers reach 18.99× the throughput of one, at 93–97% of a perfect scheduler with no dispatch cost, and killing a worker mid-job loses no work. Listed here because it is the point of the project rather than a numbered step toward it |
-| **M8** — host services | `potluck-agent`, letting a PC offer services (say, speech-to-text) into the cluster's namespace | not started; gated on M5 |
+| **M8** — host services | `potluck-agent`, letting a PC offer services (say, speech-to-text) into the cluster's namespace | **accepted on the bench (2026-10-08).** A PC running `potluck-agent` offers named services to the cluster -- only the ones its owner lists -- and a board calls one (the time of day, which a board cannot know by itself) every second. Pull the PC's cable and the board carries on: the value it last got is still readable, clearly marked as old and getting older, never passed off as fresh; plug it back and it picks up again by itself. |
 
 Beneath the milestones, the standing figures:
 
@@ -313,6 +313,9 @@ runtime states them. Here they are:
   0.46-0.69 s on the bench, for the default 600 ms death window. The actor restarts from its initial
   state -- nothing it held in memory moves -- and whatever was physically wired to the dead node does
   not move either. An actor that owns an actuator is never portable.
+- **A host service can vanish at any moment** (since M8): a PC that offers services to the cluster
+  is a machine that might be off. A board that calls one keeps the last answer it got, marked STALE
+  with its true age, and picks up again by itself when the PC returns; nothing waits on it.
 - **Activation is at-least-once, actuation exactly-once.** While a partition lasts, both sides may run
   the same portable actor; when it heals, the copy with the older claim stops (0.38 s on the bench),
   and readers never accept a value from it once they have seen the newer one. A node that has just

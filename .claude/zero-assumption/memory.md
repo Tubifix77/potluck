@@ -640,3 +640,11 @@ doc fetched as raw markdown from its repository), not from a summary.
 | **Extender hotspot baseline (no Potluck)** | 18-19 Mbps down, 14-15 up, latency 8-12 / 43-47 ms (fast.com, 3 runs); 10-min stream, no reboot, 0 reconnects, channel 1, RSSI -47..-52 dBm | `captures/m61-step0-*` | 2026-10-08 | volatile | measured |
 | **An erased board restarts its boot epoch; peers that remember the old one refused its re-enrolled HELLO** | A and C: `stale_epoch` 539-540, `bad_tag` ~1,055 until the fix | bench, M0-LOG session 27 | 2026-10-08 | volatile | measured |
 | **An extender station hunting for a missing router takes the radio off the cell's channel** | reason 201 every ~4.8 s; peers declared it dead and revived it 10 times in 32 s | bench, M0-LOG session 27 | 2026-10-08 | volatile | measured |
+
+### M8 — 2026-10-08
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **`ESP_ERR_ESPNOW_NO_MEM` = 0x3067** | `ESP_ERR_WIFI_BASE` 0x3000; `ESP_ERR_ESPNOW_BASE` = base + 100; `NO_MEM` = ESPNOW base + 3, "Out of memory" | local ESP-IDF v6.0.2 `esp_now.h:18-21`, `esp_err.h:39` | 2026-10-08 | version-pinned | verified |
+| **With Wi-Fi/lwIP in PSRAM, TX buffers are static** | `ESP_WIFI_DYNAMIC_TX_BUFFER` "depends on !(SPIRAM_TRY_ALLOCATE_WIFI_LWIP && !SPIRAM_IGNORE_NOTFOUND)"; the cache TX queue (default 32) holds what a full static pool cannot take | local ESP-IDF v6.0.2 `components/esp_wifi/Kconfig:77-116` | 2026-10-08 | version-pinned | verified |
+| **A board's service client degrades honestly when the host goes** | host pulled: degraded, output STALE 5 -> 37 s, never refreshed; host back: serving, GOOD; 130 calls served, 0 lost, 0 timed out | `captures/m8-svc-db91dc6*` | 2026-10-08 | volatile | measured |

@@ -35,6 +35,11 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## 2026-10-08, overnight: M8 ACCEPTED on the bench (M0-LOG session 28). Package `m8-svc` at counter 6 on all three
+> (next: 7+). `python -m potluck.agent --port COM6 --service time`; `tools/m8_bench.py`. **OPEN, blocking M6.1 step 2:**
+> board B on the extender build stopped transmitting (`ESP_ERR_ESPNOW_NO_MEM` on every send, heap fine) -- the
+> extender's forced static TX buffers; run it down before step 2. Known noise: the host never answers A's RTT probes.
+>
 > ## 2026-10-08, later: M6.1 SCHEDULED (CR-6, "the application owns the radio"), ARCHITECTURE section 13. In progress.
 >
 > Run exactly as CR-6's "How to run CR-6" says. **Step 0 PASSED, step 1 BUILT** (M0-LOG session 27). **NEXT: step 2,

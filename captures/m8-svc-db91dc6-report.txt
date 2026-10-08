@@ -1,0 +1,95 @@
+== host present: agent up (hello answered) (60 s): 5 svc lines
+   state=serving   out=GOOD         age=   420 ms  calls=12 answered=12 lost=0 timed_out=0 not_sent=30 degr=0 recov=0
+   state=serving   out=GOOD         age=   975 ms  calls=23 answered=22 lost=0 timed_out=0 not_sent=30 degr=0 recov=0
+   state=serving   out=GOOD         age=   554 ms  calls=33 answered=33 lost=0 timed_out=0 not_sent=30 degr=0 recov=0
+   state=serving   out=GOOD         age=   129 ms  calls=44 answered=44 lost=0 timed_out=0 not_sent=30 degr=0 recov=0
+   state=serving   out=GOOD         age=   704 ms  calls=54 answered=54 lost=0 timed_out=0 not_sent=30 degr=0 recov=0
+   A's other peers not alive in this phase's lines: 2
+== host pulled (no BYE) (40 s): 4 svc lines
+   state=degraded  out=STALE        age=  5287 ms  calls=60 answered=60 lost=0 timed_out=0 not_sent=35 degr=1 recov=0
+   state=degraded  out=STALE        age= 15861 ms  calls=60 answered=60 lost=0 timed_out=0 not_sent=45 degr=1 recov=0
+   state=degraded  out=STALE        age= 26438 ms  calls=60 answered=60 lost=0 timed_out=0 not_sent=56 degr=1 recov=0
+   state=degraded  out=STALE        age= 36998 ms  calls=60 answered=60 lost=0 timed_out=0 not_sent=67 degr=1 recov=0
+   A's other peers not alive in this phase's lines: 4
+== host back: agent up (hello answered) (40 s): 4 svc lines
+   state=serving   out=GOOD         age=   604 ms  calls=67 answered=67 lost=0 timed_out=0 not_sent=70 degr=1 recov=1
+   state=serving   out=GOOD         age=   192 ms  calls=78 answered=78 lost=0 timed_out=0 not_sent=70 degr=1 recov=1
+   state=serving   out=GOOD         age=   756 ms  calls=88 answered=88 lost=0 timed_out=0 not_sent=70 degr=1 recov=1
+   state=serving   out=GOOD         age=   318 ms  calls=99 answered=99 lost=0 timed_out=0 not_sent=70 degr=1 recov=1
+   A's other peers not alive in this phase's lines: 4
+== host stopped (BYE) (30 s): 2 svc lines
+   state=degraded  out=STALE        age=  9892 ms  calls=100 answered=100 lost=0 timed_out=0 not_sent=79 degr=2 recov=1
+   state=degraded  out=STALE        age= 20452 ms  calls=100 answered=100 lost=0 timed_out=0 not_sent=90 degr=2 recov=1
+   A's other peers not alive in this phase's lines: 2
+== host back: agent up (hello answered) (41 s): 3 svc lines
+   state=serving   out=GOOD         age=   585 ms  calls=111 answered=111 lost=0 timed_out=0 not_sent=100 degr=2 recov=2
+   state=serving   out=GOOD         age=   145 ms  calls=122 answered=122 lost=0 timed_out=0 not_sent=100 degr=2 recov=2
+   state=degraded  out=GOOD         age=  2710 ms  calls=130 answered=130 lost=0 timed_out=0 not_sent=102 degr=3 recov=2
+   A's other peers not alive in this phase's lines: 3
+   event peer_discovered (host 0x00fe) at A's 31008 ms
+   event peer_alive (host 0x00fe) at A's 31009 ms
+   event peer_admitted (host 0x00fe) at A's 31009 ms
+   event probe_timeout (host 0x00fe) at A's 33763 ms
+   event probe_timeout (host 0x00fe) at A's 36763 ms
+   event probe_timeout (host 0x00fe) at A's 39763 ms
+   event probe_timeout (host 0x00fe) at A's 42763 ms
+   event probe_timeout (host 0x00fe) at A's 45763 ms
+   event probe_timeout (host 0x00fe) at A's 48763 ms
+   event probe_timeout (host 0x00fe) at A's 51763 ms
+   event probe_timeout (host 0x00fe) at A's 54763 ms
+   event probe_timeout (host 0x00fe) at A's 57763 ms
+   event probe_timeout (host 0x00fe) at A's 60763 ms
+   event probe_timeout (host 0x00fe) at A's 63763 ms
+   event probe_timeout (host 0x00fe) at A's 66763 ms
+   event probe_timeout (host 0x00fe) at A's 69763 ms
+   event probe_timeout (host 0x00fe) at A's 72763 ms
+   event probe_timeout (host 0x00fe) at A's 75763 ms
+   event probe_timeout (host 0x00fe) at A's 78763 ms
+   event probe_timeout (host 0x00fe) at A's 81763 ms
+   event probe_timeout (host 0x00fe) at A's 84763 ms
+   event probe_timeout (host 0x00fe) at A's 87763 ms
+   event probe_timeout (host 0x00fe) at A's 90763 ms
+   event peer_dead (host 0x00fe) at A's 91668 ms
+   event probe_timeout (host 0x00fe) at A's 93763 ms
+   event probe_timeout (host 0x00fe) at A's 96763 ms
+   event probe_timeout (host 0x00fe) at A's 99763 ms
+   event probe_timeout (host 0x00fe) at A's 102763 ms
+   event probe_timeout (host 0x00fe) at A's 105763 ms
+   event probe_timeout (host 0x00fe) at A's 108763 ms
+   event probe_timeout (host 0x00fe) at A's 111763 ms
+   event probe_timeout (host 0x00fe) at A's 114763 ms
+   event probe_timeout (host 0x00fe) at A's 117763 ms
+   event probe_timeout (host 0x00fe) at A's 120763 ms
+   event probe_timeout (host 0x00fe) at A's 123763 ms
+   event probe_timeout (host 0x00fe) at A's 126763 ms
+   event probe_timeout (host 0x00fe) at A's 129763 ms
+   event peer_revived (host 0x00fe) at A's 131208 ms
+   event peer_admitted (host 0x00fe) at A's 131209 ms
+   event probe_timeout (host 0x00fe) at A's 132763 ms
+   event probe_timeout (host 0x00fe) at A's 135763 ms
+   event probe_timeout (host 0x00fe) at A's 138763 ms
+   event probe_timeout (host 0x00fe) at A's 141763 ms
+   event probe_timeout (host 0x00fe) at A's 144763 ms
+   event probe_timeout (host 0x00fe) at A's 147763 ms
+   event probe_timeout (host 0x00fe) at A's 150763 ms
+   event probe_timeout (host 0x00fe) at A's 153763 ms
+   event probe_timeout (host 0x00fe) at A's 156763 ms
+   event probe_timeout (host 0x00fe) at A's 159763 ms
+   event probe_timeout (host 0x00fe) at A's 162763 ms
+   event probe_timeout (host 0x00fe) at A's 165763 ms
+   event probe_timeout (host 0x00fe) at A's 168763 ms
+   event peer_left (host 0x00fe) at A's 171288 ms
+   event peer_alive (host 0x00fe) at A's 201418 ms
+   event peer_admitted (host 0x00fe) at A's 201418 ms
+   event probe_timeout (host 0x00fe) at A's 202763 ms
+   event probe_timeout (host 0x00fe) at A's 205763 ms
+   event probe_timeout (host 0x00fe) at A's 208763 ms
+   event probe_timeout (host 0x00fe) at A's 211763 ms
+   event probe_timeout (host 0x00fe) at A's 214763 ms
+   event probe_timeout (host 0x00fe) at A's 217763 ms
+   event probe_timeout (host 0x00fe) at A's 220763 ms
+   event probe_timeout (host 0x00fe) at A's 223763 ms
+   event probe_timeout (host 0x00fe) at A's 226763 ms
+   event probe_timeout (host 0x00fe) at A's 229763 ms
+   event peer_left (host 0x00fe) at A's 231488 ms
+host: 130 calls served by the agent across its three lives

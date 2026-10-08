@@ -3834,3 +3834,64 @@ local action); it is not something the session can turn off. The owner ran both 
 **Bench at the end of the night:** A and C on the normal build `f6d7fdb`, B on the extender build of the
 same commit, no credentials (an ordinary member); all three enrolled and verifying each other; A and C
 keep `m6-ticker` at counter 5, B has no package.
+
+## Session 28 — 2026-10-08 (overnight, owner asleep), M8: host services, and a node that degrades honestly when the host is off
+
+**Why M8 and not M7.** The owner's instruction for the night: after the extender, continue the roadmap
+from "Next: M8". M7 stays gated -- no named workload needs WASM -- and M8 was gated on M5 only.
+
+**What was built** (`db91dc6`), section 7.5 as written:
+
+- *Host:* `potluck.agent` rides the same bridge as potctl, which gained a request hook (CALL / CAST /
+  READ addressed to the host; a plain bridge still ignores them). It answers
+  `potluck://<cluster>/svc/<name>` for the services its machine's user names on the command line --
+  section 7.1's donation config: nothing is offered unless named. The first service is `time`, Unix
+  milliseconds: the one thing a board without a clock or internet cannot know. Any other path is
+  answered NOT_FOUND at once, never left to time out.
+- *Manifest:* a node may be `"kind": "host"`. It owns `svc/*` paths, is never eligible for a built-in
+  actor, and pinning one there is a build error. Placement stays frozen in the package (section 7.4):
+  the agent serves, it does not need to be found.
+- *Node:* `builtin:svc_client` (`components/pot_actors`, portable, host-tested), pinned, calls its
+  service every period and publishes the answer to a resource it owns. On host loss (section 8.3): it
+  never sends to a provider membership does not count alive; a call in flight when the provider dies is
+  written off; a call to a provider alive but silent is cancelled after a deadline; meanwhile the output
+  keeps its last value and true age and reads STALE past its bound; the first answer after the host
+  returns is published at once. `{"t":"svc"}` status line.
+- *Tests:* 5 C++ (serving; host gone then back; a call in flight when the host dies; a host alive but
+  silent -- mutation-checked; a refused path) and 4 Python (the agent serves, refuses, offers nothing
+  unnamed; a plain bridge ignores requests). 286 C++ and 189+ Python pass; both firmware builds 0 warnings.
+
+**The acceptance run** (`captures/m8-svc-db91dc6*`, all three boards on `db91dc6`, package `m8-svc`
+at **counter 6** on all three -- the M6 ticker kept, plus `clock` pinned to A calling `svc/time` every
+second, `on_host_loss: hold`). `tools/m8_bench.py` is the host: it runs the agent in-process on COM6
+and takes it away abruptly (link closed, no BYE: a cable pulled, a crash) and politely (BYE), bringing
+it back each time, while recording A's console.
+
+| phase | client state | output as a reader gets it | other |
+|---|---|---|---|
+| host present, 60 s | serving | GOOD, age 0.1-1.0 s | 54 calls, 54 answered |
+| host pulled, no BYE, 40 s | degraded | **STALE, age 5 -> 37 s, never refreshed** | A declared the host dead (`peer_dead`); nothing sent to it |
+| host back, 40 s | serving (recovery 1) | GOOD | no manual step |
+| host stopped with BYE, 30 s | degraded | STALE, age 10 -> 20 s | `peer_left` |
+| host back, 41 s | serving (recovery 2) | GOOD | |
+
+Over the run: 130 calls served by the host, **0 lost, 0 timed out**, every degradation followed by a
+recovery. **M8 is accepted on that evidence, with caveats recorded:** "advertising" is the frozen
+manifest, not runtime discovery; one service; the caller is on the board the host is cabled to (a board
+elsewhere reaches the host only through a relay, not tried); host loss by link closure, not by power.
+
+**Two findings that are not M8's, recorded so they are not lost.**
+
+1. *A probes every peer for round-trip time, and the host bridge never answers probes*, so A logs a
+   `probe_timeout` for the host every 3 s and the host's RTT is never measured. Harmless -- the host's
+   liveness comes from its heartbeats -- and older than tonight (45 of them in the M6 runs).
+2. **Board B, on the extender build without credentials, stopped transmitting.** About 40 s into the M8
+   run, A and C declared B dead and it stayed dead. B's console: every send failing with **0x3067,
+   `ESP_ERR_ESPNOW_NO_MEM`** ("Out of memory", `esp_now.h`) while it kept receiving and verifying, with
+   224 KB of internal RAM and 8.3 MB of PSRAM free -- not the heap: a transmit buffer pool, exhausted and
+   not coming back. The extender variant copies the baseline's Wi-Fi configuration, and with Wi-Fi/lwIP
+   buffers in PSRAM ESP-IDF forces *static* TX buffers (the dynamic option "depends on
+   !(SPIRAM_TRY_ALLOCATE_WIFI_LWIP ...)", `esp_wifi/Kconfig`): 16 of them, shared with ESP-NOW. After a
+   reset B ran 100 s without one failure, so it is not simply time; what wedged it (the deploy and
+   reboot just before, its trial, or something rarer) is not known yet. **This blocks M6.1's step 2** --
+   the combined node is exactly that configuration -- and is the first thing to run down next.
