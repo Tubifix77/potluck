@@ -20,6 +20,7 @@
 //                            enough to copy a peer, then formats from the copy.
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <new>  // placement new, for constructing the Node into static storage
@@ -229,7 +230,40 @@ uint32_t hal_now_ms(void*) { return now_ms_(); }
 uint32_t hal_now_us(void*) { return now_us_(); }
 uint32_t hal_free_dram(void*) { return free_internal_dram(); }
 
+// M6.1: the cell's channel survives a reboot. Every board used to boot on CONFIG_POT_CHANNEL, so a
+// deploy -- which reboots the whole cell -- put everyone back on the default while a router-owned
+// station stayed on its router's channel, and a freshly booted node knows of no channel authority to
+// sweep for. Found thinking through M6.1 step 2's retest (M0-LOG session 29). The link task only notes
+// the change; the stats task, which has the stack for an NVS write, saves it.
+namespace chan_store {
+constexpr const char* kNs = "potchan";
+std::atomic<uint8_t> g_pending{0};
+uint8_t load() {
+    nvs_handle_t h;
+    uint8_t ch = 0;
+    if (nvs_open(kNs, NVS_READONLY, &h) != ESP_OK) return 0;
+    if (nvs_get_u8(h, "chan", &ch) != ESP_OK) ch = 0;
+    nvs_close(h);
+    return ch;
+}
+void save_pending() {
+    const uint8_t ch = g_pending.exchange(0);
+    if (ch == 0) return;
+    nvs_handle_t h;
+    if (nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) return;
+    uint8_t old = 0;
+    if (nvs_get_u8(h, "chan", &old) != ESP_OK || old != ch) {
+        nvs_set_u8(h, "chan", ch);
+        nvs_commit(h);
+    }
+    nvs_close(h);
+}
+}  // namespace chan_store
+
 void hal_on_event(void*, const Event& e) {
+    if (e.kind == EventKind::ChannelChanged && e.detail_a >= 1 && e.detail_a <= 14) {
+        chan_store::g_pending.store(static_cast<uint8_t>(e.detail_a));
+    }
     // The loud ones go to the log as they happen; all of them are in the event ring for the JSON
     // stream regardless. §4 rule 4 wants demotion to be loud, and a membership transition buried in
     // a statistics dump ten seconds later is not loud.
@@ -1193,6 +1227,7 @@ void stats_task(void*) {
         std::printf("{\"t\":\"clk\",\"node\":%u,\"up_ms\":%u}\n", static_cast<unsigned>(node_id),
                     static_cast<unsigned>(now_ms_()));
         extender::print_status();  // M6.1: the baseline's {"t":"hs"} line, on an extender build only
+        chan_store::save_pending();
         for (size_t i = 0; i < g_svc_n; ++i) {
             // M8: one line per service client -- its state, its counters, and its output exactly as a
             // reader of the namespace would get it (quality and age included).
@@ -1843,6 +1878,14 @@ extern "C" void app_main(void) {
 
     EspNowConfig ecfg;
     ecfg.channel = kChannel;
+    // M6.1: boot on the channel the cell was last on, not the build's default.
+    nvs_init_once();
+    const uint8_t saved_channel = chan_store::load();
+    if (saved_channel >= 1 && saved_channel <= 11) {
+        ecfg.channel = saved_channel;
+        ESP_LOGI(kTag, "channel %u from the last boot (build default %u)", static_cast<unsigned>(saved_channel),
+                 static_cast<unsigned>(kChannel));
+    }
 #ifdef CONFIG_POT_LONG_RANGE
     ecfg.long_range = true;
 #else
@@ -1899,7 +1942,7 @@ extern "C" void app_main(void) {
     cfg.hb_period_ms = CONFIG_POT_HB_PERIOD_MS;
     cfg.hb_miss_limit = CONFIG_POT_HB_MISS_LIMIT;
     cfg.hello_interval_ms = CONFIG_POT_HELLO_INTERVAL_MS;
-    cfg.channel = kChannel;
+    cfg.channel = ecfg.channel;
     if (extender::active()) {
         // M6.1: the router owns this radio's channel. Declare what it is on now (0 until the station
         // first associates), never hop, never follow an announcement -- CR-1's station case.
