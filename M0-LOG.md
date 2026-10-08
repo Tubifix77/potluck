@@ -4256,3 +4256,36 @@ window sequence number so a capture shows every skip; SUBSCRIBE is held as PS-7.
 portability gate ran that way several times today, and once more (a test-tail command) after the owner
 had asked for no WSL; that one timed out and left no VM running. Scripts now go through Git Bash only.
 
+
+**Session 32, continued (overnight, the owner asleep; he asked both agents to get as far as they could).**
+passive-sensor's `rf_link` (`79b4e8e`) passed five smoke checks on the desk (`captures/m82-rf-link-*`):
+links 2 and no errors on all three; local and adopted remote link outputs GOOD through A (11-12 frames a
+window); polling one remote `seq` for a minute saw every window (0 skipped); heartbeat delivery
+99.4-100 % meanwhile, but the RTT tail rose (p99 42-85 ms on two directions) under ~70 reads/s of
+polling; and with B held in reset, B's links UNAVAILABLE and A's link to B at count 0 with its mean
+STALE. It found a PS-2 bug: on A the cabled host was a known peer, so rf_link opened a "link" to it --
+now only frames off the ESP-NOW radio make samples (`59fc3f5`).
+
+**The PS-0 dry run** (`captures/m82-dry-*`) found two flaws. passive-sensor's seq bracket discarded
+109 of 160 sets: under refresh-on-read a READ returns the replica fetched by the previous read of the
+same path, so the two seq reads of a sweep come from different moments -- consistency now keys on the
+owner's sample timestamp, which every field of a window shares. And A's RSSI tee, printing on the link
+task, made A's heartbeat round trips p50 16-22 ms (soak 4-6): ESP-IDF's console blocks ~10 ms per line
+at 115200. The tee now prints from its own priority-1 task through a 16 KB message buffer, dropping and
+counting lines it has no room for (`dbd582f`); A's links were back at p50 4-6 ms. Also learned: building
+another repository's working tree picks up its half-finished edits -- two "transient" build failures
+tonight were exactly that -- so external code is now built from `git archive <commit>` only.
+
+**rf_fusion** (`5e06556`), on the desk (`captures/m82-rf-fusion-smoke.txt`, `m82-fusion-failover-*`):
+placed on one board (C); outputs NO_DATA while learning, then GOOD false / 0 / 0; holder held in reset
+-> B started it at a higher term within ~5 s, outputs NO_DATA (M6's rule: the cache goes with the old
+owner) until B had relearned (~66 s); C back -> handover in the same second; never two holders. Its stats
+line was invisible -- the stats task printed only pinned actors; fixed.
+
+**PS-4 built** (`cfae645`): ActorEnv::checkpoint for portable actors, up to 128 B; saved only by the
+fenced owner, at most once a second, CAST to every other eligible live node tagged (key, term, seq);
+accepted only from the owner at its term (or a higher term whose claims have not arrived) and only if
+newer, so a fenced instance never overwrites the winner's; load() returns the newest held with its age.
+RAM only. Tests: a failover resuming from the dead holder's last save, and fencing/malformed refusals;
+a mutation refusing every checkpoint fails the first (the first mutation tried, `false && a || b`, was
+itself wrong -- it still accepted -- and is recorded so nobody trusts it).

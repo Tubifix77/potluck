@@ -315,8 +315,12 @@ runtime states them. Here they are:
   wired to the hardware; the build-time checker that enforces this has been in place since M4.
 - **A portable actor re-activates on another node after its host is declared dead** (since M6):
   0.46-0.69 s on the bench, for the default 600 ms death window. The actor restarts from its initial
-  state -- nothing it held in memory moves -- and whatever was physically wired to the dead node does
-  not move either. An actor that owns an actuator is never portable.
+  state -- nothing it held in memory moves -- unless it saved a checkpoint (since M8.2): up to 128
+  bytes, kept by every other board that may run it, which the new holder starts from with its age.
+  A checkpoint lives in memory only: if every such board reboots, it is gone, and the actor starts
+  fresh. While ownership moves, the actor's outputs read NO DATA, not an old value, until the new
+  holder publishes. Whatever was physically wired to the dead node does not move either. An actor
+  that owns an actuator is never portable.
 - **A host service can vanish at any moment** (since M8): a PC that offers services to the cluster
   is a machine that might be off. A board that calls one keeps the last answer it got, marked STALE
   with its true age, and picks up again by itself when the PC returns; nothing waits on it.
