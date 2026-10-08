@@ -8,11 +8,13 @@
 #include <cstdint>
 #include <cstring>
 #include <map>
+#include <new>
 #include <vector>
 
 #include "pot/deploy.hpp"
 #include "pot/node.hpp"
 #include "pot/opcodes.hpp"
+#include "pot/actor.hpp"
 #include "pot/reconcile.hpp"
 #include "test_harness.hpp"
 
@@ -39,6 +41,7 @@ struct RNode {
 struct RCell {
     std::vector<RNode> nodes;
     std::vector<TickerConfig> actors;
+    std::vector<PortableSpec> specs;  // M8.2: when set, loaded instead of `actors` (any portable kind)
     std::vector<std::pair<size_t, size_t>> deaf;
     uint32_t now_us = 0;
     // Frames land kLatencyMs after they are sent. Not decoration: with instant delivery a rebooted
@@ -82,7 +85,11 @@ struct RCell {
         t.hal.now_us = [](void* c) { return static_cast<RNode*>(c)->cell->now_us; };
         t.node = new Node(cfg, t.hal);
         t.rec = new Reconciler(*t.node);
-        CHECK(t.rec->load(actors.data(), actors.size()));
+        if (specs.empty()) {
+            CHECK(t.rec->load(actors.data(), actors.size()));
+        } else {
+            CHECK(t.rec->load(specs.data(), specs.size()));
+        }
         t.node->set_call_handler(&RCell::on_call, &t);
         t.node->start();
         t.rec->start(now_us / 1000);
@@ -449,4 +456,117 @@ TEST(reconcile, host_and_node_agree_on_the_hash_and_the_image) {
     CHECK_EQ(order[0], 0x8160);  // gravity: it owns the bound resource
     CHECK_EQ(order[1], 0x6300);
     CHECK_EQ(order[2], 0x7368);
+}
+
+// ---- M8.2 (PS-4): a portable actor's checkpoint survives a failover ---------------------------------
+
+namespace {
+// A portable actor that counts, saves the count once a second, and on start resumes from the
+// checkpoint if there is one. What it loaded, per node, is kept for the test to read.
+uint32_t g_ck_loaded[8];
+uint32_t g_ck_loaded_age[8];
+bool g_ck_had[8];
+uint32_t g_ck_last_saved[8];
+
+struct Saver : Actor {
+    Node& node;
+    const CheckpointStore* ck;
+    size_t idx;
+    uint32_t count = 0;
+    uint32_t next = 0;
+    Saver(Node& n, const CheckpointStore* c) : node(n), ck(c), idx(n.config().node_id - 0x100) {}
+    bool start(uint32_t now) override {
+        uint8_t buf[kMaxCheckpoint];
+        size_t len = 0;
+        uint32_t age = 0;
+        g_ck_had[idx] = ck != nullptr && ck->load(ck->ctx, buf, sizeof(buf), &len, &age) && len == 4;
+        if (g_ck_had[idx]) {
+            std::memcpy(&count, buf, 4);
+            g_ck_loaded[idx] = count;
+            g_ck_loaded_age[idx] = age;
+        }
+        next = now;
+        return true;
+    }
+    void tick(uint32_t now) override {
+        if (static_cast<int32_t>(now - next) < 0) return;
+        next = now + 100;
+        ++count;
+        if (ck != nullptr && ck->save(ck->ctx, reinterpret_cast<const uint8_t*>(&count), 4)) {
+            g_ck_last_saved[idx] = count;
+        }
+    }
+};
+bool saver_check(const ActorDecl&, const ActorEnv&, const char**) { return true; }
+Actor* saver_create(void* mem, const ActorDecl&, const ActorEnv& env) {
+    return new (mem) Saver(*env.node, env.checkpoint);
+}
+const ActorKind kSaverKind = {static_cast<ActorType>(0x82), "saver", &saver_check, &saver_create};
+
+void saver_specs(RCell& c, size_t n) {
+    PortableSpec sp;
+    sp.place.out_hash = kKey;
+    sp.place.period_ms = 100;
+    sp.place.count = static_cast<uint8_t>(n);
+    for (size_t i = 0; i < n; ++i) {
+        sp.place.node[i] = static_cast<uint16_t>(0x100 + i);
+        sp.place.gravity[i] = 1;
+    }
+    sp.kind = &kSaverKind;
+    sp.decl = ActorDecl{kPortableNode, static_cast<ActorType>(0x82), 0, sp.cfg};
+    c.specs.assign(1, sp);
+}
+}  // namespace
+
+TEST(reconcile, a_moved_actor_resumes_from_the_last_checkpoint_with_its_age) {
+    std::memset(g_ck_loaded, 0, sizeof(g_ck_loaded));
+    std::memset(g_ck_had, 0, sizeof(g_ck_had));
+    std::memset(g_ck_last_saved, 0, sizeof(g_ck_last_saved));
+    RCell c;
+    saver_specs(c, 3);
+    c.build(3, {});
+    c.run(8000);
+    const int first = c.runner();
+    CHECK(first >= 0);
+    if (first < 0) return;
+    CHECK(!g_ck_had[first]);  // nothing to resume from at the very start
+    const uint32_t saved = g_ck_last_saved[first];
+    CHECK(saved > 0);
+    c.run(300);  // no new save in the last 300 ms: the rate limit is 1 s, so "saved" is the last
+    c.kill(static_cast<size_t>(first));
+    c.run(4000);
+    const int second = c.runner();
+    CHECK(second >= 0 && second != first);
+    if (second < 0) return;
+    CHECK(g_ck_had[second]);
+    CHECK(g_ck_loaded[second] == saved || g_ck_loaded[second] + 10 >= saved);  // the newest that reached it
+    CHECK(g_ck_loaded_age[second] < 3000u);
+    CHECK(c.nodes[static_cast<size_t>(second)].rec->counters().checkpoints_accepted > 0u);
+}
+
+TEST(reconcile, a_checkpoint_from_a_fenced_instance_never_overwrites_the_winners) {
+    RCell c;
+    saver_specs(c, 2);
+    c.build(2, {});
+    c.run(6000);
+    const int holder = c.runner();
+    CHECK(holder >= 0);
+    if (holder < 0) return;
+    const size_t other = holder == 0 ? 1 : 0;
+    Reconciler& r = *c.nodes[other].rec;
+    const uint32_t accepted = r.counters().checkpoints_accepted;
+    const uint32_t refused = r.counters().checkpoints_refused;
+    // A stale instance -- the non-holder itself, at term 1 -- claims to have a newer snapshot.
+    uint8_t buf[kCheckpointHeaderLen + 4] = {};
+    const uint32_t key = kKey, term = 0, seq = 999;
+    std::memcpy(buf, &key, 4);
+    std::memcpy(buf + 4, &term, 4);
+    std::memcpy(buf + 8, &seq, 4);
+    buf[12] = 4;
+    CHECK(r.on_cast(c.nodes[other].id, kCheckpointPath, buf, sizeof(buf)));
+    CHECK_EQ(r.counters().checkpoints_refused, refused + 1u);
+    CHECK_EQ(r.counters().checkpoints_accepted, accepted);
+    // And a malformed one is refused, not read past its end.
+    CHECK(r.on_cast(c.nodes[holder].id, kCheckpointPath, buf, 10));
+    CHECK_EQ(r.counters().checkpoints_refused, refused + 2u);
 }

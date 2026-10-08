@@ -89,6 +89,10 @@ bool Reconciler::load(const PortableSpec* actors, size_t n) {
         std::memcpy(s.decl_cfg, actors[i].cfg, actors[i].decl.cfg_len);
         s.decl = actors[i].decl;
         s.decl.cfg = s.decl_cfg;
+        s.ck_ctx = Slot::CkCtx{this, static_cast<uint8_t>(count_)};
+        s.ck_store.ctx = &s.ck_ctx;
+        s.ck_store.save = &Reconciler::ck_save;
+        s.ck_store.load = &Reconciler::ck_load;
         NsDecl outs[kMaxOutputs];
         size_t n_out = (s.kind->outputs != nullptr) ? s.kind->outputs(s.decl, 0, 0, outs, kMaxOutputs) : 0;
         if (n_out == 0) {
@@ -243,6 +247,9 @@ Reconciler::PeerClaims* Reconciler::claims_slot(uint16_t node, bool create) {
 }
 
 bool Reconciler::on_cast(uint16_t from_node, uint32_t path_hash, const uint8_t* args, uint16_t len) {
+    if (path_hash == kCheckpointPath) {
+        return on_checkpoint(from_node, args, len);  // M8.2 (PS-4)
+    }
     if (path_hash != kReconcilePath) {
         return false;
     }
@@ -400,6 +407,7 @@ void Reconciler::activate(size_t i, uint32_t now) {
     // declared initial state" by construction.
     ActorEnv env;
     env.node = &node_;
+    env.checkpoint = &s.ck_store;  // M8.2 (PS-4)
     s.inst = s.kind->create(s.mem, s.decl, env);
     if (s.inst != nullptr && !s.inst->start(now)) {
         s.inst->~Actor();
@@ -526,6 +534,7 @@ void Reconciler::send_all() {
 }
 
 void Reconciler::tick(uint32_t now) {
+    now_ = now;
     if (!started_ || count_ == 0) {
         return;
     }
@@ -573,6 +582,96 @@ Reconciler::ActorView Reconciler::view(size_t i) const {
     v.fenced = s.fenced;
     v.released = s.released;
     return v;
+}
+
+// ---- M8.2 (PS-4): checkpoints ---------------------------------------------------------------------
+
+namespace {
+uint32_t ck_rd32(const uint8_t* p) {
+    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) |
+           (static_cast<uint32_t>(p[3]) << 24);
+}
+void ck_wr32(uint8_t* p, uint32_t v) {
+    for (int k = 0; k < 4; ++k) p[k] = static_cast<uint8_t>(v >> (8 * k));
+}
+}  // namespace
+
+bool Reconciler::ck_save(void* ctx, const uint8_t* data, size_t len) {
+    const Slot::CkCtx* c = static_cast<const Slot::CkCtx*>(ctx);
+    Reconciler& r = *c->rec;
+    Slot& s = r.slots_[c->slot];
+    const uint16_t self = r.node_.config().node_id;
+    if (!s.running || s.owner != self || len > kMaxCheckpoint || (len > 0 && data == nullptr)) return false;
+    const uint32_t now = r.now_;
+    if (s.ck_last_save_ms != 0 && now - s.ck_last_save_ms < 1000) return false;  // at most one a second
+    s.ck_last_save_ms = (now == 0) ? 1 : now;
+    const uint32_t seq = (s.ck_have && s.ck_term == s.term) ? s.ck_seq + 1 : 1;
+    s.ck_have = true;
+    s.ck_term = s.term;
+    s.ck_seq = seq;
+    s.ck_at_ms = now;
+    s.ck_len = static_cast<uint8_t>(len);
+    if (len > 0) std::memcpy(s.ck, data, len);
+    ++r.counters_.checkpoints_saved;
+    uint8_t buf[kCheckpointHeaderLen + kMaxCheckpoint];
+    ck_wr32(buf, s.cfg.out_hash);
+    ck_wr32(buf + 4, s.term);
+    ck_wr32(buf + 8, seq);
+    buf[12] = static_cast<uint8_t>(len);
+    if (len > 0) std::memcpy(buf + kCheckpointHeaderLen, data, len);
+    for (uint8_t i = 0; i < s.cfg.count; ++i) {
+        const uint16_t n = s.cfg.node[i];
+        if (n == self || !r.peer_live(n)) continue;
+        if (r.node_.cast(n, kCheckpointPath, buf, static_cast<uint16_t>(kCheckpointHeaderLen + len))) {
+            ++r.counters_.checkpoints_sent;
+        }
+    }
+    return true;
+}
+
+bool Reconciler::ck_load(void* ctx, uint8_t* out, size_t cap, size_t* len, uint32_t* age_ms) {
+    const Slot::CkCtx* c = static_cast<const Slot::CkCtx*>(ctx);
+    Reconciler& r = *c->rec;
+    const Slot& s = r.slots_[c->slot];
+    if (!s.ck_have || out == nullptr || cap < s.ck_len) return false;
+    std::memcpy(out, s.ck, s.ck_len);
+    if (len != nullptr) *len = s.ck_len;
+    if (age_ms != nullptr) *age_ms = r.now_ - s.ck_at_ms;
+    return true;
+}
+
+bool Reconciler::on_checkpoint(uint16_t from, const uint8_t* args, uint16_t len) {
+    if (args == nullptr || len < kCheckpointHeaderLen || args[12] > kMaxCheckpoint ||
+        len != kCheckpointHeaderLen + args[12]) {
+        ++counters_.checkpoints_refused;
+        return true;  // ours, and malformed
+    }
+    const uint32_t key = ck_rd32(args);
+    const uint32_t term = ck_rd32(args + 4);
+    const uint32_t seq = ck_rd32(args + 8);
+    for (size_t i = 0; i < count_; ++i) {
+        Slot& s = slots_[i];
+        if (s.cfg.out_hash != key) continue;
+        // The outputs' fencing: highest term wins. From the owner we see, at its term -- or a higher
+        // term than any we know, whose claim set has not reached us yet (a new holder may save before
+        // its claims arrive). Never an older term: a fenced instance cannot overwrite the winner's.
+        const bool by_owner = (term > s.owner_term) || (term == s.owner_term && from == s.owner);
+        const bool newer = !s.ck_have || term > s.ck_term || (term == s.ck_term && seq > s.ck_seq);
+        if (!by_owner || !newer) {
+            ++counters_.checkpoints_refused;
+            return true;
+        }
+        s.ck_have = true;
+        s.ck_term = term;
+        s.ck_seq = seq;
+        s.ck_at_ms = now_;
+        s.ck_len = args[12];
+        std::memcpy(s.ck, args + kCheckpointHeaderLen, s.ck_len);
+        ++counters_.checkpoints_accepted;
+        return true;
+    }
+    ++counters_.checkpoints_refused;  // an actor this image does not have
+    return true;
 }
 
 }  // namespace pot

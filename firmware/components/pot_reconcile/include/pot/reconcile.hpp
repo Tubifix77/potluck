@@ -67,6 +67,10 @@ constexpr size_t kMaxPortable = 8;
 
 // The CAST path the claim sets travel on. Not a namespace resource: a reserved hash, like a port.
 constexpr uint32_t kReconcilePath = path_hash("potluck:sys/reconcile/v1");
+// M8.2 (PS-4): a portable actor's checkpoint, CAST from its holder to the other eligible nodes:
+//   key u32, term u32, seq u32, len u8, then len bytes (<= kMaxCheckpoint).
+constexpr uint32_t kCheckpointPath = path_hash("potluck:sys/checkpoint/v1");
+constexpr size_t kCheckpointHeaderLen = 13;
 
 // The rendezvous weight of `node` for the actor `key`. MurmurHash3's fmix32 finaliser (Appleby,
 // public domain) applied twice, so a one-bit change in either input moves every bit of the weight.
@@ -144,6 +148,8 @@ class Reconciler {
     };
     size_t actor_count() const { return count_; }
     ActorView view(size_t i) const;
+    // M8.2: the instance running here for actor i, or nullptr -- for its stats line.
+    Actor* instance(size_t i) { return i < count_ ? slots_[i].inst : nullptr; }
 
     struct Counters {
         uint32_t sets_sent;
@@ -152,6 +158,11 @@ class Reconciler {
         uint32_t sets_unknown_peer;
         uint32_t view_changes;
         uint32_t send_failures;
+        // M8.2 (PS-4)
+        uint32_t checkpoints_saved;     // kept as the holder
+        uint32_t checkpoints_sent;      // CASTs to other eligible nodes
+        uint32_t checkpoints_accepted;  // received from the actor's owner and newer than ours
+        uint32_t checkpoints_refused;   // received from a non-owner, older, or malformed
     };
     const Counters& counters() const { return counters_; }
     bool settled() const { return settled_; }
@@ -168,6 +179,17 @@ class Reconciler {
         // here and moved and fenced together.
         uint32_t out_hash[kMaxOutputs];
         uint8_t n_out;
+        // M8.2 (PS-4): the newest checkpoint this node holds for the actor, and the store its
+        // instances see.
+        struct CkCtx {
+            Reconciler* rec;
+            uint8_t slot;
+        } ck_ctx;
+        CheckpointStore ck_store;
+        bool ck_have;
+        uint32_t ck_term, ck_seq, ck_at_ms, ck_last_save_ms;
+        uint8_t ck_len;
+        uint8_t ck[kMaxCheckpoint];
         bool running;
         uint32_t term;
         uint32_t max_term;
@@ -196,6 +218,9 @@ class Reconciler {
     void activate(size_t i, uint32_t now);
     void stop(size_t i, uint32_t why);  // 1 fenced, 2 handed over
     void run(size_t i, uint32_t now);  // tick the instance, while we are the fenced owner
+    static bool ck_save(void* ctx, const uint8_t* data, size_t len);
+    static bool ck_load(void* ctx, uint8_t* out, size_t cap, size_t* len, uint32_t* age_ms);
+    bool on_checkpoint(uint16_t from, const uint8_t* args, uint16_t len);
     size_t encode(uint8_t* out, size_t cap) const;
     void send_to(uint16_t node);
     void send_all();
@@ -217,6 +242,7 @@ class Reconciler {
     bool started_ = false;
     bool settled_ = false;
     bool dirty_ = false;  // our claim set changed: send it to everyone now
+    uint32_t now_ = 0;    // the last tick's time (M8.2: checkpoints are saved and loaded from inside it)
     uint32_t next_refresh_ms_ = 0;
     size_t refresh_cursor_ = 0;
     Counters counters_{};

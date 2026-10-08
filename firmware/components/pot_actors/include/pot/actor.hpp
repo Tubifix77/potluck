@@ -24,12 +24,28 @@
 
 namespace pot {
 
+// M8.2 (PS-4): section 7.7's checkpoint -- "re-activation from its last checkpoint if one exists".
+// A Value holds at most 8 bytes, so a checkpoint is a small blob the reconciler replicates itself, under
+// the outputs' fencing. For portable actors only (ActorEnv::checkpoint is null otherwise).
+constexpr size_t kMaxCheckpoint = 128;
+struct CheckpointStore {
+    void* ctx = nullptr;
+    // Keep a snapshot. Only while this node is the actor's fenced owner, at most one a second, at most
+    // kMaxCheckpoint bytes; replicated to every other eligible node that is alive. False otherwise.
+    bool (*save)(void* ctx, const uint8_t* data, size_t len) = nullptr;
+    // The newest snapshot this node holds for the actor -- from any earlier holder, this node included
+    // -- and its age (since this node received it). False if it holds none.
+    bool (*load)(void* ctx, uint8_t* out, size_t cap, size_t* len, uint32_t* age_ms) = nullptr;
+};
+
 // What the runtime gives an actor.
 struct ActorEnv {
     Node* node = nullptr;
     // The deploy trial window (CONFIG_POT_TRIAL_HEARTBEATS x the heartbeat period). An actor that
     // could stop the node from confirming a bad module must act inside it (the fault actor does).
     uint32_t trial_window_ms = 0;
+    // M8.2 (PS-4): portable actors only. Kept by the actor from create(); valid for its lifetime.
+    const CheckpointStore* checkpoint = nullptr;
 };
 
 class Actor {

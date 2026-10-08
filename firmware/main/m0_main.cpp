@@ -1296,6 +1296,17 @@ void stats_task(void*) {
             xSemaphoreGive(g_mutex);
             if (n > 0) std::printf("%s\n", line);
         }
+#if CONFIG_POT_RECONCILER
+        // M8.2: the portable actors running here print theirs too (passive-sensor's rf_fusion).
+        for (size_t i = 0; g_rec != nullptr && i < g_rec->actor_count(); ++i) {
+            EXT_RAM_BSS_ATTR static char pline[512];  // the stats task's only
+            xSemaphoreTake(g_mutex, portMAX_DELAY);
+            Actor* inst = g_rec->instance(i);
+            const size_t n = inst != nullptr ? inst->stats_json(pline, sizeof(pline), now_ms_()) : 0;
+            xSemaphoreGive(g_mutex);
+            if (n > 0) std::printf("%s\n", pline);
+        }
+#endif
 
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         refresh_sys_resources();
