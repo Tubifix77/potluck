@@ -1735,6 +1735,13 @@ bool handle_test(const char* line, size_t len) {
 
 void handle(const char* line, size_t len) {
     if (extender::handle_console(line, len)) return;  // M6.1: credentials; prints a result, never them
+    if (len > 5 && std::strncmp(line, "POT! ", 5) == 0) {
+        // M8.1: the actors' own test instruments (e.g. "POT! die_temp fail 1"), offered generically.
+        lock_node();
+        const bool mine = g_actors.on_console(line, len);
+        xSemaphoreGive(g_mutex);
+        if (mine) return;
+    }
     if (handle_test(line, len)) return;
     const EnrolRequest r = parse_enrol_line(line, len);
     char out[200];

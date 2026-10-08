@@ -167,3 +167,29 @@ class TestImageSignature(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+DIE_B = {"name": "die_b", "module": "builtin:die_temp", "latency_class": 4, "pin": 0x7368,
+         "config": {"period_ms": 1000}}
+
+
+class DieTemp(unittest.TestCase):
+    """M8.1: the chip's temperature sensor as a deployable actor, publishing under its own node."""
+
+    def test_compiles_pinned_with_its_output_under_its_node(self) -> None:
+        from potluck.paths import path_hash
+        img = dp.compile_image(parse(manifest([DIE_B])), 7)
+        node, typ, cfg_len = struct.unpack_from("<HBB", img, dp.IMAGE_HEADER_LEN)
+        self.assertEqual((node, typ, cfg_len), (0x7368, dp.ACTOR_DIE_TEMP, 6))
+        out, period = struct.unpack_from("<IH", img, dp.IMAGE_HEADER_LEN + 4)
+        self.assertEqual(dp.die_temp_path("m3-test", 0x7368), "potluck://m3-test/node-7368/hw/die_temp")
+        self.assertEqual(out, path_hash("potluck://m3-test/node-7368/hw/die_temp"))
+        self.assertEqual(period, 1000)
+
+    def test_an_unpinned_or_out_of_range_die_temp_is_refused(self) -> None:
+        for bad in ({k: v for k, v in DIE_B.items() if k != "pin"},
+                    dict(DIE_B, config={"period_ms": 100}),
+                    dict(DIE_B, config={"unit": "F"})):
+            from potluck.manifest import ManifestErrors
+            with self.assertRaises((dp.DeployError, ManifestErrors)):  # refused by either stage
+                dp.compile_image(parse(manifest([bad])), 1)

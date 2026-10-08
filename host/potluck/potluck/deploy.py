@@ -42,8 +42,27 @@ ACTOR_LED = 1
 ACTOR_FAULT = 2
 ACTOR_TICKER = 3  # M6: portable; placed at run time by the reconciler (potluck.reconcile)
 ACTOR_SVC_CLIENT = 4  # M8: calls a host's named service and publishes the answer
+ACTOR_DIE_TEMP = 5  # M8.1: the chip's own temperature sensor, published to node-<id>/hw/die_temp
 BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER,
-            "builtin:svc_client": ACTOR_SVC_CLIENT}
+            "builtin:svc_client": ACTOR_SVC_CLIENT, "builtin:die_temp": ACTOR_DIE_TEMP}
+
+
+def die_temp_path(system: str, node_id: int) -> str:
+    """M8.1. Where a die_temp actor publishes: under its own node, like sys/uptime, because the reading
+    is that chip's and nobody else's."""
+    return f"potluck://{system}/node-{node_id:04x}/hw/die_temp"
+
+
+def _die_temp_config(m: Manifest, a, where: str) -> bytes:
+    extra = set(a.config) - {"period_ms"}
+    if extra:
+        raise DeployError(f"{where}: unknown die_temp config key(s) {sorted(extra)}")
+    if a.pin is None:
+        raise DeployError(f"{where}: a die_temp reads the chip it runs on, so it is pinned")
+    period = int(a.config.get("period_ms", 1000))
+    if not 200 <= period <= 60000:
+        raise DeployError(f"{where}: die_temp period_ms={period} is outside 200..60000")
+    return struct.pack("<IH", path_hash(die_temp_path(m.system, a.pin)), period)
 #: Section 8.3's menu, as the node encodes it for a service client. The stop and safe-state entries
 #: concern actuators, which a service client never owns.
 SVC_HOST_LOSS = {"continue": 0, "hold": 1}
@@ -175,6 +194,11 @@ def compile_image(m: Manifest, counter: int) -> bytes:
         spec = m.node(node)
         if spec is not None and spec.kind == "host":
             raise DeployError(f"{where}: placed on '{spec.label}', a host: built-in actors run on firmware")
+        if a.module == "builtin:die_temp":
+            cfg = _die_temp_config(m, a, where)
+            body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+            count += 1
+            continue
         if a.module == "builtin:svc_client":
             cfg = _svc_client_config(m, a, where)
             body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg

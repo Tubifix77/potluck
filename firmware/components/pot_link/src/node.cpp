@@ -1153,6 +1153,10 @@ NsError Node::publish(uint32_t path_hash, const Value& v) {
     return ns_.publish(path_hash, v, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
 }
 
+NsError Node::publish_faulty(uint32_t path_hash) {
+    return ns_.publish_faulty(path_hash, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
+}
+
 NsError Node::write_local(uint32_t path_hash, const Value& v) {
     return ns_.write_local(path_hash, v, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
 }

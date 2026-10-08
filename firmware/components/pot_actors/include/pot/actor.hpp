@@ -51,6 +51,13 @@ class Actor {
         return false;
     }
 
+    // A console line, for test instruments (e.g. "POT! die_temp fail 1"). True if it was this
+    // actor's; the runtime stops offering it. Called with the node's lock held.
+    virtual bool on_console(const char* line, size_t len) {
+        (void)line, (void)len;
+        return false;
+    }
+
     // One JSON object for the periodic stats output, without a trailing newline: e.g.
     // {"t":"svc",...}. Written into `buf` (NUL-terminated); returns its length, 0 for no line.
     // Called with the node's lock held.
@@ -105,6 +112,7 @@ class ActorRuntime {
     size_t start(const ActorEnv& env, uint32_t now_ms, const char** failed);
 
     void tick(uint32_t now_ms);
+    bool on_console(const char* line, size_t len);
     bool on_call_result(uint16_t from_node, uint16_t msg_id, uint32_t path_hash, Node::CallOutcome o,
                         const Value& v);
 

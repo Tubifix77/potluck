@@ -123,6 +123,18 @@ const NsEntry* Namespace::find(uint32_t hash) const {
     return nullptr;
 }
 
+NsError Namespace::publish_faulty(uint32_t hash, uint32_t now_ms) {
+    NsEntry* e = find(hash);
+    if (e == nullptr) {
+        return NsError::NotFound;
+    }
+    e->updated_ms = now_ms;
+    ++e->update_count;  // a report, so the resource has data to classify: FAULTY, not NO_DATA
+    e->flags |= kNsFlagFaulty;
+    arrived_ms_[static_cast<size_t>(e - entries_)] = now_ms;
+    return NsError::Ok;
+}
+
 NsError Namespace::write_local(uint32_t hash, const Value& v, uint32_t now_ms) {
     const NsEntry* e = find(hash);
     if (e == nullptr) {

@@ -59,6 +59,7 @@ enum class ActorType : uint8_t {
     Fault = 2,  // test actor: aborts the node after a delay, to exercise trial-and-revert
     Ticker = 3, // M6: publishes a counter to one resource; portable, so the reconciler places it
     SvcClient = 4,  // M8: calls a host's named service (section 7.5) and publishes what it answers
+    DieTemp = 5,    // M8.1: the chip's own temperature sensor, published to the namespace
 };
 
 struct ActorDecl {
@@ -144,6 +145,20 @@ struct SvcClientConfig {
     uint8_t on_host_loss;
 };
 bool svc_client_config(const ActorDecl& a, SvcClientConfig& out);
+
+// DieTemp (M8.1): every period_ms, read the chip's internal temperature sensor and publish it, in
+// degrees Celsius as an f32, to `out_hash` -- a resource this node owns. ESP-IDF says the sensor
+// measures "the temperature inside the silicon" and is "not recommended" for ambient use, so the
+// resource is the die's temperature, not the room's. A failed read publishes nothing new and marks
+// the resource FAULTY: a reader gets no number rather than an old one. Pinned.
+//
+//   out_hash u32, period_ms u16
+constexpr uint8_t kDieTempCfgLen = 6;
+struct DieTempConfig {
+    uint32_t out_hash;
+    uint16_t period_ms;  // 200..60000
+};
+bool die_temp_config(const ActorDecl& a, DieTempConfig& out);
 
 // ---------------------------------------------------------------------------------------------
 // The A/B state machine, persisted in NVS.

@@ -116,6 +116,14 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                 }
                 break;
             }
+            case ActorType::DieTemp: {
+                DieTempConfig dc{};
+                if (a.node_id == kPortableNode || a.node_id == kEveryNode || !die_temp_config(a, dc)) {
+                    w = "die_temp must be pinned, with an output and a period of 200..60000 ms";
+                    return false;
+                }
+                break;
+            }
             default:
                 w = "unknown actor type";
                 return false;
@@ -163,6 +171,15 @@ bool svc_client_config(const ActorDecl& a, SvcClientConfig& out) {
     return out.svc_hash != 0 && out.out_hash != 0 && out.svc_hash != out.out_hash && out.provider != 0 &&
            out.provider < kPortableNode && out.period_ms >= 100 && out.period_ms <= 60000 &&
            out.on_host_loss <= 1;
+}
+
+bool die_temp_config(const ActorDecl& a, DieTempConfig& out) {
+    if (a.type != ActorType::DieTemp || a.cfg_len != kDieTempCfgLen) {
+        return false;
+    }
+    out.out_hash = rd32(a.cfg);
+    out.period_ms = rd16(a.cfg + 4);
+    return out.out_hash != 0 && out.period_ms >= 200 && out.period_ms <= 60000;
 }
 
 bool ticker_config(const ActorDecl& a, TickerConfig& out) {

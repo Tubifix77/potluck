@@ -334,6 +334,8 @@ class Node {
 
     // Publish a value for a resource this node owns — the driver's path, not access-checked.
     NsError publish(uint32_t path_hash, const Value& v);
+    // M8.1: the owner's driver reports the sensor behind `path_hash` as failed (Namespace::publish_faulty).
+    NsError publish_faulty(uint32_t path_hash);
 
     // Apply a write as if it had arrived from the wire, honouring `access`. Remote writes are
     // request_write().

@@ -73,6 +73,13 @@ bool ActorRuntime::on_call_result(uint16_t from_node, uint16_t msg_id, uint32_t 
     return false;
 }
 
+bool ActorRuntime::on_console(const char* line, size_t len) {
+    for (size_t i = 0; i < n_run_; ++i) {
+        if (run_[i]->on_console(line, len)) return true;
+    }
+    return false;
+}
+
 ActorRuntime::~ActorRuntime() {
     for (size_t i = 0; i < n_run_; ++i) run_[i]->~Actor();
 }

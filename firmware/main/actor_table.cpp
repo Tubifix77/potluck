@@ -5,7 +5,9 @@
 #include <cstdlib>
 #include <new>
 
+#include "driver/temperature_sensor.h"
 #include "esp_log.h"
+#include "pot/die_temp.hpp"
 #include "pot/svc_client.hpp"
 #include "pot/ticker.hpp"
 
@@ -73,6 +75,38 @@ Actor* fault_create(void* mem, const ActorDecl& d, const ActorEnv&) {
     return fault_config(d, c) ? new (mem) FaultActor(c.panic_after_ms) : nullptr;
 }
 
+// ---- die_temp (M8.1): the chip's own temperature sensor, over ESP-IDF's temperature_sensor driver --
+// One sensor per chip, so one handle: a second die_temp actor on a node shares it. The driver is not
+// thread-safe (ESP-IDF says so); every call here is from the link task.
+temperature_sensor_handle_t g_tsens = nullptr;
+
+bool tsens_open(void*) {
+    if (g_tsens != nullptr) return true;
+    // -10..80 degC: the range ESP-IDF v6.0.2's S3 table gives the smallest error (1 degC). The driver
+    // picks its internal setting from the range asked for.
+    temperature_sensor_config_t cfg = TEMPERATURE_SENSOR_CONFIG_DEFAULT(-10, 80);
+    temperature_sensor_handle_t h = nullptr;
+    if (temperature_sensor_install(&cfg, &h) != ESP_OK) return false;
+    if (temperature_sensor_enable(h) != ESP_OK) {
+        temperature_sensor_uninstall(h);
+        return false;
+    }
+    g_tsens = h;
+    return true;
+}
+
+bool tsens_read(void*, float* c) { return g_tsens != nullptr && temperature_sensor_get_celsius(g_tsens, c) == ESP_OK; }
+
+Actor* die_temp_create(void* mem, const ActorDecl& d, const ActorEnv& env) {
+    static_assert(sizeof(DieTempActor) <= kActorSlotBytes, "DieTempActor outgrew its actor slot");
+    DieTempConfig c{};
+    if (env.node == nullptr || !die_temp_config(d, c)) return nullptr;
+    DieTempDriver drv;
+    drv.open = &tsens_open;
+    drv.read = &tsens_read;
+    return new (mem) DieTempActor(*env.node, c, drv);
+}
+
 }  // namespace
 
 namespace app {
@@ -81,6 +115,7 @@ const ActorKind kActorTable[] = {
     {ActorType::Fault, "fault", &fault_check, &fault_create},
     kSvcClientKind,
     kTickerKind,  // portable: the reconciler places it
+    {ActorType::DieTemp, "die_temp", &die_temp_check, &die_temp_create},
 };
 const size_t kActorTableLen = sizeof(kActorTable) / sizeof(kActorTable[0]);
 }  // namespace app

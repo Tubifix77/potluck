@@ -148,6 +148,11 @@ class Namespace {
     // inaccuracy §4 rule 2 exists to prevent.
     NsError publish(uint32_t hash, const Value& v, uint32_t now_ms);
 
+    // M8.1: the owning driver reports its sensor itself as faulty. Every read answers FAULTY, with no
+    // value, until the next publish(): "the owning node reported the sensor itself as faulty" (the
+    // Quality it maps to). Dated now, so a reader can tell a fresh fault report from an old one.
+    NsError publish_faulty(uint32_t hash, uint32_t now_ms);
+
     // Apply a WRITE that arrived from the wire. Same as publish() but honours `access`, so a
     // read-only resource refuses. Used by the WRITE handler and by nothing else.
     NsError write_local(uint32_t hash, const Value& v, uint32_t now_ms);

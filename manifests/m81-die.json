@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "system": "lab",
+  "min_core_version": 1,
+  "nodes": [
+    {
+      "node_id": 25344,
+      "label": "A"
+    },
+    {
+      "node_id": 29544,
+      "label": "B"
+    },
+    {
+      "node_id": 33120,
+      "label": "C",
+      "owns": [
+        {
+          "path": "potluck://lab/node-8160/sys/uptime",
+          "unit": "millisecond",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 5000
+        }
+      ]
+    },
+    {
+      "node_id": 254,
+      "label": "workstation",
+      "kind": "host",
+      "owns": [
+        {
+          "path": "potluck://lab/svc/time",
+          "unit": "millisecond",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 0
+        }
+      ]
+    }
+  ],
+  "actors": [
+    {
+      "name": "ticker",
+      "module": "builtin:ticker",
+      "latency_class": 3,
+      "needs": [
+        "potluck://lab/node-8160/sys/uptime"
+      ],
+      "config": {
+        "period_ms": 100
+      }
+    },
+    {
+      "name": "clock",
+      "module": "builtin:svc_client",
+      "latency_class": 4,
+      "pin": 25344,
+      "needs": [
+        "potluck://lab/svc/time"
+      ],
+      "on_host_loss": "hold",
+      "config": {
+        "period_ms": 1000
+      }
+    },
+    {
+      "name": "die_a",
+      "module": "builtin:die_temp",
+      "latency_class": 4,
+      "pin": 25344,
+      "config": {
+        "period_ms": 1000
+      }
+    },
+    {
+      "name": "die_b",
+      "module": "builtin:die_temp",
+      "latency_class": 4,
+      "pin": 29544,
+      "config": {
+        "period_ms": 1000
+      }
+    },
+    {
+      "name": "die_c",
+      "module": "builtin:die_temp",
+      "latency_class": 4,
+      "pin": 33120,
+      "config": {
+        "period_ms": 1000
+      }
+    }
+  ]
+}
