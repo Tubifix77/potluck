@@ -12,14 +12,17 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07; M6 on 2026-10-08.** M3: deploy to the cell through one board,
+**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07; M6, M6.1 and M8 on 2026-10-08.** M3: deploy to the cell through one board,
 detach and power-cycle, and a broken module that all three nodes revert themselves (M0-LOG session 18). M2: a 10.05-minute three-board session over COM6
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
 board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session 16. **M4 is ACCEPTED (2026-10-05)**, with
 one caveat: the arbitration was not recorded by an instrument outside the boards (M0-LOG session 20). **M5 and M6 are
-accepted too** (sessions 21-22 and 26). **PAUSED after M6 (2026-10-08)**: the owner's `poor-mans-extender` project
-wanted to do something once M6 was done, so Potluck waits for the owner. When it resumes, the roadmap's next item is M8.
+accepted too** (sessions 21-22 and 26), and so are **M6.1** (CR-6, the combined extender node, session 29) and **M8**
+(host services, session 28). **The roadmap's remaining milestone, M7, is gated** (no named workload needs WASM), so
+there is no next milestone: what is open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6's
+combined node), a rebuilt step-0 baseline with the extender's buffer setting, and B's 97.4 % inbound PDR figure in
+the soak report. A new example system from the owner is what would open new work.
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
@@ -35,6 +38,13 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-08 (late morning): M6.1 and M8 ACCEPTED; synced to GitHub. No milestone is next (M7 gated).
+>
+> Bench left running by the owner's choice: A, C on `7ec8229`; B on the extender build of `7ec8229`, still holding
+> the owner's house Wi-Fi and hotspot credentials (the owner said keeping them is fine; clean-up when a project
+> needs B is `POT! pme forget` plus an erase the owner runs). Cell on channel 11 (saved in NVS). Package `m8-svc` at
+> counter 6 (next 7+). Open evidence items are listed in the code-state paragraph above.
+>
 > ## 2026-10-08, morning: M6.1 (CR-6) ACCEPTED on the bench (M0-LOG session 29), 14 min not 24 h.
 > Combined node = 18-19/14-17 Mbps like the hotspot alone, 0 false deaths; router channel change 1 -> 11
 > moved the whole cell in ~2.7 s after two fixes (`3d2333a` channel-authority sweep, `7ec8229` channel in NVS).
