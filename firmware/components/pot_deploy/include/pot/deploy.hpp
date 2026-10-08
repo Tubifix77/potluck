@@ -62,6 +62,13 @@ enum class ActorType : uint8_t {
     DieTemp = 5,    // M8.1: the chip's own temperature sensor, published to the namespace
 };
 
+// M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an
+// application's actors in its own repository), allocated in blocks of 16 by ARCHITECTURE section 7.
+// The image format carries an external type's config opaquely: only the build's registration row
+// for that type can judge it.
+constexpr uint8_t kFirstExternalType = 0x80;
+inline bool is_external_type(ActorType t) { return static_cast<uint8_t>(t) >= kFirstExternalType; }
+
 struct ActorDecl {
     uint16_t node_id;
     ActorType type;
@@ -121,6 +128,12 @@ struct TickerConfig {
 };
 constexpr uint8_t kTickerCfgFixed = 7;
 bool ticker_config(const ActorDecl& a, TickerConfig& out);
+
+// M8.2 (PS-1): the standard portable-actor header that starts a portable actor's config -- the
+// ticker's layout above (out_hash u32, period_ms u16, count u8, count x (node_id u16, gravity u8)),
+// which any portable type, built-in or external, now shares. Fills `out` and `len` (the header's
+// size: the actor's own config begins there). False if malformed. No type check: the caller's.
+bool portable_header(const ActorDecl& a, TickerConfig& out, size_t& len);
 // The inverse, for code that holds a TickerConfig and needs its declaration bytes (tests, and the
 // reconciler's TickerConfig overload). Returns the length written, 0 if `cap` is too small.
 size_t encode_ticker_config(const TickerConfig& c, uint8_t* out, size_t cap);

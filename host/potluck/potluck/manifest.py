@@ -534,9 +534,12 @@ def _parse_actor(d: Any, where: str, errors: list[ManifestError]) -> ActorSpec |
     else:
         for k, v in config_raw.items():
             # Plain scalars only: an actor's configuration is a handful of numbers and switches,
-            # and anything richer would need a schema the node does not have.
-            if not isinstance(k, str) or not isinstance(v, (bool, int)):
-                errors.append(ManifestError(f"{where}.config.{k}", "must be an integer or a boolean"))
+            # and anything richer would need a schema the node does not have. M8.2: an external
+            # module's descriptor (potluck.modules) is such a schema, and types its fields -- a
+            # namespace path or a node label (strings), a threshold (a float) -- so those scalars are
+            # allowed too; the descriptor decides which are valid. Still no lists or objects.
+            if not isinstance(k, str) or not isinstance(v, (bool, int, float, str)):
+                errors.append(ManifestError(f"{where}.config.{k}", "must be a number, a boolean or a string"))
             else:
                 config[k] = v
 
@@ -777,7 +780,9 @@ def cross_check(m: Manifest, *, require_placement: bool = False) -> list[Manifes
         for i, a in enumerate(m.actors):
             # M6: a portable actor's placement is the reconciler's at run time (section 7.7); what the
             # build freezes for it is the eligible set and gravity, which potluck.deploy compiles.
-            if m.placement_of(a) is None and a.module not in RUNTIME_PLACED_MODULES:
+            from . import modules as mods  # M8.2: external every-node and portable modules
+            if (m.placement_of(a) is None and a.module not in RUNTIME_PLACED_MODULES
+                    and not mods.is_placed_at_run_time(a.module)):
                 errors.append(ManifestError(
                     f"actors[{i}]",
                     "has no placement and no pin; a manifest is only deployable once the build "

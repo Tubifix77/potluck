@@ -6,6 +6,7 @@
 #include <new>
 
 #include "driver/temperature_sensor.h"
+#include "esp_attr.h"
 #include "esp_log.h"
 #include "pot/die_temp.hpp"
 #include "pot/svc_client.hpp"
@@ -110,14 +111,38 @@ Actor* die_temp_create(void* mem, const ActorDecl& d, const ActorEnv& env) {
 }  // namespace
 
 namespace app {
-const ActorKind kActorTable[] = {
+namespace {
+const ActorKind kBuiltinRows[] = {
     {ActorType::Led, "led", &led_check, &led_create},
     {ActorType::Fault, "fault", &fault_check, &fault_create},
     kSvcClientKind,
     kTickerKind,  // portable: the reconciler places it
     {ActorType::DieTemp, "die_temp", &die_temp_check, &die_temp_create, nullptr, &die_temp_output},
 };
-const size_t kActorTableLen = sizeof(kActorTable) / sizeof(kActorTable[0]);
+}  // namespace
+
+const ActorKind* actor_table(size_t* n) {
+    EXT_RAM_BSS_ATTR static ActorKind s_table[kMaxActorKinds];  // only tasks touch it: PSRAM when present
+    static size_t s_n = 0;
+    static bool s_done = false;
+    if (!s_done) {
+        s_done = true;
+        const char* why = nullptr;
+        const char* a = nullptr;
+        const char* b = nullptr;
+        if (!merge_actor_tables(kBuiltinRows, sizeof(kBuiltinRows) / sizeof(kBuiltinRows[0]), kAppRows,
+                                kAppRowsLen, s_table, kMaxActorKinds, s_n, &why, &a, &b)) {
+            ESP_LOGE(kTag, "actor table REFUSED: %s (%s%s%s) -- running Potluck's built-in actors only; "
+                     "an image naming an external type will be refused",
+                     why, a != nullptr ? a : "?", b != nullptr ? " and " : "", b != nullptr ? b : "");
+        }
+        for (size_t i = 0; i < kAppRowsLen; ++i) {
+            ESP_LOGI(kTag, "external component: %s", kAppRows[i].component);
+        }
+    }
+    *n = s_n;
+    return s_table;
+}
 }  // namespace app
 
 }  // namespace pot

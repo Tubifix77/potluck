@@ -116,7 +116,8 @@ class PortablePlan:
 def plan(m: Manifest) -> list[PortablePlan]:
     out = []
     for a in m.actors:
-        if a.module not in PORTABLE_MODULES:
+        from . import modules as mods  # M8.2: an external component's portable modules too
+        if a.module not in PORTABLE_MODULES and not mods.is_portable(a.module):
             continue
         path = output_path(m, a)
         key = path_hash(path)

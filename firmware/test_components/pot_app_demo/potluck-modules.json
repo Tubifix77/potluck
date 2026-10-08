@@ -1,0 +1,23 @@
+{
+  "component": "pot_app_demo",
+  "types": [240, 255],
+  "modules": [
+    {
+      "module": "ext:pot_app_demo/demo_counter",
+      "type": 240,
+      "placement": "pinned",
+      "config": [
+        {"name": "out", "kind": "path"},
+        {"name": "period_ms", "kind": "u16", "default": 1000, "min": 100, "max": 60000}
+      ]
+    },
+    {
+      "module": "ext:pot_app_demo/demo_roamer",
+      "type": 241,
+      "placement": "portable",
+      "config": [
+        {"name": "step", "kind": "u8", "default": 1, "min": 1, "max": 255}
+      ]
+    }
+  ]
+}

@@ -11,8 +11,16 @@ cmake_minimum_required(VERSION 3.16)
 
 # M6.1: the extender variant takes poor-mans-extender's components directory from the environment
 # (tools\build_firmware.ps1 -PmeHotspot). Read from there, never copied: that repository stays its own.
+set(EXTRA_COMPONENT_DIRS "")
 if(DEFINED ENV{POT_PME_HOTSPOT_DIR})
-  set(EXTRA_COMPONENT_DIRS "$ENV{POT_PME_HOTSPOT_DIR}")
+  list(APPEND EXTRA_COMPONENT_DIRS "$ENV{POT_PME_HOTSPOT_DIR}")
+endif()
+# M8.2 (PS-1): external components -- an application's actors, in its own repository. A
+# semicolon-separated list of components directories (tools\build_firmware.ps1 -AppComponents).
+if(DEFINED ENV{POT_APP_COMPONENT_DIRS})
+  foreach(d $ENV{POT_APP_COMPONENT_DIRS})
+    list(APPEND EXTRA_COMPONENT_DIRS "${d}")
+  endforeach()
 endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)

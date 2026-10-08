@@ -268,3 +268,72 @@ TEST(actor_runtime, the_output_of_an_actor_pinned_elsewhere_is_declared_here_as_
     n.node->read(out, r);
     CHECK_EQ(static_cast<int>(r.quality), static_cast<int>(Quality::Unavailable));  // its owner is no peer of ours
 }
+
+// ---- M8.2 (PS-1): external components join the table ----------------------------------------------
+
+namespace {
+const ActorKind kExtA[] = {{static_cast<ActorType>(0x80), "rf_link", &probe_check, &probe_create}};
+const ActorKind kExtClash[] = {{static_cast<ActorType>(0x80), "other", &probe_check, &probe_create}};
+const ActorKind kExtLow[] = {{static_cast<ActorType>(0x10), "squatter", &probe_check, &probe_create}};
+const ActorKind* rows_a(size_t* n) { *n = 1; return kExtA; }
+const ActorKind* rows_clash(size_t* n) { *n = 1; return kExtClash; }
+const ActorKind* rows_low(size_t* n) { *n = 1; return kExtLow; }
+}  // namespace
+
+TEST(actor_runtime, external_components_rows_follow_the_builtins) {
+    const AppRows apps[] = {{"pot_passive_sensor", &rows_a}};
+    ActorKind out[kMaxActorKinds];
+    size_t n = 0;
+    const char* why = nullptr;
+    CHECK(merge_actor_tables(kTable, 2, apps, 1, out, kMaxActorKinds, n, &why, nullptr, nullptr));
+    CHECK_EQ(n, static_cast<size_t>(3));
+    CHECK(find_actor_kind(out, n, static_cast<ActorType>(0x80)) != nullptr);
+}
+
+TEST(actor_runtime, two_rows_for_one_type_are_refused_naming_both_components) {
+    const AppRows apps[] = {{"pot_passive_sensor", &rows_a}, {"pme_extra", &rows_clash}};
+    ActorKind out[kMaxActorKinds];
+    size_t n = 0;
+    const char *why = nullptr, *a = nullptr, *b = nullptr;
+    CHECK(!merge_actor_tables(kTable, 2, apps, 2, out, kMaxActorKinds, n, &why, &a, &b));
+    CHECK(a != nullptr && std::strcmp(a, "pot_passive_sensor") == 0);
+    CHECK(b != nullptr && std::strcmp(b, "pme_extra") == 0);
+    CHECK_EQ(n, static_cast<size_t>(2));  // the built-ins only: the node still runs
+}
+
+TEST(actor_runtime, an_external_row_in_potlucks_range_is_refused) {
+    const AppRows apps[] = {{"squatter", &rows_low}};
+    ActorKind out[kMaxActorKinds];
+    size_t n = 0;
+    const char *why = nullptr, *a = nullptr;
+    CHECK(!merge_actor_tables(kTable, 2, apps, 1, out, kMaxActorKinds, n, &why, &a, nullptr));
+    CHECK(a != nullptr && std::strcmp(a, "squatter") == 0);
+}
+
+TEST(actor_runtime, the_image_parser_carries_an_external_type_and_its_portable_header) {
+    // node 0xFFFE, type 0xF1, cfg = header (out_hash, period 200, 1 node 0x0100 gravity 1) + step 3
+    const uint8_t cfg[11] = {0x78, 0x56, 0x34, 0x12, 0xC8, 0x00, 1, 0x00, 0x01, 1, 3};
+    uint8_t img[kImageHeaderLen + 4 + sizeof(cfg)] = {};
+    const uint32_t magic = kImageMagic;
+    std::memcpy(img, &magic, 4);
+    img[4] = kImageVersion;
+    img[5] = 1;  // one actor
+    const uint32_t body = 4 + sizeof(cfg);
+    std::memcpy(img + 20, &body, 4);
+    img[24] = 0xFE;
+    img[25] = 0xFF;
+    img[26] = 0xF1;
+    img[27] = sizeof(cfg);
+    std::memcpy(img + 28, cfg, sizeof(cfg));
+    DeployImage di{};
+    const char* why = nullptr;
+    CHECK(parse_image(img, sizeof(img), di, &why));
+    TickerConfig h{};
+    size_t len = 0;
+    CHECK(portable_header(di.actors[0], h, len));
+    CHECK_EQ(len, static_cast<size_t>(10));
+    CHECK_EQ(h.out_hash, 0x12345678u);
+    CHECK_EQ(static_cast<unsigned>(di.actors[0].cfg[len]), 3u);  // the actor's own byte after the header
+    img[26] = 0x7E;  // the same bytes under an unknown BUILT-IN number: refused, as before
+    CHECK(!parse_image(img, sizeof(img), di, &why));
+}

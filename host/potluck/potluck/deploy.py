@@ -43,6 +43,8 @@ ACTOR_FAULT = 2
 ACTOR_TICKER = 3  # M6: portable; placed at run time by the reconciler (potluck.reconcile)
 ACTOR_SVC_CLIENT = 4  # M8: calls a host's named service and publishes the answer
 ACTOR_DIE_TEMP = 5  # M8.1: the chip's own temperature sensor, published to node-<id>/hw/die_temp
+#: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
+MAX_ACTOR_CFG = 48
 BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER,
             "builtin:svc_client": ACTOR_SVC_CLIENT, "builtin:die_temp": ACTOR_DIE_TEMP}
 
@@ -122,19 +124,18 @@ def _actor_config(module: str, cfg: dict[str, Any], where: str) -> bytes:
                       f"(ADR-003 Tier 0: one of {sorted(BUILTINS)})")
 
 
-def _ticker_config(m: Manifest, a, where: str) -> bytes:
+def _portable_header(m: Manifest, a, period: int, where: str) -> bytes:
+    """M8.2 (PS-1): the standard portable-actor header every portable type's config starts with --
+    out_hash u32, period_ms u16, count u8, count x (node u16, gravity u8). The firmware's
+    portable_header() reads it."""
     from . import reconcile as rc
 
-    extra = set(a.config) - {"period_ms"}
-    if extra:
-        raise DeployError(f"{where}: unknown ticker config key(s) {sorted(extra)}")
-    period = int(a.config.get("period_ms", 100))
     if not 50 <= period <= 60000:
-        raise DeployError(f"{where}: ticker period_ms={period} is outside 50..60000")
+        raise DeployError(f"{where}: period_ms={period} is outside 50..60000")
     if a.pin is None:
         ok, why = rc.portability(m, a)
         if not ok:
-            raise DeployError(f"{where}: a ticker must be portable or pinned, and this one is neither: {why}")
+            raise DeployError(f"{where}: a portable actor must be portable or pinned, and this one is neither: {why}")
     nodes = rc.eligible(m, a)
     if not 1 <= len(nodes) <= rc.MAX_ELIGIBLE:
         raise DeployError(f"{where}: {len(nodes)} eligible nodes; the node image holds 1..{rc.MAX_ELIGIBLE}")
@@ -143,6 +144,34 @@ def _ticker_config(m: Manifest, a, where: str) -> bytes:
     for node_id, gravity in nodes:
         cfg += struct.pack("<HB", node_id, gravity)
     return cfg
+
+
+def _ticker_config(m: Manifest, a, where: str) -> bytes:
+    extra = set(a.config) - {"period_ms"}
+    if extra:
+        raise DeployError(f"{where}: unknown ticker config key(s) {sorted(extra)}")
+    return _portable_header(m, a, int(a.config.get("period_ms", 100)), where)
+
+
+def _external(m: Manifest, a, where: str) -> tuple[int, int, bytes]:
+    """M8.2 (PS-1): (node, type, config) for a module an external component describes."""
+    from . import modules as mods
+
+    spec = mods.get(a.module)
+    try:
+        own = mods.encode_config(spec, a.config, m, where)
+    except mods.ModuleError as e:
+        raise DeployError(str(e)) from None
+    if spec.placement == "portable":
+        return 0xFFFE, spec.type, _portable_header(m, a, int(a.config.get("period_ms", 1000)), where) + own
+    if spec.placement == "every":
+        if a.pin is not None:
+            raise DeployError(f"{where}: {a.module} runs on every node; it takes no pin")
+        return 0xFFFF, spec.type, own
+    node = m.placement_of(a)
+    if node is None:
+        raise DeployError(f"{where}: {a.module} is pinned: give it a pin")
+    return node, spec.type, own
 
 
 def _svc_client_config(m: Manifest, a, where: str) -> bytes:
@@ -175,11 +204,21 @@ def compile_image(m: Manifest, counter: int) -> bytes:
     """The node image for a manifest at a rollback counter. Deterministic: same input, same bytes."""
     body = b""
     count = 0
+    from . import modules as mods
+
     for a in m.actors:
         where = f"actors[{a.name}]"
+        if mods.get(a.module) is not None:
+            node, typ, cfg = _external(m, a, where)
+            if len(cfg) > MAX_ACTOR_CFG:
+                raise DeployError(f"{where}: {len(cfg)} bytes of config; a node keeps at most {MAX_ACTOR_CFG}")
+            body += struct.pack("<HBB", node, typ, len(cfg)) + cfg
+            count += 1
+            continue
         if a.module not in BUILTINS:
             raise DeployError(f"{where}: module '{a.module}' is not a built-in actor this firmware "
-                              f"has (ADR-003 Tier 0: one of {sorted(BUILTINS)})")
+                              f"has (ADR-003 Tier 0: one of {sorted(BUILTINS)}), and no --modules "
+                              f"descriptor describes it")
         if a.module == "builtin:ticker":
             # Section 7.7: every node gets it; the reconciler decides where it runs. A pinned ticker
             # is a portable one with a single eligible node.

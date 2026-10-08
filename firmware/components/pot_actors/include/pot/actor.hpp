@@ -101,11 +101,37 @@ struct ActorKind {
 // Find a type's row, or nullptr.
 const ActorKind* find_actor_kind(const ActorKind* table, size_t n, ActorType type);
 
+// M8.2 (PS-1): an external component's contribution -- an application's actors, in its own
+// repository, pulled into a firmware variant (tools\build_firmware.ps1 -AppComponents). The build
+// generates one entry per component from its directory name; nothing in Potluck names it.
+//   namespace pot { const ActorKind* app_rows_<component>(size_t* n); }
+struct AppRows {
+    const char* component;
+    const ActorKind* (*rows)(size_t* n);
+};
+
+constexpr size_t kMaxActorKinds = 48;
+
+// Built-in rows first, then each component's. Refused, with `why` and the two parties named (for a
+// duplicate, `a` and `b` are the components, "potluck" for a built-in): two rows for one type, an
+// external row outside 0x80-0xFF, or more rows than `cap`. On refusal `out` holds the built-ins
+// only, so the node still runs, and an image naming an external type is refused as "a type this
+// build has no row for" -- loudly, never with a silently chosen winner.
+bool merge_actor_tables(const ActorKind* builtins, size_t n_builtins, const AppRows* apps, size_t n_apps,
+                        ActorKind* out, size_t cap, size_t& n_out, const char** why, const char** a,
+                        const char** b);
+
 // The pinned actors of one node: those whose declaration names this node or every node. Portable
 // actors (kPortableNode) are the reconciler's and are skipped here.
 class ActorRuntime {
   public:
     ActorRuntime(const ActorKind* table, size_t n) : table_(table), n_kinds_(n) {}
+    // M8.2: the firmware's table is merged at boot (built-ins plus external components), after the
+    // runtime object exists. Before load().
+    void set_table(const ActorKind* table, size_t n) {
+        table_ = table;
+        n_kinds_ = n;
+    }
 
     // Validate this node's pinned actors and keep a copy of each declaration. All or nothing: on
     // false nothing is kept and `why` names the first problem. An actor type this build has no row

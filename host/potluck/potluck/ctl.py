@@ -114,6 +114,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="deploy to the cabled node only, rather than to the whole cell through it")
     s.add_argument("--key", help="the deploy key (.key): sign the image for node-side checking (M5)")
     s.add_argument("--bcert", help="the deploy key's node-format certificate, hex (potluck.enrol --deploy-cert)")
+    s.add_argument("--modules", action="append", default=[],
+                   help="an external component's potluck-modules.json (M8.2); repeatable")
 
     return p
 
@@ -293,13 +295,16 @@ def cmd_deploy(bridge: Bridge, node_id: int, args) -> int:
     M5's half.
     """
     from . import deploy as dp
+    from . import modules as mods
     from .signing import SigningError, load_package, read_key, verify_package
 
     try:
+        for path in args.modules:
+            mods.load(path)
         ca = read_key(args.ca)
         v = verify_package(load_package(args.package), ca.public, min_counter=args.min_counter)
         img = dp.compile_image(v.manifest, v.rollback_counter)
-    except (SigningError, dp.DeployError, OSError) as exc:
+    except (SigningError, dp.DeployError, mods.ModuleError, OSError, ValueError) as exc:
         print(f"REFUSED before sending: {exc}")
         return 4
     if args.key and args.bcert:

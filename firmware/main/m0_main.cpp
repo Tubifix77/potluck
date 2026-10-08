@@ -87,7 +87,7 @@ Reconciler* g_rec = nullptr;
 // M8.1: the image's actors pinned to this node, built from the registration table (actor_table.cpp)
 // and driven through the actor API -- tick, CALL results, stats -- with no type known here. PSRAM when
 // present: only tasks touch it.
-EXT_RAM_BSS_ATTR ActorRuntime g_actors(app::kActorTable, app::kActorTableLen);
+EXT_RAM_BSS_ATTR ActorRuntime g_actors(nullptr, 0);  // its table is merged at boot (app::actor_table)
 ActorEnv g_actor_env;
 
 StaticSemaphore_t g_mutex_buf;
@@ -598,7 +598,9 @@ bool load_and_apply(const char** why) {
     // time". The reconciler decides where each one runs; the registration table says what each is.
     size_t portable_n = 0;
 #if CONFIG_POT_RECONCILER
-    if (!collect_portable(img, app::kActorTable, app::kActorTableLen, g_portable, kMaxPortable, portable_n, why)) {
+    size_t n_kinds = 0;
+    const ActorKind* kinds = app::actor_table(&n_kinds);
+    if (!collect_portable(img, kinds, n_kinds, g_portable, kMaxPortable, portable_n, why)) {
         return false;
     }
 #else
@@ -2069,6 +2071,11 @@ extern "C" void app_main(void) {
 
     // §7.4: decide which slot this boot runs, persist the trial count, apply the actors -- all
     // before any task starts, so the first heartbeat already comes from the deployed behaviour.
+    {
+        size_t n_kinds = 0;
+        const ActorKind* kinds = app::actor_table(&n_kinds);  // M8.2: built-ins plus external components
+        g_actors.set_table(kinds, n_kinds);
+    }
     deploy_rt::boot(cfg.node_id);
 #if CONFIG_POT_RECONCILER
     if (deploy_rt::g_portable_n > 0) {

@@ -55,7 +55,11 @@ param(
     # M6.1: poor-mans-extender's components directory, for -Variant extender. Read in place through
     # POT_PME_HOTSPOT_DIR (firmware/CMakeLists.txt); nothing is copied out of that repository.
     #   tools\build_firmware.ps1 -Variant extender -PmeHotspot D:\Projects\poor-mans-extender\firmware\components
-    [string]$PmeHotspot = ""
+    [string]$PmeHotspot = "",
+    # M8.2 (PS-1): external components directories, each holding an application's actor component
+    # (one with a potluck-modules.json). Read in place through POT_APP_COMPONENT_DIRS; nothing is copied.
+    #   tools\build_firmware.ps1 -Variant room -AppComponents D:\Projects\passive-sensor\firmware\components
+    [string[]]$AppComponents = @()
 )
 
 $ErrorActionPreference = "Stop"
@@ -105,6 +109,16 @@ if ($PmeHotspot) {
 } else {
     Remove-Item Env:POT_PME_HOTSPOT_DIR -ErrorAction SilentlyContinue
 }
+if ($AppComponents.Count -gt 0) {
+    $dirs = @()
+    foreach ($d in $AppComponents) {
+        if (-not (Test-Path $d -PathType Container)) { throw "-AppComponents: no such directory: $d" }
+        $dirs += ((Resolve-Path $d).Path -replace '\\', '/')
+    }
+    $env:POT_APP_COMPONENT_DIRS = ($dirs -join ';')
+} else {
+    Remove-Item Env:POT_APP_COMPONENT_DIRS -ErrorAction SilentlyContinue
+}
 
 Push-Location $buildRoot
 try {
@@ -120,7 +134,11 @@ try {
         # that are part of what the variant IS rather than a one-off -Extra: M6.1's extender keeps the
         # baseline hotspot's Wi-Fi configuration there.
         $chain = "sdkconfig.defaults;sdkconfig.defaults.$Target"
+        # M8.2: a combined variant (extender-room: the extender's settings plus an app component) takes
+        # its defaults from the part before the first dash when it has no file of its own.
+        $base = ($Variant -split '-')[0]
         if (Test-Path "sdkconfig.defaults.variant-$Variant") { $chain += ";sdkconfig.defaults.variant-$Variant" }
+        elseif (Test-Path "sdkconfig.defaults.variant-$base") { $chain += ";sdkconfig.defaults.variant-$base" }
         $idfArgs = @("-B", $bdir, "-D", "SDKCONFIG=$bdir/sdkconfig",
                      "-D", "SDKCONFIG_DEFAULTS=$chain;$frag")
         Write-Host "variant '$Variant' in $bdir, extra config: $($Extra -join ', ')"

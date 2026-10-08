@@ -383,6 +383,21 @@ def _flag(args: list[str], name: str, default: str | None = None) -> str | None:
     return default
 
 
+def _load_modules(args: list[str]) -> None:
+    """M8.2 (PS-1): every `--modules <potluck-modules.json>` -- the external components whose modules
+    the manifest may name. Repeatable."""
+    from . import modules as mods
+
+    for i, a in enumerate(args):
+        if a == "--modules":
+            if i + 1 >= len(args):
+                raise SigningError("--modules needs a potluck-modules.json")
+            try:
+                mods.load(args[i + 1])
+            except (mods.ModuleError, OSError, ValueError) as e:
+                raise SigningError(f"--modules {args[i + 1]}: {e}") from None
+
+
 def _positional(args: list[str]) -> list[str]:
     out: list[str] = []
     skip = False
@@ -405,6 +420,7 @@ def main(argv: list[str] | None = None) -> int:
     cmd, rest = args[0], args[1:]
 
     try:
+        _load_modules(rest)
         if cmd == "keygen":
             role = _flag(rest, "--role", "deploy") or "deploy"
             label = _flag(rest, "--label", role) or role

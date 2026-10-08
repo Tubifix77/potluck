@@ -125,6 +125,9 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                 break;
             }
             default:
+                if (is_external_type(a.type)) {
+                    break;  // M8.2: an external component's; its registration row judges the config
+                }
                 w = "unknown actor type";
                 return false;
         }
@@ -182,15 +185,16 @@ bool die_temp_config(const ActorDecl& a, DieTempConfig& out) {
     return out.out_hash != 0 && out.period_ms >= 200 && out.period_ms <= 60000;
 }
 
-bool ticker_config(const ActorDecl& a, TickerConfig& out) {
-    if (a.type != ActorType::Ticker || a.cfg_len < kTickerCfgFixed) {
+bool portable_header(const ActorDecl& a, TickerConfig& out, size_t& len) {
+    if (a.cfg == nullptr || a.cfg_len < kTickerCfgFixed) {
         return false;
     }
     out.out_hash = rd32(a.cfg);
     out.period_ms = rd16(a.cfg + 4);
     out.count = a.cfg[6];
+    len = kTickerCfgFixed + 3u * out.count;
     if (out.out_hash == 0 || out.period_ms < 50 || out.period_ms > 60000 || out.count == 0 ||
-        out.count > kMaxEligible || a.cfg_len != kTickerCfgFixed + 3u * out.count) {
+        out.count > kMaxEligible || a.cfg_len < len) {
         return false;
     }
     for (uint8_t i = 0; i < out.count; ++i) {
@@ -207,6 +211,11 @@ bool ticker_config(const ActorDecl& a, TickerConfig& out) {
         }
     }
     return true;
+}
+
+bool ticker_config(const ActorDecl& a, TickerConfig& out) {
+    size_t len = 0;
+    return a.type == ActorType::Ticker && portable_header(a, out, len) && a.cfg_len == len;
 }
 
 size_t encode_ticker_config(const TickerConfig& c, uint8_t* out, size_t cap) {

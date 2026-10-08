@@ -13,6 +13,45 @@ const ActorKind* find_actor_kind(const ActorKind* table, size_t n, ActorType typ
     return nullptr;
 }
 
+bool merge_actor_tables(const ActorKind* builtins, size_t n_builtins, const AppRows* apps, size_t n_apps,
+                        ActorKind* out, size_t cap, size_t& n_out, const char** why, const char** a,
+                        const char** b) {
+    const char* owner[kMaxActorKinds] = {};
+    n_out = 0;
+    auto refuse = [&](const char* w, const char* x, const char* y) {
+        if (why != nullptr) *why = w;
+        if (a != nullptr) *a = x;
+        if (b != nullptr) *b = y;
+        n_out = n_builtins < cap ? n_builtins : cap;
+        for (size_t i = 0; i < n_out; ++i) out[i] = builtins[i];
+        return false;
+    };
+    for (size_t i = 0; i < n_builtins; ++i) {
+        if (n_out >= cap) return refuse("more actor types than the table holds", "potluck", nullptr);
+        owner[n_out] = "potluck";
+        out[n_out++] = builtins[i];
+    }
+    for (size_t c = 0; c < n_apps; ++c) {
+        size_t n = 0;
+        const ActorKind* rows = apps[c].rows != nullptr ? apps[c].rows(&n) : nullptr;
+        for (size_t i = 0; rows != nullptr && i < n; ++i) {
+            if (!is_external_type(rows[i].type)) {
+                return refuse("an external component's actor type below 0x80 (Potluck's range)",
+                              apps[c].component, nullptr);
+            }
+            for (size_t j = 0; j < n_out; ++j) {
+                if (out[j].type == rows[i].type) {
+                    return refuse("two rows for one actor type", owner[j], apps[c].component);
+                }
+            }
+            if (n_out >= cap) return refuse("more actor types than the table holds", apps[c].component, nullptr);
+            owner[n_out] = apps[c].component;
+            out[n_out++] = rows[i];
+        }
+    }
+    return true;
+}
+
 bool ActorRuntime::load(const DeployImage& img, uint16_t node_id, const ActorEnv& env, const char** why) {
     n_decl_ = 0;
     n_remote_ = 0;
