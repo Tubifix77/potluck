@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build-passive-sensor-tee
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-passive-sensor-tee && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-passive-sensor-tee/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-passive-sensor-tee/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xcc280 bytes. Smallest app partition is 0x100000 bytes. 0x33d80 bytes (20%) free.
+potluck_m0.bin binary size 0xcc960 bytes. Smallest app partition is 0x100000 bytes. 0x336a0 bytes (20%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -31,9 +31,9 @@ Executing "ninja size"...
 
 ├─────────────────────┼──────────────┼──────────┼────────────────┼───────────────┤
 
-│ Flash Code          │       602136 │          │                │               │
+│ Flash Code          │       603824 │          │                │               │
 
-│    .text            │       602136 │          │                │               │
+│    .text            │       603824 │          │                │               │
 
 │ DIRAM               │       146740 │    42.94 │         195020 │        341760 │
 
@@ -43,17 +43,17 @@ Executing "ninja size"...
 
 │    .data            │        21641 │     6.33 │                │               │
 
-│ Flash Data          │       128888 │          │                │               │
+│ Flash Data          │       128968 │          │                │               │
 
-│    .rodata          │       128616 │          │                │               │
+│    .rodata          │       128696 │          │                │               │
 
 │    .appdesc         │          256 │          │                │               │
 
 │    .tdata           │           16 │          │                │               │
 
-│ External RAM        │        54292 │          │                │               │
+│ External RAM        │        56172 │          │                │               │
 
-│    .bss             │        54292 │          │                │               │
+│    .bss             │        56172 │          │                │               │
 
 │ IRAM                │        16384 │    100.0 │              0 │         16384 │
 
@@ -71,7 +71,7 @@ Executing "ninja size"...
 
 └─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
 
-Total image size: 836104 bytes (.bin may be padded larger)
+Total image size: 837872 bytes (.bin may be padded larger)
 
 Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
 

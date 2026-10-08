@@ -1,0 +1,37 @@
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 198 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 198, death window 100 ms x 6 = 600 ms
+01:39:29  NO_DATA (age 0 ms, class L4)
+01:39:31  false  [GOOD, age 3383 ms, ts 165862, class L4]
+01:39:33  false  [GOOD, age 3443 ms, ts 167862, class L4]
+01:39:35  false  [GOOD, age 3499 ms, ts 169857, class L4]
+01:39:37  NO_DATA (age 0 ms, class L4)
+01:39:39  NO_DATA (age 0 ms, class L4)
+01:39:41  false  [GOOD, age 3754 ms, ts 175890, class L4]
+01:39:43  false  [GOOD, age 3812 ms, ts 177891, class L4]
+01:39:45  false  [GOOD, age 3868 ms, ts 179890, class L4]
+01:39:47  false  [GOOD, age 3928 ms, ts 181890, class L4]
+01:39:50  false  [GOOD, age 3986 ms, ts 183890, class L4]
+01:39:52  false  [GOOD, age 4059 ms, ts 185890, class L4]
+01:39:54  false  [GOOD, age 2120 ms, ts 189890, class L4]
+01:39:56  false  [GOOD, age 2175 ms, ts 191890, class L4]
+01:39:58  false  [GOOD, age 2235 ms, ts 193893, class L4]
+01:40:00  false  [GOOD, age 2298 ms, ts 195890, class L4]
+01:40:02  false  [GOOD, age 2361 ms, ts 197890, class L4]
+01:40:04  false  [GOOD, age 2424 ms, ts 199890, class L4]
+01:40:06  false  [GOOD, age 2481 ms, ts 201890, class L4]
+01:40:08  false  [GOOD, age 2540 ms, ts 203890, class L4]
+01:40:10  false  [GOOD, age 2595 ms, ts 205890, class L4]
+01:40:12  false  [GOOD, age 2665 ms, ts 207890, class L4]
+01:40:14  false  [GOOD, age 2740 ms, ts 209890, class L4]
+01:40:16  false  [GOOD, age 2793 ms, ts 211890, class L4]
+01:40:18  false  [GOOD, age 2865 ms, ts 213890, class L4]
+01:40:21  false  [GOOD, age 2937 ms, ts 215890, class L4]
+01:40:23  false  [GOOD, age 2998 ms, ts 217890, class L4]
+01:40:25  false  [GOOD, age 3054 ms, ts 219890, class L4]
+01:40:27  false  [GOOD, age 3131 ms, ts 221890, class L4]
+01:40:29  false  [GOOD, age 3198 ms, ts 223890, class L4]
+01:40:31  false  [GOOD, age 3253 ms, ts 225890, class L4]
+01:40:33  false  [GOOD, age 3312 ms, ts 227890, class L4]
+01:40:35  false  [GOOD, age 3365 ms, ts 229890, class L4]
+01:40:37  false  [GOOD, age 3437 ms, ts 231890, class L4]

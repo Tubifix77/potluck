@@ -332,6 +332,10 @@ bool Reconciler::refresh_view(uint32_t now) {
         if (!known) {
             changed = true;
             send_to(cur[i].node_id);
+            // M8.2 (PS-4): a node that (re)appeared holds no checkpoint -- it rebooted, or was away for
+            // the saves -- and may be the one the actor hands over to next. Bench: C came back and took
+            // rf_fusion over at 2.4 s with nothing to resume from, and relearned for ~64 s.
+            send_checkpoints_to(cur[i].node_id);
         }
     }
     if (changed) {
@@ -613,20 +617,37 @@ bool Reconciler::ck_save(void* ctx, const uint8_t* data, size_t len) {
     s.ck_len = static_cast<uint8_t>(len);
     if (len > 0) std::memcpy(s.ck, data, len);
     ++r.counters_.checkpoints_saved;
-    uint8_t buf[kCheckpointHeaderLen + kMaxCheckpoint];
-    ck_wr32(buf, s.cfg.out_hash);
-    ck_wr32(buf + 4, s.term);
-    ck_wr32(buf + 8, seq);
-    buf[12] = static_cast<uint8_t>(len);
-    if (len > 0) std::memcpy(buf + kCheckpointHeaderLen, data, len);
     for (uint8_t i = 0; i < s.cfg.count; ++i) {
         const uint16_t n = s.cfg.node[i];
-        if (n == self || !r.peer_live(n)) continue;
-        if (r.node_.cast(n, kCheckpointPath, buf, static_cast<uint16_t>(kCheckpointHeaderLen + len))) {
-            ++r.counters_.checkpoints_sent;
-        }
+        if (n != self && r.peer_live(n)) r.ck_send(s, n);
     }
     return true;
+}
+
+void Reconciler::ck_send(const Slot& s, uint16_t node) {
+    uint8_t buf[kCheckpointHeaderLen + kMaxCheckpoint];
+    ck_wr32(buf, s.cfg.out_hash);
+    ck_wr32(buf + 4, s.ck_term);
+    ck_wr32(buf + 8, s.ck_seq);
+    buf[12] = s.ck_len;
+    if (s.ck_len > 0) std::memcpy(buf + kCheckpointHeaderLen, s.ck, s.ck_len);
+    if (node_.cast(node, kCheckpointPath, buf, static_cast<uint16_t>(kCheckpointHeaderLen + s.ck_len))) {
+        ++counters_.checkpoints_sent;
+    }
+}
+
+void Reconciler::send_checkpoints_to(uint16_t node) {
+    const uint16_t self = node_.config().node_id;
+    for (size_t i = 0; i < count_; ++i) {
+        const Slot& s = slots_[i];
+        if (!s.running || s.owner != self || !s.ck_have) continue;
+        for (uint8_t k = 0; k < s.cfg.count; ++k) {
+            if (s.cfg.node[k] == node) {
+                ck_send(s, node);
+                break;
+            }
+        }
+    }
 }
 
 bool Reconciler::ck_load(void* ctx, uint8_t* out, size_t cap, size_t* len, uint32_t* age_ms) {

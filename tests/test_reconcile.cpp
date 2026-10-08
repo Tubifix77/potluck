@@ -467,6 +467,7 @@ uint32_t g_ck_loaded[8];
 uint32_t g_ck_loaded_age[8];
 bool g_ck_had[8];
 uint32_t g_ck_last_saved[8];
+bool g_ck_save_once = false;  // a holder that saves once and then never again
 
 struct Saver : Actor {
     Node& node;
@@ -492,6 +493,7 @@ struct Saver : Actor {
         if (static_cast<int32_t>(now - next) < 0) return;
         next = now + 100;
         ++count;
+        if (g_ck_save_once && g_ck_last_saved[idx] != 0) return;  // one save per holder, then quiet
         if (ck != nullptr && ck->save(ck->ctx, reinterpret_cast<const uint8_t*>(&count), 4)) {
             g_ck_last_saved[idx] = count;
         }
@@ -569,4 +571,33 @@ TEST(reconcile, a_checkpoint_from_a_fenced_instance_never_overwrites_the_winners
     // And a malformed one is refused, not read past its end.
     CHECK(r.on_cast(c.nodes[holder].id, kCheckpointPath, buf, 10));
     CHECK_EQ(r.counters().checkpoints_refused, refused + 2u);
+}
+
+TEST(reconcile, a_node_that_comes_back_and_takes_the_actor_over_resumes_from_the_holders_checkpoint) {
+    // Found on the bench (M8.2): the preferred node rebooted, took rf_fusion back at 2.4 s, and had
+    // nothing to resume from -- it had been down for every save. The holder now hands its newest
+    // checkpoint to a node the moment it reappears. Here the holder saves ONCE, long before the
+    // preferred node returns, so only that hand-over can bring it.
+    std::memset(g_ck_had, 0, sizeof(g_ck_had));
+    std::memset(g_ck_last_saved, 0, sizeof(g_ck_last_saved));
+    g_ck_save_once = true;
+    RCell c;
+    saver_specs(c, 2);
+    c.specs[0].place.gravity[0] = 1;
+    c.specs[0].place.gravity[1] = 9;  // node 1 is where the actor wants to be
+    c.build(2, {});
+    c.run(8000);
+    CHECK_EQ(c.runner(), 1);
+    c.kill(1);
+    c.run(6000);
+    CHECK_EQ(c.runner(), 0);
+    CHECK(g_ck_last_saved[0] > 0);  // node 0 saved its one checkpoint while holding
+    c.run(3000);                    // ... and nothing since
+    c.revive(1);
+    g_ck_had[1] = false;
+    c.run(10000);
+    CHECK_EQ(c.runner(), 1);  // back where it wants to be
+    CHECK(g_ck_had[1]);       // and it resumed instead of starting over
+    CHECK_EQ(g_ck_loaded[1], g_ck_last_saved[0]);
+    g_ck_save_once = false;
 }

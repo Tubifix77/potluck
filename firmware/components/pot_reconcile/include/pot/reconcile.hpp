@@ -221,6 +221,8 @@ class Reconciler {
     static bool ck_save(void* ctx, const uint8_t* data, size_t len);
     static bool ck_load(void* ctx, uint8_t* out, size_t cap, size_t* len, uint32_t* age_ms);
     bool on_checkpoint(uint16_t from, const uint8_t* args, uint16_t len);
+    void ck_send(const Slot& s, uint16_t node);
+    void send_checkpoints_to(uint16_t node);  // a peer (re)appeared: give it what we hold as owner
     size_t encode(uint8_t* out, size_t cap) const;
     void send_to(uint16_t node);
     void send_all();
