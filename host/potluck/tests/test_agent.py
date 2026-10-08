@@ -112,3 +112,31 @@ class AgentServes(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProbesAnswered(unittest.TestCase):
+    def test_a_nodes_rtt_probe_is_answered_with_a_reply_heartbeat(self):
+        from potluck.payloads import HB_FLAG_IS_REPLY, Heartbeat, parse_heartbeat
+
+        bridge, _agent, node = make(False)
+        try:
+            probe = Heartbeat(uptime_ms=1, boot_epoch=3, hb_seq=1, tx_frames=0, tx_cb_ok=0, tx_cb_fail=0,
+                              rx_frames=0, rx_lost_seqgap=0, turnaround_us=0, ack_of_msg_id=0, rtt_min_us=None,
+                              rtt_max_us=None, free_dram_kib=0, espnow_version=2, hb_flags=0)
+            node.send(fr.Op.HEARTBEAT, probe.encode(), msg_id=4242)  # FakeNode.send sets ACKREQ
+            end = time.monotonic() + 1.0
+            got = None
+            while time.monotonic() < end and got is None:
+                for raw in node.rx.feed(node.t.read(4096)):
+                    f = fr.parse(raw)
+                    if f.opcode == fr.Op.HEARTBEAT:
+                        got = f
+                time.sleep(0.01)
+            self.assertIsNotNone(got)
+            hb = parse_heartbeat(got.payload)
+            self.assertEqual(hb.ack_of_msg_id, 4242)
+            self.assertTrue(hb.hb_flags & HB_FLAG_IS_REPLY)
+            self.assertFalse(got.wants_ack)  # a reply never asks to be replied to
+            self.assertEqual(bridge.stats.probes_answered, 1)
+        finally:
+            bridge.close()

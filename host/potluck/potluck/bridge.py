@@ -39,7 +39,7 @@ from . import frame as fr
 from .capture import CaptureWriter
 from .ns_payloads import REPLY_TO_READ, REPLY_TO_WRITE, Read, Reply, Write
 from .paths import path_hash
-from .payloads import (HELLO_FLAG_WANT_ACK, Beacon, Bye, Heartbeat, Hello, HelloAck, decode_payload,
+from .payloads import (HB_FLAG_IS_REPLY, HELLO_FLAG_WANT_ACK, Beacon, Bye, Heartbeat, Hello, HelloAck, decode_payload,
                        parse_heartbeat)
 from .serial_framing import SerialReassembler, write_serial_frame
 from .transport import Transport, open_transport
@@ -59,6 +59,9 @@ HOST_NODE_ID = 0x00FE
 
 DEFAULT_HB_PERIOD_MS = 100
 DEFAULT_HB_MISS_LIMIT = 6
+
+
+WANTS_ACK = (lambda f: f.wants_ack) if True else (lambda f: f.wants_ack())
 
 
 class BridgeError(Exception):
@@ -84,6 +87,7 @@ class BridgeStats:
     hellos_rx: int = 0
     errs_rx: int = 0
     requests_rx: int = 0  # M8: CALL / CAST / READ addressed to this host
+    probes_answered: int = 0  # a node's RTT probes, answered
 
     def as_dict(self) -> dict[str, int]:
         return dict(vars(self))
@@ -488,12 +492,19 @@ class Bridge:
             self.peer_hb_miss_limit = h.hb_miss_limit
 
     def _on_heartbeat(self, f: fr.Frame) -> None:
+        recv = time.monotonic()
         self.stats.heartbeats_rx += 1
         try:
             hb = parse_heartbeat(f.payload)
         except ValueError:
             self.stats.bad_frames += 1
             return
+        # A probe (a full HEARTBEAT that asks to be answered): answer it as a node does, so the node
+        # measures its round trip to the host instead of logging a probe_timeout every few seconds
+        # (M0-LOG session 28). The reply carries ack_of_msg_id, the reply flag and our turnaround, and
+        # does not itself ask to be answered.
+        if isinstance(hb, Heartbeat) and WANTS_ACK(f) and not hb.is_reply:
+            self._reply_probe(f, recv)
         self.last_heartbeat = hb
         self.last_heartbeat_at = time.monotonic()
         if self.peer_node_id is None:
@@ -505,6 +516,30 @@ class Bridge:
                 )
         if hb.boot_epoch:
             self.peer_boot_epoch = hb.boot_epoch
+
+    def _reply_probe(self, f: fr.Frame, recv: float) -> None:
+        reply = Heartbeat(
+            uptime_ms=self.uptime_ms,
+            boot_epoch=0,
+            hb_seq=self._hb_seq,
+            tx_frames=self.stats.tx_frames,
+            tx_cb_ok=0,
+            tx_cb_fail=0,
+            rx_frames=self.stats.rx_frames,
+            rx_lost_seqgap=0,
+            turnaround_us=int((time.monotonic() - recv) * 1_000_000),
+            ack_of_msg_id=f.msg_id,
+            rtt_min_us=None,
+            rtt_max_us=None,
+            free_dram_kib=0,
+            espnow_version=0,
+            hb_flags=HB_FLAG_IS_REPLY,
+        )
+        try:
+            self.send_frame(fr.Op.HEARTBEAT, reply.encode(), dst=f.src, msg_id=f.msg_id)
+            self.stats.probes_answered += 1
+        except BridgeError:
+            pass
 
     # -- heartbeating ----------------------------------------------------------------------------
     def _hb_loop(self) -> None:

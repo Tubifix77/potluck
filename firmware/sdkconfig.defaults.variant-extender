@@ -8,10 +8,8 @@
 # measured. They match on purpose: step 3 compares step 0 with step 2, and the difference must be the
 # radio being shared, not a different Wi-Fi configuration or a slower CPU.
 #
-# Section 6's internal core budget is unaffected: these are ESP-IDF's buffers, and with
-# SPIRAM_TRY_ALLOCATE_WIFI_LWIP they are allocated in PSRAM first ("Try to allocate memories of WiFi
-# and LWIP in SPIRAM firstly. If failed, allocate internal memory", esp_psram Kconfig, v6.0.2).
-# Whether the router is fast enough with its buffers there was step 0's [MEASURE]: 18-19 Mbps down.
+# One setting differs from the baseline, on purpose and measured: where Wi-Fi/lwIP buffers live, and
+# with it the TX buffer type (below). Step 3's comparison carries that caveat.
 
 CONFIG_POT_EXTENDER=y
 
@@ -22,8 +20,15 @@ CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_LWIP_IP_FORWARD=y
 CONFIG_LWIP_IPV4_NAPT=y
 
-# Wi-Fi and lwIP buffers in PSRAM first.
-CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+# Wi-Fi and lwIP buffers: NOT in PSRAM -- the one deliberate difference from the baseline.
+# With them in PSRAM, ESP-IDF forces static TX buffers (the dynamic option "depends on
+# !(SPIRAM_TRY_ALLOCATE_WIFI_LWIP ...)", esp_wifi/Kconfig), and on the bench (M0-LOG session 28) static
+# TX buffers WITH aggregation wedged ESP-NOW for good 2.5-5 minutes into every boot: every send failing
+# ESP_ERR_ESPNOW_NO_MEM, heap untouched. Bisected on board B, 10 minutes each: aggregation off -> clean;
+# dynamic TX buffers with aggregation on -> clean. Aggregation is what a NAT router is for (the CR's
+# item 3), so it stays and the buffers move to internal heap instead. Section 6's static core is not
+# heap and is unaffected; B had over 200 KB of internal heap free.
+# CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP is not set
 
 # Aggregation on, as the baseline: Potluck's own builds turn it off to save internal RAM.
 CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=y
@@ -31,8 +36,9 @@ CONFIG_ESP_WIFI_TX_BA_WIN=6
 CONFIG_ESP_WIFI_AMPDU_RX_ENABLED=y
 CONFIG_ESP_WIFI_RX_BA_WIN=16
 
-# The baseline's buffer counts (Potluck's own builds: 6 / 16 / dynamic TX).
+# The baseline's RX buffer counts (Potluck's own builds: 6 / 16). TX: dynamic, 32 -- see above; the
+# baseline had 16 static, which PSRAM allocation forced on it.
 CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16
 CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=32
-CONFIG_ESP_WIFI_STATIC_TX_BUFFER=y
-CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER=y
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=32
