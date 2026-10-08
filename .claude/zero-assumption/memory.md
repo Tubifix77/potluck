@@ -659,3 +659,11 @@ doc fetched as raw markdown from its repository), not from a summary.
 | **House mesh direct (Google Wifi)** | 640 / 240 Mbps, latency 10 / 44 ms (owner's phone, fast.com) | owner, 2026-10-08 | 2026-10-08 | volatile | measured (owner) |
 | **Google Wifi restart can change the 2.4 GHz channel** | twice from 1 to 11 | bench | 2026-10-08 | volatile | measured |
 | **Cell follows a router channel change (after the sweep fix)** | ~2.7 s from losing the station to finding it on the new channel | `captures/m61-retest-*` | 2026-10-08 | volatile | measured |
+
+### Session 30 — 2026-10-08 (router gone, step 0 rerun)
+
+| claim | value | source | retrieved | freshness | status |
+|-------|-------|--------|-----------|-----------|--------|
+| **Router gone, with pme_hotspot's back-off (f1624de)** | 15 / 19 deaths of B (A / C) in 10.9 min, reconnects 2 -> 15; was 10 deaths in 32 s | `captures/m61-norouter-*` | 2026-10-08 | volatile | measured |
+| **Off-channel time of one never-associated reconnect attempt** | 3.7-4.0 s of silence (death at 0.6 s, revived 2.2-3.3 s later) | `captures/m61-norouter-COM3.jsonl` | 2026-10-08 | volatile | measured |
+| **Hotspot alone on the aligned config (pme f1624de)** | 16-18 / 16-17 Mbps, latency 7-11 / 26-33 ms; 10-min stream clean, 0 reconnects | `captures/m61-step0b-*` | 2026-10-08 | volatile | measured |

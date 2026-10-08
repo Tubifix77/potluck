@@ -956,6 +956,10 @@ void link_task(void*) {
     }
     uint32_t next_button_poll_ms = now_ms_();
     uint32_t next_led_ms = now_ms_() + status_led::kRenderMs;
+#if CONFIG_POT_EXTENDER
+    uint32_t next_hunt_poll_ms = now_ms_();
+    bool was_associated = false;  // matches the window app_main chose: hunting unless already associated
+#endif
     uint32_t next_assess_ms = now_ms_() + status_led::kUpdateMs;
     status_led::Colour colour = status_led::Colour::Blue;
 
@@ -1056,6 +1060,25 @@ void link_task(void*) {
             bye_button_poll();
             xSemaphoreGive(g_mutex);
         }
+
+#if CONFIG_POT_EXTENDER
+        // M6.1: while the station hunts for its router, its scans take the radio off the cell's channel
+        // for longer than the build's death window (3.7-4.0 s measured, M0-LOG session 30), so declare a
+        // window that covers one. Polled outside the lock: the status call goes into the Wi-Fi driver.
+        if (extender::active() && static_cast<int32_t>(nt - next_hunt_poll_ms) >= 0) {
+            next_hunt_poll_ms = nt + 200;
+            const bool assoc = extender::associated();
+            if (assoc != was_associated) {
+                was_associated = assoc;
+                const uint8_t misses = assoc ? CONFIG_POT_HB_MISS_LIMIT : CONFIG_POT_EXTENDER_HUNT_MISSES;
+                xSemaphoreTake(g_mutex, portMAX_DELAY);
+                g_node->set_heartbeat_window(CONFIG_POT_HB_PERIOD_MS, misses);
+                xSemaphoreGive(g_mutex);
+                ESP_LOGI(kTag, "extender: station %s; declaring %u x %u ms", assoc ? "associated" : "hunting",
+                         static_cast<unsigned>(misses), static_cast<unsigned>(CONFIG_POT_HB_PERIOD_MS));
+            }
+        }
+#endif
 
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         g_node->tick(nt);
@@ -1949,6 +1972,10 @@ extern "C" void app_main(void) {
         const uint8_t now_ch = espnow_current_channel();
         if (now_ch >= cfg.channel_lo && now_ch <= cfg.channel_hi) cfg.channel = now_ch;
         cfg.channel_fixed = true;
+#if CONFIG_POT_EXTENDER
+        // At boot the station is usually still hunting; the link loop tightens this once it associates.
+        if (!extender::associated()) cfg.hb_miss_limit = CONFIG_POT_EXTENDER_HUNT_MISSES;
+#endif
     }
 #if CONFIG_POT_CAN
     cfg.admit_on_beacon = true;  // a CAN bus carries no HELLO (§5.3.1)

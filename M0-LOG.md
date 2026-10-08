@@ -3991,3 +3991,52 @@ others chased it (4-5 sweeps each, B dead meanwhile -- the acceptance line's "lo
 **CR-6's acceptance is met on the bench, with the duration caveat:** one board runs Potluck, is associated
 to the house router and serves a phone hotspot with no false death; a router channel change moves the
 whole cell. The kill line (association and ESP-NOW cannot share the interface) did not fire.
+
+## Session 30 — 2026-10-08 (late morning, owner present then away), poor-mans-extender's answer: router gone, step 0 rerun, a hunting window
+
+**What came in.** poor-mans-extender acted on M6.1's handover (its `f1624de`): `pme_hotspot` no longer
+names networks in its log, reconnects with exponential back-off (2 s to 60 s) and, once it has been
+associated, a fast scan from the last channel, and its baseline sdkconfig now mirrors
+`sdkconfig.defaults.variant-extender`. It asked for three things: the router-gone test again, step 0
+again on the aligned configuration, and the 24-hour combined soak. The owner approved the first two.
+
+**One leak of our own, fixed first (`c87c9e1`).** With `pme_hotspot` quiet, ESP-IDF's Wi-Fi driver still
+printed the house network's name at INFO on every association ("connected with ..."). The extender build
+now sets the `wifi` log tag to WARN. Our recorders had always dropped those lines; a whole-console soak
+would not have.
+
+**Router gone** (`captures/m61-norouter-*`, B on the extender build of `c87c9e1` with `f1624de`'s
+`pme_hotspot`; the station given a network that does not exist and a random password, generated in the
+session; the owner restored the real ones afterwards). In 10.9 minutes A declared B dead 15 times and C
+19 times; B's reconnect counter went 2 -> 15. Session 27, before the back-off: 10 deaths in 32 s. **So
+about 12x fewer, but still one death per attempt:** a station that has never associated has no last
+channel, so each attempt is an all-channel scan, and each took B off the cell's channel for **3.7-4.0 s**
+(death declared after 0.6 s, revived 2.2-3.3 s later on A). The fast scan from the last channel is not
+exercised by this test; it needs a real router to go away.
+
+**Step 0 rerun** (`captures/m61-step0b-*`, B on poor-mans-extender's own firmware at `f1624de`, built from
+that repo unchanged; the credentials carried over in NVS): joined the router on channel 1, three fast.com
+runs 16-18 Mbps down, 16-17 up, latency 7-11 ms idle and **26-33 ms loaded**; a 10-minute stream with no
+reboot, no reconnect, the phone connected throughout.
+
+| | step 0 (old baseline, static TX) | step 0 rerun (aligned) | step 2 (with Potluck) |
+|---|---|---|---|
+| down / up | 18-19 / 14-15 Mbps | 16-18 / 16-17 Mbps | 18-19 / 14-17 Mbps |
+| latency idle / loaded | 8-12 / 43-47 ms | 7-11 / 26-33 ms | 10-12 / 20-27 ms |
+
+Session 29's caveat resolved: the loaded latency that *improved* with Potluck on the chip was the buffer
+setting, not Potluck -- the aligned baseline shows most of the same gain. Against it, sharing the chip
+costs no throughput or loaded latency that three runs a side can resolve. Afterwards B went back to
+Potluck's extender build (verify-flash matched) and the cell re-formed on channel 1 within 43 s of boot.
+
+**The Potluck half of the remedy, built (committed with this entry).** Session 27 named two remedies for a hunting
+station: gentler retries (the extender's; now done) and a looser declared window while it hunts (ours;
+not built until now). The extender build polls `pme_hotspot`'s status every 200 ms and, while the
+station is not associated, declares `CONFIG_POT_EXTENDER_HUNT_MISSES` (default 60) misses at its ordinary
+period -- 6 s against the 3.7-4.0 s measured, about 50 % headroom -- and the build's window again once
+associated. It uses M5.1's runtime window, so a looser window is announced before it applies and a
+tighter one applies at once. The costs, stated: a node that really dies while hunting is declared dead
+after 6 s, not 0.6 s; and after a router changes channel, the others notice B has gone (to the new
+channel) after the hunting window it declared, so the cell follows about 6 s later than the 2.7 s
+measured in session 29. What it does not touch: B's own view of A and C, which still lapses during a
+scan (B recorded 35 deaths of its peers in the router-gone run).

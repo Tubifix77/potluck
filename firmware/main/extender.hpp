@@ -27,6 +27,11 @@ bool active();
 // The channel of the latest router association, once: 0 if none arrived since the last call.
 uint8_t take_channel();
 
+// The station is associated to its router. False while it hunts (and on a build that is not an
+// extender, or one whose hotspot did not start): while hunting, scans take the radio off the cell's
+// channel, so the node declares a looser heartbeat window (CONFIG_POT_EXTENDER_HUNT_MISSES).
+bool associated();
+
 // The baseline's status line, field for field (poor-mans-extender's `{"t":"hs"}`), so step 2's figures
 // sit next to step 0's without translation. Prints nothing on a non-extender build.
 void print_status();

@@ -106,6 +106,12 @@ bool active() { return g_active; }
 
 uint8_t take_channel() { return g_channel.exchange(0); }
 
+bool associated() {
+    if (!g_active) return false;
+    pme_hotspot_status_t st{};
+    return pme_hotspot_get_status(&st) == ESP_OK && st.sta_connected;
+}
+
 void print_status() {
     pme_hotspot_status_t st{};
     if (g_active) pme_hotspot_get_status(&st);
@@ -157,6 +163,7 @@ bool handle_console(const char* line, size_t len) {
 bool start() { return false; }
 bool active() { return false; }
 uint8_t take_channel() { return 0; }
+bool associated() { return false; }
 void print_status() {}
 bool handle_console(const char*, size_t) { return false; }
 
