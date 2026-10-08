@@ -25,6 +25,7 @@ struct TestNode {
     uint8_t mac[kMacLen] = {};
     Node* node = nullptr;
     NodeHal hal{};
+    NodeConfig cfg{};  // kept so a test can reboot the node
 };
 
 // A cell with a perfect channel and a clock the test advances by hand.
@@ -75,8 +76,18 @@ struct TestCell {
             t.hal.now_ms = &TestCell::now_ms;
             t.hal.now_us = &TestCell::now_us_cb;
             t.hal.set_channel = [](void* ctx, uint8_t ch) { static_cast<TestNode*>(ctx)->chan = ch; };
+            t.cfg = cfg;
             t.node = new Node(cfg, t.hal);
         }
+    }
+
+    // A reboot: a fresh Node with the next boot epoch and no memory of anyone.
+    void reboot(size_t i) {
+        TestNode& t = nodes[i];
+        delete t.node;
+        ++t.cfg.boot_epoch;
+        t.node = new Node(t.cfg, t.hal);
+        t.node->start();
     }
 
     ~TestCell() {
@@ -313,6 +324,32 @@ TEST(node, death_is_declared_at_600ms_of_silence) {
     c.advance_ms(300);
     CHECK_EQ(c.nodes[0].node->counters().revivals, 1u);
     CHECK_EQ(alive_peers(*c.nodes[0].node), static_cast<size_t>(1));
+}
+
+TEST(node, a_peer_first_heard_by_broadcast_hello_is_not_charged_a_unicast_gap) {
+    // Found in a soak (M0-LOG session 30): a board that booted into a running cell reported 47 %
+    // inbound unicast delivery from both peers with zero gaps in the window -- ~12,500 "lost" frames
+    // counted once, just after boot. The HELLO that creates a peer is a broadcast, and its seq (the
+    // sender's broadcast stream) became the baseline for the unicast stream (section 5.1: seq is per
+    // (src,dst)), so the peer's first unicast frame was charged with the difference.
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon, /*probe_ms=*/100);
+    c.start_all();
+    c.advance_ms(3000);  // node 1's unicast and broadcast counters drift apart
+
+    c.reboot(0);
+    c.advance_ms(3000);
+
+    const PeerLink* p = c.nodes[0].node->peers().find_by_node_id(0x101);
+    CHECK(p != nullptr);
+    if (p == nullptr) return;
+    CHECK(p->rx_frames > 40u);
+    CHECK(p->rtt_samples > 20u);  // unicast traffic flowed after the reboot
+    CHECK_EQ(p->rx_lost_seqgap, 0u);
+    CHECK_EQ(p->rx_reorder_dup, 0u);
+    uint32_t ppm = 0;
+    CHECK(p->pdr_rx_ppm(ppm));
+    CHECK_EQ(ppm, 1000000u);
 }
 
 TEST(node, bye_marks_a_peer_left_not_dead) {

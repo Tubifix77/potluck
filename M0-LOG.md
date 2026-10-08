@@ -4040,3 +4040,16 @@ after 6 s, not 0.6 s; and after a router changes channel, the others notice B ha
 channel) after the hunting window it declared, so the cell follows about 6 s later than the 2.7 s
 measured in session 29. What it does not touch: B's own view of A and C, which still lapses during a
 scan (B recorded 35 deaths of its peers in the router-gone run).
+
+**B's low inbound PDR, explained and fixed (`<fix>`).** Session 28 left open a 97.39 % inbound unicast PDR
+for B with zero sequence gaps; this session's soak, twelve minutes in, showed 47 % from both peers, still
+with zero gaps in the window. B's own counters: `lost_seqgap` about 12,500 per peer, set once just after
+boot and flat ever since -- not loss. The HELLO that creates a peer is a broadcast, and `handle_hello`
+fed its seq -- the sender's *broadcast* stream -- into the unicast accounting, so the peer's first unicast
+frame was charged with the distance between its two counters. `on_rx` had kept the two streams apart for
+every later frame since M0; the creating HELLO was the one path that did not. Only a board that joins a
+cell already running shows it, which is why the soak's last-booted board always looked worst. Test
+`a_peer_first_heard_by_broadcast_hello_is_not_charged_a_unicast_gap` (a reboot added to the test cell)
+failed before the fix and passes after; 289 cases. Every inbound unicast PDR from a board that booted
+into a running cell, in any capture before this fix, carries this artefact; the heartbeat delivery
+figures, computed from `hb_seq`, never did.

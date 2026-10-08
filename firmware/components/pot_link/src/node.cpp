@@ -903,8 +903,15 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         relayed_[peers_.index_of(p)] = rx_via_relay_;
         emit(EventKind::PeerDiscovered, p, h.boot_epoch);
         // on_rx only accounts a frame against a peer it already knew, so the HELLO that creates the
-        // peer has to be accounted here or it is missing from rx_frames forever.
-        account_rx_seq(*p, f.hdr.seq);
+        // peer has to be accounted here or it is missing from rx_frames forever. A broadcast HELLO
+        // carries the broadcast stream's seq, which must not become the unicast stream's baseline
+        // (section 5.1, and on_rx's broadcast branch): it charged a board that booted into a running
+        // cell with the difference -- ~12,500 phantom losses per peer (M0-LOG session 30).
+        if (f.hdr.dst == kNodeBroadcast) {
+            ++p->rx_frames;
+        } else {
+            account_rx_seq(*p, f.hdr.seq);
+        }
         p->last_rssi = rssi;
     }
 
