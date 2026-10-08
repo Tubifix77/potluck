@@ -125,6 +125,10 @@ bool ActorRuntime::on_call_result(uint16_t from_node, uint16_t msg_id, uint32_t 
     return false;
 }
 
+void ActorRuntime::on_rx_sample(const RxSample& s) {
+    for (size_t i = 0; i < n_run_; ++i) run_[i]->on_rx_sample(s);
+}
+
 bool ActorRuntime::on_console(const char* line, size_t len) {
     for (size_t i = 0; i < n_run_; ++i) {
         if (run_[i]->on_console(line, len)) return true;

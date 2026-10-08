@@ -120,6 +120,8 @@ uint32_t now_us_() { return static_cast<uint32_t>(esp_timer_get_time()); }
 // Frame tee — §7.6's capture stream at M0's scale. Off by default: at ~40 lines/second the console
 // UART's cost lands inside the timing being measured. On to debug the wire, off to measure it.
 // ---------------------------------------------------------------------------------------------
+void rx_sample_hook(void* ctx, const RxSample& s);  // below: the RSSI tee, then the actors (PS-2)
+
 #if CONFIG_POT_RSSI_TEE
 // M8.2 (PS-0): the radio metadata of the frame on_rx is handling now. The drain loop sets it around
 // each on_rx call; the node's sample hook, called synchronously inside, adds what only the node knows.
@@ -1854,6 +1856,18 @@ void start_console(BaseType_t core) {
 
 }  // namespace
 
+namespace {
+// M8.2 (PS-2): every frame the node accepted from a known peer. On the link task, lock held.
+void rx_sample_hook(void* ctx, const RxSample& s) {
+#if CONFIG_POT_RSSI_TEE
+    rssi_tee(ctx, s);
+#else
+    (void)ctx;
+#endif
+    g_actors.on_rx_sample(s);
+}
+}  // namespace
+
 namespace board {
 void set_led_healthy(const LedConfig& c) { status_led::set_healthy(c); }
 }  // namespace board
@@ -2023,9 +2037,7 @@ extern "C" void app_main(void) {
     hal.now_us = &hal_now_us;
     hal.free_dram = &hal_free_dram;
     hal.on_event = &hal_on_event;
-#if CONFIG_POT_RSSI_TEE
-    hal.on_rx_sample = &rssi_tee;
-#endif
+    hal.on_rx_sample = &rx_sample_hook;  // M8.2: every accepted frame, to the tee and the actors
     hal.run_heavy = &trust_rt::run_heavy;
 #if !CONFIG_POT_RADIO_DISABLE && !CONFIG_POT_CAN
     hal.set_channel = [](void*, uint8_t ch) { espnow_set_channel(ch); };

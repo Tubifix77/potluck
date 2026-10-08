@@ -51,6 +51,12 @@ struct Probe : Actor {
     size_t stats_json(char* buf, size_t cap, uint32_t) override {
         return static_cast<size_t>(std::snprintf(buf, cap, "{\"t\":\"probe\",\"id\":%u}", id));
     }
+    uint32_t samples = 0;
+    int last_rssi = 0;
+    void on_rx_sample(const RxSample& rs) override {
+        ++samples;
+        last_rssi = rs.rssi;
+    }
 };
 int Probe::alive = 0;
 
@@ -336,4 +342,28 @@ TEST(actor_runtime, the_image_parser_carries_an_external_type_and_its_portable_h
     CHECK_EQ(static_cast<unsigned>(di.actors[0].cfg[len]), 3u);  // the actor's own byte after the header
     img[26] = 0x7E;  // the same bytes under an unknown BUILT-IN number: refused, as before
     CHECK(!parse_image(img, sizeof(img), di, &why));
+}
+
+TEST(actor_runtime, every_rx_sample_reaches_every_running_actor) {
+    // M8.2 (PS-2): delivered synchronously, so nothing is queued in between to overflow.
+    OneNode n;
+    const uint8_t a[3] = {1, 0, 0}, b[3] = {2, 0, 0};
+    const DeployImage img = image({{0x100, ActorType::Led, 3, a}, {0x100, ActorType::Fault, 3, b}});
+    ActorRuntime rt(kTable, 2);
+    ActorEnv env;
+    env.node = n.node;
+    CHECK(rt.load(img, 0x100, env, nullptr));
+    CHECK_EQ(rt.start(env, 0, nullptr), static_cast<size_t>(2));
+    for (int k = 0; k < 1000; ++k) {
+        RxSample rs{};
+        rs.node_id = 0x101;
+        rs.rssi = static_cast<int8_t>(-40 - (k % 20));
+        rs.kind = kRxKindBeacon;
+        rs.hb_seq = static_cast<uint16_t>(k);
+        rt.on_rx_sample(rs);
+    }
+    for (size_t i = 0; i < 2; ++i) {
+        CHECK_EQ(static_cast<Probe*>(rt.actor(i))->samples, 1000u);
+        CHECK_EQ(static_cast<Probe*>(rt.actor(i))->last_rssi, -40 - 19);
+    }
 }

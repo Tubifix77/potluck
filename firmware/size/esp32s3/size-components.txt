@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xc9b10 bytes. Smallest app partition is 0x100000 bytes. 0x364f0 bytes (21%) free.
+potluck_m0.bin binary size 0xc9b80 bytes. Smallest app partition is 0x100000 bytes. 0x36480 bytes (21%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -43,7 +43,7 @@ Executing "ninja size-components"...
 
 │ liblwip.a                       │      64933 │    0 │     0 │        0 │    12 │     0 │    12 │     0 │      59555 │  59555 │       2896 │      0 │    2896 │        0 │         2470 │  2470 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      56880 │    0 │     0 │        0 │ 33634 │ 33496 │   138 │     0 │      12960 │  12960 │        256 │      0 │     256 │        0 │        10030 │ 10030 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      56918 │    0 │     0 │        0 │ 32482 │ 32344 │   138 │     0 │      12990 │  12990 │        264 │      0 │     264 │        0 │        11182 │ 11182 │        0 │             0 │        0 │           0 │
 
 │ libphy.a                        │      34407 │ 1152 │  1152 │        0 │  5365 │    86 │  1277 │  4002 │      27890 │  27890 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -91,9 +91,9 @@ Executing "ninja size-components"...
 
 │ libesp_wifi.a                   │       3389 │  203 │   203 │        0 │   567 │     6 │   480 │    81 │       1859 │   1859 │        760 │      0 │     760 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libesp_psram.a                  │       3376 │  252 │   252 │        0 │  1671 │    62 │    10 │  1599 │       1301 │   1301 │        152 │      0 │     152 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_actors.a                 │       3380 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       3072 │   3072 │        308 │      0 │     308 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_actors.a                 │       3322 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       3026 │   3026 │        296 │      0 │     296 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_psram.a                  │       3376 │  252 │   252 │        0 │  1671 │    62 │    10 │  1599 │       1301 │   1301 │        152 │      0 │     152 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libvfs.a                        │       3248 │    0 │     0 │        0 │   236 │    44 │   192 │     0 │       2873 │   2873 │        139 │      0 │     139 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
