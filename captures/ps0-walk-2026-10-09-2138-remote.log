@@ -1,0 +1,4 @@
+# node 0x6300 epoch 224 admitted; its death window is 100 ms x 6
+# polling 4 links every 1.00 s -> captures/ps0-walk-2026-10-09-2138-remote.jsonl
+# 1568 link sets: 1377 consistent, 191 discarded, 0 read timeouts
+# (restarted by hand at ~21:42 after the first attempt admitted A's pre-reboot epoch: see -remote-stale.jsonl)
