@@ -1,0 +1,10 @@
+01:06:55 deploy ps-room @19 (owner typed start just before and left the room)
+01:07:37 recording started
+01:08:10 detector learned (first GOOD verdict: false) = empty-1 start
+01:08:19-01:08:25 a short presence (true, conf 0.33), then false again: possibly the owner leaving / a door
+01:18:10 empty-1 end (10 min after learned)
+owner: walking 01:23:00-01:26:00
+owner: standing 01:26:30-01:28:30
+owner: still-off 01:29:00-01:31:00
+owner: sitting 01:31:30-01:33:30
+owner: empty-2 01:33:30-01:38:30

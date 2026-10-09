@@ -1,0 +1,8 @@
+{"date": "2026-10-10", "steps": [
+  {"name": "empty-1",   "start": "01:08:10", "end": "01:18:10"},
+  {"name": "walking",   "start": "01:23:00", "end": "01:26:00"},
+  {"name": "standing",  "start": "01:26:30", "end": "01:28:30"},
+  {"name": "still-off", "start": "01:29:00", "end": "01:31:00"},
+  {"name": "sitting",   "start": "01:31:30", "end": "01:33:30"},
+  {"name": "empty-2",   "start": "01:33:30", "end": "01:38:30"}
+]}
