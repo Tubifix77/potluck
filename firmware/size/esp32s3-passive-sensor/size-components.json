@@ -219,15 +219,15 @@
     },
     "esp-idf/esp_stdio/libesp_stdio.a": {
         "abbrev_name": "libesp_stdio.a",
-        "size": 67398,
+        "size": 67413,
         "size_diff": 0,
         "memory_types": {
             "Flash Data": {
-                "size": 66988,
+                "size": 67003,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 66988,
+                        "size": 67003,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -2181,26 +2181,26 @@
     },
     "esp-idf/pot_passive_sensor/libpot_passive_sensor.a": {
         "abbrev_name": "libpot_passive_sensor.a",
-        "size": 8254,
+        "size": 8492,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 6596,
+                "size": 6682,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 6596,
+                        "size": 6682,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
                 }
             },
             "External RAM": {
-                "size": 1238,
+                "size": 1390,
                 "size_diff": 0,
                 "sections": {
                     ".ext_ram.bss": {
-                        "size": 1238,
+                        "size": 1390,
                         "size_diff": 0,
                         "abbrev_name": ".bss"
                     }
@@ -2835,15 +2835,15 @@
     },
     "esp-idf/pot_reconcile/libpot_reconcile.a": {
         "abbrev_name": "libpot_reconcile.a",
-        "size": 4482,
+        "size": 4487,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 4458,
+                "size": 4463,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 4458,
+                        "size": 4463,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
