@@ -8,3 +8,4 @@ owner: standing 01:26:30-01:28:30
 owner: still-off 01:29:00-01:31:00
 owner: sitting 01:31:30-01:33:30
 owner: empty-2 01:33:30-01:38:30
+owner (after the walk): during empty-2 the owner sat in the room, bottom left of the overview drawing (triangle at the top), outside the triangle -- empty-2 was not empty
