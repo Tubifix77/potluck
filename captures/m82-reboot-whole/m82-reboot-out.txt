@@ -1,0 +1,254 @@
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 212 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 212, death window 100 ms x 6 = 600 ms
+19:08:56  false  [GOOD, age 1692 ms, ts 467642, class L4]
+19:08:58  false  [GOOD, age 1820 ms, ts 469633, class L4]
+19:09:00  false  [GOOD, age 1929 ms, ts 471630, class L4]
+19:09:02  true  [GOOD, age 1949 ms, ts 473666, class L4]
+19:09:04  true  [GOOD, age 2038 ms, ts 475643, class L4]
+19:09:06  true  [GOOD, age 2126 ms, ts 477637, class L4]
+19:09:08  true  [GOOD, age 2192 ms, ts 479637, class L4]
+19:09:10  NO_DATA (age 0 ms, class L4)
+19:09:12  true  [GOOD, age 503 ms, ts 428673, class L4]
+19:09:14  NO_DATA (age 0 ms, class L4)
+19:09:16  true  [GOOD, age 2002 ms, ts 488107, class L4]
+19:09:18  true  [GOOD, age 2066 ms, ts 490098, class L4]
+19:09:20  true  [GOOD, age 2134 ms, ts 492098, class L4]
+19:09:23  false  [GOOD, age 2196 ms, ts 494104, class L4]
+19:09:25  false  [GOOD, age 2276 ms, ts 496105, class L4]
+19:09:27  false  [GOOD, age 2358 ms, ts 498103, class L4]
+19:09:29  false  [GOOD, age 2414 ms, ts 500103, class L4]
+19:09:31  false  [GOOD, age 2490 ms, ts 502104, class L4]
+19:09:33  false  [GOOD, age 2565 ms, ts 504100, class L4]
+19:09:35  false  [GOOD, age 636 ms, ts 508107, class L4]
+19:09:37  false  [GOOD, age 697 ms, ts 510108, class L4]
+19:09:39  false  [GOOD, age 762 ms, ts 512108, class L4]
+19:09:41  false  [GOOD, age 844 ms, ts 514104, class L4]
+19:09:43  false  [GOOD, age 918 ms, ts 516104, class L4]
+19:09:45  false  [GOOD, age 979 ms, ts 518099, class L4]
+19:09:47  false  [GOOD, age 1047 ms, ts 520104, class L4]
+19:09:49  false  [GOOD, age 1112 ms, ts 522110, class L4]
+19:09:52  false  [GOOD, age 1198 ms, ts 524104, class L4]
+19:09:54  false  [GOOD, age 1265 ms, ts 526103, class L4]
+19:09:56  true  [GOOD, age 1481 ms, ts 528098, class L4]
+19:09:58  true  [GOOD, age 1542 ms, ts 530100, class L4]
+19:10:00  true  [GOOD, age 1593 ms, ts 532107, class L4]
+19:10:02  true  [GOOD, age 1701 ms, ts 534112, class L4]
+19:10:04  true  [GOOD, age 1846 ms, ts 536107, class L4]
+19:10:06  true  [GOOD, age 1923 ms, ts 538107, class L4]
+19:10:08  true  [GOOD, age 1993 ms, ts 540103, class L4]
+19:10:10  NO_DATA (age 0 ms, class L4)
+19:10:12  NO_DATA (age 0 ms, class L4)
+19:10:15  true  [GOOD, age 3042 ms, ts 545239, class L4]
+19:10:17  true  [GOOD, age 3112 ms, ts 547243, class L4]
+19:10:19  true  [GOOD, age 3180 ms, ts 549243, class L4]
+19:10:21  false  [GOOD, age 3233 ms, ts 551247, class L4]
+19:10:23  false  [GOOD, age 3327 ms, ts 553232, class L4]
+19:10:25  false  [GOOD, age 3385 ms, ts 555241, class L4]
+19:10:27  false  [GOOD, age 3448 ms, ts 557234, class L4]
+19:10:29  false  [GOOD, age 1515 ms, ts 561231, class L4]
+19:10:31  false  [GOOD, age 1567 ms, ts 563238, class L4]
+19:10:33  false  [GOOD, age 1639 ms, ts 565242, class L4]
+19:10:35  false  [GOOD, age 1698 ms, ts 567242, class L4]
+19:10:37  false  [GOOD, age 1764 ms, ts 569243, class L4]
+19:10:39  false  [GOOD, age 1823 ms, ts 571241, class L4]
+19:10:41  false  [GOOD, age 1894 ms, ts 573244, class L4]
+19:10:43  false  [GOOD, age 1972 ms, ts 575242, class L4]
+19:10:46  false  [GOOD, age 2048 ms, ts 577231, class L4]
+19:10:48  false  [GOOD, age 2107 ms, ts 579242, class L4]
+19:10:50  false  [GOOD, age 2193 ms, ts 581232, class L4]
+19:10:52  false  [GOOD, age 2237 ms, ts 583245, class L4]
+19:10:54  false  [GOOD, age 2301 ms, ts 585241, class L4]
+19:10:56  true  [GOOD, age 2359 ms, ts 587250, class L4]
+19:10:58  true  [GOOD, age 2422 ms, ts 589249, class L4]
+19:11:00  true  [GOOD, age 2504 ms, ts 591250, class L4]
+19:11:02  true  [GOOD, age 2569 ms, ts 593250, class L4]
+19:11:04  true  [GOOD, age 2649 ms, ts 595234, class L4]
+19:11:06  true  [GOOD, age 2727 ms, ts 597238, class L4]
+19:11:08  true  [GOOD, age 2957 ms, ts 599239, class L4]
+19:11:11  true  [GOOD, age 3017 ms, ts 601246, class L4]
+19:11:13  true  [GOOD, age 3090 ms, ts 603233, class L4]
+19:11:15  true  [GOOD, age 3134 ms, ts 605246, class L4]
+19:11:17  false  [GOOD, age 3206 ms, ts 607246, class L4]
+19:11:19  false  [GOOD, age 3284 ms, ts 609234, class L4]
+19:11:21  false  [GOOD, age 3328 ms, ts 611246, class L4]
+19:11:23  false  [GOOD, age 3408 ms, ts 613235, class L4]
+19:11:25  false  [GOOD, age 3464 ms, ts 615235, class L4]
+19:11:27  false  [GOOD, age 3528 ms, ts 617235, class L4]
+19:11:29  false  [GOOD, age 1590 ms, ts 621232, class L4]
+19:11:31  false  [GOOD, age 1644 ms, ts 623242, class L4]
+19:11:33  false  [GOOD, age 1723 ms, ts 625241, class L4]
+19:11:35  false  [GOOD, age 1786 ms, ts 627236, class L4]
+19:11:37  false  [GOOD, age 1841 ms, ts 629236, class L4]
+19:11:39  false  [GOOD, age 1895 ms, ts 631237, class L4]
+19:11:41  false  [GOOD, age 1960 ms, ts 633234, class L4]
+19:11:43  false  [GOOD, age 2014 ms, ts 635234, class L4]
+19:11:46  false  [GOOD, age 2073 ms, ts 637232, class L4]
+19:11:48  NO_DATA (age 0 ms, class L4)
+19:11:50  false  [GOOD, age 1170 ms, ts 57003, class L4]
+19:11:52  NO_DATA (age 0 ms, class L4)
+19:11:54  NO_DATA (age 0 ms, class L4)
+19:11:56  NO_DATA (age 0 ms, class L4)
+19:11:58  NO_DATA (age 0 ms, class L4)
+19:12:00  NO_DATA (age 0 ms, class L4)
+19:12:02  NO_DATA (age 0 ms, class L4)
+19:12:04  NO_DATA (age 0 ms, class L4)
+19:12:06  NO_DATA (age 0 ms, class L4)
+19:12:08  NO_DATA (age 0 ms, class L4)
+19:12:10  NO_DATA (age 0 ms, class L4)
+19:12:12  NO_DATA (age 0 ms, class L4)
+19:12:14  NO_DATA (age 0 ms, class L4)
+19:12:17  NO_DATA (age 0 ms, class L4)
+19:12:19  NO_DATA (age 0 ms, class L4)
+19:12:21  NO_DATA (age 0 ms, class L4)
+19:12:23  NO_DATA (age 0 ms, class L4)
+19:12:25  NO_DATA (age 0 ms, class L4)
+19:12:27  NO_DATA (age 0 ms, class L4)
+19:12:29  NO_DATA (age 0 ms, class L4)
+19:12:31  NO_DATA (age 0 ms, class L4)
+19:12:33  NO_DATA (age 0 ms, class L4)
+19:12:35  NO_DATA (age 0 ms, class L4)
+19:12:37  NO_DATA (age 0 ms, class L4)
+19:12:39  NO_DATA (age 0 ms, class L4)
+19:12:41  NO_DATA (age 0 ms, class L4)
+19:12:43  UNAVAILABLE (age 0 ms, class L4)
+19:12:45  NO_DATA (age 0 ms, class L4)
+19:12:48  false  [GOOD, age 2056 ms, ts 113903, class L4]
+19:12:50  NO_DATA (age 0 ms, class L4)
+19:12:52  NO_DATA (age 0 ms, class L4)
+19:12:54  NO_DATA (age 0 ms, class L4)
+19:12:56  NO_DATA (age 0 ms, class L4)
+19:12:58  NO_DATA (age 0 ms, class L4)
+19:13:00  NO_DATA (age 0 ms, class L4)
+19:13:02  NO_DATA (age 0 ms, class L4)
+19:13:04  NO_DATA (age 0 ms, class L4)
+19:13:06  NO_DATA (age 0 ms, class L4)
+19:13:08  NO_DATA (age 0 ms, class L4)
+19:13:10  NO_DATA (age 0 ms, class L4)
+19:13:12  NO_DATA (age 0 ms, class L4)
+19:13:14  NO_DATA (age 0 ms, class L4)
+19:13:16  NO_DATA (age 0 ms, class L4)
+19:13:18  NO_DATA (age 0 ms, class L4)
+19:13:21  NO_DATA (age 0 ms, class L4)
+19:13:23  NO_DATA (age 0 ms, class L4)
+19:13:25  NO_DATA (age 0 ms, class L4)
+19:13:27  NO_DATA (age 0 ms, class L4)
+19:13:29  NO_DATA (age 0 ms, class L4)
+19:13:31  NO_DATA (age 0 ms, class L4)
+19:13:33  NO_DATA (age 0 ms, class L4)
+19:13:35  NO_DATA (age 0 ms, class L4)
+19:13:37  NO_DATA (age 0 ms, class L4)
+19:13:39  NO_DATA (age 0 ms, class L4)
+19:13:41  NO_DATA (age 0 ms, class L4)
+19:13:43  false  [GOOD, age 740 ms, ts 699506, class L4]
+19:13:45  NO_DATA (age 0 ms, class L4)
+19:13:47  NO_DATA (age 0 ms, class L4)
+19:13:49  NO_DATA (age 0 ms, class L4)
+19:13:52  NO_DATA (age 0 ms, class L4)
+19:13:54  NO_DATA (age 0 ms, class L4)
+19:13:56  NO_DATA (age 0 ms, class L4)
+19:13:58  NO_DATA (age 0 ms, class L4)
+19:14:00  NO_DATA (age 0 ms, class L4)
+19:14:02  NO_DATA (age 0 ms, class L4)
+19:14:04  NO_DATA (age 0 ms, class L4)
+19:14:06  NO_DATA (age 0 ms, class L4)
+19:14:08  NO_DATA (age 0 ms, class L4)
+19:14:10  NO_DATA (age 0 ms, class L4)
+19:14:12  NO_DATA (age 0 ms, class L4)
+19:14:14  NO_DATA (age 0 ms, class L4)
+19:14:16  NO_DATA (age 0 ms, class L4)
+19:14:19  NO_DATA (age 0 ms, class L4)
+19:14:21  NO_DATA (age 0 ms, class L4)
+19:14:23  NO_DATA (age 0 ms, class L4)
+19:14:25  NO_DATA (age 0 ms, class L4)
+19:14:27  NO_DATA (age 0 ms, class L4)
+19:14:29  NO_DATA (age 0 ms, class L4)
+19:14:31  NO_DATA (age 0 ms, class L4)
+19:14:33  NO_DATA (age 0 ms, class L4)
+19:14:35  NO_DATA (age 0 ms, class L4)
+19:14:37  NO_DATA (age 0 ms, class L4)
+19:14:40  TIMEOUT
+19:14:43  TIMEOUT
+19:14:46  TIMEOUT
+19:14:49  TIMEOUT
+19:14:52  TIMEOUT
+19:14:55  TIMEOUT
+19:14:58  TIMEOUT
+19:15:01  TIMEOUT
+19:15:04  TIMEOUT
+19:15:08  TIMEOUT
+19:15:11  TIMEOUT
+19:15:14  TIMEOUT
+19:15:17  TIMEOUT
+19:15:20  TIMEOUT
+19:15:23  TIMEOUT
+19:15:26  TIMEOUT
+19:15:29  TIMEOUT
+19:15:32  TIMEOUT
+19:15:35  TIMEOUT
+19:15:38  TIMEOUT
+19:15:41  TIMEOUT
+19:15:44  TIMEOUT
+19:15:47  TIMEOUT
+19:15:50  TIMEOUT
+19:15:53  TIMEOUT
+19:15:56  TIMEOUT
+19:15:59  TIMEOUT
+19:16:02  TIMEOUT
+19:16:05  TIMEOUT
+19:16:08  TIMEOUT
+19:16:11  TIMEOUT
+19:16:14  TIMEOUT
+19:16:17  TIMEOUT
+19:16:20  TIMEOUT
+19:16:23  TIMEOUT
+19:16:26  TIMEOUT
+19:16:29  TIMEOUT
+19:16:32  TIMEOUT
+19:16:35  TIMEOUT
+19:16:38  TIMEOUT
+19:16:41  TIMEOUT
+19:16:44  TIMEOUT
+19:16:47  TIMEOUT
+19:16:50  TIMEOUT
+19:16:53  TIMEOUT
+19:16:56  TIMEOUT
+19:16:59  TIMEOUT
+19:17:02  TIMEOUT
+19:17:05  TIMEOUT
+19:17:08  TIMEOUT
+19:17:11  TIMEOUT
+19:17:14  TIMEOUT
+19:17:17  TIMEOUT
+19:17:20  TIMEOUT
+19:17:23  TIMEOUT
+19:17:26  TIMEOUT
+19:17:29  TIMEOUT
+19:17:32  TIMEOUT
+19:17:35  TIMEOUT
+19:17:38  TIMEOUT
+19:17:41  TIMEOUT
+19:17:44  TIMEOUT
+19:17:47  TIMEOUT
+19:17:50  TIMEOUT
+19:17:53  TIMEOUT
+19:17:56  TIMEOUT
+19:18:00  TIMEOUT
+19:18:03  TIMEOUT
+19:18:06  TIMEOUT
+19:18:09  TIMEOUT
+19:18:12  TIMEOUT
+19:18:15  TIMEOUT
+19:18:18  TIMEOUT
+19:18:21  TIMEOUT
+19:18:24  TIMEOUT
+19:18:27  TIMEOUT
+19:18:30  TIMEOUT
+19:18:33  TIMEOUT
+19:18:36  TIMEOUT
+19:18:39  TIMEOUT
+19:18:42  TIMEOUT
+19:18:45  TIMEOUT
+19:18:48  TIMEOUT
+19:18:51  TIMEOUT
+19:18:54  TIMEOUT

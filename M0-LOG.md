@@ -4328,3 +4328,45 @@ Bench at the end: all three on Potluck `6090b5d` + passive-sensor `3dc9aab`, `ps
 (counter 15 repeated the synthetic LED check on that build); a second quiet run recording,
 `captures/m82-night2-*`, for passive-sensor's false-alarm count on the confirmed trigger.
 
+## Session 33 -- 2026-10-09 (evening, owner back), D13's reboot test, and the extender's channel at boot
+
+**The second quiet night run** (04:20-07:21, 3.01 h, passive-sensor `3dc9aab`, `captures/m82-night2-*`): 0 of
+5,385 verdicts said presence or motion on the empty desk (the first run had 21 of 3,500), so the confirmed
+variance trigger holds. Radio links 0 deaths, 0 reboots; heartbeat delivery 98.66-99.78 %, lower than the
+first night, toward morning. The reboot test that followed was stopped after two resets when the owner shut
+the PC down, and rerun this evening.
+
+**D13's reboot test** (passive-sensor `a4c2a8e`: a link window with too few frames publishes no mean): reset
+B three times, C three times, A once, ~1 min apart, rf_fusion's output watched through A. Three runs:
+
+1. *Split cell, invalid* (`captures/m82-reboot-split/`). After the cold boot B had **stopped transmitting**:
+   every send `ESP_ERR_ESPNOW_NO_MEM` for ~40 min (6,131 refused, 1,133 failed, 354 completed since boot) --
+   session 28's symptom, on the build that fixed session 28's cause (dynamic TX buffers, Wi-Fi/lwIP not in
+   PSRAM). A and C sat together on channel 9, sweeping ~90 times for an extender that sent nothing; B sat on
+   11 behind its router. B's resets ended it. **Not reproduced since** (13 resets); open.
+2. *Whole cell on 11* (`m82-reboot-whole/`). C's resets lit nothing; each of B's lit A and C for ~10
+   periods. The cause was Potluck's: a rebooting extender declared its saved channel (1) as the channel
+   authority while its station's scan carried the radio across channels, so A and C heard "go to 1" on
+   channel 9 or 11, went, lost it, swept back, and were sent again until the station associated (35
+   `channel_changed` events). passive-sensor confirmed it in A's tee: A<-C, a link B is not on, dropped
+   8 dB in full windows for 10-14 s at each of B's resets and never at C's. **Fixed (`4d2ea83`):** a
+   station that does not know its channel declares 0 -- still the authority, so the others sweep for it
+   if it vanishes, but nobody is sent anywhere; the extender declares a channel only while associated and
+   already on the radio's channel. The test samples the followers every 200 ms (the bounce passes through
+   the right channel every ~3 s, so one check at the end passed with the bug in; with the old HELLO it
+   fails 56 of 66 checks).
+3. *Fixed build* (`m82-reboot-fixed/`). No bounce: the only channel events were six "sweep found nothing,
+   back home". But B's station picked the mesh's channel-1 access point this time, the cell moved 11 -> 1,
+   and rf_fusion **resumed from a checkpoint learned on 11** (the boards are flashed one at a time, so a
+   holder always kept it). RSSI is per channel -- A<-C -26 dBm on 11, -33 on 1 -- so every link looked
+   shifted and presence read true from the first verdict to the end. **Potluck's part (`02b7bfe`):**
+   `RxSample::channel`, and the tee prints `ch`, so an actor can tag what it learns with the channel and
+   relearn when it changes; passive-sensor's part is to do so, including in its checkpoint.
+
+**A harness bug of mine, recorded:** the segmented capture's `wait` also waited for the potctl watch running
+beside it, which never ends, and the first evening run sat for 38 minutes after one reset. It now waits for
+its own three captures only, and the watch has a timeout.
+
+Bench at the end: all three on Potluck `f31c56c` (with `4d2ea83`, without `02b7bfe`) + passive-sensor
+`a4c2a8e`, `ps-room` at counter 17 (next 18+), cell whole on channel 1, B associated.
+

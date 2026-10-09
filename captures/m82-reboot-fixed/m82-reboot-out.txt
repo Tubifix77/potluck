@@ -1,0 +1,254 @@
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 214 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 214, death window 100 ms x 6 = 600 ms
+19:25:09  true  [GOOD, age 2732 ms, ts 177321, class L4]
+19:25:11  true  [GOOD, age 2798 ms, ts 179322, class L4]
+19:25:13  true  [GOOD, age 2771 ms, ts 181409, class L4]
+19:25:15  true  [GOOD, age 921 ms, ts 185319, class L4]
+19:25:17  NO_DATA (age 0 ms, class L4)
+19:25:19  NO_DATA (age 0 ms, class L4)
+19:25:21  true  [GOOD, age 2124 ms, ts 190307, class L4]
+19:25:23  true  [GOOD, age 2196 ms, ts 192307, class L4]
+19:25:25  true  [GOOD, age 2262 ms, ts 194305, class L4]
+19:25:27  true  [GOOD, age 2321 ms, ts 196307, class L4]
+19:25:29  true  [GOOD, age 2391 ms, ts 198307, class L4]
+19:25:31  true  [GOOD, age 2469 ms, ts 200305, class L4]
+19:25:33  true  [GOOD, age 2527 ms, ts 202308, class L4]
+19:25:36  true  [GOOD, age 2604 ms, ts 204307, class L4]
+19:25:38  true  [GOOD, age 2666 ms, ts 206305, class L4]
+19:25:40  true  [GOOD, age 2745 ms, ts 208290, class L4]
+19:25:42  true  [GOOD, age 2820 ms, ts 210297, class L4]
+19:25:44  true  [GOOD, age 2873 ms, ts 212299, class L4]
+19:25:46  true  [GOOD, age 2933 ms, ts 214300, class L4]
+19:25:48  true  [GOOD, age 3016 ms, ts 216300, class L4]
+19:25:50  true  [GOOD, age 1078 ms, ts 220300, class L4]
+19:25:52  true  [GOOD, age 1151 ms, ts 222299, class L4]
+19:25:54  true  [GOOD, age 1209 ms, ts 224305, class L4]
+19:25:56  true  [GOOD, age 1274 ms, ts 226307, class L4]
+19:25:58  true  [GOOD, age 1334 ms, ts 228307, class L4]
+19:26:00  true  [GOOD, age 1407 ms, ts 230305, class L4]
+19:26:02  true  [GOOD, age 1488 ms, ts 232291, class L4]
+19:26:04  true  [GOOD, age 1532 ms, ts 234308, class L4]
+19:26:07  true  [GOOD, age 1506 ms, ts 236305, class L4]
+19:26:09  true  [GOOD, age 1667 ms, ts 238314, class L4]
+19:26:11  true  [GOOD, age 1768 ms, ts 240296, class L4]
+19:26:13  true  [GOOD, age 1840 ms, ts 242306, class L4]
+19:26:15  true  [GOOD, age 1898 ms, ts 244306, class L4]
+19:26:17  true  [GOOD, age 1953 ms, ts 246302, class L4]
+19:26:19  true  [GOOD, age 2060 ms, ts 248308, class L4]
+19:26:21  true  [GOOD, age 2115 ms, ts 250309, class L4]
+19:26:23  true  [GOOD, age 2188 ms, ts 252291, class L4]
+19:26:25  true  [GOOD, age 2230 ms, ts 254308, class L4]
+19:26:27  true  [GOOD, age 2291 ms, ts 256308, class L4]
+19:26:29  true  [GOOD, age 2361 ms, ts 258292, class L4]
+19:26:31  true  [GOOD, age 2410 ms, ts 260308, class L4]
+19:26:33  true  [GOOD, age 2480 ms, ts 262299, class L4]
+19:26:35  true  [GOOD, age 2534 ms, ts 264308, class L4]
+19:26:38  true  [GOOD, age 2594 ms, ts 266308, class L4]
+19:26:40  true  [GOOD, age 2659 ms, ts 268308, class L4]
+19:26:42  true  [GOOD, age 2735 ms, ts 270308, class L4]
+19:26:44  true  [GOOD, age 2810 ms, ts 272291, class L4]
+19:26:46  true  [GOOD, age 2848 ms, ts 274309, class L4]
+19:26:48  true  [GOOD, age 2915 ms, ts 276308, class L4]
+19:26:50  true  [GOOD, age 2970 ms, ts 278308, class L4]
+19:26:52  true  [GOOD, age 1080 ms, ts 282290, class L4]
+19:26:54  true  [GOOD, age 1151 ms, ts 284290, class L4]
+19:26:56  true  [GOOD, age 1211 ms, ts 286290, class L4]
+19:26:58  true  [GOOD, age 1266 ms, ts 288308, class L4]
+19:27:00  true  [GOOD, age 1332 ms, ts 290308, class L4]
+19:27:02  true  [GOOD, age 1385 ms, ts 292308, class L4]
+19:27:04  true  [GOOD, age 1497 ms, ts 294308, class L4]
+19:27:06  true  [GOOD, age 1538 ms, ts 296323, class L4]
+19:27:09  true  [GOOD, age 1636 ms, ts 298306, class L4]
+19:27:11  true  [GOOD, age 1695 ms, ts 300291, class L4]
+19:27:13  true  [GOOD, age 1721 ms, ts 302331, class L4]
+19:27:15  true  [GOOD, age 1833 ms, ts 304292, class L4]
+19:27:17  true  [GOOD, age 1891 ms, ts 306290, class L4]
+19:27:19  true  [GOOD, age 1924 ms, ts 308307, class L4]
+19:27:21  true  [GOOD, age 1995 ms, ts 310308, class L4]
+19:27:23  true  [GOOD, age 2051 ms, ts 312308, class L4]
+19:27:25  true  [GOOD, age 2111 ms, ts 314308, class L4]
+19:27:27  true  [GOOD, age 2173 ms, ts 316308, class L4]
+19:27:29  true  [GOOD, age 2224 ms, ts 318308, class L4]
+19:27:31  true  [GOOD, age 2282 ms, ts 320308, class L4]
+19:27:33  true  [GOOD, age 2355 ms, ts 322308, class L4]
+19:27:35  true  [GOOD, age 2419 ms, ts 324309, class L4]
+19:27:37  true  [GOOD, age 2495 ms, ts 326305, class L4]
+19:27:39  true  [GOOD, age 2561 ms, ts 328305, class L4]
+19:27:42  true  [GOOD, age 2646 ms, ts 330290, class L4]
+19:27:44  true  [GOOD, age 2694 ms, ts 332308, class L4]
+19:27:46  true  [GOOD, age 2780 ms, ts 334291, class L4]
+19:27:48  true  [GOOD, age 2863 ms, ts 336294, class L4]
+19:27:50  true  [GOOD, age 2932 ms, ts 338290, class L4]
+19:27:52  true  [GOOD, age 2985 ms, ts 340290, class L4]
+19:27:54  true  [GOOD, age 3042 ms, ts 342291, class L4]
+19:27:56  true  [GOOD, age 1107 ms, ts 346292, class L4]
+19:27:58  true  [GOOD, age 1156 ms, ts 348308, class L4]
+19:28:00  NO_DATA (age 0 ms, class L4)
+19:28:02  true  [GOOD, age 596 ms, ts 57095, class L4]
+19:28:04  NO_DATA (age 0 ms, class L4)
+19:28:06  true  [GOOD, age 565 ms, ts 4447, class L4]
+19:28:08  true  [GOOD, age 647 ms, ts 6447, class L4]
+19:28:11  true  [GOOD, age 721 ms, ts 8447, class L4]
+19:28:13  true  [GOOD, age 801 ms, ts 10446, class L4]
+19:28:15  true  [GOOD, age 870 ms, ts 12447, class L4]
+19:28:17  true  [GOOD, age 949 ms, ts 14447, class L4]
+19:28:19  true  [GOOD, age 1017 ms, ts 16448, class L4]
+19:28:21  true  [GOOD, age 1073 ms, ts 18447, class L4]
+19:28:23  true  [GOOD, age 1160 ms, ts 20447, class L4]
+19:28:25  true  [GOOD, age 1213 ms, ts 22447, class L4]
+19:28:27  true  [GOOD, age 1293 ms, ts 24447, class L4]
+19:28:29  true  [GOOD, age 1358 ms, ts 26447, class L4]
+19:28:31  true  [GOOD, age 1421 ms, ts 28448, class L4]
+19:28:33  true  [GOOD, age 1514 ms, ts 30447, class L4]
+19:28:35  true  [GOOD, age 1569 ms, ts 32449, class L4]
+19:28:37  true  [GOOD, age 1645 ms, ts 34448, class L4]
+19:28:40  true  [GOOD, age 1711 ms, ts 36447, class L4]
+19:28:42  true  [GOOD, age 1775 ms, ts 38447, class L4]
+19:28:44  true  [GOOD, age 1867 ms, ts 40447, class L4]
+19:28:46  true  [GOOD, age 1924 ms, ts 42447, class L4]
+19:28:48  true  [GOOD, age 2026 ms, ts 44447, class L4]
+19:28:50  true  [GOOD, age 2086 ms, ts 46455, class L4]
+19:28:52  true  [GOOD, age 218 ms, ts 50447, class L4]
+19:28:54  true  [GOOD, age 295 ms, ts 52447, class L4]
+19:28:56  true  [GOOD, age 2372 ms, ts 52447, class L4]
+19:28:58  NO_DATA (age 0 ms, class L4)
+19:29:00  true  [GOOD, age 1782 ms, ts 113995, class L4]
+19:29:02  NO_DATA (age 0 ms, class L4)
+19:29:04  true  [GOOD, age 1913 ms, ts 4321, class L4]
+19:29:07  true  [GOOD, age 1995 ms, ts 6321, class L4]
+19:29:09  true  [GOOD, age 2050 ms, ts 8325, class L4]
+19:29:11  true  [GOOD, age 2105 ms, ts 10339, class L4]
+19:29:13  true  [GOOD, age 2194 ms, ts 12320, class L4]
+19:29:15  true  [GOOD, age 2243 ms, ts 14333, class L4]
+19:29:17  true  [GOOD, age 2320 ms, ts 16339, class L4]
+19:29:19  true  [GOOD, age 2437 ms, ts 18339, class L4]
+19:29:21  true  [GOOD, age 2514 ms, ts 20321, class L4]
+19:29:23  true  [GOOD, age 2575 ms, ts 22320, class L4]
+19:29:25  true  [GOOD, age 2633 ms, ts 24320, class L4]
+19:29:27  true  [GOOD, age 2722 ms, ts 26320, class L4]
+19:29:29  true  [GOOD, age 2775 ms, ts 28320, class L4]
+19:29:31  true  [GOOD, age 2835 ms, ts 30320, class L4]
+19:29:33  true  [GOOD, age 2893 ms, ts 32320, class L4]
+19:29:36  true  [GOOD, age 2956 ms, ts 34320, class L4]
+19:29:38  true  [GOOD, age 3012 ms, ts 36320, class L4]
+19:29:40  true  [GOOD, age 3078 ms, ts 38320, class L4]
+19:29:42  true  [GOOD, age 3138 ms, ts 40320, class L4]
+19:29:44  true  [GOOD, age 3212 ms, ts 42320, class L4]
+19:29:46  true  [GOOD, age 3273 ms, ts 44320, class L4]
+19:29:48  true  [GOOD, age 3357 ms, ts 46320, class L4]
+19:29:50  true  [GOOD, age 1436 ms, ts 50320, class L4]
+19:29:52  true  [GOOD, age 1491 ms, ts 52322, class L4]
+19:29:54  NO_DATA (age 0 ms, class L4)
+19:29:56  true  [GOOD, age 821 ms, ts 170795, class L4]
+19:29:58  NO_DATA (age 0 ms, class L4)
+19:30:00  true  [GOOD, age 700 ms, ts 4432, class L4]
+19:30:02  true  [GOOD, age 768 ms, ts 6432, class L4]
+19:30:04  true  [GOOD, age 841 ms, ts 8432, class L4]
+19:30:07  true  [GOOD, age 914 ms, ts 10432, class L4]
+19:30:09  true  [GOOD, age 977 ms, ts 12432, class L4]
+19:30:11  true  [GOOD, age 1042 ms, ts 14432, class L4]
+19:30:13  true  [GOOD, age 1114 ms, ts 16432, class L4]
+19:30:15  true  [GOOD, age 1185 ms, ts 18432, class L4]
+19:30:17  true  [GOOD, age 1239 ms, ts 20432, class L4]
+19:30:19  true  [GOOD, age 1310 ms, ts 22432, class L4]
+19:30:21  true  [GOOD, age 1379 ms, ts 24432, class L4]
+19:30:23  true  [GOOD, age 1465 ms, ts 26432, class L4]
+19:30:25  true  [GOOD, age 1520 ms, ts 28438, class L4]
+19:30:27  true  [GOOD, age 1590 ms, ts 30432, class L4]
+19:30:29  true  [GOOD, age 1663 ms, ts 32432, class L4]
+19:30:31  true  [GOOD, age 1735 ms, ts 34432, class L4]
+19:30:33  true  [GOOD, age 1807 ms, ts 36433, class L4]
+19:30:35  true  [GOOD, age 1865 ms, ts 38432, class L4]
+19:30:38  true  [GOOD, age 1935 ms, ts 40433, class L4]
+19:30:40  true  [GOOD, age 2014 ms, ts 42432, class L4]
+19:30:42  true  [GOOD, age 2074 ms, ts 44432, class L4]
+19:30:44  true  [GOOD, age 2132 ms, ts 46434, class L4]
+19:30:46  true  [GOOD, age 2214 ms, ts 48432, class L4]
+19:30:48  true  [GOOD, age 2279 ms, ts 50432, class L4]
+19:30:51  TIMEOUT
+19:30:54  TIMEOUT
+19:30:57  TIMEOUT
+19:31:00  TIMEOUT
+19:31:03  TIMEOUT
+19:31:06  TIMEOUT
+19:31:09  TIMEOUT
+19:31:12  TIMEOUT
+19:31:15  TIMEOUT
+19:31:18  TIMEOUT
+19:31:21  TIMEOUT
+19:31:24  TIMEOUT
+19:31:27  TIMEOUT
+19:31:30  TIMEOUT
+19:31:33  TIMEOUT
+19:31:36  TIMEOUT
+19:31:39  TIMEOUT
+19:31:42  TIMEOUT
+19:31:45  TIMEOUT
+19:31:48  TIMEOUT
+19:31:51  TIMEOUT
+19:31:54  TIMEOUT
+19:31:57  TIMEOUT
+19:32:00  TIMEOUT
+19:32:03  TIMEOUT
+19:32:06  TIMEOUT
+19:32:09  TIMEOUT
+19:32:12  TIMEOUT
+19:32:15  TIMEOUT
+19:32:18  TIMEOUT
+19:32:21  TIMEOUT
+19:32:24  TIMEOUT
+19:32:27  TIMEOUT
+19:32:30  TIMEOUT
+19:32:33  TIMEOUT
+19:32:36  TIMEOUT
+19:32:39  TIMEOUT
+19:32:42  TIMEOUT
+19:32:45  TIMEOUT
+19:32:48  TIMEOUT
+19:32:51  TIMEOUT
+19:32:54  TIMEOUT
+19:32:57  TIMEOUT
+19:33:00  TIMEOUT
+19:33:03  TIMEOUT
+19:33:06  TIMEOUT
+19:33:09  TIMEOUT
+19:33:12  TIMEOUT
+19:33:15  TIMEOUT
+19:33:18  TIMEOUT
+19:33:21  TIMEOUT
+19:33:24  TIMEOUT
+19:33:27  TIMEOUT
+19:33:30  TIMEOUT
+19:33:33  TIMEOUT
+19:33:36  TIMEOUT
+19:33:39  TIMEOUT
+19:33:42  TIMEOUT
+19:33:45  TIMEOUT
+19:33:48  TIMEOUT
+19:33:51  TIMEOUT
+19:33:54  TIMEOUT
+19:33:57  TIMEOUT
+19:34:00  TIMEOUT
+19:34:03  TIMEOUT
+19:34:06  TIMEOUT
+19:34:09  TIMEOUT
+19:34:12  TIMEOUT
+19:34:15  TIMEOUT
+19:34:18  TIMEOUT
+19:34:21  TIMEOUT
+19:34:24  TIMEOUT
+19:34:27  TIMEOUT
+19:34:30  TIMEOUT
+19:34:33  TIMEOUT
+19:34:36  TIMEOUT
+19:34:40  TIMEOUT
+19:34:43  TIMEOUT
+19:34:46  TIMEOUT
+19:34:49  TIMEOUT
+19:34:52  TIMEOUT
+19:34:55  TIMEOUT
+19:34:58  TIMEOUT
+19:35:01  TIMEOUT
+19:35:04  TIMEOUT
+19:35:07  TIMEOUT

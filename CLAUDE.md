@@ -41,6 +41,14 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-09 (evening): D13 reboot test, two Potluck fixes, one open stall (M0-LOG session 33).
+>
+> Fixed: a hunting extender no longer drags the cell to its boot channel (`4d2ea83`); `RxSample::channel`
+> (`02b7bfe`) so an app can relearn after a channel change. **Open: B's ESP-NOW transmit stall (NO_MEM for
+> ~40 min) after a cold boot, on the dynamic-TX build** -- not reproduced by 13 resets. Bench: Potluck
+> `f31c56c` + passive-sensor `a4c2a8e`, `ps-room` at counter 17 (next 18+), cell on channel 1. Waiting on
+> passive-sensor for a commit using `RxSample::channel`, then the 7-reset test again.
+>
 > ## HANDOVER, 2026-10-09 (early morning, owner asleep): M8.2 PS-1..PS-5 built and on the bench (M0-LOG session 32).
 >
 > All of CR2's Potluck items are built (PS-4 checkpoint `cfae645`/`4310b87`, PS-5 LED `ecd7359`, tee print gate
