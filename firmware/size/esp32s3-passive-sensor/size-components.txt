@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build-passive-sensor
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-passive-sensor && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-passive-sensor/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-passive-sensor/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xcc480 bytes. Smallest app partition is 0x100000 bytes. 0x33b80 bytes (20%) free.
+potluck_m0.bin binary size 0xcc4b0 bytes. Smallest app partition is 0x100000 bytes. 0x33b50 bytes (20%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -55,7 +55,7 @@ Executing "ninja size-components"...
 
 │ libfreertos.a                   │      20643 │  340 │   340 │        0 │  8828 │   764 │  3108 │  4956 │       9842 │   9842 │       1633 │      0 │    1633 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_link.a                   │      18406 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      18312 │  18312 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_link.a                   │      18459 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      18365 │  18365 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libmonocypher.a                 │      17110 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      13266 │  13266 │       3844 │      0 │    3844 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
