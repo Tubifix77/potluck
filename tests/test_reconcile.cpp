@@ -601,3 +601,31 @@ TEST(reconcile, a_node_that_comes_back_and_takes_the_actor_over_resumes_from_the
     CHECK_EQ(g_ck_loaded[1], g_ck_last_saved[0]);
     g_ck_save_once = false;
 }
+
+TEST(reconcile, a_node_still_hunting_for_its_channel_does_not_settle_until_it_knows_it_or_the_cap) {
+    // Found on the bench (M0-LOG session 33): the extender settled 2.6 s after booting, its station's
+    // association then hid a peer from it for 600 ms, and it started the actor that peer was running.
+    RCell c;
+    c.build(3, {});
+    c.run(5000);
+    c.kill(0);
+    c.run(2000);
+    c.revive(0);
+    c.nodes[0].node->set_channel_known(false);  // booted hunting
+    c.run(3000);
+    CHECK(!c.nodes[0].rec->settled());  // heard everyone long ago, but cannot trust its view yet
+    c.nodes[0].node->set_channel_known(true);  // associated
+    c.run(300);
+    CHECK(c.nodes[0].rec->settled());
+
+    // And one whose station never associates still settles at the cap.
+    c.kill(1);
+    c.run(2000);
+    c.revive(1);
+    c.nodes[1].node->set_channel_known(false);
+    c.run(5000);
+    CHECK(!c.nodes[1].rec->settled());
+    c.run(1500);
+    CHECK(c.nodes[1].rec->settled());
+}
+

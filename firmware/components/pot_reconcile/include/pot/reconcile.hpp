@@ -47,7 +47,8 @@
 // has heard a claim set from every node the image lists as eligible for some actor (each peer sends
 // one the moment it sees a new incarnation) and at least settle_min_ms has passed -- or until
 // settle_max_ms, for eligible nodes that never answer. Its own claim set carries the SETTLED flag, and
-// a holder hands over only to a settled node.
+// a holder hands over only to a settled node. A node whose channel is not known yet (a station hunting
+// for its router, Node::channel_known) does not settle before settle_max_ms either.
 //
 // Portable, like the node: no ESP-IDF, no heap, single-threaded under the caller's node lock.
 

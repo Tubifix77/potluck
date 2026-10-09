@@ -362,7 +362,11 @@ void Reconciler::update_settled(uint32_t now) {
     // node that never answers -- dead, or out of range -- is waited for until settle_max_ms. A node no
     // actor lists can hold no claim, and the host on the serial link never sends one: not waited for.
     const uint16_t self = node_.config().node_id;
-    bool all_heard = up >= cfg_.settle_min_ms;
+    // Nor while its own channel is unknown -- a station still hunting for its router. Its scans take the
+    // radio away for seconds, so its view of who is alive is not yet worth acting on: on the bench B
+    // settled 2.6 s after booting, its station's association hid C for 600 ms at 5.7 s, and B started
+    // the actor C was running (M0-LOG session 33). settle_max_ms still bounds the wait.
+    bool all_heard = up >= cfg_.settle_min_ms && node_.channel_known();
     for (size_t i = 0; all_heard && i < count_; ++i) {
         for (uint8_t k = 0; all_heard && k < slots_[i].cfg.count; ++k) {
             const uint16_t n = slots_[i].cfg.node[k];
