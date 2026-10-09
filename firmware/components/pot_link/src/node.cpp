@@ -1829,6 +1829,7 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
             s.rssi = rssi;
             s.relayed = rx_via_relay_;
             s.channel = channel_;
+            s.off_home = (sweeping_ && channel_ != sweep_home_) || (visiting_ && channel_ != search_home_);
             if (was_broadcast && f.hdr.opcode == kOpHeartbeat) {
                 s.kind = kRxKindBeacon;
                 BeaconPayload b{};

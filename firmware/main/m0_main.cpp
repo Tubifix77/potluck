@@ -171,13 +171,13 @@ void rssi_tee(void*, const RxSample& s) {
     char line[160];
     const int n = std::snprintf(line, sizeof(line),
                 "{\"t\":\"rssi\",\"us\":%u,\"peer\":%u,\"rssi\":%d,\"nf\":%d,\"sig\":%u,\"rate\":%u,"
-                "\"kind\":\"%s\",\"seq\":%u,\"rel\":%d,\"ch\":%u}\n",
+                "\"kind\":\"%s\",\"seq\":%u,\"rel\":%d,\"ch\":%u,\"away\":%d}\n",
                 static_cast<unsigned>(s.recv_us), static_cast<unsigned>(s.node_id), static_cast<int>(s.rssi),
                 g_rx_now != nullptr ? static_cast<int>(g_rx_now->noise_floor) : 0,
                 g_rx_now != nullptr ? static_cast<unsigned>(g_rx_now->sig_mode) : 0u,
                 g_rx_now != nullptr ? static_cast<unsigned>(g_rx_now->rate) : 0u,
                 kKind[s.kind < 4 ? s.kind : 0], static_cast<unsigned>(s.hb_seq), s.relayed ? 1 : 0,
-                static_cast<unsigned>(s.channel));
+                static_cast<unsigned>(s.channel), s.off_home ? 1 : 0);
     if (n <= 0 || static_cast<size_t>(n) >= sizeof(line) || g_tee_mb == nullptr ||
         xMessageBufferSend(g_tee_mb, line, static_cast<size_t>(n), 0) != static_cast<size_t>(n)) {
         g_tee_dropped.fetch_add(1);

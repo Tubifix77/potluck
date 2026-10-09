@@ -390,6 +390,7 @@ TEST(node, every_frame_accepted_from_a_peer_is_reported_with_its_rssi_and_kind) 
         CHECK_EQ(static_cast<int>(rs.rssi), -50);  // what the test cell's radio reports
         CHECK(!rs.relayed);
         CHECK_EQ(static_cast<int>(rs.channel), 1);  // the channel the frame was accepted on
+        CHECK(!rs.off_home);
         if (rs.kind == kRxKindBeacon) {
             if (beacons > 0 && static_cast<uint16_t>(rs.hb_seq - last_seq) != 1u) seq_rises = false;
             last_seq = rs.hb_seq;
@@ -772,6 +773,31 @@ TEST(node, a_node_sweeping_for_its_authority_declares_no_channel_on_the_channels
         CHECK_EQ(static_cast<int>(h.declared), 0);
     }
     CHECK(on_visits >= 10u);  // the sweep greets on every channel it visits
+}
+
+TEST(node, frames_heard_while_sweeping_for_the_authority_are_marked_as_heard_away_from_home) {
+    // Found on the bench (M0-LOG session 33): A and C swept for the rebooting extender in step, heard
+    // each other on every channel they visited, and passive-sensor's detector took each as a move.
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);
+    c.start_all();
+    c.advance_ms(2000);
+    c.nodes[1].samples.clear();
+    c.deaf = {{0, 1}, {0, 2}};  // the station goes silent: 1 and 2 sweep together
+    c.advance_ms(600 + 10 * 300 + 3000);
+    size_t away = 0, away_marked = 0, home_marked = 0;
+    for (const RxSample& rs : c.nodes[1].samples) {
+        if (rs.channel != 1) {
+            ++away;
+            if (rs.off_home) ++away_marked;
+        } else if (rs.off_home) {
+            ++home_marked;
+        }
+    }
+    CHECK(away > 0u);              // they did hear each other on the channels they visited
+    CHECK_EQ(away_marked, away);   // and every such frame says it was heard away from home
+    CHECK_EQ(home_marked, 0u);     // and none heard at home does
 }
 
 TEST(node, when_the_station_dies_the_others_sweep_once_and_come_home) {

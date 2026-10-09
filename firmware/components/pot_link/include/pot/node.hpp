@@ -49,6 +49,11 @@ struct RxSample {
     // the bench one link read -26 dBm on channel 11 and -33 dBm on channel 1, so a baseline learned on
     // one channel says nothing about another (M0-LOG session 33).
     uint8_t channel;
+    // True while this node is away from its cell's channel on an excursion that returns: a sweep or a
+    // search visit for the channel authority. Not a channel change -- the cell did not move. On the
+    // bench two sweepers heard each other on every channel they visited in step, and a detector that
+    // took the channel from the last frame relearned the room five times in one reboot of the extender.
+    bool off_home;
 };
 constexpr uint8_t kRxKindBeacon = 1;
 constexpr uint8_t kRxKindUnicast = 2;
