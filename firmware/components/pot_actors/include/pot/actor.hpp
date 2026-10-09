@@ -38,6 +38,17 @@ struct CheckpointStore {
     bool (*load)(void* ctx, uint8_t* out, size_t cap, size_t* len, uint32_t* age_ms) = nullptr;
 };
 
+// M8.2 (PS-5): what the board offers an actor beyond the node. Null on a host.
+struct BoardServices {
+    void* ctx = nullptr;
+    // Show an application state on the status LED (a colour, steady or blinking with this full
+    // period; 0 = steady). It shows only while every link is healthy -- blue (no peer), yellow and red
+    // (a failing or dead link) always win, so no application can hide a dead link -- and it lapses
+    // 5 s after the last call, so call it at least every few seconds while it should stay on; an actor
+    // that stops or moves away leaves nothing behind. `on` false clears it at once. Last caller wins.
+    void (*led_app)(void* ctx, bool on, uint8_t r, uint8_t g, uint8_t b, uint16_t blink_period_ms) = nullptr;
+};
+
 // What the runtime gives an actor.
 struct ActorEnv {
     Node* node = nullptr;
@@ -46,6 +57,8 @@ struct ActorEnv {
     uint32_t trial_window_ms = 0;
     // M8.2 (PS-4): portable actors only. Kept by the actor from create(); valid for its lifetime.
     const CheckpointStore* checkpoint = nullptr;
+    // M8.2 (PS-5): the board's services (the LED). Pinned and portable actors alike.
+    const BoardServices* board = nullptr;
 };
 
 class Actor {

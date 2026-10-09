@@ -496,3 +496,36 @@ TEST(actor_runtime, a_portable_actors_outputs_are_all_declared_and_move_together
         CHECK(e != nullptr && e->owner_node == 0x100);  // every output moved to the holder
     }
 }
+
+// ---- M8.2 (PS-5): the board's services reach portable actors through the reconciler ---------------
+
+namespace {
+const BoardServices* g_seen_board = nullptr;
+Actor* board_probe_create(void* mem, const ActorDecl& d, const ActorEnv& env) {
+    g_seen_board = env.board;
+    return probe_create(mem, d, env);
+}
+const ActorKind kBoardTable[] = {
+    {ActorType::Led, "probe", &probe_check, &board_probe_create, &probe_place},
+};
+}  // namespace
+
+TEST(actor_runtime, a_portable_actor_gets_the_boards_services) {
+    OneNode n;
+    const uint8_t cfg[3] = {5, 0, 0};
+    const DeployImage img = image({{kPortableNode, ActorType::Led, 3, cfg}});
+    PortableSpec specs[kMaxPortable];
+    size_t count = 0;
+    CHECK(collect_portable(img, kBoardTable, 1, specs, kMaxPortable, count, nullptr));
+    static const BoardServices board{};
+    g_seen_board = nullptr;
+    {
+        Reconciler rec(*n.node);
+        rec.set_board(&board);
+        CHECK(rec.load(specs, count));
+        g_now = 1000;
+        rec.start(g_now);
+        for (int k = 0; k < 2000 && g_seen_board == nullptr; ++k) rec.tick(++g_now);
+    }
+    CHECK(g_seen_board == &board);
+}

@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build-passive-sensor-tee
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-passive-sensor-tee && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-passive-sensor-tee/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-passive-sensor-tee/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xcc960 bytes. Smallest app partition is 0x100000 bytes. 0x336a0 bytes (20%) free.
+potluck_m0.bin binary size 0xcc9f0 bytes. Smallest app partition is 0x100000 bytes. 0x33610 bytes (20%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -71,7 +71,7 @@ Executing "ninja size-components"...
 
 │ libesp_driver_rmt.a             │       8706 │  411 │   411 │        0 │  1911 │    12 │    77 │  1822 │       5923 │   5923 │        461 │      0 │     461 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_passive_sensor.a         │       6534 │    0 │     0 │        0 │    58 │    58 │     0 │     0 │       5044 │   5044 │        250 │      0 │     250 │        0 │         1182 │  1182 │        0 │             0 │        0 │           0 │
+│ libpot_passive_sensor.a         │       6580 │    0 │     0 │        0 │    58 │    58 │     0 │     0 │       5090 │   5090 │        250 │      0 │     250 │        0 │         1182 │  1182 │        0 │             0 │        0 │           0 │
 
 │ libesp_hal_mspi.a               │       5584 │   88 │    88 │        0 │  4937 │     0 │    36 │  4901 │        559 │    559 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -83,7 +83,7 @@ Executing "ninja size-components"...
 
 │ libesp_ringbuf.a                │       4521 │  180 │   180 │        0 │  2122 │     0 │     0 │  2122 │       1682 │   1682 │        537 │      0 │     537 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_reconcile.a              │       4373 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       4349 │   4349 │         24 │      0 │      24 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_reconcile.a              │       4474 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       4450 │   4450 │         24 │      0 │      24 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libespnow.a                     │       4184 │    0 │     0 │        0 │    71 │    64 │     7 │     0 │       4113 │   4113 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

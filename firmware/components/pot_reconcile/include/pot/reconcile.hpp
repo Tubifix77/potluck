@@ -148,6 +148,8 @@ class Reconciler {
     };
     size_t actor_count() const { return count_; }
     ActorView view(size_t i) const;
+    // M8.2 (PS-5): the board's services, handed to every portable instance this node runs.
+    void set_board(const BoardServices* b) { board_ = b; }
     // M8.2: the instance running here for actor i, or nullptr -- for its stats line.
     Actor* instance(size_t i) { return i < count_ ? slots_[i].inst : nullptr; }
 
@@ -245,6 +247,7 @@ class Reconciler {
     bool settled_ = false;
     bool dirty_ = false;  // our claim set changed: send it to everyone now
     uint32_t now_ = 0;    // the last tick's time (M8.2: checkpoints are saved and loaded from inside it)
+    const BoardServices* board_ = nullptr;
     uint32_t next_refresh_ms_ = 0;
     size_t refresh_cursor_ = 0;
     Counters counters_{};

@@ -412,6 +412,7 @@ void Reconciler::activate(size_t i, uint32_t now) {
     ActorEnv env;
     env.node = &node_;
     env.checkpoint = &s.ck_store;  // M8.2 (PS-4)
+    env.board = board_;            // M8.2 (PS-5)
     s.inst = s.kind->create(s.mem, s.decl, env);
     if (s.inst != nullptr && !s.inst->start(now)) {
         s.inst->~Actor();

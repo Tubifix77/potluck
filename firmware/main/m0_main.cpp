@@ -421,6 +421,17 @@ constexpr uint32_t kRenderMs = 100;   // how often it is drawn, so a deployed bl
 // failing link look healthy.
 LedConfig g_healthy{0, 255, 0, 0, 1000};
 bool g_custom = false;
+// M8.2 (PS-5): an application's state, shown in place of the healthy colour only (see BoardServices).
+struct AppOverlay {
+    bool on;
+    uint8_t r, g, b;
+    uint16_t period_ms;
+    uint32_t until_ms;
+};
+AppOverlay g_app{};
+constexpr uint32_t kAppLapseMs = 5000;
+const char* g_last_shown = "blue";  // what render() drew last, for the stats line
+bool g_last_app = false;
 void set_healthy(const LedConfig& c) {
     g_healthy = c;
     g_custom = true;
@@ -566,9 +577,17 @@ uint8_t scaled(uint8_t v) {
 
 void render(Colour c, uint32_t now_ms) {
     switch (c) {
-        case Colour::Blue: show(0, 0, kBrightness); break;
+        case Colour::Blue: show(0, 0, kBrightness); g_last_shown = "blue"; g_last_app = false; break;
         case Colour::Green:
-            if (!g_custom) {
+            g_last_shown = "green";
+            g_last_app = g_app.on && static_cast<int32_t>(g_app.until_ms - now_ms) > 0;
+            if (g_last_app) {
+                if (g_app.period_ms != 0 && (now_ms % g_app.period_ms) >= g_app.period_ms / 2u) {
+                    show(0, 0, 0);
+                } else {
+                    show(scaled(g_app.r), scaled(g_app.g), scaled(g_app.b));
+                }
+            } else if (!g_custom) {
                 show(0, kBrightness, 0);
             } else if (g_healthy.blink && (now_ms % g_healthy.period_ms) >= g_healthy.period_ms / 2) {
                 show(0, 0, 0);
@@ -576,8 +595,8 @@ void render(Colour c, uint32_t now_ms) {
                 show(scaled(g_healthy.r), scaled(g_healthy.g), scaled(g_healthy.b));
             }
             break;
-        case Colour::Yellow: show(kBrightness, kBrightness, 0); break;
-        case Colour::Red: show(kBrightness, 0, 0); break;
+        case Colour::Yellow: show(kBrightness, kBrightness, 0); g_last_shown = "yellow"; g_last_app = false; break;
+        case Colour::Red: show(kBrightness, 0, 0); g_last_shown = "red"; g_last_app = false; break;
     }
 }
 
@@ -1273,6 +1292,9 @@ void stats_task(void*) {
         std::printf("{\"t\":\"clk\",\"node\":%u,\"up_ms\":%u}\n", static_cast<unsigned>(node_id),
                     static_cast<unsigned>(now_ms_()));
         extender::print_status();  // M6.1: the baseline's {"t":"hs"} line, on an extender build only
+        // M8.2 (PS-5): what the LED shows, since nobody may be looking at it.
+        std::printf("{\"t\":\"led\",\"node\":%u,\"shows\":\"%s\",\"app\":%d}\n", static_cast<unsigned>(node_id),
+                    status_led::g_last_shown, status_led::g_last_app ? 1 : 0);
 #if CONFIG_POT_RSSI_TEE
         std::printf("{\"t\":\"tee\",\"node\":%u,\"dropped\":%u}\n", static_cast<unsigned>(node_id),
                     static_cast<unsigned>(g_tee_dropped.load()));
@@ -1924,6 +1946,20 @@ namespace board {
 void set_led_healthy(const LedConfig& c) { status_led::set_healthy(c); }
 }  // namespace board
 
+namespace {
+// M8.2 (PS-5): the board services every actor gets. Called from actor ticks, on the link task, the
+// same task that renders the LED.
+void led_app(void*, bool on, uint8_t r, uint8_t g, uint8_t b, uint16_t period_ms) {
+    status_led::g_app.on = on;
+    status_led::g_app.r = r;
+    status_led::g_app.g = g;
+    status_led::g_app.b = b;
+    status_led::g_app.period_ms = period_ms;
+    status_led::g_app.until_ms = now_ms_() + status_led::kAppLapseMs;
+}
+const BoardServices g_board_services{nullptr, &led_app};
+}  // namespace
+
 }  // namespace pot
 
 #if CONFIG_POT_SELFTEST
@@ -2147,6 +2183,7 @@ extern "C" void app_main(void) {
 #if CONFIG_POT_RECONCILER
     if (deploy_rt::g_portable_n > 0) {
         g_rec = new (g_rec_storage) Reconciler(*g_node);
+        g_rec->set_board(&g_board_services);  // PS-5: portable actors get the LED too
         if (!g_rec->load(deploy_rt::g_portable, deploy_rt::g_portable_n)) {
             ESP_LOGE(kTag, "reconciler: could not declare the portable actors' resources");
         }
@@ -2160,6 +2197,7 @@ extern "C" void app_main(void) {
 #endif
     // M8.1: start this node's pinned actors, now that the node they publish through exists.
     g_actor_env.node = g_node;
+    g_actor_env.board = &g_board_services;  // PS-5
     {
         const char* failed = nullptr;
         g_actors.start(g_actor_env, now_ms_(), &failed);

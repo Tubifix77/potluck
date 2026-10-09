@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xca380 bytes. Smallest app partition is 0x100000 bytes. 0x35c80 bytes (21%) free.
+potluck_m0.bin binary size 0xca510 bytes. Smallest app partition is 0x100000 bytes. 0x35af0 bytes (21%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -37,15 +37,15 @@ Executing "ninja size-components"...
 
 │ libwpa_supplicant.a             │      67011 │    0 │     0 │        0 │     8 │     0 │     8 │     0 │      63802 │  63802 │       1838 │      0 │    1838 │        0 │         1363 │  1363 │        0 │             0 │        0 │           0 │
 
-│ libesp_stdio.a                  │      66464 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      66054 │      0 │   66054 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      66527 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      66117 │      0 │   66117 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libpp.a                         │      65300 │    0 │     0 │        0 │ 17348 │     0 │  2640 │ 14708 │      42764 │  42764 │       3954 │      0 │    3954 │        0 │         1234 │  1234 │        0 │             0 │        0 │           0 │
 
 │ liblwip.a                       │      64933 │    0 │     0 │        0 │    12 │     0 │    12 │     0 │      59555 │  59555 │       2896 │      0 │    2896 │        0 │         2470 │  2470 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      59903 │    0 │     0 │        0 │ 32495 │ 32357 │   138 │     0 │      13242 │  13242 │        264 │      0 │     264 │        0 │        13902 │ 13902 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      60123 │    0 │     0 │        0 │ 32516 │ 32374 │   142 │     0 │      13433 │  13433 │        272 │      0 │     272 │        0 │        13902 │ 13902 │        0 │             0 │        0 │           0 │
 
-│ libphy.a                        │      34411 │ 1152 │  1152 │        0 │  5365 │    86 │  1277 │  4002 │      27894 │  27894 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libphy.a                        │      34415 │ 1152 │  1152 │        0 │  5365 │    86 │  1277 │  4002 │      27898 │  27898 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libpot_espnow.a                 │      33408 │    0 │     0 │        0 │ 18520 │ 18500 │    20 │     0 │       3015 │   3015 │         10 │      0 │      10 │        0 │        11863 │ 11863 │        0 │             0 │        0 │           0 │
 
@@ -81,7 +81,7 @@ Executing "ninja size-components"...
 
 │ libesp_ringbuf.a                │       4521 │  180 │   180 │        0 │  2122 │     0 │     0 │  2122 │       1682 │   1682 │        537 │      0 │     537 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_reconcile.a              │       4373 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       4349 │   4349 │         24 │      0 │      24 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_reconcile.a              │       4482 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       4458 │   4458 │         24 │      0 │      24 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libespnow.a                     │       4184 │    0 │     0 │        0 │    71 │    64 │     7 │     0 │       4113 │   4113 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

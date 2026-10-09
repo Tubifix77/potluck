@@ -110,15 +110,15 @@
     },
     "esp-idf/mbedtls/mbedtls/tf-psa-crypto/core/libtfpsacrypto.a": {
         "abbrev_name": "libtfpsacrypto.a",
-        "size": 95849,
+        "size": 95853,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 79434,
+                "size": 79438,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 79434,
+                        "size": 79438,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -2290,15 +2290,15 @@
     },
     "esp-idf/pot_passive_sensor/libpot_passive_sensor.a": {
         "abbrev_name": "libpot_passive_sensor.a",
-        "size": 6538,
+        "size": 6584,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 5048,
+                "size": 5094,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 5048,
+                        "size": 5094,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -3053,15 +3053,15 @@
     },
     "esp-idf/pot_reconcile/libpot_reconcile.a": {
         "abbrev_name": "libpot_reconcile.a",
-        "size": 4373,
+        "size": 4474,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 4349,
+                "size": 4450,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 4349,
+                        "size": 4450,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
