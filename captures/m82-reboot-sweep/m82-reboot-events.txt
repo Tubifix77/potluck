@@ -1,0 +1,7 @@
+20:22:12 reset 1 COM4
+20:23:09 reset 2 COM4
+20:24:06 reset 3 COM4
+20:25:03 reset 4 COM5
+20:26:00 reset 5 COM5
+20:26:56 reset 6 COM5
+20:27:53 reset 7 COM3

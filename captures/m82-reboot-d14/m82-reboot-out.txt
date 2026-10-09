@@ -1,0 +1,254 @@
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 216 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 216, death window 100 ms x 6 = 600 ms
+19:53:37  false  [GOOD, age 2543 ms, ts 177581, class L4]
+19:53:39  false  [GOOD, age 2517 ms, ts 179581, class L4]
+19:53:41  false  [GOOD, age 2621 ms, ts 181616, class L4]
+19:53:43  false  [GOOD, age 4691 ms, ts 181616, class L4]
+19:53:45  false  [GOOD, age 6743 ms, ts 181616, class L4]
+19:53:47  NO_DATA (age 0 ms, class L4)
+19:53:49  NO_DATA (age 0 ms, class L4)
+19:53:51  NO_DATA (age 0 ms, class L4)
+19:53:53  NO_DATA (age 0 ms, class L4)
+19:53:56  false  [STALE, age 17088 ms, ts 181616, class L4]
+19:53:58  false  [STALE, age 19148 ms, ts 181616, class L4]
+19:54:00  false  [STALE, age 21221 ms, ts 181616, class L4]
+19:54:02  false  [STALE, age 23289 ms, ts 181616, class L4]
+19:54:04  false  [STALE, age 25361 ms, ts 181616, class L4]
+19:54:06  false  [STALE, age 27440 ms, ts 181616, class L4]
+19:54:08  false  [STALE, age 29515 ms, ts 181616, class L4]
+19:54:10  false  [STALE, age 31573 ms, ts 181616, class L4]
+19:54:12  false  [STALE, age 33639 ms, ts 181616, class L4]
+19:54:14  false  [STALE, age 35721 ms, ts 181616, class L4]
+19:54:16  false  [STALE, age 37781 ms, ts 181616, class L4]
+19:54:18  false  [STALE, age 39838 ms, ts 181616, class L4]
+19:54:20  false  [STALE, age 41915 ms, ts 181616, class L4]
+19:54:22  false  [STALE, age 43980 ms, ts 181616, class L4]
+19:54:24  false  [STALE, age 46061 ms, ts 181616, class L4]
+19:54:27  false  [STALE, age 48122 ms, ts 181616, class L4]
+19:54:29  false  [STALE, age 50193 ms, ts 181616, class L4]
+19:54:31  false  [STALE, age 52260 ms, ts 181616, class L4]
+19:54:33  false  [STALE, age 54345 ms, ts 181616, class L4]
+19:54:35  false  [STALE, age 56408 ms, ts 181616, class L4]
+19:54:37  false  [STALE, age 58512 ms, ts 181616, class L4]
+19:54:39  false  [STALE, age 60576 ms, ts 181616, class L4]
+19:54:41  false  [STALE, age 62644 ms, ts 181616, class L4]
+19:54:43  false  [STALE, age 64712 ms, ts 181616, class L4]
+19:54:45  false  [STALE, age 66780 ms, ts 181616, class L4]
+19:54:47  false  [STALE, age 68859 ms, ts 181616, class L4]
+19:54:49  false  [STALE, age 70914 ms, ts 181616, class L4]
+19:54:51  false  [STALE, age 72970 ms, ts 181616, class L4]
+19:54:53  false  [STALE, age 75058 ms, ts 181616, class L4]
+19:54:56  false  [STALE, age 77119 ms, ts 181616, class L4]
+19:54:58  false  [STALE, age 79192 ms, ts 181616, class L4]
+19:55:00  false  [STALE, age 81262 ms, ts 181616, class L4]
+19:55:02  false  [STALE, age 83326 ms, ts 181616, class L4]
+19:55:04  false  [STALE, age 85409 ms, ts 181616, class L4]
+19:55:06  false  [STALE, age 87470 ms, ts 181616, class L4]
+19:55:08  false  [STALE, age 89544 ms, ts 181616, class L4]
+19:55:10  false  [STALE, age 91610 ms, ts 181616, class L4]
+19:55:12  false  [STALE, age 93664 ms, ts 181616, class L4]
+19:55:14  false  [STALE, age 95721 ms, ts 181616, class L4]
+19:55:16  false  [STALE, age 97787 ms, ts 181616, class L4]
+19:55:18  false  [STALE, age 99859 ms, ts 181616, class L4]
+19:55:20  false  [STALE, age 101926 ms, ts 181616, class L4]
+19:55:22  false  [STALE, age 104011 ms, ts 181616, class L4]
+19:55:25  false  [STALE, age 106077 ms, ts 181616, class L4]
+19:55:27  false  [STALE, age 108146 ms, ts 181616, class L4]
+19:55:29  false  [STALE, age 110224 ms, ts 181616, class L4]
+19:55:31  false  [STALE, age 112279 ms, ts 181616, class L4]
+19:55:33  false  [STALE, age 114344 ms, ts 181616, class L4]
+19:55:35  false  [STALE, age 116348 ms, ts 181616, class L4]
+19:55:37  false  [STALE, age 118429 ms, ts 181616, class L4]
+19:55:39  false  [STALE, age 120530 ms, ts 181616, class L4]
+19:55:41  false  [STALE, age 122618 ms, ts 181616, class L4]
+19:55:43  false  [STALE, age 124696 ms, ts 181616, class L4]
+19:55:45  false  [STALE, age 126763 ms, ts 181616, class L4]
+19:55:47  false  [STALE, age 128843 ms, ts 181616, class L4]
+19:55:49  false  [STALE, age 130911 ms, ts 181616, class L4]
+19:55:51  false  [STALE, age 132976 ms, ts 181616, class L4]
+19:55:53  false  [STALE, age 135041 ms, ts 181616, class L4]
+19:55:56  false  [STALE, age 137095 ms, ts 181616, class L4]
+19:55:58  false  [STALE, age 139168 ms, ts 181616, class L4]
+19:56:00  false  [STALE, age 141244 ms, ts 181616, class L4]
+19:56:02  false  [STALE, age 143306 ms, ts 181616, class L4]
+19:56:04  false  [STALE, age 145371 ms, ts 181616, class L4]
+19:56:06  false  [STALE, age 147442 ms, ts 181616, class L4]
+19:56:08  false  [STALE, age 149509 ms, ts 181616, class L4]
+19:56:10  false  [STALE, age 151594 ms, ts 181616, class L4]
+19:56:12  false  [STALE, age 153649 ms, ts 181616, class L4]
+19:56:14  false  [STALE, age 155723 ms, ts 181616, class L4]
+19:56:16  false  [STALE, age 157797 ms, ts 181616, class L4]
+19:56:18  false  [STALE, age 159859 ms, ts 181616, class L4]
+19:56:20  false  [STALE, age 161943 ms, ts 181616, class L4]
+19:56:22  false  [STALE, age 164003 ms, ts 181616, class L4]
+19:56:24  false  [STALE, age 166069 ms, ts 181616, class L4]
+19:56:27  false  [STALE, age 168143 ms, ts 181616, class L4]
+19:56:29  NO_DATA (age 0 ms, class L4)
+19:56:31  NO_DATA (age 0 ms, class L4)
+19:56:33  NO_DATA (age 0 ms, class L4)
+19:56:35  NO_DATA (age 0 ms, class L4)
+19:56:37  NO_DATA (age 0 ms, class L4)
+19:56:39  NO_DATA (age 0 ms, class L4)
+19:56:41  NO_DATA (age 0 ms, class L4)
+19:56:43  NO_DATA (age 0 ms, class L4)
+19:56:45  NO_DATA (age 0 ms, class L4)
+19:56:47  NO_DATA (age 0 ms, class L4)
+19:56:49  NO_DATA (age 0 ms, class L4)
+19:56:51  NO_DATA (age 0 ms, class L4)
+19:56:53  NO_DATA (age 0 ms, class L4)
+19:56:56  NO_DATA (age 0 ms, class L4)
+19:56:58  NO_DATA (age 0 ms, class L4)
+19:57:00  NO_DATA (age 0 ms, class L4)
+19:57:02  NO_DATA (age 0 ms, class L4)
+19:57:04  NO_DATA (age 0 ms, class L4)
+19:57:06  NO_DATA (age 0 ms, class L4)
+19:57:08  NO_DATA (age 0 ms, class L4)
+19:57:10  NO_DATA (age 0 ms, class L4)
+19:57:12  NO_DATA (age 0 ms, class L4)
+19:57:14  NO_DATA (age 0 ms, class L4)
+19:57:16  NO_DATA (age 0 ms, class L4)
+19:57:18  NO_DATA (age 0 ms, class L4)
+19:57:20  NO_DATA (age 0 ms, class L4)
+19:57:22  NO_DATA (age 0 ms, class L4)
+19:57:24  NO_DATA (age 0 ms, class L4)
+19:57:27  NO_DATA (age 0 ms, class L4)
+19:57:29  NO_DATA (age 0 ms, class L4)
+19:57:31  NO_DATA (age 0 ms, class L4)
+19:57:33  NO_DATA (age 0 ms, class L4)
+19:57:35  NO_DATA (age 0 ms, class L4)
+19:57:37  NO_DATA (age 0 ms, class L4)
+19:57:39  NO_DATA (age 0 ms, class L4)
+19:57:41  NO_DATA (age 0 ms, class L4)
+19:57:43  NO_DATA (age 0 ms, class L4)
+19:57:45  NO_DATA (age 0 ms, class L4)
+19:57:47  NO_DATA (age 0 ms, class L4)
+19:57:49  NO_DATA (age 0 ms, class L4)
+19:57:51  NO_DATA (age 0 ms, class L4)
+19:57:53  NO_DATA (age 0 ms, class L4)
+19:57:55  NO_DATA (age 0 ms, class L4)
+19:57:58  NO_DATA (age 0 ms, class L4)
+19:58:00  NO_DATA (age 0 ms, class L4)
+19:58:02  NO_DATA (age 0 ms, class L4)
+19:58:04  NO_DATA (age 0 ms, class L4)
+19:58:06  NO_DATA (age 0 ms, class L4)
+19:58:08  NO_DATA (age 0 ms, class L4)
+19:58:10  NO_DATA (age 0 ms, class L4)
+19:58:12  NO_DATA (age 0 ms, class L4)
+19:58:14  NO_DATA (age 0 ms, class L4)
+19:58:16  NO_DATA (age 0 ms, class L4)
+19:58:18  NO_DATA (age 0 ms, class L4)
+19:58:20  NO_DATA (age 0 ms, class L4)
+19:58:22  NO_DATA (age 0 ms, class L4)
+19:58:24  NO_DATA (age 0 ms, class L4)
+19:58:26  NO_DATA (age 0 ms, class L4)
+19:58:29  NO_DATA (age 0 ms, class L4)
+19:58:31  NO_DATA (age 0 ms, class L4)
+19:58:33  NO_DATA (age 0 ms, class L4)
+19:58:35  NO_DATA (age 0 ms, class L4)
+19:58:37  NO_DATA (age 0 ms, class L4)
+19:58:39  NO_DATA (age 0 ms, class L4)
+19:58:41  NO_DATA (age 0 ms, class L4)
+19:58:43  NO_DATA (age 0 ms, class L4)
+19:58:45  NO_DATA (age 0 ms, class L4)
+19:58:47  NO_DATA (age 0 ms, class L4)
+19:58:49  NO_DATA (age 0 ms, class L4)
+19:58:51  NO_DATA (age 0 ms, class L4)
+19:58:53  NO_DATA (age 0 ms, class L4)
+19:58:55  NO_DATA (age 0 ms, class L4)
+19:58:57  NO_DATA (age 0 ms, class L4)
+19:59:00  NO_DATA (age 0 ms, class L4)
+19:59:02  NO_DATA (age 0 ms, class L4)
+19:59:04  NO_DATA (age 0 ms, class L4)
+19:59:06  NO_DATA (age 0 ms, class L4)
+19:59:08  NO_DATA (age 0 ms, class L4)
+19:59:10  NO_DATA (age 0 ms, class L4)
+19:59:12  NO_DATA (age 0 ms, class L4)
+19:59:14  NO_DATA (age 0 ms, class L4)
+19:59:16  NO_DATA (age 0 ms, class L4)
+19:59:19  TIMEOUT
+19:59:22  TIMEOUT
+19:59:25  TIMEOUT
+19:59:28  TIMEOUT
+19:59:31  TIMEOUT
+19:59:34  TIMEOUT
+19:59:37  TIMEOUT
+19:59:40  TIMEOUT
+19:59:43  TIMEOUT
+19:59:46  TIMEOUT
+19:59:49  TIMEOUT
+19:59:52  TIMEOUT
+19:59:55  TIMEOUT
+19:59:58  TIMEOUT
+20:00:01  TIMEOUT
+20:00:04  TIMEOUT
+20:00:07  TIMEOUT
+20:00:10  TIMEOUT
+20:00:13  TIMEOUT
+20:00:16  TIMEOUT
+20:00:19  TIMEOUT
+20:00:22  TIMEOUT
+20:00:25  TIMEOUT
+20:00:28  TIMEOUT
+20:00:31  TIMEOUT
+20:00:34  TIMEOUT
+20:00:37  TIMEOUT
+20:00:40  TIMEOUT
+20:00:43  TIMEOUT
+20:00:46  TIMEOUT
+20:00:49  TIMEOUT
+20:00:52  TIMEOUT
+20:00:55  TIMEOUT
+20:00:58  TIMEOUT
+20:01:01  TIMEOUT
+20:01:04  TIMEOUT
+20:01:07  TIMEOUT
+20:01:10  TIMEOUT
+20:01:13  TIMEOUT
+20:01:16  TIMEOUT
+20:01:19  TIMEOUT
+20:01:22  TIMEOUT
+20:01:25  TIMEOUT
+20:01:28  TIMEOUT
+20:01:31  TIMEOUT
+20:01:34  TIMEOUT
+20:01:37  TIMEOUT
+20:01:40  TIMEOUT
+20:01:44  TIMEOUT
+20:01:47  TIMEOUT
+20:01:50  TIMEOUT
+20:01:53  TIMEOUT
+20:01:56  TIMEOUT
+20:01:59  TIMEOUT
+20:02:02  TIMEOUT
+20:02:05  TIMEOUT
+20:02:08  TIMEOUT
+20:02:11  TIMEOUT
+20:02:14  TIMEOUT
+20:02:17  TIMEOUT
+20:02:20  TIMEOUT
+20:02:23  TIMEOUT
+20:02:26  TIMEOUT
+20:02:29  TIMEOUT
+20:02:32  TIMEOUT
+20:02:35  TIMEOUT
+20:02:38  TIMEOUT
+20:02:41  TIMEOUT
+20:02:44  TIMEOUT
+20:02:47  TIMEOUT
+20:02:50  TIMEOUT
+20:02:53  TIMEOUT
+20:02:56  TIMEOUT
+20:02:59  TIMEOUT
+20:03:02  TIMEOUT
+20:03:05  TIMEOUT
+20:03:08  TIMEOUT
+20:03:11  TIMEOUT
+20:03:14  TIMEOUT
+20:03:17  TIMEOUT
+20:03:20  TIMEOUT
+20:03:23  TIMEOUT
+20:03:26  TIMEOUT
+20:03:29  TIMEOUT
+20:03:32  TIMEOUT
+20:03:35  TIMEOUT
