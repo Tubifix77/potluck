@@ -4399,3 +4399,9 @@ the tee prints `away`; passive-sensor to ignore such samples.
 
 Bench: Potluck `f43f19d` + passive-sensor `b4c615b`, `ps-room` at counter 17, cell on channel 1.
 
+**Session 33, end -- the desk reboot test passes.** passive-sensor's `f7975d9` drops `off_home` frames. On Potluck
+`a6feb9c` (`captures/m82-reboot-offhome/`), seven resets (B x3, C x3, A x1): lit 0 on all three, rf_fusion's output
+never true, 134 GOOD reads against 31 NO DATA (C's own resets: failover and settling), **0 relearns**, and ~93
+frames per B reset ignored as heard away from home. What the desk cannot show is still open: that a person in the
+room is detected at all (PS-0, the boards placed and the owner walking the script), and B's transmit stall.
+

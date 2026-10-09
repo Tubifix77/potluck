@@ -46,7 +46,8 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > Fixed: a hunting extender no longer drags the cell to its boot channel (`4d2ea83`); `RxSample::channel`
 > (`02b7bfe`) so an app can relearn after a channel change; sweeps no longer stop where a rebooting station's
 > scan is or follow another sweeper (`55aa561`); a hunting node does not settle (`f43f19d`); `RxSample::off_home`
-> (`225d801`). Bench now Potluck `f43f19d` + passive-sensor `b4c615b`: 7 resets, no false presence. **Open: B's ESP-NOW transmit stall (NO_MEM for
+> (`225d801`). Bench now Potluck `a6feb9c` + passive-sensor `f7975d9`: 7 resets, no false presence, no
+> relearns. **Next is PS-0 with the boards placed in the room (the owner).** **Open: B's ESP-NOW transmit stall (NO_MEM for
 > ~40 min) after a cold boot, on the dynamic-TX build** -- not reproduced by 13 resets. Bench: Potluck
 > `f31c56c` + passive-sensor `a4c2a8e`, `ps-room` at counter 17 (next 18+), cell on channel 1. Waiting on
 > passive-sensor for a commit using `RxSample::channel`, then the 7-reset test again.
