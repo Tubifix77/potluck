@@ -142,14 +142,26 @@ MessageBufferHandle_t g_tee_mb = nullptr;
 std::atomic<uint32_t> g_tee_dropped{0};
 StackType_t g_tee_stack[3072 / sizeof(StackType_t)];
 StaticTask_t g_tee_tcb;
+// Held by the statistics task for its whole period's output, and by the tee for each line. Several
+// statistics lines (peers, ss, rec) are printed in pieces, and a tee line written between two pieces
+// broke them: on board A the night run of M0-LOG session 32 lost every `peers` line and most `ss` and
+// `rec` lines to it. Not stdout's own lock: the statistics task takes the node mutex while printing,
+// and the link task prints events under that mutex. The tee takes no other lock, so this cannot
+// deadlock; while it waits, the message buffer holds ~3.7 s of lines against a ~0.3 s period block.
+StaticSemaphore_t g_print_gate_ctl;
+SemaphoreHandle_t g_print_gate = nullptr;
 void tee_task(void*) {
     static char out[160];
     for (;;) {
         const size_t n = xMessageBufferReceive(g_tee_mb, out, sizeof(out), portMAX_DELAY);
-        if (n > 0) std::fwrite(out, 1, n, stdout);  // one whole line per write: no interleaving
+        if (n == 0) continue;
+        xSemaphoreTake(g_print_gate, portMAX_DELAY);
+        std::fwrite(out, 1, n, stdout);  // one whole line per write
+        xSemaphoreGive(g_print_gate);
     }
 }
 void tee_start() {
+    g_print_gate = xSemaphoreCreateMutexStatic(&g_print_gate_ctl);
     g_tee_mb = xMessageBufferCreateStatic(sizeof(g_tee_storage), g_tee_storage, &g_tee_mb_ctl);
     xTaskCreateStaticPinnedToCore(tee_task, "pot_tee", sizeof(g_tee_stack) / sizeof(StackType_t), nullptr, 1,
                                   g_tee_stack, &g_tee_tcb, tskNO_AFFINITY);
@@ -1285,6 +1297,9 @@ void stats_task(void*) {
 
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(kStatsIntervalMs));
+#if CONFIG_POT_RSSI_TEE
+        if (g_print_gate != nullptr) xSemaphoreTake(g_print_gate, portMAX_DELAY);  // whole lines (above)
+#endif
         const uint16_t node_id = g_node->config().node_id;
         // First, while the console is idle: the board's clock, for a host that must put several
         // boards' events on one timeline (tools/m6_bench.py). Any later line in the period waits
@@ -1539,6 +1554,9 @@ void stats_task(void*) {
 
         emit_ns_records();
         std::fflush(stdout);
+#if CONFIG_POT_RSSI_TEE
+        if (g_print_gate != nullptr) xSemaphoreGive(g_print_gate);
+#endif
     }
 }
 
