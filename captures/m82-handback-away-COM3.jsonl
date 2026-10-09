@@ -1,0 +1,482 @@
+{"us": 200897246, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504079.415765}
+{"us": 200917136, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 1992, "rel": 0, "rec": "rssi", "host_ts": 1791504079.4349833}
+{"us": 200997145, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504079.5169349}
+{"us": 200998595, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504079.5279987}
+{"us": 201017367, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 1993, "rel": 0, "rec": "rssi", "host_ts": 1791504079.5352216}
+{"us": 201117215, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 1994, "rel": 0, "rec": "rssi", "host_ts": 1791504079.6351159}
+{"us": 201147089, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504079.6654863}
+{"us": 201217168, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 1995, "rel": 0, "rec": "rssi", "host_ts": 1791504079.7350967}
+{"us": 201317190, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 1996, "rel": 0, "rec": "rssi", "host_ts": 1791504079.835098}
+{"us": 201396916, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504079.9154346}
+{"us": 201417267, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 1997, "rel": 0, "rec": "rssi", "host_ts": 1791504079.9351475}
+{"us": 201517170, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 1998, "rel": 0, "rec": "rssi", "host_ts": 1791504080.0350587}
+{"us": 201617079, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 1999, "rel": 0, "rec": "rssi", "host_ts": 1791504080.13506}
+{"us": 201648637, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504080.1671522}
+{"us": 201717223, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2000, "rel": 0, "rec": "rssi", "host_ts": 1791504080.2351217}
+{"us": 201761405, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "bcast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504080.2788653}
+{"us": 201824776, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2001, "rel": 0, "rec": "rssi", "host_ts": 1791504080.3427744}
+{"us": 201945126, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504080.4650698}
+{"us": 201946296, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2002, "rel": 0, "rec": "rssi", "host_ts": 1791504080.4736822}
+{"us": 201988017, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504080.5065882}
+{"us": 202017268, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2003, "rel": 0, "rec": "rssi", "host_ts": 1791504080.535056}
+{"us": 202117184, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2004, "rel": 0, "rec": "rssi", "host_ts": 1791504080.6351054}
+{"us": 202147115, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504080.66557}
+{"us": 202244772, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2005, "rel": 0, "rec": "rssi", "host_ts": 1791504080.7626312}
+{"us": 202317183, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2006, "rel": 0, "rec": "rssi", "host_ts": 1791504080.8351076}
+{"us": 202396961, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504080.9155693}
+{"us": 202417242, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2007, "rel": 0, "rec": "rssi", "host_ts": 1791504080.9350944}
+{"us": 202486290, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504081.0060854}
+{"us": 202487761, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504081.014581}
+{"us": 202517583, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2008, "rel": 0, "rec": "rssi", "host_ts": 1791504081.035424}
+{"us": 202619907, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2009, "rel": 0, "rec": "rssi", "host_ts": 1791504081.1378531}
+{"us": 202646961, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504081.1653683}
+{"us": 202717178, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2010, "rel": 0, "rec": "rssi", "host_ts": 1791504081.2362094}
+{"us": 202722746, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504081.2448282}
+{"us": 202774680, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504081.2945933}
+{"us": 202775884, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504081.3056946}
+{"us": 202777152, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504081.3127856}
+{"us": 202817153, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2011, "rel": 0, "rec": "rssi", "host_ts": 1791504081.3349302}
+{"us": 202897237, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504081.4157958}
+{"us": 202917141, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2012, "rel": 0, "rec": "rssi", "host_ts": 1791504081.4351187}
+{"us": 203017262, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2013, "rel": 0, "rec": "rssi", "host_ts": 1791504081.5351279}
+{"us": 203119371, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2014, "rel": 0, "rec": "rssi", "host_ts": 1791504081.6371992}
+{"us": 203146949, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504081.6653092}
+{"us": 203217310, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2015, "rel": 0, "rec": "rssi", "host_ts": 1791504081.735206}
+{"us": 203317171, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2016, "rel": 0, "rec": "rssi", "host_ts": 1791504081.8350368}
+{"us": 203397215, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504081.9156919}
+{"us": 203417232, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2017, "rel": 0, "rec": "rssi", "host_ts": 1791504081.9349577}
+{"us": 203517270, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2018, "rel": 0, "rec": "rssi", "host_ts": 1791504082.035163}
+{"us": 203617254, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2019, "rel": 0, "rec": "rssi", "host_ts": 1791504082.1351438}
+{"us": 203646927, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504082.1653063}
+{"us": 203731768, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2020, "rel": 0, "rec": "rssi", "host_ts": 1791504082.249606}
+{"us": 203774115, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "bcast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504082.291481}
+{"us": 203787986, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504082.3065326}
+{"us": 203817290, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2021, "rel": 0, "rec": "rssi", "host_ts": 1791504082.335099}
+{"us": 203901099, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504082.4196172}
+{"us": 203917247, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2022, "rel": 0, "rec": "rssi", "host_ts": 1791504082.435006}
+{"us": 204025937, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2023, "rel": 0, "rec": "rssi", "host_ts": 1791504082.5438807}
+{"us": 204036168, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504082.554643}
+{"us": 204117203, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2024, "rel": 0, "rec": "rssi", "host_ts": 1791504082.6350513}
+{"us": 204147061, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504082.665453}
+{"us": 204217234, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2025, "rel": 0, "rec": "rssi", "host_ts": 1791504082.7351325}
+{"us": 204267127, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504082.787033}
+{"us": 204268302, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504082.7954044}
+{"us": 204317240, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2026, "rel": 0, "rec": "rssi", "host_ts": 1791504082.835032}
+{"us": 204396984, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504082.9154315}
+{"us": 204417360, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2027, "rel": 0, "rec": "rssi", "host_ts": 1791504082.9352288}
+{"us": 204517222, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2028, "rel": 0, "rec": "rssi", "host_ts": 1791504083.035042}
+{"us": 204567088, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504083.0869207}
+{"us": 204568241, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504083.0953567}
+{"us": 204617644, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2029, "rel": 0, "rec": "rssi", "host_ts": 1791504083.1355195}
+{"us": 204646989, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504083.1654344}
+{"us": 204719842, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2030, "rel": 0, "rec": "rssi", "host_ts": 1791504083.2387905}
+{"us": 204721246, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504083.2473896}
+{"us": 204828842, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2031, "rel": 0, "rec": "rssi", "host_ts": 1791504083.3479896}
+{"us": 204835176, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504083.356465}
+{"us": 204897244, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504083.4157152}
+{"us": 204917158, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2032, "rel": 0, "rec": "rssi", "host_ts": 1791504083.4348845}
+{"us": 205017300, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2033, "rel": 0, "rec": "rssi", "host_ts": 1791504083.5351877}
+{"us": 205117357, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2034, "rel": 0, "rec": "rssi", "host_ts": 1791504083.635274}
+{"us": 205147114, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504083.665504}
+{"us": 205217240, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2035, "rel": 0, "rec": "rssi", "host_ts": 1791504083.7351236}
+{"us": 205318210, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2036, "rel": 0, "rec": "rssi", "host_ts": 1791504083.836105}
+{"us": 205397188, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504083.9156575}
+{"us": 205417418, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2037, "rel": 0, "rec": "rssi", "host_ts": 1791504083.9351568}
+{"us": 205526726, "peer": 29544, "rssi": -24, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2038, "rel": 0, "rec": "rssi", "host_ts": 1791504084.0446436}
+{"us": 205617305, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2039, "rel": 0, "rec": "rssi", "host_ts": 1791504084.1351328}
+{"us": 205647115, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504084.165508}
+{"us": 205717314, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2040, "rel": 0, "rec": "rssi", "host_ts": 1791504084.2351792}
+{"us": 205762116, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "bcast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504084.279559}
+{"us": 205832486, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2041, "rel": 0, "rec": "rssi", "host_ts": 1791504084.3503299}
+{"us": 205898210, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504084.416672}
+{"us": 205917170, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2042, "rel": 0, "rec": "rssi", "host_ts": 1791504084.4349005}
+{"us": 205988025, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504084.5064955}
+{"us": 206017214, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2043, "rel": 0, "rec": "rssi", "host_ts": 1791504084.5349143}
+{"us": 206068225, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504084.5881135}
+{"us": 206069388, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504084.5964727}
+{"us": 206117379, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2044, "rel": 0, "rec": "rssi", "host_ts": 1791504084.635218}
+{"us": 206148305, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504084.6667643}
+{"us": 206217140, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2045, "rel": 0, "rec": "rssi", "host_ts": 1791504084.7350717}
+{"us": 206317217, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2046, "rel": 0, "rec": "rssi", "host_ts": 1791504084.8350685}
+{"us": 206368345, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504084.8882055}
+{"us": 206369492, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504084.8966043}
+{"us": 206397913, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504084.9163158}
+{"us": 206417218, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2047, "rel": 0, "rec": "rssi", "host_ts": 1791504084.934975}
+{"us": 206517193, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2048, "rel": 0, "rec": "rssi", "host_ts": 1791504085.0351}
+{"us": 206617266, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2049, "rel": 0, "rec": "rssi", "host_ts": 1791504085.1350951}
+{"us": 206647911, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504085.166452}
+{"us": 206717178, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2050, "rel": 0, "rec": "rssi", "host_ts": 1791504085.23611}
+{"us": 206720280, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504085.2447133}
+{"us": 206788148, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504085.3065934}
+{"us": 206818523, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2051, "rel": 0, "rec": "rssi", "host_ts": 1791504085.3364618}
+{"us": 206898229, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504085.417962}
+{"us": 206905207, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504085.4291165}
+{"us": 206917223, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2052, "rel": 0, "rec": "rssi", "host_ts": 1791504085.436268}
+{"us": 207017230, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2053, "rel": 0, "rec": "rssi", "host_ts": 1791504085.5350916}
+{"us": 207117299, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2054, "rel": 0, "rec": "rssi", "host_ts": 1791504085.6351955}
+{"us": 207147994, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504085.666436}
+{"us": 207217112, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2055, "rel": 0, "rec": "rssi", "host_ts": 1791504085.7349644}
+{"us": 207334330, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2056, "rel": 0, "rec": "rssi", "host_ts": 1791504085.852103}
+{"us": 207397953, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504085.9164126}
+{"us": 207417230, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2057, "rel": 0, "rec": "rssi", "host_ts": 1791504085.9349499}
+{"us": 207517190, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2058, "rel": 0, "rec": "rssi", "host_ts": 1791504086.0351045}
+{"us": 207626755, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2059, "rel": 0, "rec": "rssi", "host_ts": 1791504086.144627}
+{"us": 207647929, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504086.1664202}
+{"us": 207717223, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2060, "rel": 0, "rec": "rssi", "host_ts": 1791504086.2350953}
+{"us": 207761419, "peer": 29544, "rssi": -24, "nf": -90, "sig": 0, "rate": 0, "kind": "bcast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504086.278794}
+{"us": 207828567, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2061, "rel": 0, "rec": "rssi", "host_ts": 1791504086.3464572}
+{"us": 207868177, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504086.3880095}
+{"us": 207869315, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504086.3964117}
+{"us": 207898279, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504086.4167159}
+{"us": 207917115, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2062, "rel": 0, "rec": "rssi", "host_ts": 1791504086.434899}
+{"us": 207988229, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504086.5066938}
+{"us": 208017225, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2063, "rel": 0, "rec": "rssi", "host_ts": 1791504086.5349035}
+{"us": 208118207, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2064, "rel": 0, "rec": "rssi", "host_ts": 1791504086.6360412}
+{"us": 208149918, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504086.6682744}
+{"us": 208169289, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504086.6891344}
+{"us": 208170474, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504086.6974525}
+{"us": 208217427, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2065, "rel": 0, "rec": "rssi", "host_ts": 1791504086.7351828}
+{"us": 208317274, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2066, "rel": 0, "rec": "rssi", "host_ts": 1791504086.835094}
+{"us": 208398016, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504086.9164643}
+{"us": 208417391, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2067, "rel": 0, "rec": "rssi", "host_ts": 1791504086.9351432}
+{"us": 208517194, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2068, "rel": 0, "rec": "rssi", "host_ts": 1791504087.0349925}
+{"us": 208617230, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2069, "rel": 0, "rec": "rssi", "host_ts": 1791504087.1350293}
+{"us": 208648000, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504087.1664383}
+{"us": 208717220, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2070, "rel": 0, "rec": "rssi", "host_ts": 1791504087.236191}
+{"us": 208720253, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504087.2448034}
+{"us": 208817204, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2071, "rel": 0, "rec": "rssi", "host_ts": 1791504087.3349829}
+{"us": 208898246, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504087.4167094}
+{"us": 208918177, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2072, "rel": 0, "rec": "rssi", "host_ts": 1791504087.4359965}
+{"us": 208977146, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504087.4956362}
+{"us": 209020307, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2073, "rel": 0, "rec": "rssi", "host_ts": 1791504087.5381947}
+{"us": 209130078, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2074, "rel": 0, "rec": "rssi", "host_ts": 1791504087.6479394}
+{"us": 209148086, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504087.6665006}
+{"us": 209217185, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2075, "rel": 0, "rec": "rssi", "host_ts": 1791504087.7350168}
+{"us": 209317211, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2076, "rel": 0, "rec": "rssi", "host_ts": 1791504087.8349812}
+{"us": 209427254, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504087.9474552}
+{"us": 209431089, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2077, "rel": 0, "rec": "rssi", "host_ts": 1791504087.9559896}
+{"node": 25344, "up_ms": 209496, "rec": "clk", "host_ts": 1791504088.0088708}
+{"node": 25344, "dropped": 0, "rec": "tee", "host_ts": 1791504088.0143783}
+{"window_ms": 2000, "links": 2, "windows": 206, "relayed": 0, "table_full": 0, "declare_err": 0, "publish_err": 0, "rec": "rf_link", "host_ts": 1791504088.0254989}
+{"at_ms": 199763, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504088.0310993}
+{"at_ms": 199778, "node": 25344, "kind": "probe_timeout", "peer": 33120, "slot": 1, "a": 430, "b": 0, "rec": "event", "host_ts": 1791504088.0421448}
+{"us": 209517313, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2078, "rel": 0, "rec": "rssi", "host_ts": 1791504088.0477386}
+{"at_ms": 201763, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504088.0588317}
+{"at_ms": 202782, "node": 25344, "kind": "probe_timeout", "peer": 33120, "slot": 1, "a": 431, "b": 0, "rec": "event", "host_ts": 1791504088.069959}
+{"at_ms": 203776, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504088.0755112}
+{"at_ms": 205764, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504088.0866108}
+{"at_ms": 205782, "node": 25344, "kind": "probe_timeout", "peer": 33120, "slot": 1, "a": 432, "b": 0, "rec": "event", "host_ts": 1791504088.0921552}
+{"at_ms": 207763, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504088.1032712}
+{"at_ms": 208782, "node": 25344, "kind": "probe_timeout", "peer": 33120, "slot": 1, "a": 433, "b": 0, "rec": "event", "host_ts": 1791504088.114417}
+{"up_ms": 209594, "node": 25344, "peer": 29544, "mac": "b8:1f:3f:da:73:68", "state": "alive", "epoch": 107, "espnow_ver": 2, "mtu": 1446, "misses": 0, "rssi": -23, "tx": {"frames": 823, "cb_ok": 813, "cb_fail": 10, "enqueue_err": 0, "pdr_ppm": 987849}, "rx": {"frames": 3042, "lost_seqgap": 0, "reorder_dup": 0, "dropped_bad": 0, "hb_lost": 28, "bcast_frames": 2043, "pdr_ppm": 1000000}, "rtt": {"samples": 94, "min_us": 5358, "max_us": 52682, "timeouts": 2, "txq_last_us": 2786, "txq_max_us": 5621, "remote_turnaround_us": 850, "remote_turnaround_max_us": 1340, "p50_us": [4000, 6000], "p99_us": [42000, 60000], "hist": [0, 0, 0, 0, 61, 23, 8, 1, 0, 0, 0, 1, 0, 0, 0, 0]}, "rec": "link", "host_ts": 1791504088.1643894}
+{"us": 209617351, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2079, "rel": 0, "rec": "rssi", "host_ts": 1791504088.1755602}
+{"up_ms": 209647, "node": 25344, "peer": 33120, "mac": "b8:1f:3f:da:81:60", "state": "dead", "epoch": 222, "espnow_ver": 2, "mtu": 1446, "misses": 6, "rssi": -29, "tx": {"frames": 979, "cb_ok": 965, "cb_fail": 14, "enqueue_err": 0, "pdr_ppm": 985699}, "rx": {"frames": 2724, "lost_seqgap": 0, "reorder_dup": 0, "dropped_bad": 0, "hb_lost": 10, "bcast_frames": 1666, "pdr_ppm": 1000000}, "rtt": {"samples": 83, "min_us": 5904, "max_us": 56141, "timeouts": 13, "txq_last_us": 2843, "txq_max_us": 50671, "remote_turnaround_us": 956, "remote_turnaround_max_us": 1795, "p50_us": [6000, 8000], "p99_us": [42000, 60000], "hist": [0, 0, 0, 0, 21, 54, 6, 0, 0, 0, 0, 2, 0, 0, 0, 0]}, "rec": "link", "host_ts": 1791504088.2268248}
+{"us": 209648160, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504088.2379167}
+{"up_ms": 209715, "node": 25344, "peer": 254, "mac": "02:00:00:00:00:fe", "state": "alive", "epoch": 0, "espnow_ver": 0, "mtu": 226, "misses": 0, "rssi": 0, "tx": {"frames": 124, "cb_ok": 0, "cb_fail": 0, "enqueue_err": 0, "pdr_ppm": null}, "rx": {"frames": 443, "lost_seqgap": 0, "reorder_dup": 0, "dropped_bad": 0, "hb_lost": 0, "bcast_frames": 0, "pdr_ppm": 1000000}, "rtt": {"samples": 15, "min_us": 51991, "max_us": 94981, "timeouts": 0, "txq_last_us": 0, "txq_max_us": 0, "remote_turnaround_us": 13, "remote_turnaround_max_us": 22, "p50_us": [42000, 60000], "p99_us": [85000, 110000], "hist": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 3, 3, 0, 0]}, "rec": "link", "host_ts": 1791504088.2878845}
+{"us": 209669315, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504088.2934241}
+{"node": 25344, "up_ms": 209771, "enrolled": 1, "required": 1, "verified_peers": 2, "verified": 3, "cache_hits": 191, "refused": 0, "rate_limited": 0, "stale_epoch": 0, "verify_us_max": 86841, "link_stack_free_b": 808, "crypto_stack_free_b": 1276, "tags_ok": 1867, "bad_tag": 0, "replayed": 0, "untagged": 0, "bcast_dropped": 0, "beacon_epoch_ignored": 0, "tag_us_max": 1089, "rec": "auth", "host_ts": 1791504088.3267713}
+{"us": 209670479, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504088.3378305}
+{"node": 25344, "setpoint": 0, "has_value": 0, "writes_served": 0, "rec": "act", "host_ts": 1791504088.3433864}
+{"us": 209717311, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2080, "rel": 0, "rec": "rssi", "host_ts": 1791504088.354384}
+{"us": 209817189, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2081, "rel": 0, "rec": "rssi", "host_ts": 1791504088.4322805}
+{"up_ms": 209963, "node": 25344, "epoch": 200, "peers_alive": 2, "peers_dead": 1, "no_radio": 0, "free_dram": 254587, "largest_block": 172032, "rx": {"total": 10065, "bad_frame": 0, "unknown_peer": 3, "wrong_dst": 0, "short_payload": 0, "unknown_opcode": 0, "queue_dropped": 0}, "tx": {"total": 4119, "enqueue_err": 0, "done_queue_dropped": 0}, "membership": {"deaths": 1, "revivals": 0, "reboots_seen": 0, "table_full": 0, "events_dropped": 0}, "rec": "node", "host_ts": 1791504088.5211456}
+{"us": 209968234, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504088.5322652}
+{"node": 25344, "hash": 2438452738, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 247, "ts": 209757, "updates": 104, "value": -22.8158, "rec": "ns", "host_ts": 1791504088.5433228}
+{"us": 209969375, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504088.5544882}
+{"node": 25344, "hash": 2410274060, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 0, "quality": "GOOD", "age_ms": 521, "ts": 209510, "updates": 19, "value": 200, "rec": "ns", "host_ts": 1791504088.571171}
+{"us": 209988110, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504088.582331}
+{"node": 25344, "hash": 1274253983, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 5000, "quality": "GOOD", "age_ms": 548, "ts": 209510, "updates": 19, "value": -23, "rec": "ns", "host_ts": 1791504088.5934942}
+{"node": 25344, "hash": 3354298913, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 5000, "quality": "GOOD", "age_ms": 574, "ts": 209510, "updates": 19, "value": 2, "rec": "ns", "host_ts": 1791504088.61016}
+{"us": 210017335, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2083, "rel": 0, "rec": "rssi", "host_ts": 1791504088.621281}
+{"node": 25344, "hash": 933111074, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "STALE", "age_ms": 40353, "ts": 169746, "updates": 84, "value": -29, "rec": "ns", "host_ts": 1791504088.6378894}
+{"us": 210117414, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2084, "rel": 0, "rec": "rssi", "host_ts": 1791504088.6433942}
+{"node": 25344, "hash": 2107197347, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 369, "ts": 209757, "updates": 104, "value": 104, "rec": "ns", "host_ts": 1791504088.6600287}
+{"node": 25344, "hash": 3751837094, "owner": 29544, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 10000, "quality": "NO_DATA", "age_ms": 0, "ts": 0, "updates": 0, "value": null, "rec": "ns", "host_ts": 1791504088.6767106}
+{"us": 210148266, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504088.6878352}
+{"node": 25344, "hash": 1771187623, "owner": 25344, "kind": "sampled", "unit": 101, "class": 4, "bound_ms": 30000, "quality": "GOOD", "age_ms": 645, "ts": 209510, "updates": 19, "value": 254587, "rec": "ns", "host_ts": 1791504088.704486}
+{"node": 25344, "hash": 1099607336, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "STALE", "age_ms": 40436, "ts": 169746, "updates": 84, "value": -30, "rec": "ns", "host_ts": 1791504088.7155986}
+{"node": 25344, "hash": 2654431910, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 439, "ts": 209757, "updates": 104, "value": 104, "rec": "ns", "host_ts": 1791504088.7322547}
+{"us": 210217216, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2085, "rel": 0, "rec": "rssi", "host_ts": 1791504088.7433548}
+{"node": 25344, "hash": 2655330342, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 465, "ts": 209757, "updates": 104, "value": 38, "rec": "ns", "host_ts": 1791504088.760002}
+{"node": 25344, "hash": 1736943669, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "STALE", "age_ms": 40491, "ts": 169746, "updates": 84, "value": 0.0332937, "rec": "ns", "host_ts": 1791504088.7766914}
+{"node": 25344, "hash": 2033492666, "owner": 25344, "kind": "sampled", "unit": 0, "class": 3, "bound_ms": 0, "quality": "NO_DATA", "age_ms": 0, "ts": 0, "updates": 0, "value": null, "rec": "ns", "host_ts": 1791504088.7877905}
+{"node": 25344, "hash": 4103947588, "owner": 25344, "kind": "sampled", "unit": 80, "class": 4, "bound_ms": 30000, "quality": "GOOD", "age_ms": 767, "ts": 209510, "updates": 19, "value": 209, "rec": "ns", "host_ts": 1791504088.8044717}
+{"node": 25344, "hash": 1841683780, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 534, "ts": 209757, "updates": 104, "value": 0.202909, "rec": "ns", "host_ts": 1791504088.8211532}
+{"node": 25344, "hash": 4127306571, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 548, "ts": 209757, "updates": 104, "value": 0, "rec": "ns", "host_ts": 1791504088.8377838}
+{"us": 210317269, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2086, "rel": 0, "rec": "rssi", "host_ts": 1791504088.8433483}
+{"node": 25344, "hash": 3317588300, "owner": 29544, "kind": "sampled", "unit": 1, "class": 4, "bound_ms": 10000, "quality": "NO_DATA", "age_ms": 0, "ts": 0, "updates": 0, "value": null, "rec": "ns", "host_ts": 1791504088.8600166}
+{"node": 25344, "hash": 660418265, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 589, "ts": 209757, "updates": 104, "value": -24, "rec": "ns", "host_ts": 1791504088.8766932}
+{"node": 25344, "hash": 1662441583, "owner": 25344, "kind": "sampled", "unit": 101, "class": 4, "bound_ms": 30000, "quality": "GOOD", "age_ms": 850, "ts": 209510, "updates": 19, "value": 172032, "rec": "ns", "host_ts": 1791504088.8933477}
+{"node": 25344, "hash": 631486192, "owner": 29544, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 10000, "quality": "GOOD", "age_ms": 2255, "ts": 208189, "updates": 18, "value": false, "rec": "ns", "host_ts": 1791504088.904477}
+{"node": 25344, "hash": 961032311, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 631, "ts": 209757, "updates": 104, "value": -22, "rec": "ns", "host_ts": 1791504088.9211469}
+{"us": 210398017, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504088.9322822}
+{"node": 25344, "hash": 2428174589, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "STALE", "age_ms": 40656, "ts": 169746, "updates": 84, "value": -29.0345, "rec": "ns", "host_ts": 1791504088.9488955}
+{"us": 210417282, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2087, "rel": 0, "rec": "rssi", "host_ts": 1791504088.9554358}
+{"us": 210517208, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2088, "rel": 0, "rec": "rssi", "host_ts": 1791504089.035095}
+{"us": 210617353, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2089, "rel": 0, "rec": "rssi", "host_ts": 1791504089.1352203}
+{"us": 210647970, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504089.1663322}
+{"us": 210717231, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2090, "rel": 0, "rec": "rssi", "host_ts": 1791504089.2361012}
+{"us": 210720280, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504089.2447293}
+{"us": 210828641, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2091, "rel": 0, "rec": "rssi", "host_ts": 1791504089.346408}
+{"us": 210931074, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504089.4510882}
+{"us": 210932210, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2092, "rel": 0, "rec": "rssi", "host_ts": 1791504089.4596994}
+{"us": 211017198, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2093, "rel": 0, "rec": "rssi", "host_ts": 1791504089.5349622}
+{"us": 211043217, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504089.5616229}
+{"us": 211119420, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2094, "rel": 0, "rec": "rssi", "host_ts": 1791504089.637282}
+{"us": 211148012, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504089.6663647}
+{"us": 211230029, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2095, "rel": 0, "rec": "rssi", "host_ts": 1791504089.7478487}
+{"us": 211317178, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2096, "rel": 0, "rec": "rssi", "host_ts": 1791504089.8349864}
+{"us": 211397968, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504089.9163609}
+{"us": 211417238, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2097, "rel": 0, "rec": "rssi", "host_ts": 1791504089.9349554}
+{"us": 211468106, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504089.988089}
+{"us": 211469268, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504089.9962256}
+{"us": 211517255, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2098, "rel": 0, "rec": "rssi", "host_ts": 1791504090.0349977}
+{"us": 211617358, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2099, "rel": 0, "rec": "rssi", "host_ts": 1791504090.1352232}
+{"us": 211647983, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504090.166334}
+{"us": 211717233, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2100, "rel": 0, "rec": "rssi", "host_ts": 1791504090.2350917}
+{"us": 211761422, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "bcast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504090.2801578}
+{"us": 211768207, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504090.2912557}
+{"us": 211769378, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504090.298117}
+{"us": 211817102, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2101, "rel": 0, "rec": "rssi", "host_ts": 1791504090.3348093}
+{"us": 211898295, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504090.4166267}
+{"us": 211917188, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2102, "rel": 0, "rec": "rssi", "host_ts": 1791504090.4348178}
+{"us": 211991873, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504090.5102239}
+{"us": 212017272, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2103, "rel": 0, "rec": "rssi", "host_ts": 1791504090.5349555}
+{"us": 212117298, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2104, "rel": 0, "rec": "rssi", "host_ts": 1791504090.635057}
+{"us": 212147989, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504090.6663883}
+{"us": 212217319, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2105, "rel": 0, "rec": "rssi", "host_ts": 1791504090.7351048}
+{"us": 212317299, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2106, "rel": 0, "rec": "rssi", "host_ts": 1791504090.8350677}
+{"us": 212399942, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504090.9183095}
+{"us": 212417298, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2107, "rel": 0, "rec": "rssi", "host_ts": 1791504090.935034}
+{"us": 212517245, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2108, "rel": 0, "rec": "rssi", "host_ts": 1791504091.0350366}
+{"us": 212617219, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2109, "rel": 0, "rec": "rssi", "host_ts": 1791504091.1350315}
+{"us": 212647978, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504091.1663754}
+{"us": 212728273, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2110, "rel": 0, "rec": "rssi", "host_ts": 1791504091.247352}
+{"us": 212732923, "peer": 29544, "rssi": -25, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504091.2557998}
+{"us": 212788059, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504091.3063636}
+{"us": 212817283, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2111, "rel": 0, "rec": "rssi", "host_ts": 1791504091.334942}
+{"us": 212898253, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504091.416652}
+{"us": 212917331, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2112, "rel": 0, "rec": "rssi", "host_ts": 1791504091.435129}
+{"us": 213031743, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2113, "rel": 0, "rec": "rssi", "host_ts": 1791504091.5495114}
+{"us": 213104207, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504091.6226666}
+{"us": 213117408, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2114, "rel": 0, "rec": "rssi", "host_ts": 1791504091.6350858}
+{"us": 213148005, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504091.6663554}
+{"us": 213218745, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2115, "rel": 0, "rec": "rssi", "host_ts": 1791504091.7365265}
+{"us": 213269956, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504091.7896497}
+{"us": 213271144, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504091.7981231}
+{"us": 213321033, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2116, "rel": 0, "rec": "rssi", "host_ts": 1791504091.838728}
+{"us": 213398262, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504091.9166412}
+{"us": 213417286, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2117, "rel": 0, "rec": "rssi", "host_ts": 1791504091.9350333}
+{"us": 213517201, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2118, "rel": 0, "rec": "rssi", "host_ts": 1791504092.034953}
+{"us": 213568185, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504092.0878265}
+{"us": 213569348, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504092.0962455}
+{"us": 213617147, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2119, "rel": 0, "rec": "rssi", "host_ts": 1791504092.134792}
+{"us": 213648096, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504092.1663446}
+{"us": 213717279, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2120, "rel": 0, "rec": "rssi", "host_ts": 1791504092.2351596}
+{"us": 213764585, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "bcast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504092.281909}
+{"us": 213825535, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2121, "rel": 0, "rec": "rssi", "host_ts": 1791504092.3434758}
+{"us": 213898254, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504092.4166138}
+{"us": 213917171, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2122, "rel": 0, "rec": "rssi", "host_ts": 1791504092.4349394}
+{"us": 213991703, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504092.51024}
+{"us": 214017629, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2123, "rel": 0, "rec": "rssi", "host_ts": 1791504092.5352929}
+{"us": 214117211, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2124, "rel": 0, "rec": "rssi", "host_ts": 1791504092.6350315}
+{"us": 214148103, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504092.6664624}
+{"us": 214217493, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2125, "rel": 0, "rec": "rssi", "host_ts": 1791504092.7352705}
+{"us": 214317231, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2126, "rel": 0, "rec": "rssi", "host_ts": 1791504092.8349526}
+{"us": 214398002, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504092.9163852}
+{"us": 214417278, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2127, "rel": 0, "rec": "rssi", "host_ts": 1791504092.9349678}
+{"us": 214517121, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2128, "rel": 0, "rec": "rssi", "host_ts": 1791504093.0348203}
+{"us": 214617121, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2129, "rel": 0, "rec": "rssi", "host_ts": 1791504093.1348605}
+{"us": 214652741, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504093.1709943}
+{"us": 214717222, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2130, "rel": 0, "rec": "rssi", "host_ts": 1791504093.236089}
+{"us": 214720253, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504093.244689}
+{"us": 214817072, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2131, "rel": 0, "rec": "rssi", "host_ts": 1791504093.3348248}
+{"us": 214908466, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504093.428145}
+{"us": 214917184, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2132, "rel": 0, "rec": "rssi", "host_ts": 1791504093.4366512}
+{"us": 215017238, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2133, "rel": 0, "rec": "rssi", "host_ts": 1791504093.5349898}
+{"us": 215038252, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504093.557905}
+{"us": 215039456, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504093.5663693}
+{"us": 215117238, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2134, "rel": 0, "rec": "rssi", "host_ts": 1791504093.634913}
+{"us": 215158009, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504093.677579}
+{"us": 215167576, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504093.6859927}
+{"us": 215217202, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2135, "rel": 0, "rec": "rssi", "host_ts": 1791504093.734956}
+{"us": 215317879, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2136, "rel": 0, "rec": "rssi", "host_ts": 1791504093.8356056}
+{"us": 215337176, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504093.8568954}
+{"us": 215338389, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504093.8653717}
+{"us": 215414172, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504093.9338388}
+{"us": 215417152, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2137, "rel": 0, "rec": "rssi", "host_ts": 1791504093.9423625}
+{"us": 215517237, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2138, "rel": 0, "rec": "rssi", "host_ts": 1791504094.0350273}
+{"us": 215617177, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2139, "rel": 0, "rec": "rssi", "host_ts": 1791504094.1348317}
+{"us": 215663994, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504094.1822982}
+{"us": 215717274, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2140, "rel": 0, "rec": "rssi", "host_ts": 1791504094.2349672}
+{"us": 215761341, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "bcast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504094.2785466}
+{"us": 215787936, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504094.3063128}
+{"us": 215817188, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2141, "rel": 0, "rec": "rssi", "host_ts": 1791504094.334782}
+{"us": 215914370, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504094.434006}
+{"us": 215917215, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2142, "rel": 0, "rec": "rssi", "host_ts": 1791504094.442543}
+{"us": 215989374, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504094.5076797}
+{"us": 216017361, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2143, "rel": 0, "rec": "rssi", "host_ts": 1791504094.5349796}
+{"us": 216117346, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2144, "rel": 0, "rec": "rssi", "host_ts": 1791504094.635093}
+{"us": 216164159, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504094.6823802}
+{"us": 216217345, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2145, "rel": 0, "rec": "rssi", "host_ts": 1791504094.7350912}
+{"us": 216317302, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2146, "rel": 0, "rec": "rssi", "host_ts": 1791504094.8349943}
+{"us": 216414379, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504094.9339423}
+{"us": 216417212, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2147, "rel": 0, "rec": "rssi", "host_ts": 1791504094.9425638}
+{"us": 216518610, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2148, "rel": 0, "rec": "rssi", "host_ts": 1791504095.0363297}
+{"us": 216617416, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2149, "rel": 0, "rec": "rssi", "host_ts": 1791504095.1352274}
+{"us": 216664185, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504095.1824117}
+{"us": 216717528, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2150, "rel": 0, "rec": "rssi", "host_ts": 1791504095.2363408}
+{"us": 216720242, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504095.2449374}
+{"us": 216828339, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2151, "rel": 0, "rec": "rssi", "host_ts": 1791504095.3460703}
+{"us": 216838231, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504095.35789}
+{"us": 216839424, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504095.3663325}
+{"us": 216914189, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504095.433731}
+{"us": 216917452, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2152, "rel": 0, "rec": "rssi", "host_ts": 1791504095.4423568}
+{"us": 217017289, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2153, "rel": 0, "rec": "rssi", "host_ts": 1791504095.5350492}
+{"us": 217117528, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2154, "rel": 0, "rec": "rssi", "host_ts": 1791504095.6352139}
+{"us": 217139197, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504095.658867}
+{"us": 217140384, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504095.6673067}
+{"us": 217168967, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504095.6873238}
+{"us": 217217292, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2155, "rel": 0, "rec": "rssi", "host_ts": 1791504095.7350004}
+{"us": 217230750, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504095.7490673}
+{"us": 217317507, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2156, "rel": 0, "rec": "rssi", "host_ts": 1791504095.8352072}
+{"us": 217417294, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2157, "rel": 0, "rec": "rssi", "host_ts": 1791504095.934994}
+{"us": 217438060, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504095.9563375}
+{"us": 217519586, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2158, "rel": 0, "rec": "rssi", "host_ts": 1791504096.0373526}
+{"us": 217621886, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2159, "rel": 0, "rec": "rssi", "host_ts": 1791504096.139641}
+{"us": 217694070, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504096.2124276}
+{"us": 217717537, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2160, "rel": 0, "rec": "rssi", "host_ts": 1791504096.235273}
+{"us": 217764789, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "bcast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504096.2821527}
+{"us": 217817156, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2161, "rel": 0, "rec": "rssi", "host_ts": 1791504096.3348281}
+{"us": 217917444, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2162, "rel": 0, "rec": "rssi", "host_ts": 1791504096.4351184}
+{"us": 217944174, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504096.462434}
+{"us": 217988048, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504096.5063634}
+{"us": 218017285, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2163, "rel": 0, "rec": "rssi", "host_ts": 1791504096.5348299}
+{"us": 218117529, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2164, "rel": 0, "rec": "rssi", "host_ts": 1791504096.6352742}
+{"us": 218194004, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504096.7123861}
+{"us": 218217269, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2165, "rel": 0, "rec": "rssi", "host_ts": 1791504096.7348819}
+{"us": 218317470, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2166, "rel": 0, "rec": "rssi", "host_ts": 1791504096.8351414}
+{"us": 218417179, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2167, "rel": 0, "rec": "rssi", "host_ts": 1791504096.934848}
+{"us": 218444154, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504096.9624302}
+{"us": 218517439, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2168, "rel": 0, "rec": "rssi", "host_ts": 1791504097.0351076}
+{"us": 218617123, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2169, "rel": 0, "rec": "rssi", "host_ts": 1791504097.1348476}
+{"us": 218638158, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.1577938}
+{"us": 218639336, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.1662028}
+{"us": 218693976, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.212255}
+{"us": 218717507, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2170, "rel": 0, "rec": "rssi", "host_ts": 1791504097.2362366}
+{"us": 218720264, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.2448192}
+{"us": 218788002, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.306374}
+{"us": 218817219, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2171, "rel": 0, "rec": "rssi", "host_ts": 1791504097.3349338}
+{"us": 218917432, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2172, "rel": 0, "rec": "rssi", "host_ts": 1791504097.4351346}
+{"us": 218938201, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.457893}
+{"us": 218939333, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.468989}
+{"us": 218944581, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.4759922}
+{"us": 219017261, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2173, "rel": 0, "rec": "rssi", "host_ts": 1791504097.5349505}
+{"us": 219117475, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2174, "rel": 0, "rec": "rssi", "host_ts": 1791504097.6351976}
+{"us": 219193972, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.7123017}
+{"us": 219217260, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2175, "rel": 0, "rec": "rssi", "host_ts": 1791504097.734958}
+{"us": 219290476, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.8087773}
+{"us": 219317590, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2176, "rel": 0, "rec": "rssi", "host_ts": 1791504097.8352134}
+{"us": 219417276, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2177, "rel": 0, "rec": "rssi", "host_ts": 1791504097.9349008}
+{"us": 219444071, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504097.9623923}
+{"us": 219517478, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2178, "rel": 0, "rec": "rssi", "host_ts": 1791504098.0351222}
+{"us": 219618802, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2179, "rel": 0, "rec": "rssi", "host_ts": 1791504098.1364453}
+{"us": 219694120, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504098.212394}
+{"us": 219717558, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2180, "rel": 0, "rec": "rssi", "host_ts": 1791504098.2351158}
+{"us": 219762908, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "bcast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504098.280153}
+{"us": 219828358, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2181, "rel": 0, "rec": "rssi", "host_ts": 1791504098.346008}
+{"us": 219917444, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2182, "rel": 0, "rec": "rssi", "host_ts": 1791504098.435218}
+{"us": 219944059, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504098.4623995}
+{"us": 219988053, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504098.5062797}
+{"us": 220017289, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2183, "rel": 0, "rec": "rssi", "host_ts": 1791504098.5348673}
+{"us": 220117507, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2184, "rel": 0, "rec": "rssi", "host_ts": 1791504098.6351914}
+{"us": 220198345, "peer": 29544, "rssi": -24, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504098.716633}
+{"us": 220217048, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2185, "rel": 0, "rec": "rssi", "host_ts": 1791504098.7347212}
+{"us": 220317471, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2186, "rel": 0, "rec": "rssi", "host_ts": 1791504098.8352556}
+{"us": 220417195, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2187, "rel": 0, "rec": "rssi", "host_ts": 1791504098.9348233}
+{"us": 220438251, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504098.957921}
+{"node": 25344, "up_ms": 220441, "rec": "clk", "host_ts": 1791504098.9634345}
+{"node": 25344, "dropped": 0, "rec": "tee", "host_ts": 1791504098.9634655}
+{"us": 220439372, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504098.9745376}
+{"window_ms": 2000, "links": 2, "windows": 218, "relayed": 0, "table_full": 0, "declare_err": 0, "publish_err": 0, "rec": "rf_link", "host_ts": 1791504098.9856808}
+{"us": 220444564, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504098.9968023}
+{"at_ms": 209763, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504099.002403}
+{"at_ms": 211763, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504099.01347}
+{"at_ms": 211782, "node": 25344, "kind": "probe_timeout", "peer": 33120, "slot": 1, "a": 434, "b": 0, "rec": "event", "host_ts": 1791504099.024547}
+{"at_ms": 213766, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504099.030117}
+{"at_ms": 214782, "node": 25344, "kind": "probe_timeout", "peer": 33120, "slot": 1, "a": 435, "b": 0, "rec": "event", "host_ts": 1791504099.0412629}
+{"us": 220517556, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2188, "rel": 0, "rec": "rssi", "host_ts": 1791504099.0468702}
+{"at_ms": 215763, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504099.0578904}
+{"at_ms": 217767, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504099.0690043}
+{"at_ms": 217782, "node": 25344, "kind": "probe_timeout", "peer": 33120, "slot": 1, "a": 436, "b": 0, "rec": "event", "host_ts": 1791504099.0746074}
+{"at_ms": 219765, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 0, "a": 0, "b": 0, "rec": "event", "host_ts": 1791504099.0856597}
+{"up_ms": 220566, "node": 25344, "peer": 29544, "mac": "b8:1f:3f:da:73:68", "state": "alive", "epoch": 107, "espnow_ver": 2, "mtu": 1446, "misses": 0, "rssi": -22, "tx": {"frames": 891, "cb_ok": 881, "cb_fail": 10, "enqueue_err": 0, "pdr_ppm": 988776}, "rx": {"frames": 3248, "lost_seqgap": 0, "reorder_dup": 0, "dropped_bad": 0, "hb_lost": 28, "bcast_frames": 2153, "pdr_ppm": 1000000}, "rtt": {"samples": 98, "min_us": 5358, "max_us": 52682, "timeouts": 2, "txq_last_us": 2843, "txq_max_us": 5621, "remote_turnaround_us": 843, "remote_turnaround_max_us": 1340, "p50_us": [4000, 6000], "p99_us": [42000, 60000], "hist": [0, 0, 0, 0, 64, 24, 8, 1, 0, 0, 0, 1, 0, 0, 0, 0]}, "rec": "link", "host_ts": 1791504099.1357002}
+{"us": 220617323, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2189, "rel": 0, "rec": "rssi", "host_ts": 1791504099.1467621}
+{"up_ms": 220620, "node": 25344, "peer": 33120, "mac": "b8:1f:3f:da:81:60", "state": "dead", "epoch": 222, "espnow_ver": 2, "mtu": 1446, "misses": 6, "rssi": -29, "tx": {"frames": 983, "cb_ok": 965, "cb_fail": 18, "enqueue_err": 0, "pdr_ppm": 981688}, "rx": {"frames": 2724, "lost_seqgap": 0, "reorder_dup": 0, "dropped_bad": 0, "hb_lost": 10, "bcast_frames": 1666, "pdr_ppm": 1000000}, "rtt": {"samples": 83, "min_us": 5904, "max_us": 56141, "timeouts": 16, "txq_last_us": 2843, "txq_max_us": 50671, "remote_turnaround_us": 956, "remote_turnaround_max_us": 1795, "p50_us": [6000, 8000], "p99_us": [42000, 60000], "hist": [0, 0, 0, 0, 21, 54, 6, 0, 0, 0, 0, 2, 0, 0, 0, 0]}, "rec": "link", "host_ts": 1791504099.1967888}
+{"up_ms": 220686, "node": 25344, "peer": 254, "mac": "02:00:00:00:00:fe", "state": "alive", "epoch": 0, "espnow_ver": 0, "mtu": 226, "misses": 0, "rssi": 0, "tx": {"frames": 154, "cb_ok": 0, "cb_fail": 0, "enqueue_err": 0, "pdr_ppm": null}, "rx": {"frames": 552, "lost_seqgap": 0, "reorder_dup": 0, "dropped_bad": 0, "hb_lost": 0, "bcast_frames": 0, "pdr_ppm": 1000000}, "rtt": {"samples": 18, "min_us": 51991, "max_us": 94981, "timeouts": 0, "txq_last_us": 0, "txq_max_us": 0, "remote_turnaround_us": 13, "remote_turnaround_max_us": 22, "p50_us": [42000, 60000], "p99_us": [85000, 110000], "hist": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 4, 3, 0, 0]}, "rec": "link", "host_ts": 1791504099.2467883}
+{"us": 220694843, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504099.257839}
+{"node": 25344, "up_ms": 220733, "enrolled": 1, "required": 1, "verified_peers": 2, "verified": 3, "cache_hits": 196, "refused": 0, "rate_limited": 0, "stale_epoch": 0, "verify_us_max": 86841, "link_stack_free_b": 808, "crypto_stack_free_b": 1276, "tags_ok": 1958, "bad_tag": 0, "replayed": 0, "untagged": 0, "bcast_dropped": 0, "beacon_epoch_ignored": 0, "tag_us_max": 1089, "rec": "auth", "host_ts": 1791504099.291219}
+{"us": 220717541, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2190, "rel": 0, "rec": "rssi", "host_ts": 1791504099.29673}
+{"node": 25344, "setpoint": 0, "has_value": 0, "writes_served": 0, "rec": "act", "host_ts": 1791504099.302293}
+{"us": 220728211, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504099.3855095}
+{"node": 25344, "up_ms": 220891, "settled": 1, "sent": 877, "received": 868, "malformed": 0, "views": 3, "replies_fenced": 0, "actors": [{"key": 631486192, "running": 0, "term": 0, "owner": 29544, "owner_term": 2, "assigned": 29544, "starts": 0, "fenced": 0, "released": 0}], "rec": "rec", "host_ts": 1791504099.430098}
+{"up_ms": 220906, "node": 25344, "epoch": 200, "peers_alive": 2, "peers_dead": 1, "no_radio": 0, "free_dram": 254587, "largest_block": 172032, "rx": {"total": 10492, "bad_frame": 0, "unknown_peer": 3, "wrong_dst": 0, "short_payload": 0, "unknown_opcode": 0, "queue_dropped": 0}, "tx": {"total": 4336, "enqueue_err": 0, "done_queue_dropped": 0}, "membership": {"deaths": 1, "revivals": 0, "reboots_seen": 0, "table_full": 0, "events_dropped": 0}, "rec": "node", "host_ts": 1791504099.4634962}
+{"us": 220917601, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2192, "rel": 0, "rec": "rssi", "host_ts": 1791504099.4746747}
+{"node": 25344, "hash": 2438452738, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 1201, "ts": 219746, "updates": 109, "value": -22.7297, "rec": "ns", "host_ts": 1791504099.4912302}
+{"us": 220944041, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504099.496828}
+{"node": 25344, "hash": 2410274060, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 0, "quality": "GOOD", "age_ms": 504, "ts": 220469, "updates": 20, "value": 200, "rec": "ns", "host_ts": 1791504099.5134516}
+{"node": 25344, "hash": 1274253983, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 5000, "quality": "GOOD", "age_ms": 531, "ts": 220469, "updates": 20, "value": -23, "rec": "ns", "host_ts": 1791504099.5300884}
+{"node": 25344, "hash": 3354298913, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 5000, "quality": "GOOD", "age_ms": 545, "ts": 220469, "updates": 20, "value": 2, "rec": "ns", "host_ts": 1791504099.5467374}
+{"us": 221017346, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2193, "rel": 0, "rec": "rssi", "host_ts": 1791504099.552277}
+{"node": 25344, "hash": 933111074, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "STALE", "age_ms": 51282, "ts": 169746, "updates": 84, "value": -29, "rec": "ns", "host_ts": 1791504099.568977}
+{"node": 25344, "hash": 2107197347, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 1309, "ts": 219746, "updates": 109, "value": 109, "rec": "ns", "host_ts": 1791504099.5856314}
+{"node": 25344, "hash": 3751837094, "owner": 29544, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 10000, "quality": "NO_DATA", "age_ms": 0, "ts": 0, "updates": 0, "value": null, "rec": "ns", "host_ts": 1791504099.60226}
+{"node": 25344, "hash": 1771187623, "owner": 25344, "kind": "sampled", "unit": 101, "class": 4, "bound_ms": 30000, "quality": "GOOD", "age_ms": 614, "ts": 220469, "updates": 20, "value": 254587, "rec": "ns", "host_ts": 1791504099.6188295}
+{"node": 25344, "hash": 1099607336, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "STALE", "age_ms": 51351, "ts": 169746, "updates": 84, "value": -30, "rec": "ns", "host_ts": 1791504099.6300082}
+{"node": 25344, "hash": 2654431910, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 1365, "ts": 219746, "updates": 109, "value": 109, "rec": "ns", "host_ts": 1791504099.646752}
+{"us": 221117637, "peer": 29544, "rssi": -25, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2194, "rel": 0, "rec": "rssi", "host_ts": 1791504099.65784}
+{"node": 25344, "hash": 2655330342, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 1390, "ts": 219746, "updates": 109, "value": 37, "rec": "ns", "host_ts": 1791504099.6744866}
+{"node": 25344, "hash": 1736943669, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "STALE", "age_ms": 51406, "ts": 169746, "updates": 84, "value": 0.0332937, "rec": "ns", "host_ts": 1791504099.691145}
+{"node": 25344, "hash": 2033492666, "owner": 25344, "kind": "sampled", "unit": 0, "class": 3, "bound_ms": 0, "quality": "NO_DATA", "age_ms": 0, "ts": 0, "updates": 0, "value": null, "rec": "ns", "host_ts": 1791504099.7022622}
+{"node": 25344, "hash": 4103947588, "owner": 25344, "kind": "sampled", "unit": 80, "class": 4, "bound_ms": 30000, "quality": "GOOD", "age_ms": 723, "ts": 220469, "updates": 20, "value": 220, "rec": "ns", "host_ts": 1791504099.718935}
+{"us": 221194391, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504099.7300346}
+{"node": 25344, "hash": 1841683780, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 1460, "ts": 219746, "updates": 109, "value": 0.197224, "rec": "ns", "host_ts": 1791504099.746699}
+{"us": 221217427, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2195, "rel": 0, "rec": "rssi", "host_ts": 1791504099.7522564}
+{"node": 25344, "hash": 4127306571, "owner": 25344, "kind": "sampled", "unit": 100, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 1487, "ts": 219746, "updates": 109, "value": 0, "rec": "ns", "host_ts": 1791504099.768915}
+{"node": 25344, "hash": 3317588300, "owner": 29544, "kind": "sampled", "unit": 1, "class": 4, "bound_ms": 10000, "quality": "NO_DATA", "age_ms": 0, "ts": 0, "updates": 0, "value": null, "rec": "ns", "host_ts": 1791504099.7855844}
+{"node": 25344, "hash": 660418265, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 1528, "ts": 219746, "updates": 109, "value": -23, "rec": "ns", "host_ts": 1791504099.802276}
+{"node": 25344, "hash": 1662441583, "owner": 25344, "kind": "sampled", "unit": 101, "class": 4, "bound_ms": 30000, "quality": "GOOD", "age_ms": 819, "ts": 220469, "updates": 20, "value": 172032, "rec": "ns", "host_ts": 1791504099.8134272}
+{"node": 25344, "hash": 631486192, "owner": 29544, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 10000, "quality": "GOOD", "age_ms": 3183, "ts": 218189, "updates": 23, "value": false, "rec": "ns", "host_ts": 1791504099.8300345}
+{"node": 25344, "hash": 961032311, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "GOOD", "age_ms": 1570, "ts": 219746, "updates": 109, "value": -22, "rec": "ns", "host_ts": 1791504099.8466794}
+{"us": 221317598, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2196, "rel": 0, "rec": "rssi", "host_ts": 1791504099.8577874}
+{"node": 25344, "hash": 2428174589, "owner": 25344, "kind": "sampled", "unit": 0, "class": 4, "bound_ms": 6000, "quality": "STALE", "age_ms": 51584, "ts": 169746, "updates": 84, "value": -29.0345, "rec": "ns", "host_ts": 1791504099.8744645}
+{"us": 221352163, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504099.8800657}
+{"us": 221417295, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2197, "rel": 0, "rec": "rssi", "host_ts": 1791504099.9349802}
+{"us": 221444044, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504099.9623795}
+{"us": 221517516, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2198, "rel": 0, "rec": "rssi", "host_ts": 1791504100.0351553}
+{"us": 221674820, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2199, "rel": 0, "rec": "rssi", "host_ts": 1791504100.192495}
+{"us": 221694095, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504100.2123406}
+{"us": 221718419, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2200, "rel": 0, "rec": "rssi", "host_ts": 1791504100.2360115}
+{"us": 221761452, "peer": 29544, "rssi": -24, "nf": -90, "sig": 0, "rate": 0, "kind": "bcast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504100.2785978}
+{"us": 221788158, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504100.306515}
+{"us": 221820700, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2201, "rel": 0, "rec": "rssi", "host_ts": 1791504100.3383753}
+{"us": 221975973, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2202, "rel": 0, "rec": "rssi", "host_ts": 1791504100.494695}
+{"us": 221979717, "peer": 29544, "rssi": -25, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504100.505817}
+{"us": 221987778, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504100.512976}
+{"us": 222017290, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2203, "rel": 0, "rec": "rssi", "host_ts": 1791504100.5347402}
+{"us": 222117506, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2204, "rel": 0, "rec": "rssi", "host_ts": 1791504100.6350877}
+{"us": 222193973, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504100.7122312}
+{"us": 222215308, "peer": 29544, "rssi": -22, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504100.7349288}
+{"us": 222216469, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504100.7460039}
+{"us": 222217670, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2205, "rel": 0, "rec": "rssi", "host_ts": 1791504100.7532203}
+{"us": 222317445, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2206, "rel": 0, "rec": "rssi", "host_ts": 1791504100.8351076}
+{"us": 222417197, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2207, "rel": 0, "rec": "rssi", "host_ts": 1791504100.934837}
+{"us": 222444155, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504100.9624114}
+{"us": 222514128, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504101.0336602}
+{"us": 222515566, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504101.0447621}
+{"us": 222517437, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2208, "rel": 0, "rec": "rssi", "host_ts": 1791504101.0518825}
+{"us": 222617172, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2209, "rel": 0, "rec": "rssi", "host_ts": 1791504101.134898}
+{"us": 222693932, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504101.2122197}
+{"us": 222717541, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2210, "rel": 0, "rec": "rssi", "host_ts": 1791504101.2362058}
+{"us": 222720288, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "unicast", "seq": 0, "rel": 0, "rec": "rssi", "host_ts": 1791504101.2447972}
+{"us": 222825762, "peer": 29544, "rssi": -23, "nf": -90, "sig": 0, "rate": 0, "kind": "beacon", "seq": 2211, "rel": 0, "rec": "rssi", "host_ts": 1791504101.3433664}

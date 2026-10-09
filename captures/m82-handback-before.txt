@@ -1,0 +1,1 @@
+{"links": 6, "learned": 6, "verdicts": 50, "silent": 30, "presence": 0, "motion": 0, "changed": 0, "valid": 5, "req_full": 0, "straddled": 3, "publish_err": 0, "resumed": 0, "resumed_age_ms": 0, "cp_refused": 0, "saves": 4, "save_refused": 0, "rec": "rf_fusion", "host_ts": 1791504042.1715693}

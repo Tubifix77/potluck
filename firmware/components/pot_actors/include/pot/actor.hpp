@@ -57,6 +57,11 @@ class Actor {
     virtual bool start(uint32_t now_ms) = 0;
 
     // Every pass of the link task, with the node's lock held. Return promptly.
+    // Publishing a SET of values that belong together (one measurement window, say)? Node::publish
+    // stamps each call with the clock at that moment, so a set published field by field can carry
+    // two timestamps when the loop crosses a millisecond -- and readers that match fields by
+    // timestamp then see two windows. Publish the set with node().ns().publish(hash, v, now_ms), one
+    // `now_ms` for all (found by passive-sensor, M8.2).
     virtual void tick(uint32_t now_ms) { (void)now_ms; }
 
     // A result for a CALL some actor made (Node::set_call_result). True if it was this actor's: the
