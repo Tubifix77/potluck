@@ -1,0 +1,3 @@
+# node 0x6300 epoch 200 admitted; its death window is 100 ms x 6
+# polling 4 links every 1.00 s -> captures/m82-night-2026-10-09-0204-remote.jsonl
+# 18256 link sets: 16078 consistent, 2178 discarded, 0 read timeouts
