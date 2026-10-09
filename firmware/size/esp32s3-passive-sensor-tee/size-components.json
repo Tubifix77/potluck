@@ -1,15 +1,15 @@
 {
     "D:/esp/esp-idf/components/esp_wifi/lib/esp32s3/libnet80211.a": {
         "abbrev_name": "libnet80211.a",
-        "size": 148128,
+        "size": 148132,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 121353,
+                "size": 121357,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 121353,
+                        "size": 121357,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -110,15 +110,15 @@
     },
     "esp-idf/mbedtls/mbedtls/tf-psa-crypto/core/libtfpsacrypto.a": {
         "abbrev_name": "libtfpsacrypto.a",
-        "size": 95845,
+        "size": 95849,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 79430,
+                "size": 79434,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 79430,
+                        "size": 79434,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -764,15 +764,15 @@
     },
     "D:/esp/esp-idf/components/esp_phy/lib/esp32s3/libphy.a": {
         "abbrev_name": "libphy.a",
-        "size": 34419,
+        "size": 34415,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 27902,
+                "size": 27898,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 27902,
+                        "size": 27898,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -2181,26 +2181,26 @@
     },
     "esp-idf/pot_passive_sensor/libpot_passive_sensor.a": {
         "abbrev_name": "libpot_passive_sensor.a",
-        "size": 7381,
+        "size": 7607,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 5779,
+                "size": 5957,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 5779,
+                        "size": 5957,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
                 }
             },
             "External RAM": {
-                "size": 1182,
+                "size": 1230,
                 "size_diff": 0,
                 "sections": {
                     ".ext_ram.bss": {
-                        "size": 1182,
+                        "size": 1230,
                         "size_diff": 0,
                         "abbrev_name": ".bss"
                     }
