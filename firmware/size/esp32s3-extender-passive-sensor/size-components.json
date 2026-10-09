@@ -655,15 +655,15 @@
     },
     "esp-idf/main/libmain.a": {
         "abbrev_name": "libmain.a",
-        "size": 61332,
+        "size": 61448,
         "size_diff": 0,
         "memory_types": {
             "DIRAM": {
-                "size": 32518,
+                "size": 32526,
                 "size_diff": 0,
                 "sections": {
                     ".dram0.bss": {
-                        "size": 32376,
+                        "size": 32384,
                         "size_diff": 0,
                         "abbrev_name": ".bss"
                     },
@@ -680,11 +680,11 @@
                 }
             },
             "Flash Code": {
-                "size": 14622,
+                "size": 14726,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 14622,
+                        "size": 14726,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -702,11 +702,11 @@
                 }
             },
             "Flash Data": {
-                "size": 290,
+                "size": 294,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 290,
+                        "size": 294,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -1309,15 +1309,15 @@
     },
     "esp-idf/pot_link/libpot_link.a": {
         "abbrev_name": "libpot_link.a",
-        "size": 18652,
+        "size": 18668,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 18558,
+                "size": 18574,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 18558,
+                        "size": 18574,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }

@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build-passive-sensor
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-passive-sensor && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-passive-sensor/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-passive-sensor/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xcc1c0 bytes. Smallest app partition is 0x100000 bytes. 0x33e40 bytes (20%) free.
+potluck_m0.bin binary size 0xcc1e0 bytes. Smallest app partition is 0x100000 bytes. 0x33e20 bytes (20%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -31,15 +31,15 @@ Executing "ninja size"...
 
 ├─────────────────────┼──────────────┼──────────┼────────────────┼───────────────┤
 
-│ Flash Code          │       602780 │          │                │               │
+│ Flash Code          │       602804 │          │                │               │
 
-│    .text            │       602780 │          │                │               │
+│    .text            │       602804 │          │                │               │
 
-│ DIRAM               │       143220 │    41.91 │         198540 │        341760 │
+│ DIRAM               │       143236 │    41.91 │         198524 │        341760 │
 
 │    .text            │        66843 │    19.56 │                │               │
 
-│    .bss             │        54736 │    16.02 │                │               │
+│    .bss             │        54752 │    16.02 │                │               │
 
 │    .data            │        21641 │     6.33 │                │               │
 
@@ -71,7 +71,7 @@ Executing "ninja size"...
 
 └─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
 
-Total image size: 835916 bytes (.bin may be padded larger)
+Total image size: 835940 bytes (.bin may be padded larger)
 
 Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
 

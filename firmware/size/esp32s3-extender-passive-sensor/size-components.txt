@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build-extender-passive-s
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-extender-passive-sensor && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-extender-passive-sensor/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-extender-passive-sensor/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xd5790 bytes. Smallest app partition is 0x100000 bytes. 0x2a870 bytes (17%) free.
+potluck_m0.bin binary size 0xd5800 bytes. Smallest app partition is 0x100000 bytes. 0x2a800 bytes (17%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -43,7 +43,7 @@ Executing "ninja size-components"...
 
 │ libpp.a                         │      65391 │    0 │     0 │        0 │ 17348 │     0 │  2640 │ 14708 │      42855 │  42855 │       3954 │      0 │    3954 │        0 │         1234 │  1234 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      61332 │    0 │     0 │        0 │ 32518 │ 32376 │   142 │     0 │      14622 │  14622 │        290 │      0 │     290 │        0 │        13902 │ 13902 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      61448 │    0 │     0 │        0 │ 32526 │ 32384 │   142 │     0 │      14726 │  14726 │        294 │      0 │     294 │        0 │        13902 │ 13902 │        0 │             0 │        0 │           0 │
 
 │ libphy.a                        │      34447 │  572 │   572 │        0 │  5945 │    86 │  1277 │  4582 │      27930 │  27930 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -55,7 +55,7 @@ Executing "ninja size-components"...
 
 │ libfreertos.a                   │      20643 │  340 │   340 │        0 │  8828 │   764 │  3108 │  4956 │       9842 │   9842 │       1633 │      0 │    1633 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_link.a                   │      18652 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      18558 │  18558 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_link.a                   │      18668 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      18574 │  18574 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libmonocypher.a                 │      17238 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      13394 │  13394 │       3844 │      0 │    3844 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

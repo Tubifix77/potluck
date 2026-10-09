@@ -655,15 +655,15 @@
     },
     "esp-idf/main/libmain.a": {
         "abbrev_name": "libmain.a",
-        "size": 60131,
+        "size": 60156,
         "size_diff": 0,
         "memory_types": {
             "DIRAM": {
-                "size": 32516,
+                "size": 32524,
                 "size_diff": 0,
                 "sections": {
                     ".dram0.bss": {
-                        "size": 32374,
+                        "size": 32382,
                         "size_diff": 0,
                         "abbrev_name": ".bss"
                     },
@@ -691,22 +691,22 @@
                 }
             },
             "Flash Code": {
-                "size": 13433,
+                "size": 13446,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 13433,
+                        "size": 13446,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
                 }
             },
             "Flash Data": {
-                "size": 280,
+                "size": 284,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 280,
+                        "size": 284,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -1309,15 +1309,15 @@
     },
     "esp-idf/pot_link/libpot_link.a": {
         "abbrev_name": "libpot_link.a",
-        "size": 18404,
+        "size": 18416,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 18310,
+                "size": 18322,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 18310,
+                        "size": 18322,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
