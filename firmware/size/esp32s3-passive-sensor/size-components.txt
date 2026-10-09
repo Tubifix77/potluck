@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build-passive-sensor
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-passive-sensor && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-passive-sensor/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-passive-sensor/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xcc1e0 bytes. Smallest app partition is 0x100000 bytes. 0x33e20 bytes (20%) free.
+potluck_m0.bin binary size 0xcc480 bytes. Smallest app partition is 0x100000 bytes. 0x33b80 bytes (20%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -31,11 +31,11 @@ Executing "ninja size-components"...
 
 ├─────────────────────────────────┼────────────┼──────┼───────┼──────────┼───────┼───────┼───────┼───────┼────────────┼────────┼────────────┼────────┼─────────┼──────────┼──────────────┼───────┼──────────┼───────────────┼──────────┼─────────────┤
 
-│ libnet80211.a                   │     148128 │    0 │     0 │        0 │  4818 │     0 │   938 │  3880 │     121353 │ 121353 │      14279 │      0 │   14279 │        0 │         7678 │  7678 │        0 │             0 │        0 │           0 │
+│ libnet80211.a                   │     148132 │    0 │     0 │        0 │  4818 │     0 │   938 │  3880 │     121357 │ 121357 │      14279 │      0 │   14279 │        0 │         7678 │  7678 │        0 │             0 │        0 │           0 │
 
-│ libtfpsacrypto.a                │      95845 │   80 │    80 │        0 │   572 │   444 │   128 │     0 │      79430 │  79430 │      15763 │      0 │   15763 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libtfpsacrypto.a                │      95849 │   80 │    80 │        0 │   572 │   444 │   128 │     0 │      79434 │  79434 │      15763 │      0 │   15763 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libesp_stdio.a                  │      67349 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      66939 │      0 │   66939 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      67398 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      66988 │      0 │   66988 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libwpa_supplicant.a             │      67011 │    0 │     0 │        0 │     8 │     0 │     8 │     0 │      63802 │  63802 │       1838 │      0 │    1838 │        0 │         1363 │  1363 │        0 │             0 │        0 │           0 │
 
@@ -45,7 +45,7 @@ Executing "ninja size-components"...
 
 │ libmain.a                       │      60156 │    0 │     0 │        0 │ 32524 │ 32382 │   142 │     0 │      13446 │  13446 │        284 │      0 │     284 │        0 │        13902 │ 13902 │        0 │             0 │        0 │           0 │
 
-│ libphy.a                        │      34419 │ 1152 │  1152 │        0 │  5365 │    86 │  1277 │  4002 │      27902 │  27902 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libphy.a                        │      34415 │ 1152 │  1152 │        0 │  5365 │    86 │  1277 │  4002 │      27898 │  27898 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libpot_espnow.a                 │      33408 │    0 │     0 │        0 │ 18520 │ 18500 │    20 │     0 │       3015 │   3015 │         10 │      0 │      10 │        0 │        11863 │ 11863 │        0 │             0 │        0 │           0 │
 
@@ -55,7 +55,7 @@ Executing "ninja size-components"...
 
 │ libfreertos.a                   │      20643 │  340 │   340 │        0 │  8828 │   764 │  3108 │  4956 │       9842 │   9842 │       1633 │      0 │    1633 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_link.a                   │      18416 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      18322 │  18322 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_link.a                   │      18406 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      18312 │  18312 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libmonocypher.a                 │      17110 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      13266 │  13266 │       3844 │      0 │    3844 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -71,7 +71,7 @@ Executing "ninja size-components"...
 
 │ libesp_driver_rmt.a             │       8706 │  411 │   411 │        0 │  1911 │    12 │    77 │  1822 │       5923 │   5923 │        461 │      0 │     461 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_passive_sensor.a         │       7627 │    0 │     0 │        0 │    82 │    82 │     0 │     0 │       5977 │   5977 │        338 │      0 │     338 │        0 │         1230 │  1230 │        0 │             0 │        0 │           0 │
+│ libpot_passive_sensor.a         │       8254 │    0 │     0 │        0 │    82 │    82 │     0 │     0 │       6596 │   6596 │        338 │      0 │     338 │        0 │         1238 │  1238 │        0 │             0 │        0 │           0 │
 
 │ libesp_hal_mspi.a               │       5584 │   88 │    88 │        0 │  4937 │     0 │    36 │  4901 │        559 │    559 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -103,7 +103,7 @@ Executing "ninja size-components"...
 
 │ libpot_ns.a                     │       3213 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       3119 │   3119 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_deploy.a                 │       3164 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       3132 │   3132 │         32 │      0 │      32 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_deploy.a                 │       3160 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       3128 │   3128 │         32 │      0 │      32 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_phy.a                    │       2977 │   89 │    89 │        0 │   196 │    43 │     9 │   144 │       2393 │   2393 │        299 │      0 │     299 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

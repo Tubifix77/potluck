@@ -219,7 +219,7 @@
     },
     "esp-idf/main/libmain.a": {
         "abbrev_name": "libmain.a",
-        "size": 80481,
+        "size": 80486,
         "size_diff": 0,
         "memory_types": {
             "DIRAM": {
@@ -255,11 +255,11 @@
                 }
             },
             "Flash Code": {
-                "size": 13899,
+                "size": 13904,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 13899,
+                        "size": 13904,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -328,15 +328,15 @@
     },
     "esp-idf/esp_stdio/libesp_stdio.a": {
         "abbrev_name": "libesp_stdio.a",
-        "size": 68166,
+        "size": 68223,
         "size_diff": 0,
         "memory_types": {
             "Flash Data": {
-                "size": 67756,
+                "size": 67813,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 67756,
+                        "size": 67813,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -1309,15 +1309,15 @@
     },
     "esp-idf/pot_link/libpot_link.a": {
         "abbrev_name": "libpot_link.a",
-        "size": 18436,
+        "size": 18426,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 18342,
+                "size": 18332,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 18342,
+                        "size": 18332,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -2181,26 +2181,26 @@
     },
     "esp-idf/pot_passive_sensor/libpot_passive_sensor.a": {
         "abbrev_name": "libpot_passive_sensor.a",
-        "size": 7631,
+        "size": 8254,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 5981,
+                "size": 6596,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 5981,
+                        "size": 6596,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
                 }
             },
             "External RAM": {
-                "size": 1230,
+                "size": 1238,
                 "size_diff": 0,
                 "sections": {
                     ".ext_ram.bss": {
-                        "size": 1230,
+                        "size": 1238,
                         "size_diff": 0,
                         "abbrev_name": ".bss"
                     }
@@ -3925,15 +3925,15 @@
     },
     "esp-idf/pot_deploy/libpot_deploy.a": {
         "abbrev_name": "libpot_deploy.a",
-        "size": 3164,
+        "size": 3160,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 3132,
+                "size": 3128,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 3132,
+                        "size": 3128,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
