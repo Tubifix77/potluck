@@ -4289,3 +4289,42 @@ newer, so a fenced instance never overwrites the winner's; load() returns the ne
 RAM only. Tests: a failover resuming from the dead holder's last save, and fencing/malformed refusals;
 a mutation refusing every checkpoint fails the first (the first mutation tried, `false && a || b`, was
 itself wrong -- it still accepted -- and is recorded so nobody trusts it).
+
+**Session 32, continued (to 04:xx, 2026-10-09).** The checkpoint failed its first bench test in one
+direction: the holder away, B resumed (age 15.6 s), but when C came back and took `rf_fusion` over at 2.4 s
+it had nothing -- it had been down for every save. The holder now sends its newest checkpoint to an eligible
+node the moment that node reappears (`4310b87`, with a test whose holder saves once, long before the return);
+on the bench C then resumed at age 535 ms, outputs NO DATA for ~4 s. passive-sensor's "straddled" verdicts
+were its own per-field timestamps; it now publishes a window under one time (`51c6ac6`).
+
+**PS-5 built** (`ecd7359`): `BoardServices::led_app(on, r, g, b, blink_ms)`, for pinned and portable actors
+alike. It shows only in place of healthy green -- blue, yellow and red always win, so no application can
+hide a failing link -- and lapses 5 s after the last call, so an actor that stops or moves leaves nothing
+lit. A `{"t":"led"}` stats line says what the LED shows, since nobody may be looking. passive-sensor's
+`rf_indicator` (every-node, `fa22dd3`) uses it. On the bench (`captures/m82-ps5-*`): quiet desk green,
+app 0, on all three; a synthetic presence (threshold 0.1 dB, counter 13) lit all three within 10-20 s; one
+yellow sample on B and C shortly after the deploy's reboot showed app 0, as it should; the real config
+(counter 14) back to green.
+
+**The quiet night run** (02:04-04:01, 1.95 h; `captures/m82-night-2026-10-09-0204-*`, gzipped, with a
+soak_report): A's console with the tee, B and C's records, and passive-sensor's capture polling four links'
+statistics and the detector through A once a second. Radio links: 0 deaths, 0 reboots, 0 seq gaps;
+heartbeat delivery 99.42-99.86 % (the M0 soak's was 100 % without polling, in the same RF-noisy house);
+p50 4-8 ms, p99 11-22 ms; unicast PDR 99.00 % B->C (419 cb_fail), 99.94 % or better elsewhere; free DRAM
+flat to the byte. The tee printed 294,021 lines and dropped none. Fusion reads: 4,563 of 4,564 GOOD;
+21 of 3,500 verdicts said presence on the empty desk, in 7 episodes of ~4 s. passive-sensor traced all
+seven to a lone variance spike on one link, never a mean shift, and now counts a variance trigger only
+when confirmed by the next window or a second link (`3dc9aab`). Link sets: 16,078 of 18,256 consistent,
+every discard a set straddling a window publish, flat through the run -- the capture method, not loss
+(dedup by seq saw 3,498-3,500 of 3,500 windows per link).
+
+**A defect the run found in the tee build:** A's capture had no `peers` lines and lost most `ss` and
+`rec` lines. Those are printed in pieces, and the tee task wrote whole lines between the pieces. The
+statistics task now holds a print gate for its period's output and the tee takes it per line (`2e354a2`);
+not stdout's own lock, since the statistics task takes the node mutex while printing and the link task
+prints under that mutex. On the bench A then printed every line, tee dropped 0.
+
+Bench at the end: all three on Potluck `6090b5d` + passive-sensor `3dc9aab`, `ps-room` at counter 16
+(counter 15 repeated the synthetic LED check on that build); a second quiet run recording,
+`captures/m82-night2-*`, for passive-sensor's false-alarm count on the confirmed trigger.
+

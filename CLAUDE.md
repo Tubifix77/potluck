@@ -41,6 +41,14 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-09 (early morning, owner asleep): M8.2 PS-1..PS-5 built and on the bench (M0-LOG session 32).
+>
+> All of CR2's Potluck items are built (PS-4 checkpoint `cfae645`/`4310b87`, PS-5 LED `ecd7359`, tee print gate
+> `2e354a2`). Bench: A passive-sensor-tee, B extender-passive-sensor (still the owner's credentials), C passive-sensor,
+> all Potluck `6090b5d` + passive-sensor `3dc9aab`, built from `git archive` exports in the scratchpad (never a live
+> tree). Package `ps-room` at **counter 16** (next 17+). A second quiet night run (`captures/m82-night2-*`) is recording.
+> Waiting on the owner: PS-0 (the walk-through script), the 24 h soaks (scheduled tasks), router gone mid-run, garden.
+>
 > ## HANDOVER, 2026-10-08 (late evening): M8.2 (CR2, passive-sensor) under way (M0-LOG session 32).
 >
 > RSSI tee, PS-1 (external components, -AppComponents, potluck.modules, -OutDir), PS-2 (Actor::on_rx_sample)
