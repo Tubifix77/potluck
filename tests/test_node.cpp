@@ -373,6 +373,7 @@ TEST(node, every_frame_accepted_from_a_peer_is_reported_with_its_rssi_and_kind) 
         CHECK_EQ(static_cast<unsigned>(rs.node_id), 0x101u);
         CHECK_EQ(static_cast<int>(rs.rssi), -50);  // what the test cell's radio reports
         CHECK(!rs.relayed);
+        CHECK_EQ(static_cast<int>(rs.channel), 1);  // the channel the frame was accepted on
         if (rs.kind == kRxKindBeacon) {
             if (beacons > 0 && static_cast<uint16_t>(rs.hb_seq - last_seq) != 1u) seq_rises = false;
             last_seq = rs.hb_seq;

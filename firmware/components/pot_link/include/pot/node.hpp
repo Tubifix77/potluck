@@ -45,6 +45,10 @@ struct RxSample {
     int8_t rssi;
     uint8_t kind;        // kRxKindBeacon, kRxKindUnicast, kRxKindOtherBroadcast
     bool relayed;
+    // The channel this node was on when it accepted the frame. RSSI is a per-channel measurement: on
+    // the bench one link read -26 dBm on channel 11 and -33 dBm on channel 1, so a baseline learned on
+    // one channel says nothing about another (M0-LOG session 33).
+    uint8_t channel;
 };
 constexpr uint8_t kRxKindBeacon = 1;
 constexpr uint8_t kRxKindUnicast = 2;
