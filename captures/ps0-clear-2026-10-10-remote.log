@@ -1,0 +1,3 @@
+# node 0x6300 epoch 225 admitted; its death window is 100 ms x 6
+# polling 4 links every 1.00 s -> captures/ps0-clear-2026-10-10-remote.jsonl
+# 1340 link sets: 1171 consistent, 169 discarded, 0 read timeouts

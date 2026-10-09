@@ -1,0 +1,1 @@
+owner sat at the empty-1 spot (boxed area right, below A) 01:49:00 to ~01:54:10, after the walk; detector already false at the start
