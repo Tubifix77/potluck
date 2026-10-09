@@ -4385,3 +4385,17 @@ at the other six), handed to passive-sensor with the tee, which now carries `ch`
 
 Bench: Potluck `55aa561` + passive-sensor `455ad6e`, `ps-room` at counter 17, cell on channel 1.
 
+**Session 33, later -- a hunting node does not settle; frames heard away from home are marked.** passive-sensor
+traced the last presence episode to ownership, not its links: the rebooted extender had settled at 2.6 s, its
+station's association then hid C for 600 ms at 5.7 s, and it started rf_fusion, which C was running -- C was
+fenced and restarted at a higher term. **Fixed (`f43f19d`):** a node whose channel is not known does not settle
+before settle_max_ms. With that and passive-sensor's `b4c615b` (a link settles for two full windows after it
+returns), the seven resets (`captures/m82-reboot-d15/`) gave **lit 0 and never a true reading**; rf_fusion stayed
+on C through B's resets and failed over and back in ~10 s through C's. Left: availability -- C's detector
+relearned 2-5 times per B reset, because A and C sweep for B in step and hear each other on every channel
+they visit, and rf_link took the node's channel from the last frame. **`225d801`:** `RxSample::off_home`
+marks a frame heard on a sweep or search visit away from the cell's channel (an excursion, not a move), and
+the tee prints `away`; passive-sensor to ignore such samples.
+
+Bench: Potluck `f43f19d` + passive-sensor `b4c615b`, `ps-room` at counter 17, cell on channel 1.
+
