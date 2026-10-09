@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build-extender-passive-s
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-extender-passive-sensor && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-extender-passive-sensor/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-extender-passive-sensor/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xd5760 bytes. Smallest app partition is 0x100000 bytes. 0x2a8a0 bytes (17%) free.
+potluck_m0.bin binary size 0xd5790 bytes. Smallest app partition is 0x100000 bytes. 0x2a870 bytes (17%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -37,7 +37,7 @@ Executing "ninja size-components"...
 
 │ liblwip.a                       │      75899 │    0 │     0 │        0 │    16 │     0 │    16 │     0 │      70251 │  70251 │       3145 │      0 │    3145 │        0 │         2487 │  2487 │        0 │             0 │        0 │           0 │
 
-│ libesp_stdio.a                  │      73188 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      72778 │      0 │   72778 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      73199 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      72789 │      0 │   72789 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libwpa_supplicant.a             │      67007 │    0 │     0 │        0 │     8 │     0 │     8 │     0 │      63798 │  63798 │       1838 │      0 │    1838 │        0 │         1363 │  1363 │        0 │             0 │        0 │           0 │
 
@@ -71,7 +71,7 @@ Executing "ninja size-components"...
 
 │ libesp_driver_rmt.a             │       8710 │  411 │   411 │        0 │  1911 │    12 │    77 │  1822 │       5927 │   5927 │        461 │      0 │     461 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_passive_sensor.a         │       7611 │    0 │     0 │        0 │    82 │    82 │     0 │     0 │       5961 │   5961 │        338 │      0 │     338 │        0 │         1230 │  1230 │        0 │             0 │        0 │           0 │
+│ libpot_passive_sensor.a         │       7635 │    0 │     0 │        0 │    82 │    82 │     0 │     0 │       5985 │   5985 │        338 │      0 │     338 │        0 │         1230 │  1230 │        0 │             0 │        0 │           0 │
 
 │ libesp_netif.a                  │       7539 │    0 │     0 │        0 │   197 │   189 │     8 │     0 │       7088 │   7088 │        254 │      0 │     254 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

@@ -328,15 +328,15 @@
     },
     "esp-idf/esp_stdio/libesp_stdio.a": {
         "abbrev_name": "libesp_stdio.a",
-        "size": 68155,
+        "size": 68166,
         "size_diff": 0,
         "memory_types": {
             "Flash Data": {
-                "size": 67745,
+                "size": 67756,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 67745,
+                        "size": 67756,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -2181,15 +2181,15 @@
     },
     "esp-idf/pot_passive_sensor/libpot_passive_sensor.a": {
         "abbrev_name": "libpot_passive_sensor.a",
-        "size": 7607,
+        "size": 7631,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 5957,
+                "size": 5981,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 5957,
+                        "size": 5981,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
