@@ -4370,3 +4370,18 @@ its own three captures only, and the watch has a timeout.
 Bench at the end: all three on Potluck `f31c56c` (with `4d2ea83`, without `02b7bfe`) + passive-sensor
 `a4c2a8e`, `ps-room` at counter 17 (next 18+), cell whole on channel 1, B associated.
 
+**Session 33, continued -- the channel-aware detector, and a sweep that wandered.** passive-sensor's `455ad6e`
+tags its baseline with the channel (relearn on a change; the checkpoint carries it). On Potluck `ee08f9e`
+(`captures/m82-reboot-d14/`) it raised no false presence through the seven resets, but relearned ~3 times
+at each of B's: A and C, sweeping for the rebooted B at once, wandered -- A heard B's new incarnation on
+channel 2 in the middle of its station's scan (its boot HELLO lost) and stopped there on what B had declared
+*before* the reboot, then followed C to 3, a channel C was only visiting. **Fixed (`55aa561`):** a rebooted
+authority's channel is unknown until its HELLO says; a sweep or a search visit finds it only where it declares
+a channel; a sweeping or visiting node declares 0. Each half has a test that fails without it (the first
+needed the boot HELLO lost and the sweep dwelling on the station's channel, as on the bench, before it could
+fail). Rerun (`m82-reboot-sweep/`): no wandering -- one "sweep found nothing, back home" per B reset -- no
+relearns, 128 GOOD reads; one presence episode left (3 reads, ~6 s, 13-17 s after B's first reset, nothing
+at the other six), handed to passive-sensor with the tee, which now carries `ch`.
+
+Bench: Potluck `55aa561` + passive-sensor `455ad6e`, `ps-room` at counter 17, cell on channel 1.
+
