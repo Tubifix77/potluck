@@ -86,6 +86,10 @@ void Node::note(MembershipChange c, PeerLink* p) {
         case MembershipChange::Rebooted:
             ++counters_.reboots_seen;
             emit(EventKind::PeerRebooted, p, p->boot_epoch);
+            // A rebooted authority's channel is unknown until its first HELLO says: its first beacon
+            // arrives before that HELLO, and a sweep that heard it would stop wherever its station's
+            // scan happened to be (node.hpp, authority_declared_).
+            if (p->node_id == authority_id_) authority_declared_ = 0;
             // A rebooted worker is a different incarnation: it has no memory of the unit it
             // accepted, so that unit is lost even though the peer is answering again.
             abandon_calls_to(p->node_id);
@@ -351,7 +355,7 @@ void Node::tick_channel(uint32_t now) {
     // one pass over the band, when we go home: it really died, and the others are there.
     if (sweeping_) {
         const PeerLink* a = peers_.find_by_node_id(authority_id_);
-        if (a != nullptr && a->state == PeerState::Alive) {
+        if (a != nullptr && a->state == PeerState::Alive && authority_declared_ != 0) {
             sweeping_ = false;
             ++ch_counters_.authority_found;
             settle_until_ms_ = now + 2 * cfg_.hello_interval_ms + 500;
@@ -390,7 +394,7 @@ void Node::tick_channel(uint32_t now) {
     }
     if (searching_) {
         const PeerLink* a = peers_.find_by_node_id(authority_id_);
-        if (a != nullptr && a->state == PeerState::Alive) {
+        if (a != nullptr && a->state == PeerState::Alive && authority_declared_ != 0) {
             // Heard again. On a visit: it is here, so stay, and the members at home find us by CR-1's
             // scan once they have lost everyone. At home: it came back where we are.
             searching_ = false;
@@ -741,7 +745,9 @@ void Node::send_hello(bool want_ack) {
     HelloPayload h{};
     h.boot_epoch = cfg_.boot_epoch;
     const uint32_t hnow = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
-    const uint8_t declared = cfg_.channel_known ? channel_ : 0;  // 0: "not known", which nobody follows
+    // 0: "not known", which nobody follows -- a station still hunting, or a node only visiting a channel
+    // while it sweeps or searches for its authority (another sweeper once followed one there).
+    const uint8_t declared = (cfg_.channel_known && !sweeping_ && !visiting_) ? channel_ : 0;
     h.caps = caps_ | (static_cast<uint32_t>(declared & 0xF) << kHelloCapChannelShift) |
              (cfg_.channel_fixed ? kHelloCapChannelFixed : 0u) | (settling(hnow) ? kHelloCapSettling : 0u) |
              (relay_ ? kHelloCapRelay : 0u);
@@ -1000,6 +1006,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         const bool peer_fixed = (h.caps & kHelloCapChannelFixed) != 0;
         if (peer_fixed) {
             authority_id_ = h.node_id;  // M6.1: this peer's channel is its router's; follow it if it moves
+            authority_declared_ = declared;
         } else if (authority_id_ == h.node_id) {
             authority_id_ = 0;
         }

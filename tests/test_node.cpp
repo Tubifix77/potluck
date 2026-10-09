@@ -10,6 +10,7 @@
 
 #include "pot/node.hpp"
 #include "pot/opcodes.hpp"
+#include "pot/payloads.hpp"
 #include "test_harness.hpp"
 
 using namespace pot;
@@ -35,6 +36,13 @@ struct TestCell {
     uint32_t now_us = 0;
     bool partitioned = false;  // when true, nothing is delivered
     bool drop_hello = false;   // when true, HELLOs are lost and everything else is delivered
+    // Every HELLO sent: who, on which radio channel, and the channel it declared.
+    struct SentHello {
+        size_t from;
+        uint8_t radio;
+        uint8_t declared;
+    };
+    std::vector<SentHello> hellos;
     bool leak_adjacent = false;  // M5.1: a frame on channel n is also heard on n-1 and n+1 (close range)
     // ADR-009: pairs of nodes out of each other's range, both directions.
     std::vector<std::pair<size_t, size_t>> deaf;
@@ -118,6 +126,14 @@ struct TestCell {
         ++c->frames_on_wire;
         if (c->partitioned) {
             return 0;  // accepted by the transport, never delivered — a real and important case
+        }
+        if (len > 6 && data[6] == kOpHello) {
+            Frame fr{};
+            HelloPayload h{};
+            if (parse(data, len, fr) == FrameError::Ok && load_hello(fr.payload, fr.payload_len, h)) {
+                c->hellos.push_back({from->index, from->chan,
+                                     static_cast<uint8_t>((h.caps & kHelloCapChannelMask) >> kHelloCapChannelShift)});
+            }
         }
         if (c->drop_hello && len > 6 && data[6] == kOpHello) {
             return 0;
@@ -694,6 +710,68 @@ TEST(node, a_station_still_hunting_for_its_router_sends_nobody_to_the_channel_it
         CHECK_EQ(static_cast<int>(c.nodes[i].chan), 11);
         CHECK_EQ(alive_peers(*c.nodes[i].node), static_cast<size_t>(2));
     }
+}
+
+TEST(node, a_sweep_neither_stops_where_a_hunting_station_is_heard_nor_follows_another_sweeper) {
+    // Found on the bench (M0-LOG session 33): the extender rebooted; A and C swept for it at once. A
+    // heard it on channel 2 -- its station's scan passing through -- and stopped there, then followed
+    // C to 3, a channel C was only visiting. Each move made the detector on C relearn the room.
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);
+    c.start_all();
+    c.advance_ms(2000);
+    c.deaf = {{0, 1}, {0, 2}};  // the station goes down; 600 ms on, the others sweep, 2 first
+    c.advance_ms(650);
+    TestNode& st = c.nodes[0];  // it reboots hunting, its radio wherever its scan is: 2
+    st.cfg.channel_fixed = true;
+    st.cfg.channel_known = false;
+    st.cfg.channel = 2;
+    c.reboot(0);
+    st.chan = 2;  // a fixed node never tunes its own radio: the router (here, the test) does
+    c.advance_ms(50);  // its boot HELLO is lost (on the bench, to its station's scan) ...
+    c.deaf.clear();    // ... so the sweepers on 2 hear its new incarnation's beacons first
+    // While it hunts, the others may sweep, or visit a channel for one dwell (300 ms), but never stay
+    // anywhere but home (1): outside a sweep, no run off home longer than a visit.
+    int run[3] = {0, 0, 0}, longest = 0;
+    for (int k = 0; k < 60; ++k) {
+        c.advance_ms(100);
+        for (size_t i = 1; i < 3; ++i) {
+            const bool away = c.nodes[i].chan != 1 && !c.nodes[i].node->sweeping_for_authority();
+            run[i] = away ? run[i] + 1 : 0;
+            if (run[i] > longest) longest = run[i];
+        }
+    }
+    CHECK(longest <= 4);
+    // Associated on 1, where the cell is: everyone together, nobody sweeping.
+    c.nodes[0].node->set_channel_now(1);
+    c.nodes[0].node->set_channel_known(true);
+    c.advance_ms(600 + 11 * 300 + 3000);
+    for (size_t i = 1; i < 3; ++i) {
+        CHECK_EQ(static_cast<int>(c.nodes[i].chan), 1);
+        CHECK_EQ(alive_peers(*c.nodes[i].node), static_cast<size_t>(2));
+        CHECK(!c.nodes[i].node->sweeping_for_authority());
+    }
+}
+
+TEST(node, a_node_sweeping_for_its_authority_declares_no_channel_on_the_channels_it_visits) {
+    // Found on the bench (M0-LOG session 33): A followed C to channel 3, a channel C was only visiting
+    // in its sweep. A sweeper's HELLO on a visit now declares 0, so nobody can be sent there by it.
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);
+    c.start_all();
+    c.advance_ms(2000);
+    c.deaf = {{0, 1}, {0, 2}};  // the station goes silent: 1 and 2 sweep
+    c.hellos.clear();
+    c.advance_ms(600 + 10 * 300 + 3000);
+    size_t on_visits = 0;
+    for (const TestCell::SentHello& h : c.hellos) {
+        if (h.from == 0 || h.radio == 1) continue;  // the station, or a sweeper at home
+        ++on_visits;
+        CHECK_EQ(static_cast<int>(h.declared), 0);
+    }
+    CHECK(on_visits >= 10u);  // the sweep greets on every channel it visits
 }
 
 TEST(node, when_the_station_dies_the_others_sweep_once_and_come_home) {

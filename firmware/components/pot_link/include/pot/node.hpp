@@ -657,6 +657,10 @@ class Node {
     // other members still hear each other would stay behind for good (found on the bench, M0-LOG
     // session 29). So losing the authority while others remain starts one bounded sweep.
     uint16_t authority_id_ = 0;
+    // What the authority's last HELLO declared. 0 while its station hunts (channel_known false): it
+    // can be heard anywhere its scan takes the radio, so hearing it there is not finding it (M0-LOG
+    // session 33: a sweep stopped on channel 2, where a booting extender's scan happened to be).
+    uint8_t authority_declared_ = 0;
     bool sweeping_ = false;
     uint8_t sweep_home_ = 0;   // where to return if one sweep does not find it
     uint8_t sweep_left_ = 0;   // channels still to visit
