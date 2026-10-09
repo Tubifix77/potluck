@@ -741,7 +741,8 @@ void Node::send_hello(bool want_ack) {
     HelloPayload h{};
     h.boot_epoch = cfg_.boot_epoch;
     const uint32_t hnow = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
-    h.caps = caps_ | (static_cast<uint32_t>(channel_ & 0xF) << kHelloCapChannelShift) |
+    const uint8_t declared = cfg_.channel_known ? channel_ : 0;  // 0: "not known", which nobody follows
+    h.caps = caps_ | (static_cast<uint32_t>(declared & 0xF) << kHelloCapChannelShift) |
              (cfg_.channel_fixed ? kHelloCapChannelFixed : 0u) | (settling(hnow) ? kHelloCapSettling : 0u) |
              (relay_ ? kHelloCapRelay : 0u);
     h.node_id = cfg_.node_id;

@@ -165,6 +165,12 @@ struct NodeConfig {
     uint8_t channel_lo = 1;
     uint8_t channel_hi = 11;
     bool channel_fixed = false;
+    // M8.2 (found on the bench, M0-LOG session 33): whether this node knows the channel it is on. A
+    // station still looking for its router does not -- its scan carries the radio across channels, and
+    // a HELLO sent from channel 9 that declared the channel it booted on (1) took the cell to channel 1
+    // just before the station associated on 11. While false the HELLO declares channel 0: a fixed node
+    // is still the authority (the others sweep for it if it vanishes) but sends nobody anywhere.
+    bool channel_known = true;
     uint32_t scan_after_ms = 3000;
     uint32_t scan_dwell_ms = 300;
 
@@ -290,6 +296,8 @@ class Node {
     void set_channel_now(uint8_t channel);
     // A Wi-Fi station's channel belongs to its router: it must never hop. Settable at run time.
     void set_channel_fixed(bool fixed) { cfg_.channel_fixed = fixed; }
+    void set_channel_known(bool known) { cfg_.channel_known = known; }
+    bool channel_known() const { return cfg_.channel_known; }
     uint8_t channel() const { return channel_; }
     bool scanning() const { return scanning_; }
     bool sweeping_for_authority() const { return sweeping_; }

@@ -1122,6 +1122,7 @@ void link_task(void*) {
         if (extender::active() && static_cast<int32_t>(nt - next_hunt_poll_ms) >= 0) {
             next_hunt_poll_ms = nt + 200;
             const bool assoc = extender::associated();
+            const uint8_t radio_ch = espnow_current_channel();
             if (assoc != was_associated) {
                 was_associated = assoc;
                 const uint8_t misses = assoc ? CONFIG_POT_HB_MISS_LIMIT : CONFIG_POT_EXTENDER_HUNT_MISSES;
@@ -1131,6 +1132,13 @@ void link_task(void*) {
                 ESP_LOGI(kTag, "extender: station %s; declaring %u x %u ms", assoc ? "associated" : "hunting",
                          static_cast<unsigned>(misses), static_cast<unsigned>(CONFIG_POT_HB_PERIOD_MS));
             }
+            // Declare a channel only while it is the router's: associated, and the node already moved to
+            // where the radio is (the router's channel reaches the node through take_channel below, a
+            // pass later). Hunting, or between the two, the HELLO says 0 and nobody is sent anywhere.
+            xSemaphoreTake(g_mutex, portMAX_DELAY);
+            const bool known = assoc && radio_ch == g_node->channel();
+            if (known != g_node->channel_known()) g_node->set_channel_known(known);
+            xSemaphoreGive(g_mutex);
         }
 #endif
 
@@ -2084,7 +2092,10 @@ extern "C" void app_main(void) {
         cfg.channel_fixed = true;
 #if CONFIG_POT_EXTENDER
         // At boot the station is usually still hunting; the link loop tightens this once it associates.
-        if (!extender::associated()) cfg.hb_miss_limit = CONFIG_POT_EXTENDER_HUNT_MISSES;
+        if (!extender::associated()) {
+            cfg.hb_miss_limit = CONFIG_POT_EXTENDER_HUNT_MISSES;
+            cfg.channel_known = false;  // and declares its channel once it is the router's (link loop)
+        }
 #endif
     }
 #if CONFIG_POT_CAN

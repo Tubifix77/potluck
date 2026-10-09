@@ -663,6 +663,38 @@ TEST(node, when_the_station_moves_with_its_router_the_whole_cell_follows_it) {
     CHECK_EQ(c.nodes[0].node->channel_counters().scan_hops, 0u);
 }
 
+TEST(node, a_station_still_hunting_for_its_router_sends_nobody_to_the_channel_it_booted_on) {
+    // Found on the bench (M0-LOG session 33): the extender rebooted on channel 1, the channel it saved
+    // the night before; its station's scan carried the radio to channel 9, where the cell was, and its
+    // HELLO -- fixed, declaring 1 -- took the cell to channel 1. Six seconds later it associated on 11.
+    // A station that does not yet know its channel declares 0: still the authority, followed nowhere.
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);
+    c.nodes[0].node->set_channel_known(false);
+    c.start_all();
+    c.nodes[1].node->set_channel_now(9);  // the cell is on 9 ...
+    c.nodes[2].node->set_channel_now(9);
+    c.nodes[0].chan = 9;  // ... and the station's scan has its radio there, while it still thinks 1
+    // Sampled, not checked once: followed, the others go to 1, lose the station, sweep back to 9 and
+    // are sent to 1 again -- a cycle that passes through 9 every ~3 s.
+    for (int k = 0; k < 30; ++k) {
+        c.advance_ms(200);
+        for (size_t i = 1; i < 3; ++i) CHECK_EQ(static_cast<int>(c.nodes[i].chan), 9);  // nobody went to "1"
+    }
+    for (size_t i = 1; i < 3; ++i) CHECK_EQ(alive_peers(*c.nodes[i].node), static_cast<size_t>(2));
+    // Associated: the router's channel is now the station's, and declaring it is right again.
+    c.nodes[0].node->set_channel_now(9);
+    c.nodes[0].node->set_channel_known(true);
+    c.advance_ms(3000);
+    c.nodes[0].node->set_channel_now(11);  // the router moves; the cell follows its station
+    c.advance_ms(600 + 10 * 300 + 2000);
+    for (size_t i = 1; i < 3; ++i) {
+        CHECK_EQ(static_cast<int>(c.nodes[i].chan), 11);
+        CHECK_EQ(alive_peers(*c.nodes[i].node), static_cast<size_t>(2));
+    }
+}
+
 TEST(node, when_the_station_dies_the_others_sweep_once_and_come_home) {
     // The other half of the same rule: a station that is gone, not moved. One sweep, then back to the
     // channel the rest of the cell is on -- and no sweeping for ever after.
