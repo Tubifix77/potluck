@@ -65,6 +65,7 @@ class McLenderActor : public Actor {
         uint32_t accepted;
         uint32_t refused;  // every slot busy, no workers, or malformed arguments
         uint32_t served;   // answered
+        uint32_t unit_ms;  // the last unit's time on this node's workers, accept to answer
     };
     const Stats& stats() const { return stats_; }
 
@@ -79,6 +80,7 @@ class McLenderActor : public Actor {
     McLenderConfig cfg_;
     Slot slots_[4];
     Stats stats_{};
+    uint32_t now_ = 0;
 };
 
 class McJobActor : public Actor {
@@ -147,6 +149,7 @@ class McJobActor : public Actor {
     uint32_t t0_ = 0;
     uint32_t now_ = 0;
     uint32_t local_ms_ = 0;  // this node's measured unit time; 0 until one has finished
+    uint32_t local_last_ms_[2] = {};  // the last unit's time on each local worker (diagnostic)
     McUnit local_[2];
     uint16_t local_unit_[2] = {};
     Remote remote_[kMaxLenders];

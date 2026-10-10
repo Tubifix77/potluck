@@ -90,6 +90,7 @@ int McLenderActor::on_call(uint16_t from, uint16_t msg, uint32_t path, const uin
         s.u.unit = rd32(args + 4);
         s.u.samples = samples;
         s.u.hits = 0;
+        s.u.started_ms = now_;
         s.u.state.store(1, std::memory_order_relaxed);
         if (!board_->bg_submit(board_->ctx, &mc_unit_run, &s.u)) {
             s.u.state.store(0, std::memory_order_relaxed);
@@ -104,11 +105,13 @@ int McLenderActor::on_call(uint16_t from, uint16_t msg, uint32_t path, const uin
     return kCallRefused;
 }
 
-void McLenderActor::tick(uint32_t) {
+void McLenderActor::tick(uint32_t now) {
+    now_ = now;
     for (Slot& s : slots_) {
         if (s.u.state.load(std::memory_order_acquire) != 2) continue;
         node_.reply_call(s.from, s.msg, mc_function_path(), Value::of_u32(s.u.hits));
         ++stats_.served;
+        stats_.unit_ms = now - s.u.started_ms;
         s.u.state.store(0, std::memory_order_relaxed);
     }
 }
@@ -118,10 +121,10 @@ size_t McLenderActor::stats_json(char* buf, size_t cap, uint32_t) {
     for (const Slot& s : slots_) busy += s.u.state.load(std::memory_order_relaxed) == 1 ? 1u : 0u;
     const int n = std::snprintf(buf, cap,
                                 "{\"t\":\"mc_lend\",\"node\":%u,\"accepted\":%u,\"refused\":%u,\"served\":%u,"
-                                "\"busy\":%u,\"slots\":%u}",
+                                "\"busy\":%u,\"slots\":%u,\"unit_ms\":%u}",
                                 static_cast<unsigned>(node_.config().node_id), static_cast<unsigned>(stats_.accepted),
                                 static_cast<unsigned>(stats_.refused), static_cast<unsigned>(stats_.served), busy,
-                                static_cast<unsigned>(cfg_.slots));
+                                static_cast<unsigned>(cfg_.slots), static_cast<unsigned>(stats_.unit_ms));
     return (n > 0 && static_cast<size_t>(n) < cap) ? static_cast<size_t>(n) : 0;
 }
 
@@ -285,6 +288,7 @@ void McJobActor::tick(uint32_t now) {
         ++done_;
         ++cur_.local_units;
         const uint32_t took = now - u.started_ms;
+        local_last_ms_[i] = took;
         local_ms_ = local_ms_ == 0 ? took : (local_ms_ * 3u + took) / 4u;
         u.state.store(0, std::memory_order_relaxed);
     }
@@ -370,12 +374,15 @@ bool McJobActor::on_console(const char* line, size_t len) {
 size_t McJobActor::stats_json(char* buf, size_t cap, uint32_t) {
     const int n = std::snprintf(buf, cap,
                                 "{\"t\":\"mc\",\"node\":%u,\"running\":%d,\"run\":%u,\"lend\":%u,\"done\":%u,"
-                                "\"units\":%u,\"local_ms\":%u,\"last_elapsed_ms\":%u,\"last_pi\":%.7f}",
+                                "\"units\":%u,\"local_ms\":%u,\"w0_ms\":%u,\"w1_ms\":%u,\"lender_ms\":[%u,%u],"
+                                "\"last_elapsed_ms\":%u,\"last_pi\":%.7f}",
                                 static_cast<unsigned>(node_.config().node_id), running_ ? 1 : 0,
                                 static_cast<unsigned>(running_ ? cur_.run : last_.run),
                                 static_cast<unsigned>(running_ ? cur_.lend : last_.lend),
                                 static_cast<unsigned>(done_), static_cast<unsigned>(cfg_.units),
-                                static_cast<unsigned>(local_ms_), static_cast<unsigned>(last_.elapsed_ms),
+                                static_cast<unsigned>(local_ms_), static_cast<unsigned>(local_last_ms_[0]),
+                                static_cast<unsigned>(local_last_ms_[1]), static_cast<unsigned>(lenders_[0].compute_ms),
+                                static_cast<unsigned>(lenders_[1].compute_ms), static_cast<unsigned>(last_.elapsed_ms),
                                 static_cast<double>(last_.pi));
     return (n > 0 && static_cast<size_t>(n) < cap) ? static_cast<size_t>(n) : 0;
 }

@@ -50,11 +50,29 @@
       "latency_class": 4,
       "pin": 25344,
       "config": {
-        "units": 48,
+        "units": 960,
         "samples": 1000000,
         "seed": 1,
         "lend": true,
         "start_after_ms": 0
+      }
+    },
+    {
+      "name": "die_b",
+      "module": "builtin:die_temp",
+      "latency_class": 4,
+      "pin": 29544,
+      "config": {
+        "period_ms": 1000
+      }
+    },
+    {
+      "name": "die_c",
+      "module": "builtin:die_temp",
+      "latency_class": 4,
+      "pin": 33120,
+      "config": {
+        "period_ms": 1000
       }
     }
   ]
