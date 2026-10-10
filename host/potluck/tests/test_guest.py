@@ -180,6 +180,21 @@ class Image(unittest.TestCase):
         with self.assertRaises(dp.DeployError):
             dp.compile_image(parse(doc), 1, guest_root=self.dir.name)
 
+    def test_the_host_checks_every_author_before_anything_leaves(self):
+        ca, author, cert = keys()
+        m = parse(guest_manifest("overheat_alarm.guest.json", self.bundle.sha256))
+        self.assertEqual(dp.check_guest_authors(m, ca.public, self.dir.name), [("alarm", 7)])
+        with self.assertRaises(dp.DeployError):  # another cluster's CA
+            dp.check_guest_authors(m, ed.public_key(bytes(range(200, 232))), self.dir.name)
+        d = gs.bundle_to_dict(self.bundle)
+        sig = bytearray(bytes.fromhex(d["sig"]))
+        sig[10] ^= 1
+        with open(self.path, "w", encoding="ascii") as f:
+            json.dump(dict(d, sig=sig.hex()), f)
+        dp.compile_image(m, 1, guest_root=self.dir.name)  # the compiler only pins the module ...
+        with self.assertRaises(dp.DeployError):  # ... the author check is what refuses the signature
+            dp.check_guest_authors(m, ca.public, self.dir.name)
+
     def test_without_guests_the_image_stays_version_1(self):
         doc = guest_manifest("x", "y")
         doc["actors"] = [{"name": "ticker", "module": "builtin:ticker", "latency_class": 3, "config": {}}]

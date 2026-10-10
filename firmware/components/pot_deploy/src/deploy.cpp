@@ -37,6 +37,24 @@ uint32_t crc32(const uint8_t* data, size_t len, uint32_t seed) {
     return ~c;
 }
 
+size_t image_extent(const uint8_t* data, size_t len) {
+    if (data == nullptr || len < kImageHeaderLen) return 0;
+    const uint32_t body = rd32(data + 20);
+    if (body > len - kImageHeaderLen) return 0;
+    size_t at = kImageHeaderLen + body;
+    if (data[4] != kImageVersionGuests) return at;
+    if (at >= len) return 0;  // the guest count
+    const uint8_t n = data[at++];
+    for (uint8_t g = 0; g < n; ++g) {
+        if (len - at < 4) return 0;
+        const uint32_t gl = rd32(data + at);
+        at += 4;
+        if (gl > len - at) return 0;
+        at += gl;
+    }
+    return at;
+}
+
 bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why) {
     const char* dummy = nullptr;
     const char*& w = (why != nullptr) ? *why : dummy;
@@ -538,16 +556,12 @@ DeployReply DeployReceiver::commit(uint32_t crc) {
     if (crc != begin_.image_crc || crc32(buf_, received_) != crc) {
         return reply(DeployStatus::CrcMismatch);
     }
-    // The image's own header says where it ends; anything after it is the M5 signature trailer.
-    if (received_ < kImageHeaderLen) {
+    // The image's own header says where it ends; anything after it is the M5 signature trailer. M7: in
+    // version 2 the end is after the guest section, which body_len does not cover.
+    const size_t image_len = image_extent(buf_, received_);
+    if (image_len == 0) {
         return reply(DeployStatus::BadImage);
     }
-    const uint32_t body = static_cast<uint32_t>(buf_[20]) | (static_cast<uint32_t>(buf_[21]) << 8) |
-                          (static_cast<uint32_t>(buf_[22]) << 16) | (static_cast<uint32_t>(buf_[23]) << 24);
-    if (body > received_ - kImageHeaderLen) {
-        return reply(DeployStatus::BadImage);
-    }
-    const size_t image_len = kImageHeaderLen + body;
     if (verifier_ != nullptr) {
         const DeployStatus v = verifier_(verifier_ctx_, buf_, image_len, buf_ + image_len, received_ - image_len);
         if (v != DeployStatus::Ok) {

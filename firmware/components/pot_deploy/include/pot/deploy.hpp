@@ -107,6 +107,11 @@ struct DeployImage {
 // is not running.
 bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why);
 
+// Where the image in `data` ends, by its own header: 24 + body_len for version 1, plus the guest
+// section for version 2 (M7). What follows is the M5 signature trailer. 0 if the header or the guest
+// section does not fit in `len`. No other validation: parse_image's.
+size_t image_extent(const uint8_t* data, size_t len);
+
 // LED: what "healthy" looks like. Blue/yellow/red keep their diagnostic meaning; only the healthy
 // state is configurable, so a deployed behaviour can never hide a dead link.
 struct LedConfig {

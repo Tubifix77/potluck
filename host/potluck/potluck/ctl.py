@@ -118,6 +118,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="an external component's potluck-modules.json (M8.2); repeatable")
     s.add_argument("--guests", default=None,
                    help="M7: the directory guest bundles' paths are relative to (default: the working directory)")
+    s.add_argument("--skip-guest-check", action="store_true",
+                   help="M7: send guests whose author signature the host has not verified -- to test that "
+                        "the nodes refuse them; never for a real deployment")
 
     return p
 
@@ -306,6 +309,9 @@ def cmd_deploy(bridge: Bridge, node_id: int, args) -> int:
         ca = read_key(args.ca)
         v = verify_package(load_package(args.package), ca.public, min_counter=args.min_counter)
         img = dp.compile_image(v.manifest, v.rollback_counter, getattr(args, "guests", None))
+        if not getattr(args, "skip_guest_check", False):
+            for name, author in dp.check_guest_authors(v.manifest, ca.public, getattr(args, "guests", None)):
+                print(f"guest '{name}': author {author}, signature verified under the cluster CA")
     except (SigningError, dp.DeployError, mods.ModuleError, OSError, ValueError) as exc:
         print(f"REFUSED before sending: {exc}")
         return 4

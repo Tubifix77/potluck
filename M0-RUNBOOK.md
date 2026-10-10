@@ -610,7 +610,42 @@ python -m potluck.fw --port COM6 rollout ../../firmware/build/potluck_m0.bin --c
 - An experiment image (a bench that never joins the cell) can go out the same way: it never confirms, and one
   reset (`tools/console_tap.py` does not reset; esptool's or RTS's does) puts the board back on its image.
 
-## 12. M7: the WebAssembly sandbox (an experiment, off by default)
+## 12. M7: guest actors in the WebAssembly sandbox (off by default)
+
+A guest is a WebAssembly module from an author the owner certifies but does not trust with a node. It runs
+on boards built with `CONFIG_POT_WASM` (variants `m7-node`, and `extender-m7` for B), as a portable actor in
+the sandbox: fuel per tick, its own memory, nine imports (`guests/potluck_guest.rs`), and read-only outputs
+under `act/<actor>/`. A board without the option refuses an image that carries guests. From `host/potluck/`:
+
+```
+tools\build_firmware.ps1 -Clean -Variant m7-node -Extra "CONFIG_POT_WASM=y"
+tools\build_firmware.ps1 -Clean -Variant extender-m7 -Extra "CONFIG_POT_WASM=y" -PmeHotspot D:\Projects\poor-mans-extender\firmware\components
+python -m potluck.fw --port COM6 rollout ../../firmware/build-m7-node/potluck_m0.bin --counter N --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --image-for 7368=../../firmware/build-extender-m7/potluck_m0.bin
+
+# once per author (the owner): a key for the author, certified by the cluster CA as role 3
+python -m potluck.signing keygen --role guest --label acme --out ../../keys/acme
+python -m potluck.enrol --guest-cert ../../keys/acme.pub --author 7 --ca-key ../../keys/ca.key --out ../../keys/acme.gcert
+# per module (the author): sign it into a bundle
+python -m potluck.guest sign ../../guests/build/overheat_alarm.wasm --key ../../keys/acme.key --cert ../../keys/acme.gcert --out ../../keys/overheat_alarm.guest.json
+python -m potluck.guest verify ../../keys/overheat_alarm.guest.json --ca ../../keys/ca.pub
+# the owner: the manifest names the guest by its sha256 (manifests/m7-guests.json), then sign and deploy as usual
+python -m potluck.signing sign ../../manifests/m7-guests.json --key ../../keys/deploy.key --cert ../../keys/deploy.cert --counter N --out ../../keys/m7-guests-N.pkg.json
+python -m potluck.ctl --port COM6 --node 6300 deploy ../../keys/m7-guests-N.pkg.json --ca ../../keys/ca.pub --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --guests ../..
+```
+
+- Bundle paths in a manifest are relative to `--guests` (here the repository root). `ctl deploy` checks every
+  author signature against the CA before sending; `--skip-guest-check` sends anyway, only to test that the
+  nodes refuse it (they check again before committing, and again before each guest first runs).
+- Consoles: `{"t":"guest"}` per running guest each stats period, `{"t":"guest_fault"}` on every failed tick.
+  Record them with `tools/json_capture.py` (B holds credentials), read the outputs from A with
+  `python tools/m7_guests.py watch --port COM6 --seconds 900 --out captures/<name>-watch.jsonl`, and
+  summarise with `python tools/m7_guests.py report captures/<name>`.
+- Example guests: `guests/overheat_alarm.rs` (a vendor's alarm with a checkpoint), `guests/endless_tick.rs`
+  (never returns). `python tools/build_guests.py` rebuilds them with `rustc` for `wasm32-unknown-unknown`; the
+  compiled files are checked in.
+
+### The sandbox experiment (2026-10-10)
+
 
 ```
 tools\build_firmware.ps1 -Variant m7-wasm -Extra "CONFIG_POT_WASM=y","CONFIG_POT_WASM_BENCH=y"   # the bench

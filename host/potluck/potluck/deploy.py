@@ -272,6 +272,27 @@ def _guest(m: Manifest, a, where: str, index: int, guest_root: str | None) -> tu
     return cfg, blob
 
 
+def check_guest_authors(m: Manifest, ca_public: bytes, guest_root: str | None = None) -> list[tuple[str, int]]:
+    """M7: [(actor, author)] for every guest, each author signature verified under the CA -- the check
+    each node makes before it commits the image, made first on the host so a bad bundle never leaves."""
+    import os
+
+    from . import guest as gs
+
+    out = []
+    for a in m.actors:
+        if not a.module.startswith("guest:"):
+            continue
+        path = str(a.config.get("bundle", ""))
+        if guest_root and not os.path.isabs(path):
+            path = os.path.join(guest_root, path)
+        try:
+            out.append((a.name, gs.verify_bundle(gs.load_bundle(path), ca_public)))
+        except (gs.GuestError, OSError, ValueError) as exc:
+            raise DeployError(f"actors[{a.name}]: {exc}") from None
+    return out
+
+
 def _svc_client_config(m: Manifest, a, where: str) -> bytes:
     """M8. The service is the actor's one binding; the provider is the node that owns it (a host)."""
     from . import reconcile as rc

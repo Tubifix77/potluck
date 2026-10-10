@@ -9,7 +9,9 @@
 #include <map>
 #include <vector>
 
+#include "guest_fixture.hpp"
 #include "pot/deploy.hpp"
+#include "pot/guest_examples.h"
 #include "pot/node.hpp"
 #include "pot/opcodes.hpp"
 #include "test_harness.hpp"
@@ -576,4 +578,30 @@ TEST(deploy, a_refused_signature_writes_nothing_and_an_accepted_one_stores_the_i
             CHECK_EQ(store.slots.begin()->second.size(), img.size());  // the image, not the trailer
         }
     }
+}
+
+TEST(deploy, a_version_2_image_ends_after_its_guest_section_not_at_body_len) {
+    // Found on the bench (M7, M0-LOG session 38): the receiver took 24 + body_len as the image and the
+    // guest section as part of the trailer, so every signed image carrying a guest failed as bad_length.
+    guestfx::Keys k;
+    const std::vector<uint8_t> blob =
+        guestfx::make_blob(k, guest_examples::k_endless_tick, sizeof(guest_examples::k_endless_tick), {},
+                           {{path_hash("potluck://lab/act/spin/out"), ValueType::I32}});
+    const std::vector<uint8_t> img =
+        guestfx::make_image({guestfx::guest_decl(path_hash("potluck://lab/act/spin/out"), 1000, {0x6300}, 0)}, {blob}, 10);
+    CHECK_EQ(image_extent(img.data(), img.size()), img.size());
+    CHECK_EQ(image_extent(img.data(), img.size() - 1), static_cast<size_t>(0));  // the guest section is cut short
+    std::vector<uint8_t> stream = img;
+    stream.resize(img.size() + 176, 0xAB);
+    CHECK_EQ(image_extent(stream.data(), stream.size()), img.size());
+    RamStore store;
+    static uint8_t buf[kMaxImageLen];
+    DeployReceiver rx(store, buf, sizeof(buf));
+    rx.set_verifier(&verify_accept, nullptr);
+    g_verify_calls = 0;
+    CHECK(deliver(rx, stream, 10) == DeployStatus::Ok);
+    CHECK_EQ(g_verify_calls, 1);
+    CHECK_EQ(g_seen_image, img.size());
+    CHECK_EQ(g_seen_trailer, static_cast<size_t>(176));
+    CHECK_EQ(store.slots.begin()->second.size(), img.size());
 }
