@@ -63,6 +63,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_system.h"
+#include "esp_heap_caps.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/message_buffer.h"
@@ -1721,6 +1722,10 @@ void start(const uint8_t* ca_pub) {
         return;
     }
     guest_runtime().set_waker(&wake, nullptr);
+    // M7's [MEASURE]: each run's time, and the heap a fresh instance takes -- all of it, PSRAM included,
+    // since wasm3 asks malloc for the guest's 64 KiB page and malloc puts large blocks there.
+    guest_runtime().set_meter([](void*) { return static_cast<uint32_t>(esp_timer_get_time()); },
+                              [](void*) { return heap_caps_get_free_size(MALLOC_CAP_8BIT); }, nullptr);
     ESP_LOGI(kTag, "guest: %u guest(s) in the image, author checks %s", static_cast<unsigned>(guest_library().count()),
              ca_pub != nullptr ? "under the cluster CA" : "impossible (not enrolled): no guest will run");
 }

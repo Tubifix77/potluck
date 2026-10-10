@@ -524,6 +524,30 @@ TEST(guest, a_run_still_going_when_the_period_comes_round_is_skipped_not_queued)
     CHECK_EQ(r.actor->stats().ok, 1u);
 }
 
+TEST(guest, a_metered_runtime_reports_run_time_and_the_heap_an_instance_took) {
+    static uint32_t s_us = 0;
+    static size_t s_heap = 1000000;
+    Rig r(overheat_blob(Keys{}));
+    // A fake clock that advances 250 us per reading, and a heap that shrinks by 70 KB at the first load.
+    guest_runtime().set_meter([](void*) { return s_us += 250; },
+                              [](void*) {
+                                  const size_t h = s_heap;
+                                  s_heap = 1000000 - 70000;
+                                  return h;
+                              },
+                              nullptr);
+    r.temp(30.0f);
+    r.start();
+    r.run_ms(5);
+    CHECK_EQ(r.actor->stats().ok, 1u);
+    CHECK_EQ(r.actor->stats().load_heap_b, 70000u);
+    CHECK(r.actor->stats().run_us_last >= 250u);
+    CHECK(r.actor->stats().run_us_max >= r.actor->stats().run_us_last);
+    char line[512];
+    CHECK(r.actor->stats_json(line, sizeof(line), g_t) > 0);
+    CHECK(std::strstr(line, "\"load_heap_b\":70000") != nullptr);
+}
+
 TEST(guest, the_outputs_are_read_only_l3_resources_with_the_staleness_of_five_periods) {
     Keys k;
     const Bytes img = make_image({guest_decl(kOut, 200, {0x100}, 0)}, {overheat_blob(k)});

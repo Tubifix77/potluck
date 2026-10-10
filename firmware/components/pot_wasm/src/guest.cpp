@@ -349,7 +349,9 @@ void GuestRuntime::run(uint8_t i) {
     r.gen = c.req.gen;
     const GuestSpec* sp = guest_library().spec(i);
     c.spec = sp;
-    auto finish = [&c, &r]() {
+    const uint32_t t0 = now_us_ != nullptr ? now_us_(meter_ctx_) : 0;
+    auto finish = [this, &c, &r, t0]() {
+        if (now_us_ != nullptr) r.run_us = now_us_(meter_ctx_) - t0;
         if (c.active_gen.load() != r.gen) {
             // Nobody wants this run any more (the actor is gone, or a newer activation took over).
             c.sb.unload();
@@ -382,6 +384,7 @@ void GuestRuntime::run(uint8_t i) {
             finish();
             return;
         }
+        const size_t heap0 = heap_free_ != nullptr ? heap_free_(meter_ctx_) : 0;
         WasmLimits lim;
         lim.memory_bytes = static_cast<uint32_t>(sp->mem_pages) * 65536u;
         lim.value_stack_bytes = kGuestValueStack;
@@ -396,6 +399,10 @@ void GuestRuntime::run(uint8_t i) {
         r.fresh = true;
         const WasmCallResult in = c.sb.call("init", nullptr, 0, sp->fuel, kGuestNativeStack);
         r.fuel_init = in.fuel_used;
+        if (heap_free_ != nullptr) {
+            const size_t heap1 = heap_free_(meter_ctx_);
+            r.load_heap_b = heap0 > heap1 ? static_cast<uint32_t>(heap0 - heap1) : 0;
+        }
         if (in.error != nullptr && in.error != m3Err_functionLookupFailed) {  // no init() is fine
             r.error = in.error;
             if (in.error != pot_wasm_busy) {
@@ -435,6 +442,9 @@ void GuestRuntime::reset() {
     ca_ = nullptr;
     wake_ = nullptr;
     wake_ctx_ = nullptr;
+    now_us_ = nullptr;
+    heap_free_ = nullptr;
+    meter_ctx_ = nullptr;
 }
 
 GuestRuntime& guest_runtime() {
@@ -511,6 +521,9 @@ void GuestActor::tick(uint32_t now_ms) {
         stats_.logs += r->logs;
         if (r->logs != 0) stats_.log_last = r->log_last;
         if (r->fresh) ++stats_.fresh;
+        if (r->fresh && r->load_heap_b != 0) stats_.load_heap_b = r->load_heap_b;
+        stats_.run_us_last = r->run_us;
+        if (r->run_us > stats_.run_us_max) stats_.run_us_max = r->run_us;
         if (r->error == pot_wasm_busy) {
             ++stats_.overruns;  // another sandbox was running (a test instrument): not the guest's fault
         } else if (r->error != nullptr) {
@@ -578,14 +591,15 @@ size_t GuestActor::stats_json(char* buf, size_t cap, uint32_t) {
         buf, cap,
         "{\"t\":\"guest\",\"node\":%u,\"guest\":%u,\"key\":%u,\"runs\":%u,\"ok\":%u,\"failed\":%u,\"overruns\":%u,"
         "\"fresh\":%u,\"reads\":%u,\"ck_saved\":%u,\"fuel\":%llu,\"logs\":%u,\"log_last\":%d,\"strikes\":%u,"
-        "\"quarantined\":%u,\"error\":\"%s\"}",
+        "\"run_us\":%u,\"run_us_max\":%u,\"load_heap_b\":%u,\"quarantined\":%u,\"error\":\"%s\"}",
         static_cast<unsigned>(node_.config().node_id), static_cast<unsigned>(guest_),
         static_cast<unsigned>(place_.out_hash), static_cast<unsigned>(stats_.runs), static_cast<unsigned>(stats_.ok),
         static_cast<unsigned>(stats_.failed), static_cast<unsigned>(stats_.overruns),
         static_cast<unsigned>(stats_.fresh), static_cast<unsigned>(stats_.reads),
         static_cast<unsigned>(stats_.ck_saved), static_cast<unsigned long long>(stats_.fuel_last),
         static_cast<unsigned>(stats_.logs), static_cast<int>(stats_.log_last), static_cast<unsigned>(strikes_),
-        quarantined_ ? 1u : 0u, err);
+        static_cast<unsigned>(stats_.run_us_last), static_cast<unsigned>(stats_.run_us_max),
+        static_cast<unsigned>(stats_.load_heap_b), quarantined_ ? 1u : 0u, err);
     return (n > 0 && static_cast<size_t>(n) < cap) ? static_cast<size_t>(n) : 0;
 }
 

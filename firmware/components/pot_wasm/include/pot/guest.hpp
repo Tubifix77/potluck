@@ -141,6 +141,8 @@ struct GuestResult {
     uint8_t save_len = 0;
     uint32_t logs = 0;
     int32_t log_last = 0;
+    uint32_t run_us = 0;       // the whole run on the guest task (load and init included), when metered
+    uint32_t load_heap_b = 0;  // heap a fresh instance took (module, runtime, memory, init), when metered
 };
 
 class GuestRuntime {
@@ -152,6 +154,12 @@ class GuestRuntime {
     void set_waker(void (*fn)(void* ctx), void* ctx) {
         wake_ = fn;
         wake_ctx_ = ctx;
+    }
+    // A clock and the free heap, for the stats (M7's [MEASURE]). Either may be null.
+    void set_meter(uint32_t (*now_us)(void* ctx), size_t (*heap_free)(void* ctx), void* ctx) {
+        now_us_ = now_us;
+        heap_free_ = heap_free;
+        meter_ctx_ = ctx;
     }
 
     // ---- the link task's side (in place: the request and result are too big for an actor's slot) ----
@@ -199,6 +207,9 @@ class GuestRuntime {
     const uint8_t* ca_ = nullptr;
     void (*wake_)(void*) = nullptr;
     void* wake_ctx_ = nullptr;
+    uint32_t (*now_us_)(void*) = nullptr;
+    size_t (*heap_free_)(void*) = nullptr;
+    void* meter_ctx_ = nullptr;
 };
 GuestRuntime& guest_runtime();
 
@@ -223,6 +234,9 @@ class GuestActor : public Actor {
         uint64_t fuel_last;    // the last tick's fuel
         uint32_t logs;
         int32_t log_last;
+        uint32_t run_us_last;  // metered boards only
+        uint32_t run_us_max;
+        uint32_t load_heap_b;
     };
     const Stats& stats() const { return stats_; }
     bool quarantined() const { return quarantined_; }
