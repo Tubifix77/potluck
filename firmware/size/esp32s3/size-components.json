@@ -779,11 +779,11 @@
                 }
             },
             "DIRAM": {
-                "size": 5365,
+                "size": 5577,
                 "size_diff": 0,
                 "sections": {
                     ".iram0.text": {
-                        "size": 4002,
+                        "size": 4214,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     },
@@ -800,11 +800,11 @@
                 }
             },
             "IRAM": {
-                "size": 1152,
+                "size": 940,
                 "size_diff": 0,
                 "sections": {
                     ".iram0.text": {
-                        "size": 1152,
+                        "size": 940,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     },
@@ -2185,11 +2185,11 @@
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 6903,
+                "size": 6694,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 6903,
+                        "size": 6694,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -2217,11 +2217,11 @@
                 }
             },
             "IRAM": {
-                "size": 0,
+                "size": 209,
                 "size_diff": 0,
                 "sections": {
                     ".iram0.text": {
-                        "size": 0,
+                        "size": 209,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     },

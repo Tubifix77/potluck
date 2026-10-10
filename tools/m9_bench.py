@@ -36,6 +36,7 @@ def main() -> int:
     ap.add_argument("--timeout", type=float, default=600.0)
     ap.add_argument("--reset-port")
     ap.add_argument("--reset-after", type=float, default=4.0)
+    ap.add_argument("--lend-only", action="store_true", help="only lending runs (for the lenders' duties)")
     a = ap.parse_args()
 
     s = serial.Serial()
@@ -79,7 +80,7 @@ def main() -> int:
 
     pump(a.idle)  # the baseline: lenders idle
     for k in range(a.runs):
-        for lend in (0, 1):
+        for lend in ((1,) if a.lend_only else (0, 1)):
             want = len(done) + 1
             send(f"POT! mc run {lend}")
             if lend and a.reset_port:

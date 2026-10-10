@@ -1,0 +1,3 @@
+run 0 lend 0: 232621 ms, hits 753983075, pi 3.1415961, local 960 lent 0 refused 0 lost 0
+run 0 lend 1: 68078 ms, hits 753983075, pi 3.1415961, local 278 lent 682 refused 0 lost 0
+median alone 232621 ms, median lending 68078 ms, speedup 3.42x; hits identical across runs: True

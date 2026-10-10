@@ -6,6 +6,16 @@
 #include <cstring>
 #include <new>
 
+// The unit's inner loop runs from internal RAM on a board, not from flash through the cache it shares
+// with the link task: with the loop in flash, a board computing answered probes ~0.3 ms later (M9's
+// first duties run, M0-LOG session 35). Nothing on a host.
+#if defined(ESP_PLATFORM)
+#include "esp_attr.h"
+#define POT_MC_HOT IRAM_ATTR
+#else
+#define POT_MC_HOT
+#endif
+
 namespace pot {
 
 namespace {
@@ -22,7 +32,7 @@ void wr32(uint8_t* p, uint32_t v) {
 }
 
 // A 32-bit integer mix, so that neighbouring (seed, unit) pairs start unrelated streams.
-uint32_t mix32(uint32_t x) {
+POT_MC_HOT uint32_t mix32(uint32_t x) {
     x ^= x >> 16;
     x *= 0x7feb352dU;
     x ^= x >> 15;
@@ -37,7 +47,7 @@ constexpr uint16_t kMcArgsLen = 12;  // seed u32, unit u32, samples u32
 
 uint32_t mc_function_path() { return path_hash("potluck:fn/mc_pi/v1"); }
 
-uint32_t mc_hits(uint32_t seed, uint32_t unit, uint32_t samples, void (*yield)(void* ctx), void* yctx) {
+POT_MC_HOT uint32_t mc_hits(uint32_t seed, uint32_t unit, uint32_t samples, void (*yield)(void* ctx), void* yctx) {
     // Marsaglia's xorshift32: fast, and exactly reproducible on any machine with 32-bit unsigned ints.
     uint32_t s = mix32(seed ^ mix32(unit + 0x9e3779b9U));
     if (s == 0) s = 1;  // xorshift's one forbidden state
