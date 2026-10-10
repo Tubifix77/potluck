@@ -1,0 +1,206 @@
+1791636417.477 I (450621) pot.m0: fw: begin counter 4, 287616 B: ok
+1791636419.920 {"t":"clk","node":33120,"up_ms":451698}
+1791636419.920 {"t":"led","node":33120,"shows":"green","app":0}
+1791636419.920 {"t":"event","at_ms":442749,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636419.920 {"t":"event","at_ms":442911,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636419.920 {"t":"event","at_ms":444749,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636419.920 {"t":"event","at_ms":444911,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636419.920 {"t":"event","at_ms":446749,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636419.920 {"t":"event","at_ms":446911,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636419.920 {"t":"event","at_ms":448749,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636419.920 {"t":"event","at_ms":448911,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636419.920 {"t":"event","at_ms":450749,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636419.920 {"t":"event","at_ms":450926,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636419.920 {"t":"link","up_ms":451822,"node":33120,"peer":29544,"mac":"b8:1f:3f:da:73:68","state":"alive","epoch":171,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-10,"tx":{"frames":1576,"cb_ok":1576,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":6300,"lost_seqgap":0,"reorder_dup":0,"dropped_bad":0,"hb_lost":4,"bcast_frames":4496,"pdr_ppm":1000000},"rtt":{"samples":225,"min_us":5490,"max_us":35560,"timeouts":0,"txq_last_us":2866,"txq_max_us":26712,"remote_turnaround_us":802,"remote_turnaround_max_us":1258,"p50_us":[4000,6000],"p99_us":[11000,16000],"hist":[0,0,0,0,163,52,7,1,0,1,1,0,0,0,0,0]}}
+1791636419.920 {"t":"link","up_ms":451876,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":244,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-19,"tx":{"frames":1523,"cb_ok":1523,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":6228,"lost_seqgap":0,"reorder_dup":0,"dropped_bad":0,"hb_lost":17,"bcast_frames":4482,"pdr_ppm":1000000},"rtt":{"samples":225,"min_us":5803,"max_us":17808,"timeouts":0,"txq_last_us":945,"txq_max_us":13079,"remote_turnaround_us":1107,"remote_turnaround_max_us":1287,"p50_us":[6000,8000],"p99_us":[11000,16000],"hist":[0,0,0,0,38,171,13,2,1,0,0,0,0,0,0,0]}}
+1791636419.920 {"t":"auth","node":33120,"up_ms":451931,"enrolled":1,"required":1,"verified_peers":2,"verified":2,"cache_hits":447,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":81800,"link_stack_free_b":1524,"crypto_stack_free_b":1268,"tags_ok":3103,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":1884}
+1791636419.920 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791636419.920 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":4694,"list":[{"id":29544,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":1,"rtt_n":225},{"id":25344,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":0,"rtt_n":225}]}
+1791636419.920 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791636419.920 {"t":"rec","node":33120,"up_ms":452020,"settled":1,"sent":1802,"received":1799,"malformed":0,"views":2,"replies_fenced":0,"actors":[{"key":1245650351,"running":0,"term":0,"owner":25344,"owner_term":9,"assigned":25344,"starts":0,"fenced":0,"released":0}]}
+1791636419.920 {"t":"node","up_ms":452046,"node":33120,"epoch":291,"peers_alive":2,"peers_dead":0,"no_radio":0,"free_dram":250251,"largest_block":172032,"rx":{"total":21948,"bad_frame":0,"unknown_peer":12,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":52},"tx":{"total":7833,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+1791636420.241 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":375,"ts":451700,"updates":43,"value":2}
+1791636420.241 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":393,"ts":451699,"updates":43,"value":172032}
+1791636420.241 {"t":"ns","node":33120,"hash":1245650351,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791636420.241 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791636420.241 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":446,"ts":451699,"updates":43,"value":291}
+1791636420.241 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":460,"ts":451699,"updates":43,"value":451}
+1791636420.241 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":473,"ts":451700,"updates":43,"value":-20}
+1791636420.241 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":488,"ts":451699,"updates":43,"value":250251}
+1791636430.402 {"t":"clk","node":33120,"up_ms":462219}
+1791636430.402 {"t":"led","node":33120,"shows":"green","app":0}
+1791636430.402 {"t":"event","at_ms":452750,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636430.402 {"t":"event","at_ms":452911,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636430.402 {"t":"event","at_ms":454754,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636430.402 {"t":"event","at_ms":454927,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636430.402 {"t":"event","at_ms":456757,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636430.402 {"t":"event","at_ms":456913,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636430.402 {"t":"event","at_ms":458750,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636430.402 {"t":"event","at_ms":458913,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636430.402 {"t":"event","at_ms":460749,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636430.402 {"t":"event","at_ms":460925,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636430.402 {"t":"link","up_ms":462310,"node":33120,"peer":29544,"mac":"b8:1f:3f:da:73:68","state":"alive","epoch":171,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-9,"tx":{"frames":1612,"cb_ok":1612,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":6446,"lost_seqgap":0,"reorder_dup":0,"dropped_bad":0,"hb_lost":4,"bcast_frames":4600,"pdr_ppm":1000000},"rtt":{"samples":230,"min_us":5490,"max_us":35560,"timeouts":0,"txq_last_us":2871,"txq_max_us":26712,"remote_turnaround_us":821,"remote_turnaround_max_us":1258,"p50_us":[4000,6000],"p99_us":[16000,22000],"hist":[0,0,0,0,165,53,7,2,1,1,1,0,0,0,0,0]}}
+1791636430.402 {"t":"link","up_ms":462364,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":244,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-20,"tx":{"frames":1653,"cb_ok":1653,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":6461,"lost_seqgap":0,"reorder_dup":0,"dropped_bad":0,"hb_lost":18,"bcast_frames":4586,"pdr_ppm":1000000},"rtt":{"samples":230,"min_us":5803,"max_us":17808,"timeouts":0,"txq_last_us":1192,"txq_max_us":13079,"remote_turnaround_us":949,"remote_turnaround_max_us":2536,"p50_us":[6000,8000],"p99_us":[11000,16000],"hist":[0,0,0,0,40,173,13,3,1,0,0,0,0,0,0,0]}}
+1791636430.402 {"t":"auth","node":33120,"up_ms":462419,"enrolled":1,"required":1,"verified_peers":2,"verified":2,"cache_hits":457,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":81800,"link_stack_free_b":1524,"crypto_stack_free_b":1268,"tags_ok":3262,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":2415}
+1791636430.402 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791636430.402 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":4803,"list":[{"id":29544,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":1,"rtt_n":230},{"id":25344,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":0,"rtt_n":230}]}
+1791636430.402 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791636430.402 {"t":"rec","node":33120,"up_ms":462503,"settled":1,"sent":1843,"received":1834,"malformed":0,"views":2,"replies_fenced":0,"actors":[{"key":1245650351,"running":0,"term":0,"owner":25344,"owner_term":9,"assigned":25344,"starts":0,"fenced":0,"released":0}]}
+1791636430.402 {"t":"node","up_ms":462529,"node":33120,"epoch":291,"peers_alive":2,"peers_dead":0,"no_radio":0,"free_dram":250251,"largest_block":172032,"rx":{"total":22543,"bad_frame":0,"unknown_peer":12,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":52},"tx":{"total":8108,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+1791636430.744 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":346,"ts":462225,"updates":44,"value":2}
+1791636430.744 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":360,"ts":462225,"updates":44,"value":172032}
+1791636430.744 {"t":"ns","node":33120,"hash":1245650351,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791636430.744 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791636430.744 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":402,"ts":462225,"updates":44,"value":291}
+1791636430.744 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":442,"ts":462225,"updates":44,"value":462}
+1791636430.744 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":455,"ts":462226,"updates":44,"value":-20}
+1791636430.744 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":471,"ts":462225,"updates":44,"value":249999}
+1791636440.903 {"t":"clk","node":33120,"up_ms":472710}
+1791636440.903 {"t":"led","node":33120,"shows":"green","app":0}
+1791636440.903 {"t":"event","at_ms":462757,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636440.903 {"t":"event","at_ms":462913,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636440.903 {"t":"event","at_ms":464749,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636440.903 {"t":"event","at_ms":464927,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636440.903 {"t":"event","at_ms":466749,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636440.903 {"t":"event","at_ms":466915,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636440.903 {"t":"event","at_ms":468772,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636440.903 {"t":"event","at_ms":468915,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791636440.903 {"t":"event","at_ms":470749,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636440.903 {"t":"event","at_ms":472749,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791636440.903 {"t":"link","up_ms":472807,"node":33120,"peer":29544,"mac":"b8:1f:3f:da:73:68","state":"alive","epoch":171,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-9,"tx":{"frames":1649,"cb_ok":1649,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":6592,"lost_seqgap":0,"reorder_dup":0,"dropped_bad":0,"hb_lost":5,"bcast_frames":4704,"pdr_ppm":1000000},"rtt":{"samples":235,"min_us":5490,"max_us":35560,"timeouts":0,"txq_last_us":2798,"txq_max_us":26712,"remote_turnaround_us":800,"remote_turnaround_max_us":1258,"p50_us":[4000,6000],"p99_us":[16000,22000],"hist":[0,0,0,0,166,56,8,2,1,1,1,0,0,0,0,0]}}
+1791636440.903 {"t":"link","up_ms":472861,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":244,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-19,"tx":{"frames":1784,"cb_ok":1783,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":6692,"lost_seqgap":0,"reorder_dup":0,"dropped_bad":0,"hb_lost":20,"bcast_frames":4688,"pdr_ppm":1000000},"rtt":{"samples":235,"min_us":5803,"max_us":29959,"timeouts":0,"txq_last_us":577,"txq_max_us":13079,"remote_turnaround_us":1016,"remote_turnaround_max_us":2536,"p50_us":[6000,8000],"p99_us":[11000,16000],"hist":[0,0,0,0,41,176,13,3,1,1,0,0,0,0,0,0]}}
+1791636440.903 {"t":"auth","node":33120,"up_ms":472916,"enrolled":1,"required":1,"verified_peers":2,"verified":2,"cache_hits":468,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":81800,"link_stack_free_b":1524,"crypto_stack_free_b":1268,"tags_ok":3424,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":2415}
+1791636440.903 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791636440.903 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":4910,"list":[{"id":29544,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":1,"rtt_n":236},{"id":25344,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":0,"rtt_n":235}]}
+1791636440.903 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791636440.903 {"t":"rec","node":33120,"up_ms":473007,"settled":1,"sent":1884,"received":1869,"malformed":0,"views":2,"replies_fenced":0,"actors":[{"key":1245650351,"running":0,"term":0,"owner":25344,"owner_term":9,"assigned":25344,"starts":0,"fenced":0,"released":0}]}
+1791636440.903 {"t":"node","up_ms":473022,"node":33120,"epoch":291,"peers_alive":2,"peers_dead":0,"no_radio":0,"free_dram":250251,"largest_block":172032,"rx":{"total":23135,"bad_frame":0,"unknown_peer":12,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":52},"tx":{"total":8388,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+1791636441.247 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":349,"ts":472713,"updates":45,"value":2}
+1791636441.247 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":363,"ts":472713,"updates":45,"value":172032}
+1791636441.247 {"t":"ns","node":33120,"hash":1245650351,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791636441.247 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791636441.247 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":432,"ts":472713,"updates":45,"value":291}
+1791636441.247 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":445,"ts":472713,"updates":45,"value":472}
+1791636441.247 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":459,"ts":472713,"updates":45,"value":-20}
+1791636441.247 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":485,"ts":472713,"updates":45,"value":249999}
+1791636448.383 I (481353) esp_image: segment 0: paddr=00340020 vaddr=3c020020 size=0d400h ( 54272) map
+1791636448.383 I (481362) esp_image: segment 1: paddr=0034d428 vaddr=3fc9ce00 size=02bf0h ( 11248)
+1791636448.383 I (481365) esp_image: segment 2: paddr=00350020 vaddr=42000020 size=1ce28h (118312) map
+1791636448.383 I (481383) esp_image: segment 3: paddr=0036ce50 vaddr=3fc9f9f0 size=0077ch (  1916)
+1791636448.383 I (481384) esp_image: segment 4: paddr=0036d5d4 vaddr=40374000 size=18d50h (101712)
+1791636448.383 I (481411) esp_image: segment 5: paddr=0038632c vaddr=50000000 size=00024h (    36)
+1791636448.383 I (481413) esp_image: segment 0: paddr=00340020 vaddr=3c020020 size=0d400h ( 54272) map
+1791636448.383 I (481433) esp_image: segment 1: paddr=0034d428 vaddr=3fc9ce00 size=02bf0h ( 11248)
+1791636448.383 I (481436) esp_image: segment 2: paddr=00350020 vaddr=42000020 size=1ce28h (118312) map
+1791636448.383 I (481454) esp_image: segment 3: paddr=0036ce50 vaddr=3fc9f9f0 size=0077ch (  1916)
+1791636448.383 I (481456) esp_image: segment 4: paddr=0036d5d4 vaddr=40374000 size=18d50h (101712)
+1791636448.383 I (481482) esp_image: segment 5: paddr=0038632c vaddr=50000000 size=00024h (    36)
+1791636448.383 I (481516) pot.m0: fw: commit of counter 4: ok (218 ms)
+1791636450.158 W (483018) pot.m0: deploy: rebooting into the new slot
+1791636450.158 ���ESP-ROM:esp32s3-20210327
+1791636450.158 Build:Mar 27 2021
+1791636450.158 rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+1791636450.158 Saved PC:0x4037e97a
+1791636450.158 SPIWP:0xee
+1791636450.158 mode:DIO, clock div:1
+1791636450.158 load:0x3fce2820,len:0x14f0
+1791636450.158 load:0x403c8700,len:0xda0
+1791636450.158 load:0x403cb700,len:0x2f9c
+1791636450.158 entry 0x403c8908
+1791636450.158 I (29) boot: ESP-IDF v6.0.2 2nd stage bootloader
+1791636450.158 I (29) boot: compile time Oct 10 2026 13:24:07
+1791636450.158 I (29) boot: Multicore bootloader
+1791636450.158 I (29) boot: chip revision: v0.2
+1791636450.158 I (32) boot: efuse block revision: v1.4
+1791636450.158 I (36) boot.esp32s3: Boot SPI Speed : 80MHz
+1791636450.158 I (40) boot.esp32s3: SPI Mode       : DIO
+1791636450.158 I (43) boot.esp32s3: SPI Flash Size : 16MB
+1791636450.158 I (47) boot: Enabling RNG early entropy source...
+1791636450.158 I (52) boot: Partition Table:
+1791636450.158 I (54) boot: ## Label            Usage          Type ST Offset   Length
+1791636450.158 I (61) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+1791636450.158 I (67) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+1791636450.158 I (74) boot:  2 factory          factory app      00 00 00010000 00100000
+1791636450.158 I (80) boot:  3 modA             Unknown data     01 40 00110000 00010000
+1791636450.158 I (87) boot:  4 modB             Unknown data     01 40 00120000 00010000
+1791636450.158 I (93) boot:  5 otadata          OTA data         01 00 00130000 00002000
+1791636450.158 I (100) boot:  6 ota_0            OTA app          00 10 00140000 00200000
+1791636450.158 I (106) boot:  7 ota_1            OTA app          00 11 00340000 00200000
+1791636450.158 I (113) boot: End of partition table
+1791636450.158 I (144) esp_image: segment 0: paddr=00340020 vaddr=3c020020 size=0d400h ( 54272) map
+1791636450.158 I (154) esp_image: segment 1: paddr=0034d428 vaddr=3fc9ce00 size=02bf0h ( 11248) load
+1791636450.158 I (157) esp_image: segment 2: paddr=00350020 vaddr=42000020 size=1ce28h (118312) map
+1791636450.158 I (180) esp_image: segment 3: paddr=0036ce50 vaddr=3fc9f9f0 size=0077ch (  1916) load
+1791636450.158 I (180) esp_image: segment 4: paddr=0036d5d4 vaddr=40374000 size=18d50h (101712) load
+1791636450.158 I (207) esp_image: segment 5: paddr=0038632c vaddr=50000000 size=00024h (    36) load
+1791636450.158 I (217) boot: Loaded app from partition at offset 0x340000
+1791636450.158 I (217) boot: Disabling RNG early entropy source...
+1791636450.159 I (227) octal_psram: vendor id    : 0x0d (AP)
+1791636450.159 I (227) octal_psram: dev id       : 0x02 (generation 3)
+1791636450.159 I (228) octal_psram: density      : 0x03 (64 Mbit)
+1791636450.159 I (230) octal_psram: good-die     : 0x01 (Pass)
+1791636450.159 I (234) octal_psram: Latency      : 0x01 (Fixed)
+1791636450.159 I (238) octal_psram: VCC          : 0x01 (3V)
+1791636450.159 I (242) octal_psram: SRF          : 0x01 (Fast Refresh)
+1791636450.159 I (247) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+1791636450.159 I (252) octal_psram: BurstLen     : 0x01 (32 Byte)
+1791636450.159 I (257) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+1791636450.159 I (262) octal_psram: DriveStrength: 0x00 (1/1)
+1791636450.159 I (266) esp_psram: Found 8MB PSRAM device
+1791636450.159 I (270) esp_psram: Speed: 40MHz
+1791636450.159 I (273) cpu_start: Multicore app
+1791636451.088 I (1006) esp_psram: SPI SRAM memory test OK
+1791636451.088 I (1015) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+1791636451.088 I (1015) cpu_start: Pro cpu start user code
+1791636451.088 I (1016) cpu_start: cpu freq: 160000000 Hz
+1791636451.088 I (1017) app_init: Application information:
+1791636451.088 I (1021) app_init: Project name:     potluck_m0
+1791636451.088 I (1026) app_init: App version:      deploy-and-detach-168-g3be30be-
+1791636451.088 I (1032) app_init: Compile time:     Oct 10 2026 14:44:50
+1791636451.088 I (1037) app_init: ELF file SHA256:  87298eb87...
+1791636451.088 I (1041) app_init: ESP-IDF:          v6.0.2
+1791636451.088 I (1045) efuse_init: Min chip rev:     v0.0
+1791636451.088 I (1049) efuse_init: Max chip rev:     v0.99
+1791636451.088 I (1053) efuse_init: Chip rev:         v0.2
+1791636451.088 I (1057) heap_init: Initializing. RAM available for dynamic allocation:
+1791636451.088 I (1063) heap_init: At 3FCA1010 len 00048700 (289 KiB): RAM
+1791636451.088 I (1069) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+1791636451.088 I (1074) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+1791636451.088 I (1079) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+1791636451.088 I (1085) esp_psram: Adding pool of 8186K of PSRAM memory to heap allocator
+1791636451.088 I (1092) spi_flash: detected chip: generic
+1791636451.088 I (1095) spi_flash: flash io: dio
+1791636451.088 I (1098) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+1791636451.088 I (1105) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+1791636451.088 I (1112) main_task: Started on CPU0
+1791636451.088 I (1135) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+1791636451.088 I (1136) main_task: Calling app_main()
+1791636451.088 {"t":"wasm_bench","case":"start","runtime":"wasm3 0.9.0 (patched)","cpu_mhz":160}
+1791636451.088 {"t":"wasm_bench","case":"load","module_b":319,"heap_b":10672,"us":412,"error":"none"}
+1791636454.325 {"t":"wasm_bench","case":"mc","run":0,"samples":200000,"native_us":66017,"wasm_us":3219949,"ratio":48.77,"native_hits":156841,"wasm_hits":156841,"same":true,"fuel":200000,"heap_min_b":8694635,"error":"none"}
+1791636456.135 E (6143) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:
+1791636456.135 E (6143) task_wdt:  - IDLE1 (CPU 1)
+1791636456.135 E (6143) task_wdt: Tasks currently running:
+1791636456.135 E (6143) task_wdt: CPU 0: IDLE0
+1791636456.136 E (6143) task_wdt: CPU 1: mc
+1791636456.136 E (6143) task_wdt: Print CPU 1 backtrace
+1791636456.136 
+1791636456.136 
+1791636456.136 Backtrace: 0x4037766A:0x3FC9E830 0x40377003:0x3FC9E850 0x403890AD:0x3FCED070 0x4038841B:0x3FCED0A0 0x40387F49:0x3FCED0D0 0x403899DA:0x3FCED100 0x40388A1B:0x3FCED130 0x403877C2:0x3FCED160 0x40382AE4:0x3FCED190 0x40389A6A:0x3FCED1D0 0x40388A46:0x3FCED200 0x403890B2:0x3FCED230 0x4038841B:0x3FCED260 0x40388251:0x3FCED290 0x403890B2:0x3FCED2C0 0x40387D37:0x3FCED2F0 0x403890B2:0x3FCED320 0x4038841B:0x3FCED350 0x40388251:0x3FCED380 0x403890B2:0x3FCED3B0 0x40387D37:0x3FCED3E0 0x403890B2:0x3FCED410 0x4038841B:0x3FCED440 0x40388251:0x3FCED470 0x403890B2:0x3FCED4A0 0x4038844A:0x3FCED4D0 0x403890B2:0x3FCED500 0x4038841B:0x3FCED530 0x40388251:0x3FCED560 0x403890B2:0x3FCED590 0x40387D37:0x3FCED5C0 0x403890B2:0x3FCED5F0 0x4038841B:0x3FCED620 0x40388251:0x3FCED650 0x403890B2:0x3FCED680 0x40387D37:0x3FCED6B0 0x403890B2:0x3FCED6E0 0x4038841B:0x3FCED710 0x40388251:0x3FCED740 0x403890B2:0x3FCED770 0x40387C7A:0x3FCED7A0 0x40382C80:0x3FCED7D0 0x4200E030:0x3FCED800 0x4200D877:0x3FCED840 0x4200A4DB:0x3FCED8A0 0x4200A021:0x3FCED950
+1791636456.136 
+1791636457.653 {"t":"wasm_bench","case":"mc","run":1,"samples":200000,"native_us":66017,"wasm_us":3308536,"ratio":50.12,"native_hits":156841,"wasm_hits":156841,"same":true,"fuel":200000,"heap_min_b":8694635,"error":"none"}
+1791636457.653 {"t":"wasm_bench","case":"stack","of":"mc","free_min_b":11804,"stack_b":16384}
+1791636461.131 {"t":"wasm_bench","case":"spin","fuel":10000000,"us":3398073,"ns_per_unit":339.8,"error":"[trap] out of fuel (potluck)"}
+1791636461.131 {"t":"wasm_bench","case":"stack","of":"spin","free_min_b":14340,"stack_b":16384}
+1791636461.131 {"t":"wasm_bench","case":"oob","error":"[trap] out of bounds memory access"}
+1791636461.131 {"t":"wasm_bench","case":"stack","of":"oob","free_min_b":14452,"stack_b":16384}
+1791636461.131 {"t":"wasm_bench","case":"grow","first":1,"second":-1}
+1791636461.131 {"t":"wasm_bench","case":"stack","of":"grow","free_min_b":14468,"stack_b":16384}
+1791636461.131 {"t":"wasm_bench","case":"deep","fuel":58,"error":"[trap] stack overflow"}
+1791636461.131 {"t":"wasm_bench","case":"stack","of":"deep","free_min_b":3396,"stack_b":16384}
+1791636461.131 {"t":"wasm_bench","case":"pin","error":"refused: the module imports something the sandbox does not provide"}
+1791636461.131 {"t":"wasm_bench","case":"logger","calls":1,"last":42}
+1791636461.131 {"t":"wasm_bench","case":"stack","of":"imports","free_min_b":14516,"stack_b":16384}
+1791636461.131 {"t":"wasm_bench","case":"done","failures":0}
+1791636461.131 I (11230) pot.m0: wasm bench finished with 0 failure(s)
+1791636461.131 I (11235) main_task: Returned from app_main()

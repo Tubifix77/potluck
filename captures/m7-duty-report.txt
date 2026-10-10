@@ -1,0 +1,15 @@
+target 0x8160 ran the guest; deaths before/guest/after: 0/0/0
+0x6300 hears 0x7368: before   0.0/min turn 825-842 us | guest   0.9/min turn 790-1161 us | after   2.8/min turn 799-831 us  (control)
+0x6300 hears 0x8160: before   7.1/min turn 954-966 us | guest   8.1/min turn 963-1157 us | after   7.1/min turn 831-960 us
+0x7368 hears 0x6300: before  34.3/min turn 826-852 us | guest  40.7/min turn 824-918 us | after  34.3/min turn 814-864 us  (control)
+0x7368 hears 0x8160: before   0.0/min turn 909-1005 us | guest   0.6/min turn 1053-1121 us | after   1.4/min turn 943-1025 us
+0x8160 hears 0x6300: before  34.4/min turn 854-995 us | guest  41.3/min turn 862-1104 us | after  35.8/min turn 1010-1068 us
+0x8160 hears 0x7368: before   0.0/min turn 790-837 us | guest   0.3/min turn 804-1231 us | after   1.4/min turn 830-874 us
+   {"t": "wasm_run", "phase": "start", "samples": 2000000, "runs": 6, "native_us": 663320, "load": "ok"}
+   {"t": "wasm_run", "run": 0, "us": 33733153, "same": true, "error": "none"}
+   {"t": "wasm_run", "run": 1, "us": 34010394, "same": true, "error": "none"}
+   {"t": "wasm_run", "run": 2, "us": 33879410, "same": true, "error": "none"}
+   {"t": "wasm_run", "run": 3, "us": 33788313, "same": true, "error": "none"}
+   {"t": "wasm_run", "run": 4, "us": 33717802, "same": true, "error": "none"}
+   {"t": "wasm_run", "run": 5, "us": 33965662, "same": true, "error": "none"}
+   {"t": "wasm_run", "phase": "done", "stack_free_min_b": 11916}

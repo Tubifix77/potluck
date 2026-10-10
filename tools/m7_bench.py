@@ -50,7 +50,7 @@ def duty(a) -> int:
     os.makedirs(a.out, exist_ok=True)
     stop = threading.Event()
     send: dict = {}
-    ts = [threading.Thread(target=tap, args=(p, os.path.join(a.out, f"{p}.log"), stop, send), daemon=True)
+    ts = [threading.Thread(target=tap, args=(p, os.path.join(a.out, f"board-{p}.log"), stop, send), daemon=True)
           for p in PORTS]
     for t in ts:
         t.start()
@@ -58,7 +58,7 @@ def duty(a) -> int:
     time.sleep(a.quiet)
     marks["load_on"] = time.time()
     send[a.target] = f"POT! wasm {a.samples} {a.runs}"
-    log = os.path.join(a.out, f"{a.target}.log")
+    log = os.path.join(a.out, f"board-{a.target}.log")
     deadline = time.time() + a.max_load
     while time.time() < deadline:
         time.sleep(2)
@@ -80,12 +80,15 @@ def report_dir(d: str) -> int:
     with open(os.path.join(d, "marks.json"), encoding="utf-8") as f:
         m = json.load(f)
     tgt = m["target_node"]
-    phases = [("before", m["start"], m["load_on"]), ("guest running", m["load_on"], m["load_off"]),
+    phases = [("before", m["start"], m["load_on"]), ("guest", m["load_on"], m["load_off"]),
               ("after", m["load_off"], m["end"])]
-    rows = {p[0]: {"turn_max": 0, "turn": [], "hb_lost": 0, "deaths": 0, "rtt_p99_hi": 0} for p in phases}
-    first_hb: dict = {}
+    # Per direction (who hears whom) and phase: heartbeats lost per MINUTE -- the phases differ in length --
+    # and the probe turnaround the far end reported. A link that does not touch the target is the control:
+    # what moves on it moved for the cell, not for the guest.
+    links: dict = {}
+    deaths = {p[0]: 0 for p in phases}
     for port, node in PORTS.items():
-        with open(os.path.join(d, f"{port}.log"), encoding="utf-8") as f:
+        with open(os.path.join(d, f"board-{port}.log"), encoding="utf-8") as f:
             for line in f:
                 t_s, _, js = line.partition(" ")
                 if not js.startswith("{"):
@@ -94,31 +97,35 @@ def report_dir(d: str) -> int:
                     o = json.loads(js)
                     t = float(t_s)
                 except ValueError:
-                    continue
+                    continue  # a line two tasks printed into at once
                 ph = next((p[0] for p in phases if p[1] <= t < p[2]), None)
                 if ph is None:
                     continue
-                r = rows[ph]
-                if o.get("t") == "event" and o.get("kind") == "peer_dead" and tgt in (o.get("peer"), o.get("node")):
-                    r["deaths"] += 1
-                if o.get("t") == "link" and o.get("peer") == tgt and node != tgt:
-                    rt = o.get("rtt", {})
-                    r["turn"].append(rt.get("remote_turnaround_us", 0))
-                    r["turn_max"] = max(r["turn_max"], rt.get("remote_turnaround_max_us", 0))
-                    r["rtt_p99_hi"] = max(r["rtt_p99_hi"], (rt.get("p99_us") or [0, 0])[1])
-                    hb = o.get("rx", {}).get("hb_lost", 0)
-                    key = (node, ph)
-                    first_hb.setdefault(key, hb)
-                    r["hb_lost"] = max(r["hb_lost"], hb - first_hb[key])
-    print(f"target 0x{tgt:04x}; seen from its peers' link records")
-    print(f"{'phase':14s} {'turnaround last (us)':>24s} {'turnaround max':>15s} {'p99 RTT hi':>11s} {'hb lost':>8s} {'deaths':>7s}")
-    for name, _, _ in phases:
-        r = rows[name]
-        tl = r["turn"]
-        rng = f"{min(tl)}-{max(tl)}" if tl else "-"
-        print(f"{name:14s} {rng:>24s} {r['turn_max']:>15d} {r['rtt_p99_hi']:>11d} {r['hb_lost']:>8d} {r['deaths']:>7d}")
+                if o.get("t") == "event" and o.get("kind") == "peer_dead":
+                    deaths[ph] += 1
+                if o.get("t") == "link" and o.get("peer") in PORTS.values():
+                    rt, rx = o.get("rtt", {}), o.get("rx", {})
+                    links.setdefault((node, o["peer"], ph), []).append(
+                        (t, rx.get("hb_lost", 0), rt.get("remote_turnaround_us", 0)))
+    print(f"target 0x{tgt:04x} ran the guest; deaths before/guest/after: "
+          f"{deaths['before']}/{deaths['guest']}/{deaths['after']}")
+    for node in PORTS.values():
+        for peer in PORTS.values():
+            if peer == node:
+                continue
+            cells = []
+            for name, _, _ in phases:
+                xs = links.get((node, peer, name), [])
+                if len(xs) < 2:
+                    cells.append(f"{name} -")
+                    continue
+                mins = (xs[-1][0] - xs[0][0]) / 60
+                turn = [x[2] for x in xs]
+                cells.append(f"{name} {(xs[-1][1] - xs[0][1]) / mins:5.1f}/min turn {min(turn)}-{max(turn)} us")
+            role = "  (control)" if tgt not in (node, peer) else ""
+            print(f"0x{node:04x} hears 0x{peer:04x}: " + " | ".join(cells) + role)
     runs = []
-    with open(os.path.join(d, f"{m['target']}.log"), encoding="utf-8") as f:
+    with open(os.path.join(d, f"board-{m['target']}.log"), encoding="utf-8") as f:
         for line in f:
             _, _, js = line.partition(" ")
             if '"wasm_run"' in js:

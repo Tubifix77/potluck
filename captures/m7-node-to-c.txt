@@ -1,0 +1,4 @@
+0x8160: image ../../firmware/build-m7-node/potluck_m0.bin, 933440 B, counter 4, sha512 e659daaab3de7f92...
+0x8160: before {'status': 'ok', 'node': 33120, 'received': 0, 'running': 3, 'floor': 3, 'state': 'confirmed', 'version': 'deploy-and-detach-165-g237f874-'}
+0x8160: committed after 99.7 s (9.1 KiB/s)
+0x8160: confirmed deploy-and-detach-168-g3be30be- after 116.2 s
