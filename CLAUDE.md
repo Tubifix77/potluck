@@ -42,6 +42,15 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-11: **M7 (guest actors) is wanted by the owner and half-built** (M0-LOG session 37).
+>
+> Commit `594538a` has the guest-author certificate, image format v2 with a guest section, a per-load import
+> table, the guest API (`guests/potluck_guest.rs`) and two compiled example guests; untested, no tests. Missing:
+> the guest blob format (`guest.hpp` is cut off), the guest actor itself, its registration, tests, host tooling,
+> M7's acceptance criteria, bench evidence -- the full list is in session 37. **Two attempts at this work were
+> stopped by safety reviews** (the first was rolled back); judge for yourself whether to continue. The tree builds
+> and every gate is green; the boards run `599260f`, which has none of it.
+>
 > ## HANDOVER, 2026-10-10 (evening, owner away): **M11 ACCEPTED; M7 measured as an experiment and left dormant** (M0-LOG session 36).
 >
 > **Firmware over the cell:** `python -m potluck.fw --port COM6 status` and `... rollout <bin> --counter N --key

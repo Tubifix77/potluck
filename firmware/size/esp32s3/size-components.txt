@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xcf190 bytes. Smallest app partition is 0x100000 bytes. 0x30e70 bytes (19%) free.
+potluck_m0.bin binary size 0xcf400 bytes. Smallest app partition is 0x100000 bytes. 0x30c00 bytes (19%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -33,11 +33,11 @@ Executing "ninja size-components"...
 
 │ libnet80211.a                   │     148120 │    0 │     0 │        0 │  4818 │     0 │   938 │  3880 │     121345 │ 121345 │      14279 │      0 │   14279 │        0 │         7678 │  7678 │        0 │             0 │        0 │           0 │
 
+│ libmain.a                       │     104874 │    0 │     0 │        0 │ 39488 │ 39281 │   207 │     0 │      15808 │  15808 │        348 │      0 │     348 │        0 │        49230 │ 49230 │        0 │             0 │        0 │           0 │
+
 │ libtfpsacrypto.a                │      95849 │   80 │    80 │        0 │   572 │   444 │   128 │     0 │      79434 │  79434 │      15763 │      0 │   15763 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      72614 │    0 │     0 │        0 │ 39488 │ 39281 │   207 │     0 │      15804 │  15804 │        348 │      0 │     348 │        0 │        16974 │ 16974 │        0 │             0 │        0 │           0 │
-
-│ libesp_stdio.a                  │      71031 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      70621 │      0 │   70621 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      71307 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      70897 │      0 │   70897 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libwpa_supplicant.a             │      67007 │    0 │     0 │        0 │     8 │     0 │     8 │     0 │      63798 │  63798 │       1838 │      0 │    1838 │        0 │         1363 │  1363 │        0 │             0 │        0 │           0 │
 
@@ -45,7 +45,7 @@ Executing "ninja size-components"...
 
 │ liblwip.a                       │      64937 │    0 │     0 │        0 │    12 │     0 │    12 │     0 │      59559 │  59559 │       2896 │      0 │    2896 │        0 │         2470 │  2470 │        0 │             0 │        0 │           0 │
 
-│ libphy.a                        │      34435 │  876 │   876 │        0 │  5641 │    86 │  1277 │  4278 │      27918 │  27918 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libphy.a                        │      34439 │  876 │   876 │        0 │  5641 │    86 │  1277 │  4278 │      27922 │  27922 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libpot_espnow.a                 │      33408 │    0 │     0 │        0 │ 18520 │ 18500 │    20 │     0 │       3015 │   3015 │         10 │      0 │      10 │        0 │        11863 │ 11863 │        0 │             0 │        0 │           0 │
 
@@ -81,15 +81,15 @@ Executing "ninja size-components"...
 
 │ libesp_driver_gpio.a            │       5035 │    0 │     0 │        0 │    36 │     0 │    36 │     0 │       4428 │   4428 │        571 │      0 │     571 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libesp_driver_dma.a             │       4930 │   28 │    28 │        0 │  1222 │     0 │    12 │  1210 │       3457 │   3457 │        223 │      0 │     223 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_deploy.a                 │       4977 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       4905 │   4905 │         72 │      0 │      72 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_deploy.a                 │       4644 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       4572 │   4572 │         72 │      0 │      72 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_driver_dma.a             │       4930 │   28 │    28 │        0 │  1222 │     0 │    12 │  1210 │       3457 │   3457 │        223 │      0 │     223 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_ringbuf.a                │       4521 │  180 │   180 │        0 │  2122 │     0 │     0 │  2122 │       1682 │   1682 │        537 │      0 │     537 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libpot_reconcile.a              │       4390 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       4366 │   4366 │         24 │      0 │      24 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libespnow.a                     │       4192 │    0 │     0 │        0 │    71 │    64 │     7 │     0 │       4121 │   4121 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libespnow.a                     │       4188 │    0 │     0 │        0 │    71 │    64 │     7 │     0 │       4117 │   4117 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_mm.a                     │       3794 │  443 │   443 │        0 │   849 │    48 │   129 │   672 │       2252 │   2252 │        250 │      0 │     250 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

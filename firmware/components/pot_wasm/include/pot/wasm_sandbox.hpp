@@ -27,6 +27,16 @@ struct WasmLimits {
     uint32_t value_stack_bytes = 8 * 1024;
 };
 
+// M7: called by the fuel hook every `yield_every` units of fuel spent -- on a board, to let the idle
+// task run while a guest burns a long budget on a background worker, so the task watchdog stays happy.
+// Portable: null on the host, where nothing needs yielding.
+struct WasmYield {
+    void (*fn)(void* ctx) = nullptr;
+    void* ctx = nullptr;
+    uint32_t every = 50000;
+};
+void wasm_set_yield(const WasmYield& y);
+
 struct WasmImport;  // pot/wasm_imports.hpp
 
 struct WasmCallResult {

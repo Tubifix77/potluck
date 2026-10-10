@@ -4622,3 +4622,61 @@ portability gate.
 Bench at the end: all three on `599260f` at firmware counter 5 (floor 5; next image 6+), delivered over the cell
 (`captures/m11-c5*`), A and C the normal build, B the extender build (still holding the owner's credentials);
 `m10-ticker` package at counter 24 (next 25+).
+
+## Session 37 -- 2026-10-11, M7's state after an interrupted attempt: what exists and what is missing
+
+**Read this before continuing M7.** After session 36 the owner asked for M7 itself -- running a guest's
+WebAssembly program as an actor of the cluster -- and a session (Opus 4.8) started it. That attempt was stopped
+by a safety review and rolled back; one commit survived, `594538a` (2026-10-10 22:47), and a later session
+(this one) was stopped by the same kind of review when it began writing the guest actor. The owner wants M7
+finished. A session picking it up should know that two attempts were stopped, and judge for itself whether to
+continue.
+
+**The tree builds and every gate is green** after this session's only change: the two build-file references to
+files the rollback deleted (`pot_wasm/src/guest_actor.cpp`, `tests/test_guest.cpp`) are removed. 357 C++ cases,
+Python suites OK, the default firmware builds within budget (848,780 B). The boards were not touched: all three
+still run `599260f`, which contains none of `594538a`.
+
+**What exists** (commit `594538a`, never tested on a board, and with no tests of its own):
+- *Guest-author certificate*: a third certificate role (3) the cluster CA issues to a guest's author, and
+  `guest_check` in pot_trust -- the author's Ed25519 signature over "potluck-guest-v1\0" || SHA-512(module).
+- *Image format version 2*: after the actor declarations, a guest section of up to 4 opaque blobs; images up to
+  32 KB; `ActorType::Guest` (8), whose declaration is the portable header plus one byte, the guest's index; the
+  parser refuses an index the image does not carry. Version-1 images still parse.
+- *The sandbox takes an import table per load* (and a user pointer for the imports), instead of only
+  `potluck.log`.
+- *The guest API* (`guests/potluck_guest.rs`): a guest exports `tick(now_ms)` and optionally `init()`, and may
+  import nine functions from `potluck`: `input_f32`, `input_i32`, `quality`, `publish_f32`, `publish_i32`,
+  `save`, `restore` (a checkpoint of up to 128 bytes), `log`, `now_ms`. Inputs and outputs are by index, wired
+  by the owner's manifest. It promises: fuel per tick, and quarantine after three failed ticks in a row.
+- *Two example guests*, compiled: `overheat_alarm` (a vendor's smoothing alarm with hysteresis and a checkpoint;
+  731 B) and `endless_tick` (a tick that never ends; 152 B), in `guests/build/` and
+  `pot_wasm/include/pot/guest_examples.h`. `tools/build_guests.py` rebuilds them with `rustc` for
+  wasm32-unknown-unknown -- a toolchain target the owner had not listed as an approved download; the compiled
+  files are in the repo, so nothing needs rebuilding unless a guest changes.
+- *Uncommitted, kept*: `wasm_set_yield`, which lets the fuel hook yield to the idle task every N units, so a
+  long guest tick on a background worker does not starve the task watchdog.
+
+**What is missing**, in the order the work depends on it:
+1. *The guest blob's own format.* `pot_wasm/include/pot/guest.hpp` was committed cut off after 16 lines, so
+   nothing defines what a guest-section blob holds besides the module: where the author's certificate and
+   signature go, the fuel per tick, the memory allowed, and the input/output wiring.
+2. *The guest actor* (the lost `guest_actor.cpp`): its registration row (check, create, placement, outputs),
+   the nine imports' implementations, running each tick off the link task, publishing the results, checkpoints,
+   marking outputs FAULTY on a trap, and the quarantine rule.
+3. *Registration and build*: the row in `main/actor_table.cpp`, and the component's sources, under
+   `CONFIG_POT_WASM`.
+4. *Tests*: none exist for image version 2, for `guest_check`, for the per-load import table or for the actor;
+   no golden test shares a guest signature between Python and C++.
+5. *Host tooling*: nothing in `host/potluck` builds a version-2 image, certifies a guest author
+   (`potluck.enrol`), signs a module as its author, or declares a guest in a manifest.
+6. *Acceptance and kill criteria*: ARCHITECTURE's M7 section has none for the feature yet (only the
+   experiment's numbers); write them before the bench work.
+7. *Bench evidence and docs*: a guest placed, failed over and quarantined on the boards; README, runbook,
+   ARCHITECTURE.
+8. *Scope*: section 0.1 records "one owner, one application package per cluster"; a guest's author is a
+   second party in it. The owner asked for M7, which settles the direction, but the section should say so
+   when the feature lands.
+
+Also kept, outside the repo: the uncommitted variant of the `k_pin` test module that was on disk
+(`wasm_modules.h` now matches `tools/wasm_modules.py` and HEAD again).

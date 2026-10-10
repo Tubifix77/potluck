@@ -21,7 +21,11 @@ namespace {
 // is a single counter, set by call() and read by the hook.
 uint64_t g_fuel = 0;
 uint64_t g_fuel_start = 0;
+WasmYield g_yield;              // M7: set by wasm_set_yield; read by the fuel hook
+uint64_t g_next_yield = 0;
 }  // namespace
+
+void wasm_set_yield(const WasmYield& y) { g_yield = y; }
 
 }  // namespace pot
 
@@ -29,6 +33,10 @@ uint64_t g_fuel_start = 0;
 extern "C" M3Result m3_Yield(void) {
     if (pot::g_fuel == 0) return pot::pot_wasm_out_of_fuel;
     --pot::g_fuel;
+    if (pot::g_yield.fn != nullptr && pot::g_fuel <= pot::g_next_yield) {
+        pot::g_next_yield = pot::g_fuel > pot::g_yield.every ? pot::g_fuel - pot::g_yield.every : 0;
+        pot::g_yield.fn(pot::g_yield.ctx);
+    }
     return m3Err_none;
 }
 
@@ -152,6 +160,7 @@ WasmCallResult WasmSandbox::call(const char* name, const uint32_t* args, unsigne
     rt->stackLimit = const_cast<uint8_t*>(&here) - native_stack_bytes;
     g_fuel = fuel;
     g_fuel_start = fuel;
+    g_next_yield = (fuel > g_yield.every) ? fuel - g_yield.every : 0;
     r = m3_Call(f, nargs, argp);
     out.fuel_used = g_fuel_start - g_fuel;
     g_fuel = 0;
