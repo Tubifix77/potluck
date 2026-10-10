@@ -2,6 +2,7 @@
 
 #include "pot/wasm_sandbox.hpp"
 
+#include <atomic>
 #include <cstring>
 
 extern "C" {
@@ -14,6 +15,7 @@ namespace pot {
 
 extern "C" {
 const char* pot_wasm_out_of_fuel = "[trap] out of fuel (potluck)";
+const char* pot_wasm_busy = "busy: another guest is running (potluck)";
 }
 
 namespace {
@@ -23,6 +25,7 @@ uint64_t g_fuel = 0;
 uint64_t g_fuel_start = 0;
 WasmYield g_yield;              // M7: set by wasm_set_yield; read by the fuel hook
 uint64_t g_next_yield = 0;
+std::atomic<bool> g_calling{false};  // M7: one call at a time, since the fuel above is one counter
 }  // namespace
 
 void wasm_set_yield(const WasmYield& y) { g_yield = y; }
@@ -153,6 +156,11 @@ WasmCallResult WasmSandbox::call(const char* name, const uint32_t* args, unsigne
         out.error = "refused: only functions of up to four i32 arguments and one i32 result";
         return out;
     }
+    bool idle = false;
+    if (!g_calling.compare_exchange_strong(idle, true)) {
+        out.error = pot_wasm_busy;
+        return out;
+    }
     const void* argp[4];
     for (unsigned i = 0; i < nargs; ++i) argp[i] = &args[i];
     // The native stack bound, from this frame down: the patched interpreter traps a call past it.
@@ -165,6 +173,7 @@ WasmCallResult WasmSandbox::call(const char* name, const uint32_t* args, unsigne
     out.fuel_used = g_fuel_start - g_fuel;
     g_fuel = 0;
     rt->stackLimit = nullptr;
+    g_calling.store(false);
     if (r != m3Err_none) {
         out.error = r;
         return out;

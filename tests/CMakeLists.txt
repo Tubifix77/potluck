@@ -75,6 +75,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_actors/src/die_temp.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/mc.cpp"
   "${POT_FIRMWARE}/components/pot_wasm/src/wasm_sandbox.cpp"
+  "${POT_FIRMWARE}/components/pot_wasm/src/guest.cpp"
 )
 target_link_libraries(pot_portable PUBLIC monocypher wasm3)
 target_include_directories(pot_portable PUBLIC
@@ -117,6 +118,7 @@ add_executable(pot_tests
   test_mc.cpp
   test_fw.cpp
   test_wasm.cpp
+  test_guest.cpp
 )
 target_link_libraries(pot_tests PRIVATE pot_portable)
 

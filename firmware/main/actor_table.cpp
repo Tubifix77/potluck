@@ -2,6 +2,8 @@
 
 #include "actor_table.hpp"
 
+#include "sdkconfig.h"
+
 #include <cstdlib>
 #include <new>
 
@@ -9,6 +11,9 @@
 #include "esp_attr.h"
 #include "esp_log.h"
 #include "pot/die_temp.hpp"
+#if CONFIG_POT_WASM
+#include "pot/guest.hpp"
+#endif
 #include "pot/mc.hpp"
 #include "pot/svc_client.hpp"
 #include "pot/ticker.hpp"
@@ -121,6 +126,9 @@ const ActorKind kBuiltinRows[] = {
     {ActorType::DieTemp, "die_temp", &die_temp_check, &die_temp_create, nullptr, &die_temp_outputs},
     kMcLenderKind,  // M9
     kMcJobKind,
+#if CONFIG_POT_WASM
+    kGuestKind,  // M7: portable, sandboxed; without the sandbox an image naming a guest is refused
+#endif
 };
 }  // namespace
 

@@ -75,11 +75,15 @@ def registered() -> list[ModuleSpec]:
 
 def is_placed_at_run_time(module: str) -> bool:
     """True for modules the manifest need not pin: every-node and portable ones."""
+    if module.startswith("guest:"):
+        return True  # M7: a guest actor is portable (potluck.guest)
     s = _REGISTRY.get(module)
     return s is not None and s.placement in ("every", "portable")
 
 
 def is_portable(module: str) -> bool:
+    if module.startswith("guest:"):
+        return True  # M7
     s = _REGISTRY.get(module)
     return s is not None and s.placement == "portable"
 

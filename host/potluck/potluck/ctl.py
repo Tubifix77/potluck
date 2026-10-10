@@ -116,6 +116,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--bcert", help="the deploy key's node-format certificate, hex (potluck.enrol --deploy-cert)")
     s.add_argument("--modules", action="append", default=[],
                    help="an external component's potluck-modules.json (M8.2); repeatable")
+    s.add_argument("--guests", default=None,
+                   help="M7: the directory guest bundles' paths are relative to (default: the working directory)")
 
     return p
 
@@ -303,7 +305,7 @@ def cmd_deploy(bridge: Bridge, node_id: int, args) -> int:
             mods.load(path)
         ca = read_key(args.ca)
         v = verify_package(load_package(args.package), ca.public, min_counter=args.min_counter)
-        img = dp.compile_image(v.manifest, v.rollback_counter)
+        img = dp.compile_image(v.manifest, v.rollback_counter, getattr(args, "guests", None))
     except (SigningError, dp.DeployError, mods.ModuleError, OSError, ValueError) as exc:
         print(f"REFUSED before sending: {exc}")
         return 4

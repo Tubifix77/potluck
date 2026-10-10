@@ -59,7 +59,7 @@ CERT_TYPE = "potluck-key-cert-v1"
 ALG_ED25519 = "ed25519"
 ALGORITHMS = (ALG_ED25519,)
 
-ROLES = ("ca", "deploy")
+ROLES = ("ca", "deploy", "guest")  # M7: a guest author signs modules (potluck.guest)
 
 
 class SigningError(Exception):

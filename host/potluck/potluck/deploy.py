@@ -27,9 +27,14 @@ from .paths import path_hash
 
 IMAGE_MAGIC = 0x44544F50  # "POTD"
 IMAGE_VERSION = 1
+IMAGE_VERSION_GUESTS = 2  # M7: version 1 plus a guest section
 IMAGE_HEADER_LEN = 24
 MAX_ACTORS = 16
 MAX_IMAGE_LEN = 512
+#: M7: deploy.hpp's kMaxImageLen. Only a firmware built with the sandbox (CONFIG_POT_WASM) accepts an
+#: image this large; any other refuses it as TOO_LARGE, before writing anything.
+MAX_IMAGE_LEN_GUESTS = 32 * 1024
+MAX_GUESTS = 4
 EVERY_NODE = 0xFFFF
 # 220, not the node's 512: a CHUNK frame is 6 + data bytes, and the node caps a peer it has not pinned
 # to ESP-NOW v2 -- the host, on the serial link -- at the 226-byte v1 payload (section 5.3). Images
@@ -45,6 +50,7 @@ ACTOR_SVC_CLIENT = 4  # M8: calls a host's named service and publishes the answe
 ACTOR_DIE_TEMP = 5  # M8.1: the chip's own temperature sensor, published to node-<id>/hw/die_temp
 ACTOR_MC_LENDER = 6  # M9: lends its node's idle cores to the mc_pi pure function
 ACTOR_MC_JOB = 7  # M9: a Monte Carlo job that borrows idle cores; publishes node-<id>/job/mc/pi
+ACTOR_GUEST = 8  # M7: a sandboxed WebAssembly module from a guest author (potluck.guest); portable
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
 MAX_ACTOR_CFG = 48
 BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER,
@@ -217,6 +223,55 @@ def _external(m: Manifest, a, where: str) -> tuple[int, int, bytes]:
     return node, spec.type, own
 
 
+def guest_output_path(system: str, actor: str, name: str) -> str:
+    """M7. Where a guest actor's output `name` lives: under its actor, node-free, like a ticker's."""
+    return f"potluck://{system}/act/{actor}/{name}"
+
+
+GUEST_CONFIG_KEYS = {"bundle", "sha256", "outputs", "fuel", "memory_kib", "period_ms"}
+
+
+def _guest(m: Manifest, a, where: str, index: int, guest_root: str | None) -> tuple[bytes, bytes]:
+    """M7: (config, blob) for a `guest:<name>` actor. The bundle is read from `config.bundle` (relative
+    to `guest_root`, else the working directory) and must be the module `config.sha256` pins."""
+    import os
+
+    from . import guest as gs
+
+    extra = set(a.config) - GUEST_CONFIG_KEYS
+    if extra:
+        raise DeployError(f"{where}: unknown guest config key(s) {sorted(extra)}")
+    for k in ("bundle", "sha256", "outputs"):
+        if not isinstance(a.config.get(k), str):
+            raise DeployError(f"{where}: a guest needs config.{k}")
+    path = a.config["bundle"]
+    if guest_root and not os.path.isabs(path):
+        path = os.path.join(guest_root, path)
+    try:
+        b = gs.load_bundle(path)
+        outs = gs.parse_outputs(a.config["outputs"], where)
+    except (gs.GuestError, OSError, ValueError) as exc:
+        raise DeployError(f"{where}: {exc}") from None
+    if a.module != f"guest:{b.name}":
+        raise DeployError(f"{where}: module '{a.module}' but the bundle is guest:{b.name}")
+    if b.sha256 != a.config["sha256"].lower():
+        raise DeployError(f"{where}: the bundle's module (sha256 {b.sha256[:16]}...) is not the one the "
+                          f"signed manifest pins ({a.config['sha256'][:16]}...)")
+    fuel = int(a.config.get("fuel", 100000))
+    kib = int(a.config.get("memory_kib", 64))
+    if kib not in (0, 64):
+        raise DeployError(f"{where}: memory_kib is 0 or 64 (one WebAssembly page)")
+    period = int(a.config.get("period_ms", 1000))
+    cfg = _portable_header(m, a, period, where) + bytes([index])
+    inputs = [path_hash(m.bindings.get(p, p)) for p in a.needs]
+    outputs = [(path_hash(guest_output_path(m.system, a.name, n)), t) for n, t in outs]
+    try:
+        blob = gs.encode_blob(b, inputs, outputs, fuel, kib // 64)
+    except gs.GuestError as exc:
+        raise DeployError(f"{where}: {exc}") from None
+    return cfg, blob
+
+
 def _svc_client_config(m: Manifest, a, where: str) -> bytes:
     """M8. The service is the actor's one binding; the provider is the node that owns it (a host)."""
     from . import reconcile as rc
@@ -243,14 +298,24 @@ def _svc_client_config(m: Manifest, a, where: str) -> bytes:
     return struct.pack("<IHIHB", svc, provider.node_id, out, period, SVC_HOST_LOSS[loss])
 
 
-def compile_image(m: Manifest, counter: int) -> bytes:
-    """The node image for a manifest at a rollback counter. Deterministic: same input, same bytes."""
+def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> bytes:
+    """The node image for a manifest at a rollback counter. Deterministic: same input, same bytes.
+    M7: with guest actors it is a version-2 image, their blobs in its guest section."""
     body = b""
     count = 0
+    guests: list[bytes] = []
     from . import modules as mods
 
     for a in m.actors:
         where = f"actors[{a.name}]"
+        if a.module.startswith("guest:"):
+            if len(guests) >= MAX_GUESTS:
+                raise DeployError(f"{where}: an image carries at most {MAX_GUESTS} guests")
+            cfg, blob = _guest(m, a, where, len(guests), guest_root)
+            guests.append(blob)
+            body += struct.pack("<HBB", 0xFFFE, ACTOR_GUEST, len(cfg)) + cfg
+            count += 1
+            continue
         if mods.get(a.module) is not None:
             node, typ, cfg = _external(m, a, where)
             if len(cfg) > MAX_ACTOR_CFG:
@@ -297,10 +362,16 @@ def compile_image(m: Manifest, counter: int) -> bytes:
     if count > MAX_ACTORS:
         raise DeployError(f"{count} actors; the node image holds at most {MAX_ACTORS}")
     digest = bytes.fromhex(m.digest())[:8]
-    header = struct.pack("<IBBHI8sI", IMAGE_MAGIC, IMAGE_VERSION, count, 0, counter, digest, len(body))
+    version = IMAGE_VERSION_GUESTS if guests else IMAGE_VERSION
+    header = struct.pack("<IBBHI8sI", IMAGE_MAGIC, version, count, 0, counter, digest, len(body))
     img = header + body
-    if len(img) > MAX_IMAGE_LEN:
-        raise DeployError(f"image is {len(img)} bytes; the node accepts at most {MAX_IMAGE_LEN}")
+    if guests:
+        img += bytes([len(guests)])
+        for g in guests:
+            img += struct.pack("<I", len(g)) + g
+    limit = MAX_IMAGE_LEN_GUESTS if guests else MAX_IMAGE_LEN
+    if len(img) > limit:
+        raise DeployError(f"image is {len(img)} bytes; the node accepts at most {limit}")
     return img
 
 

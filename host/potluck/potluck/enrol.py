@@ -3,6 +3,8 @@
     python -m potluck.enrol --port COM4 --ca-key keys/ca.key          # enrol the board on COM4
     python -m potluck.enrol --port COM4 --show                        # just print what it reports
     python -m potluck.enrol --check-cert <hex> --ca keys/ca.pub       # verify a certificate offline
+    python -m potluck.enrol --guest-cert keys/acme.pub --author 7 --ca-key keys/ca.key --out keys/acme.gcert
+                                                                      # M7: certify a guest author
 
 WHAT ENROLMENT IS
 
@@ -19,7 +21,7 @@ THE NODE CERTIFICATE, v1 (112 bytes, little-endian; firmware/components/pot_trus
      off  len  field
        0    4  magic        "PNC1"
        4    1  version      1
-       5    1  role         1 = node
+       5    1  role         1 = node, 2 = deploy key, 3 = guest author (M7)
        6    2  node_id
        8    4  ca_fp        first 4 bytes of SHA-512(CA public key): which cluster
       12    4  issued       Unix seconds when signed; informational, nothing expires in v1 (9.5)
@@ -61,6 +63,7 @@ MAGIC = b"PNC1"
 VERSION = 1
 ROLE_NODE = 1
 ROLE_DEPLOY = 2  # the same format certifies a deploy key (M5 step 6); node_id is 0
+ROLE_GUEST = 3  # M7: a guest author's key; node_id is the author's number, which the owner assigns
 CERT_LEN = 112
 SIGNED_LEN = 48
 DOMAIN = b"potluck-node-cert-v1\0"
@@ -217,6 +220,21 @@ def main(argv: list[str] | None = None) -> int:
             with open(ident, "a", encoding="ascii") as f:
                 f.write(f"ca {ca.public.hex()}\ncert {cert.hex()}\n")
             print(f"host node 0x{node:04x} certified by CA {ca.id} -> {ident}")
+            return 0
+        if "--guest-cert" in argv:
+            # M7: certify a guest author's key (role 3) -- a party the owner lets run sandboxed actors,
+            # not one it trusts with a node. The author signs modules with it (python -m potluck.guest).
+            author = read_key(_flag(argv, "--guest-cert") or "")
+            ca = read_key(_flag(argv, "--ca-key") or "")
+            num = int(_flag(argv, "--author") or "0", 0)
+            if not 1 <= num <= 0xFFFF:
+                raise EnrolError("--author <n>: the author's number, 1..65535, which the owner assigns")
+            cert = build_cert(ca, num, author.public, role=ROLE_GUEST)
+            verify_cert(cert, ca.public, ROLE_GUEST)
+            out = _flag(argv, "--out") or ""
+            with open(out, "w", encoding="ascii") as f:
+                f.write(cert.hex() + "\n")
+            print(f"guest author {num} (key {author.id}) certified by CA {ca.id} -> {out}")
             return 0
         if "--deploy-cert" in argv:
             # Once, with the CA key: certify the deploy key for node-side image checks (M5 step 6).

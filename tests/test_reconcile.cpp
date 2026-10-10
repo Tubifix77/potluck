@@ -16,6 +16,9 @@
 #include "pot/opcodes.hpp"
 #include "pot/actor.hpp"
 #include "pot/reconcile.hpp"
+#include "guest_fixture.hpp"
+#include "pot/guest.hpp"
+#include "pot/guest_examples.h"
 #include "test_harness.hpp"
 
 using namespace pot;
@@ -652,3 +655,63 @@ TEST(reconcile, a_late_joining_high_gravity_node_that_settles_at_the_cap_never_r
     CHECK_EQ(c.runner(), 3);   // and it did move to the node gravity prefers
 }
 
+// ---- M7: a guest actor fails over like any portable actor, and continues from its checkpoint -----------
+
+TEST(reconcile, a_guest_moves_when_its_node_dies_and_counts_on_from_its_checkpoint) {
+    guest_runtime().reset();
+    guestfx::Keys k;
+    const uint32_t temp = path_hash("potluck://lab/node-0100/hw/temp");  // nobody owns it: Unavailable
+    const uint32_t out = path_hash("potluck://lab/act/alarm/out");
+    const uint32_t alarm = path_hash("potluck://lab/act/alarm/alarm");
+    const uint32_t count = path_hash("potluck://lab/act/alarm/count");
+    const guestfx::Bytes blob = guestfx::make_blob(
+        k, guest_examples::k_overheat_alarm, sizeof(guest_examples::k_overheat_alarm), {temp},
+        {{out, ValueType::F32}, {alarm, ValueType::I32}, {count, ValueType::I32}});
+    const guestfx::Bytes image = guestfx::make_image({guestfx::guest_decl(kKey, 100, {0x100, 0x101, 0x102}, 0)}, {blob});
+    DeployImage img{};
+    const char* why = nullptr;
+    CHECK(parse_image(image.data(), image.size(), img, &why));
+    static uint8_t pool[kMaxImageLen];
+    CHECK(guest_library().load(img, pool, sizeof(pool), &why));
+    guest_runtime().set_ca(k.ca.pub);
+    {
+        RCell c;
+        PortableSpec specs[kMaxPortable];
+        size_t n = 0;
+        CHECK(collect_portable(img, &kGuestKind, 1, specs, kMaxPortable, n, &why));
+        CHECK_EQ(n, 1u);
+        c.specs.assign(specs, specs + n);
+        c.build(3, {});
+        auto guest_task = [] { guest_runtime().service(); };
+        auto count_on = [&](size_t i) {
+            Reading r;
+            int32_t v = -1;
+            Quality q;
+            c.nodes[i].node->read(count, r);
+            r.get_i32(v, q);
+            return v;
+        };
+        c.run(8000, guest_task);
+        const int first = c.runner();
+        CHECK(first >= 0);
+        if (first < 0) return;
+        const int32_t before = count_on(static_cast<size_t>(first));
+        CHECK(before > 30);  // ~10 ticks a second once placed
+        c.kill(static_cast<size_t>(first));
+        c.run(4000, guest_task);
+        const int second = c.runner();
+        CHECK(second >= 0 && second != first);
+        if (second < 0) return;
+        const int32_t after = count_on(static_cast<size_t>(second));
+        CHECK(after > before);  // continued from the checkpoint (a cold start would be ~20 by now)
+        const auto* g = static_cast<const GuestActor*>(c.nodes[static_cast<size_t>(second)].rec->instance(0));
+        CHECK(g != nullptr);
+        if (g == nullptr) return;
+        CHECK_EQ(g->stats().fresh, 1u);
+        CHECK_EQ(g->stats().failed, 0u);
+        CHECK_EQ(g->stats().log_last, 1);  // its init() found the checkpoint
+    }
+    guest_runtime().service();
+    guest_library().clear();
+    guest_runtime().reset();
+}

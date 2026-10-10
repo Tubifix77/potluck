@@ -38,6 +38,7 @@
 #include "pot/fw.hpp"
 #include "pot/fw_esp.hpp"
 #if CONFIG_POT_WASM
+#include "pot/guest.hpp"
 #include "pot/mc.hpp"
 #include "pot/wasm_modules.h"
 #include "pot/wasm_sandbox.hpp"
@@ -660,8 +661,15 @@ EspSlotStore g_store;
 DeployState g_state{};
 BootOutcome g_outcome = BootOutcome::NoDeployment;
 // One buffer, used twice: by boot() to load the active slot before any frame can arrive, then by
-// the receiver. Nothing keeps pointers into it after boot -- the actors' settings are copied out.
-EXT_RAM_BSS_ATTR uint8_t g_rx_buf[kMaxImageLen];  // M6: PSRAM when present; tasks only
+// the receiver. Nothing keeps pointers into it after boot -- the actors' settings are copied out, and
+// M7's guests into their own pool.
+#if CONFIG_POT_WASM
+constexpr size_t kImageBufLen = kMaxImageLen;  // M7: guests carry their code
+EXT_RAM_BSS_ATTR uint8_t g_guest_pool[kMaxImageLen];  // PSRAM; the guest task reads the modules here
+#else
+constexpr size_t kImageBufLen = 512;  // no guest section can run here, so images stay as small as before M7
+#endif
+EXT_RAM_BSS_ATTR uint8_t g_rx_buf[kImageBufLen];  // M6: PSRAM when present; tasks only
 uint8_t* const g_image = g_rx_buf;
 DeployReceiver g_rx(g_store, g_rx_buf, sizeof(g_rx_buf));
 bool g_trial = false;            // running a pending slot, not yet confirmed
@@ -683,7 +691,7 @@ void save() {
 // half-applied image is worse than either whole one.
 bool load_and_apply(const char** why) {
     size_t len = 0;
-    if (!g_store.read_slot(g_state.active, g_image, kMaxImageLen, len)) {
+    if (!g_store.read_slot(g_state.active, g_image, kImageBufLen, len)) {
         *why = "slot unreadable or fails its CRC";
         return false;
     }
@@ -692,6 +700,18 @@ bool load_and_apply(const char** why) {
         return false;
     }
     g_actor_env.trial_window_ms = kTrialHeartbeats * static_cast<uint32_t>(CONFIG_POT_HB_PERIOD_MS);
+#if CONFIG_POT_WASM
+    // M7: the guests first, so the guest rows below can check their declarations against them. Their
+    // authors' signatures were checked when the image arrived and are checked again before each runs.
+    if (!guest_library().load(img, g_guest_pool, sizeof(g_guest_pool), why)) {
+        return false;
+    }
+#else
+    if (img.guest_count > 0) {
+        *why = "image carries guests, and this build has no sandbox (CONFIG_POT_WASM)";
+        return false;
+    }
+#endif
     // Every node takes every portable actor: section 7.7's "code moves at deploy time, not at failure
     // time". The reconciler decides where each one runs; the registration table says what each is.
     size_t portable_n = 0;
@@ -1665,6 +1685,47 @@ bool start(uint32_t samples, uint32_t runs) {
 }
 
 }  // namespace wasm_rt
+
+// ---------------------------------------------------------------------------------------------
+// M7: the guest task -- where every guest actor's code runs (pot/guest.hpp). One task, so one guest at a
+// time (the sandbox's fuel counter is global), at the lowest priority on core 1 as the experiment
+// measured, with a 16 KB stack: each interpreted op nests a C frame on Xtensa. The actors on the link
+// task hand it work and wake it; it never touches the node.
+// ---------------------------------------------------------------------------------------------
+namespace guest_rt {
+
+TaskHandle_t g_task = nullptr;
+
+void wake(void*) {
+    if (g_task != nullptr) xTaskNotifyGive(g_task);
+}
+
+void task(void*) {
+    for (;;) {
+        // A missed wake costs at most 100 ms: service() also finds work on its own.
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(100));
+        while (guest_runtime().service()) {
+        }
+    }
+}
+
+void start(const uint8_t* ca_pub) {
+    guest_runtime().set_ca(ca_pub);
+    // Let the idle task in every ~50,000 units of fuel (~16 ms measured): the task watchdog watches it.
+    WasmYield y;
+    y.fn = [](void*) { vTaskDelay(1); };
+    wasm_set_yield(y);
+    if (xTaskCreatePinnedToCore(&task, "pot_guest", 16384, nullptr, 1, &g_task, portNUM_PROCESSORS > 1 ? 1 : 0) !=
+        pdPASS) {
+        ESP_LOGE(kTag, "guest: no task, so no guest will run");
+        return;
+    }
+    guest_runtime().set_waker(&wake, nullptr);
+    ESP_LOGI(kTag, "guest: %u guest(s) in the image, author checks %s", static_cast<unsigned>(guest_library().count()),
+             ca_pub != nullptr ? "under the cluster CA" : "impossible (not enrolled): no guest will run");
+}
+
+}  // namespace guest_rt
 #endif
 
 namespace trust_rt {
@@ -1782,6 +1843,17 @@ struct ImageJob {
 void image_job(void* a) {
     ImageJob& j = *static_cast<ImageJob*>(a);
     j.e = image_trailer_check(g_id_boot.ca_pub, j.img, j.n, j.tr, j.tn);
+#if CONFIG_POT_WASM
+    // M7: and every guest's author signature, so an image carrying a guest nobody certified is refused
+    // whole, before it is written. Static: this worker's 4 KB stack also holds the Ed25519 check.
+    static DeployImage img;
+    const char* why = nullptr;
+    if (j.e == CertError::Ok && parse_image(j.img, j.n, img, &why) && img.guest_count > 0) {
+        uint8_t which = 0;
+        j.e = guest_image_check(img, g_id_boot.ca_pub, &which);
+        if (j.e != CertError::Ok) ESP_LOGW(kTag, "deploy: guest %u's author signature failed", static_cast<unsigned>(which));
+    }
+#endif
 }
 DeployStatus verify_image(void*, const uint8_t* img, size_t n, const uint8_t* tr, size_t tn) {
     if (tn == 0) {
@@ -2682,6 +2754,10 @@ extern "C" void app_main(void) {
     if (trust_rt::g_id_boot.enrolled) {
         deploy_rt::g_rx.set_verifier(&trust_rt::verify_image, nullptr);
     }
+#if CONFIG_POT_WASM
+    // M7: before any task runs a guest actor; a node that is not enrolled runs none.
+    guest_rt::start(trust_rt::g_id_boot.enrolled ? trust_rt::g_id_boot.ca_pub : nullptr);
+#endif
 #if !CONFIG_POT_CAN
 #if CONFIG_POT_REQUIRE_AUTH
     g_node->set_trust(&trust_rt::g_id_boot, true);

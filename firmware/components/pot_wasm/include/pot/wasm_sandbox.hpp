@@ -64,6 +64,8 @@ class WasmSandbox {
 
     // Calls an exported function taking up to four i32 arguments and returning at most one i32.
     // `native_stack_bytes` bounds how far below this call's own frame the guest may drive the C stack.
+    // One call at a time in the whole process: the fuel counter is a single global (the interpreter's
+    // hook takes no context), so a second caller gets pot_wasm_busy and nothing runs.
     WasmCallResult call(const char* name, const uint32_t* args, unsigned nargs, uint64_t fuel,
                         uint32_t native_stack_bytes);
 
@@ -81,5 +83,7 @@ class WasmSandbox {
 
 // The error a call returns when the guest's fuel ran out (compare the pointer).
 extern "C" const char* pot_wasm_out_of_fuel;
+// M7: the error a call returns when another call is running (compare the pointer). Nothing ran.
+extern "C" const char* pot_wasm_busy;
 
 }  // namespace pot

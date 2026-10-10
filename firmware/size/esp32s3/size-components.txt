@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xcf400 bytes. Smallest app partition is 0x100000 bytes. 0x30c00 bytes (19%) free.
+potluck_m0.bin binary size 0xcf450 bytes. Smallest app partition is 0x100000 bytes. 0x30bb0 bytes (19%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -33,11 +33,11 @@ Executing "ninja size-components"...
 
 │ libnet80211.a                   │     148120 │    0 │     0 │        0 │  4818 │     0 │   938 │  3880 │     121345 │ 121345 │      14279 │      0 │   14279 │        0 │         7678 │  7678 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │     104874 │    0 │     0 │        0 │ 39488 │ 39281 │   207 │     0 │      15808 │  15808 │        348 │      0 │     348 │        0 │        49230 │ 49230 │        0 │             0 │        0 │           0 │
-
 │ libtfpsacrypto.a                │      95849 │   80 │    80 │        0 │   572 │   444 │   128 │     0 │      79434 │  79434 │      15763 │      0 │   15763 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libesp_stdio.a                  │      71307 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      70897 │      0 │   70897 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      72629 │    0 │     0 │        0 │ 39488 │ 39281 │   207 │     0 │      15819 │  15819 │        348 │      0 │     348 │        0 │        16974 │ 16974 │        0 │             0 │        0 │           0 │
+
+│ libesp_stdio.a                  │      71377 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      70967 │      0 │   70967 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libwpa_supplicant.a             │      67007 │    0 │     0 │        0 │     8 │     0 │     8 │     0 │      63798 │  63798 │       1838 │      0 │    1838 │        0 │         1363 │  1363 │        0 │             0 │        0 │           0 │
 

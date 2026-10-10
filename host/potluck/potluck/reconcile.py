@@ -87,6 +87,8 @@ def eligible(m: Manifest, a: ActorSpec) -> list[tuple[int, int]]:
     for n in m.nodes:
         if n.kind == "host" and not n.placement:
             continue  # M8: a host that only offers named services; M10's placement hosts opt in
+        if n.kind == "host" and a.module.startswith("guest:"):
+            continue  # M7: guests run in the boards' sandbox; pot_hostnode has no guest row
         if n.headroom_bytes < a.headroom_bytes:
             continue
         if a.priority == "background" and not n.background_allowed():
