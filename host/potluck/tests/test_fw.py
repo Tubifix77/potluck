@@ -1,9 +1,13 @@
 """M11: the firmware trailer and the FW_* payloads. The golden signature is verified by tests/test_fw.cpp."""
 
+import os
 import struct
+import sys
 import unittest
 
-from potluck import fw
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from potluck import fw  # noqa: E402
 
 
 class TestFirmwareSignature(unittest.TestCase):

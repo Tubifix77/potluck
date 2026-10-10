@@ -18,3 +18,7 @@ Third-party code included in the firmware:
     Copyright (c) 2017-2019, Michael Savage
     Copyright (c) 2017-2023, Fabio Scotoni
   The full licence text is firmware/components/monocypher/LICENCE.md.
+  wasm3 0.9.0 (firmware/components/pot_wasm/wasm3, with two patches recorded in its PROVENANCE.md),
+  used under the MIT licence -- compiled only when CONFIG_POT_WASM is set (M7's experiment):
+    Copyright (c) 2019 Steven Massey, Volodymyr Shymanskyy
+  The full licence text is firmware/components/pot_wasm/wasm3/LICENSE.

@@ -585,3 +585,40 @@ python -m esptool --chip esp32s3 -p COM4 verify-flash 0x10000 firmware\build\pot
 ```
 
 Flash all three from one build: beacon formats must agree across the cell.
+
+## 11. M11: firmware over the cell
+
+The boards' partition table has two app slots for updates (`ota_0`, `ota_1`) after `factory` and the module
+slots, and a bootloader built with ESP-IDF's app rollback. Both need one cable flash (`@flash_args`, which
+also resets `otadata` so the board boots `factory`); after that, updates go over the radio. From
+`host/potluck/`, with the CP2102 on COM6:
+
+```
+python -m potluck.fw --port COM6 status
+python -m potluck.fw --port COM6 rollout ../../firmware/build/potluck_m0.bin --counter N --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --image-for 7368=../../firmware/build-extender/potluck_m0.bin
+```
+
+- `N` must be above every board's floor (`status` shows it). The default order is B, C, then A (the cable's own
+  board last); `--targets` changes it. A board that does not confirm stops the rollout.
+- Each board: ~90 s of transfer at ~9 KiB/s, a reboot, then 100 heartbeats with a radio peer before it keeps the
+  image (~15 s). Unconfirmed 120 s after boot (`CONFIG_POT_FW_TRIAL_TIMEOUT_MS`), it rolls back by itself; an
+  image that crashes is rolled back by the bootloader.
+- Record the consoles meanwhile without resetting them: `python tools/console_tap.py COM5 600 captures/x.log`.
+  Count deaths from the `peer_dead` events, never from sampled state.
+- Refusals: `python tools/m11_bench.py --port COM6 --target 8160 refuse --key ... --bcert ...` (seven checks,
+  4 KB images, a few seconds each).
+- An experiment image (a bench that never joins the cell) can go out the same way: it never confirms, and one
+  reset (`tools/console_tap.py` does not reset; esptool's or RTS's does) puts the board back on its image.
+
+## 12. M7: the WebAssembly sandbox (an experiment, off by default)
+
+```
+tools\build_firmware.ps1 -Variant m7-wasm -Extra "CONFIG_POT_WASM=y","CONFIG_POT_WASM_BENCH=y"   # the bench
+tools\build_firmware.ps1 -Variant m7-node -Extra "CONFIG_POT_WASM=y"                             # a node with it
+python tools/m7_bench.py duty --target COM5 --samples 2000000 --runs 6 --out captures/m7-duty    # a guest in a running cell
+python tools/wasm_modules.py                                                                     # regenerate the test modules
+```
+
+The bench prints `{"t":"wasm_bench"}` lines and stops; deliver it with `potluck.fw rollout --targets 8160` and
+reset the board afterwards to roll it back. `POT! wasm <samples> <runs>` runs M9's kernel in the sandbox on a
+node built with `CONFIG_POT_WASM`. The host tests (`tests/test_wasm.cpp`) run the same interpreter and modules.

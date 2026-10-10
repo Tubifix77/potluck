@@ -4537,7 +4537,7 @@ faults: after the cable's own board rebooted the tool never re-announced itself,
 
 **Measured** (A, C normal build, B extender build; captures `m11-*`):
 - *Over the cell*: B, C, then A, each 90-95 s of transfer at 9.1-9.2 KiB/s and confirmed 105-111 s after
-  BEGIN (reboot ~2 s, trial 100 heartbeats ~13 s); the whole cell in 5.4 min, run twice (counters 2 and 3).
+  BEGIN (reboot ~2 s, trial 100 heartbeats ~13 s); the whole cell in 5.4 min, run three times (counters 2, 3 and, at the session's end, 5).
   No board died during any transfer: every `peer_dead` in the three consoles is the updated board's own reboot,
   or B's Wi-Fi station scan in its first seconds of boot (the extender's known boot behaviour, session 30), or
   A dropping the host when the tool exits.
@@ -4561,3 +4561,64 @@ starts again), and a node that is not on the cable's board's radio (one hop, lik
 
 Bench after M11: all three on `237f874` at firmware counter 3, confirmed (floor 3: the next image is 4+);
 A and C on the normal build, B on the extender build, each in one of its two OTA slots. `m10-ticker` still at counter 24.
+
+**Session 36, continued -- M7 as an experiment: a sandbox for untrusted code, built, measured, and left dormant.**
+The milestone stays gated (no named workload needs untrusted code); what changed is that its cost is now measured
+on this part rather than borrowed from an ESP32-C6 paper, and the sandbox exists behind `CONFIG_POT_WASM`
+(default off) for whoever's trust level makes it worth it.
+
+*Runtime choice* (zero-assumption ledger, 2026-10-10): wasm3 against WAMR, from their repositories and the
+Espressif registry. wasm3 -- MIT, not archived, commits as recent as 2026-09-29 despite the README's "minimal
+maintenance phase" notice, an ESP-IDF port in-tree, "~64Kb for code and ~10Kb RAM" by its README, ~156 KB against
+WAMR's ~480 KB measured on an ESP32-C6. WAMR's registry component (2.4.0~1) trails upstream's 2.4.5, whose notes
+are three CVE fixes. Chosen: **wasm3 v0.9.0**, the latest tag that is not a beta (commit `0cd38327f0`,
+2026-08-24). Downloaded exactly `https://github.com/wasm3/wasm3/archive/refs/tags/v0.9.0.tar.gz` (2,656,936 B,
+sha256 `cab79ce7...b8e6`) into an empty folder, under the owner's permission; nothing else was fetched -- no
+WebAssembly compiler was installed, so the test modules are assembled byte by byte from the spec's binary
+format (`tools/wasm_modules.py`, every opcode registered in the ledger), and the interpreter validates them.
+
+*What reading the interpreter found* -- the reason the sandbox needed a patch at all: wasm3 has a yield hook,
+`m3_Yield`, but calls it only from its call ops. A guest's `loop br 0` never reaches it, so no budget could stop
+it. Patch 2 calls the hook on every loop back-edge; the sandbox's hook charges one unit of fuel per call and per
+back-edge and traps at zero. Patch 1 lets the embedder define the hook (MSVC has no weak symbols). Both are in
+`firmware/components/pot_wasm/PROVENANCE.md`; the other 25 files are byte-identical to the tag.
+
+*The sandbox* (`pot/wasm_sandbox.hpp`): fuel; a memory cap that is the memory's maximum (wasm3's own
+`memoryLimit` only caps the allocation and still tells the guest its grow succeeded -- found by a host test);
+the native-stack bound wasm3 already has, set per call; and an import allow-list checked at load -- a function,
+memory or global from outside is refused, and today the only thing provided is `potluck.log(i32)`. On the board,
+Xtensa GCC cannot emit a sibling call, so wasm3's `musttail` dispatch does not compile (`M3_HAS_TAIL_CALL=0`):
+every dispatched op nests a C frame.
+
+*Measured on C* (ESP32-S3 at 160 MHz; the bench image delivered over the cell with M11 and, since it never
+confirms, rolled back by one reset -- a pattern worth keeping for experiments):
+- M9's Monte Carlo kernel, 200,000 samples: native 66.0 ms (from IRAM), sandboxed 3.22-3.30 s -- **~49-50x**;
+  the same answer (156,841 hits) and exactly one unit of fuel per sample. In a running node, 2,000,000 samples:
+  0.663 s native, 33.7-34.0 s sandboxed (51x), six runs, every answer identical.
+- Flash: **+76,089 B** for the interpreter and sandbox (70,096 code, 5,973 constants), 20 B of static RAM; the
+  node image with it is 933,324 B against 848,160. A loaded module took 10.7 KB of heap. **With the option off
+  the default image is 848,160 B, unchanged to the byte: dormant costs nothing.**
+- Every limit held: an endless loop trapped when its fuel ran out (327 ns per unit); a load past the end of
+  memory trapped; memory.grow past the cap returned -1; endless recursion trapped after 58 calls with 3.4 KB of a
+  16 KB stack left; a module importing a pin was refused at load; the one provided import worked. 0 failures.
+- The interpreter's core in IRAM, as wasm3's own ESP-IDF example places it: 50,720 B of internal RAM and **no
+  speed-up** (3.22-3.31 s). The cost is the dispatch, not flash; the option was measured and not kept.
+- A guest running on C (its own task, lowest priority, core 1) while the cell ran (`tools/m7_bench.py duty`,
+  `captures/m7-duty`): no deaths; C's probe turnaround as its peers measured it 0.91-1.01 ms quiet, 0.96-1.16 ms
+  with the guest; heartbeat loss on the links to A rose 34 -> 41 /min -- and by the same on the control link
+  between A and B, which C is not on, so that was the cell, not the guest.
+
+*Verdict for ADR-003:* the revisit trigger has still not fired (no untrusted third-party code is asked for), and
+the measurement says why it should open only for that: at ~50x native a sandboxed actor costs fifty times the
+CPU of the same actor built into signed firmware, which M11 now updates over the air. What it buys is what
+signing cannot -- a guest that cannot touch pins, the radio or the node's memory, cannot run forever and cannot
+take the stack -- and on an S3 it fits: 76 KB of flash, ~11 KB of heap per module, no measurable cost to the
+node's duties at background priority. Recorded in ADR-003 as a measured, dormant Tier 1.
+
+Gates at the end: 31 green -- 357 C++ cases / 104,909 checks plain and under AddressSanitizer, 287 Python cases
+in 24 suites (one, `test_fw.py`, failed first as a script: it lacked the path setup the others have), the strict-GCC
+portability gate.
+
+Bench at the end: all three on `599260f` at firmware counter 5 (floor 5; next image 6+), delivered over the cell
+(`captures/m11-c5*`), A and C the normal build, B the extender build (still holding the owner's credentials);
+`m10-ticker` package at counter 24 (next 25+).
