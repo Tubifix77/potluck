@@ -295,19 +295,29 @@ int main(int argc, char** argv) {
                          static_cast<unsigned>(e.detail_b));
         }
         if (static_cast<int32_t>(t - next_stats) >= 0) {
-            next_stats = t + 2000;
+            next_stats = t + 1000;
             std::string peers;
             for (size_t i = 0; i < PeerTable::capacity(); ++i) {
                 const PeerLink& p = node.peers().slot(i);
                 if (p.state == PeerState::Free) continue;
-                char b[96];
-                std::snprintf(b, sizeof(b), "%s{\"id\":%u,\"state\":\"%s\",\"via_relay\":%d}", peers.empty() ? "" : ",",
-                              static_cast<unsigned>(p.node_id), state_str(p.state), node.peer_relayed(&p) ? 1 : 0);
+                char b[128];
+                std::snprintf(b, sizeof(b), "%s{\"id\":%u,\"state\":\"%s\",\"via_relay\":%d,\"epoch\":%u}",
+                              peers.empty() ? "" : ",", static_cast<unsigned>(p.node_id), state_str(p.state),
+                              node.peer_relayed(&p) ? 1 : 0, static_cast<unsigned>(p.boot_epoch));
                 peers += b;
             }
             std::fprintf(stderr, "{\"t\":\"host\",\"node\":%u,\"up_ms\":%u,\"rx\":%u,\"tx\":%u,\"settled\":%d,\"peers\":[%s]}\n",
                          static_cast<unsigned>(node_id), static_cast<unsigned>(t), static_cast<unsigned>(g_rx_frames.load()),
                          static_cast<unsigned>(g_tx_frames.load()), rec.settled() ? 1 : 0, peers.c_str());
+            {
+                const Reconciler::Counters& rc = rec.counters();
+                std::fprintf(stderr, "{\"t\":\"rec_counters\",\"node\":%u,\"up_ms\":%u,\"sent\":%u,\"received\":%u,"
+                             "\"malformed\":%u,\"unknown_peer\":%u,\"views\":%u,\"send_failures\":%u}\n",
+                             static_cast<unsigned>(node_id), static_cast<unsigned>(t), static_cast<unsigned>(rc.sets_sent),
+                             static_cast<unsigned>(rc.sets_received), static_cast<unsigned>(rc.sets_malformed),
+                             static_cast<unsigned>(rc.sets_unknown_peer), static_cast<unsigned>(rc.view_changes),
+                             static_cast<unsigned>(rc.send_failures));
+            }
             for (size_t i = 0; i < rec.actor_count(); ++i) {
                 const Reconciler::ActorView v = rec.view(i);
                 std::fprintf(stderr, "{\"t\":\"rec\",\"node\":%u,\"up_ms\":%u,\"key\":%u,\"running\":%d,\"term\":%u,"

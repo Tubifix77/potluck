@@ -629,3 +629,26 @@ TEST(reconcile, a_node_still_hunting_for_its_channel_does_not_settle_until_it_kn
     CHECK(c.nodes[1].rec->settled());
 }
 
+TEST(reconcile, a_late_joining_high_gravity_node_that_settles_at_the_cap_never_runs_beside_the_holder) {
+    // M10 on the bench: the PC (top gravity, channel unknown, so it settles only at settle_max_ms)
+    // joined a cell whose ticker A held, and started it 6 s later while A still ran it, for 8.5 s.
+    RCell c;
+    c.build(4, {1, 1, 1, 9});
+    c.kill(3);
+    c.run(8000);
+    CHECK(c.runner() >= 0 && c.runner() < 3);
+    c.revive(3);
+    c.nodes[3].node->set_channel_known(false);
+    int most = 0;
+    for (int k = 0; k < 15000; ++k) {
+        c.run(1);
+        int n = 0;
+        for (const RNode& t : c.nodes) {
+            if (!t.down && t.rec->view(0).running) ++n;
+        }
+        if (n > most) most = n;
+    }
+    CHECK_EQ(most, 1);         // never two
+    CHECK_EQ(c.runner(), 3);   // and it did move to the node gravity prefers
+}
+
