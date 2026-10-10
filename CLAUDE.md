@@ -44,6 +44,21 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## THE BENCH NOW (2026-10-11) -- what the owner calls A, B and C
+>
+> All three ESP32-S3 boards sit on the desk, each on its own USB cable (power and console, 115200 baud), plus
+> the CP2102 USB-serial adapter in a USB port of its own:
+>
+> | | node | MAC | console | build | notes |
+> |---|---|---|---|---|---|
+> | **A** | 0x6300 | b8:1f:3f:da:63:00 | COM3 | normal | **the board on the PC's frame link:** the CP2102 (HW-598A) on **COM6** (921600) is wired TXD to A's GPIO18, RXD to A's GPIO17, GND to G (`bench/m1-wiring.html`); every `potctl`, `potluck.fw`, `potluck.hostnode` command goes through it |
+> | **B** | 0x7368 | b8:1f:3f:da:73:68 | COM4 | extender (poor-mans-extender's hotspot) | **holds the owner's house Wi-Fi and hotspot credentials**: its ESP-IDF log can name networks, so read it with JSON-only tools (`tools/json_capture.py`, `tools/console_tap.py` writes everything -- check before committing); never type or log credentials, and an erase is the owner's to run |
+> | **C** | 0x8160 | b8:1f:3f:da:81:60 | COM5 | normal | |
+>
+> All three run firmware `599260f` at firmware counter 5 (next image 6+), enrolled under the cluster CA (keys in the
+> git-ignored `keys/`); the cell is on channel 1. The SN65HVD230 CAN modules are OFF (`bench/m4-can-wiring.html` to
+> rewire). The full board register (CH343 serials, bring-up history) is in WHEN-THE-BOARDS-ARRIVE.md.
+>
 > ## HANDOVER, 2026-10-11: **M7 (guest actors) is wanted by the owner and half-built** (M0-LOG session 37).
 >
 > Commit `594538a` has the guest-author certificate, image format v2 with a guest section, a per-load import
