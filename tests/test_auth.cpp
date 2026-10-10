@@ -936,3 +936,36 @@ TEST(auth, a_channel_authority_that_reboots_onto_another_channel_is_found_and_re
     }
     CHECK_EQ(alive(*c.nodes[0].node), static_cast<size_t>(2));
 }
+
+TEST(auth, a_host_that_signs_on_the_cable_is_verified_so_it_can_be_relayed) {
+    // M10: the PC's pot_hostnode is enrolled like a board and signs its HELLO. The board it is cabled
+    // to trusts the cable either way, but verifies a signed HELLO -- only a verified member's HELLO is
+    // relayed to the rest of the cell (ADR-009), and only a verified one gets a pair key.
+    TestCa ca(1);
+    AuthCell c;
+    std::vector<std::unique_ptr<Identity>> ids;
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x100, 0x11)));
+    c.build(std::move(ids), true);
+    AuthNode& an = c.nodes[0];
+    delete an.node;
+    NodeConfig cfg;
+    cfg.node_id = 0x100;
+    cfg.boot_epoch = 1;
+    std::memcpy(cfg.mac, an.mac, kMacLen);
+    const uint8_t host_mac[6] = {0x02, 0, 0, 0, 0, 0xFE};
+    cfg.has_trusted_mac = true;
+    std::memcpy(cfg.trusted_mac, host_mac, 6);
+    an.node = new Node(cfg, an.hal);
+    an.node->set_trust(an.id.get(), true);
+    an.node->start();
+    Identity host = enrolled_identity(ca, 0x00FE, 0x44);
+    uint8_t base[kHelloBaseLen], sh[kHelloSignedLen];
+    base_hello(0x00FE, 1, base);
+    CHECK(hello_sign(host, host_mac, base, sh));
+    inject_hello(*an.node, host_mac, 0x00FE, sh, sizeof(sh), c.now_us);
+    const PeerLink* p = peer_by_id(*an.node, 0x00FE);
+    CHECK(p != nullptr);
+    const Node::PeerAuth* pa = an.node->peer_auth(p);
+    CHECK(pa != nullptr && pa->verified);
+}
+

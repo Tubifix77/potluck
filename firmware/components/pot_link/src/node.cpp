@@ -935,10 +935,18 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         announce_change();
     }
 
-    if (trust_ != nullptr && !is_trusted_link(src_mac)) {
-        outcome = authenticate_hello(p, rx_orig_mac_, f, h, fresh);
-        if (outcome == AuthOutcome::Refused || outcome == AuthOutcome::Ignore) {
-            return;  // a refused stranger never gets a peer slot; a known peer's state is untouched
+    if (trust_ != nullptr) {
+        // The cable is trusted without a signature (section 9.3) -- but a host that signs anyway
+        // (M10's pot_hostnode, enrolled like a board) is verified, so this board relays its HELLO to
+        // the cell, which only takes verified members (ADR-009), and holds a pair key with it. A
+        // signature that fails on the cable leaves it what it always was: trusted, unverified.
+        const bool cable = is_trusted_link(src_mac);
+        if (!cable || f.payload_len >= kHelloSignedLen) {
+            outcome = authenticate_hello(p, rx_orig_mac_, f, h, fresh);
+            if (outcome == AuthOutcome::Refused || outcome == AuthOutcome::Ignore) {
+                if (!cable) return;  // a refused stranger never gets a peer slot; a known peer's state is untouched
+                outcome = AuthOutcome::Legacy;  // the cable: as if it had not signed
+            }
         }
     }
 
