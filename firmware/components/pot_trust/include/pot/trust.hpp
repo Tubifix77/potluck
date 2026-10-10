@@ -61,6 +61,9 @@ CertError node_cert_check(const uint8_t* raw, size_t len, const uint8_t ca_pub[k
 // "Deploy key. Separate from the CA. Signs manifests." -- here it signs the compiled image itself.
 constexpr uint8_t kCertRoleNode = 1;
 constexpr uint8_t kCertRoleDeploy = 2;
+// M7: a guest author -- a party the owner does not trust with the node, only with a sandboxed actor.
+// The CA certifies the author's key with role 3; node_id names the author (a number the owner assigns).
+constexpr uint8_t kCertRoleGuest = 3;
 CertError key_cert_check(const uint8_t* raw, size_t len, const uint8_t ca_pub[kEdPubLen], uint8_t role,
                          NodeCert& out);
 
@@ -76,6 +79,14 @@ CertError image_trailer_check(const uint8_t ca_pub[kEdPubLen], const uint8_t* im
 // replayed older image cannot claim a newer number. A different domain from a package's, so neither
 // signature can be passed off as the other.
 constexpr size_t kFwSignedLen = 20 + 4 + 4 + 64;
+
+// M7: a guest module's author signature -- the author's Ed25519 over "potluck-guest-v1\0" ||
+// SHA-512(module), behind a role-3 certificate from the cluster CA. It says who wrote the code, not what
+// the code does: the sandbox decides that. The owner's deploy signature still covers the whole image.
+// On Ok, `author` is the certificate's node_id field.
+constexpr size_t kGuestSignedLen = 17 + 64;
+CertError guest_check(const uint8_t ca_pub[kEdPubLen], const uint8_t* cert, const uint8_t* sig,
+                      const uint8_t* module, size_t module_len, uint16_t* author);
 void fw_signed_message(uint32_t counter, uint32_t image_len, const uint8_t sha512[64], uint8_t out[kFwSignedLen]);
 CertError fw_trailer_check(const uint8_t ca_pub[kEdPubLen], uint32_t counter, uint32_t image_len,
                            const uint8_t sha512[64], const uint8_t* trailer, size_t trailer_len);

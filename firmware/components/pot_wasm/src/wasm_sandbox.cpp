@@ -8,6 +8,7 @@ extern "C" {
 #include "m3_env.h"
 #include "wasm3.h"
 }
+#include "pot/wasm_imports.hpp"
 
 namespace pot {
 
@@ -62,11 +63,17 @@ void WasmSandbox::unload() {
 }
 
 const char* WasmSandbox::load(const uint8_t* wasm, size_t len, const WasmLimits& limits) {
+    static const WasmImport kDefault[] = {{"log", "v(i)", &WasmImports::log}};
+    return load(wasm, len, limits, kDefault, 1, this);
+}
+
+const char* WasmSandbox::load(const uint8_t* wasm, size_t len, const WasmLimits& limits, const WasmImport* imports,
+                              size_t n_imports, void* user) {
     unload();
     log_count_ = 0;
     IM3Environment env = m3_NewEnvironment();
     if (env == nullptr) return "m3_NewEnvironment failed";
-    IM3Runtime rt = m3_NewRuntime(env, limits.value_stack_bytes, this);
+    IM3Runtime rt = m3_NewRuntime(env, limits.value_stack_bytes, user);
     if (rt == nullptr) {
         m3_FreeEnvironment(env);
         return "m3_NewRuntime failed";
@@ -79,9 +86,13 @@ const char* WasmSandbox::load(const uint8_t* wasm, size_t len, const WasmLimits&
         for (u32 i = 0; i < mod->numFunctions && r == m3Err_none; ++i) {
             const M3Function& f = mod->functions[i];
             if (f.import.moduleUtf8 == nullptr) continue;
-            if (std::strcmp(f.import.moduleUtf8, "potluck") != 0 || std::strcmp(f.import.fieldUtf8, "log") != 0) {
-                r = kRefusedImport;
+            bool allowed = false;
+            if (std::strcmp(f.import.moduleUtf8, "potluck") == 0) {
+                for (size_t k = 0; k < n_imports && !allowed; ++k) {
+                    allowed = std::strcmp(f.import.fieldUtf8, imports[k].name) == 0;
+                }
             }
+            if (!allowed) r = kRefusedImport;
         }
         // A memory or a global from outside is an import too: refused like a function would be.
         if (mod->memoryImported) r = kRefusedImport;
@@ -101,8 +112,10 @@ const char* WasmSandbox::load(const uint8_t* wasm, size_t len, const WasmLimits&
         if (rt->memory.maxPages > cap_pages) rt->memory.maxPages = cap_pages;
     }
     if (r == m3Err_none) {
-        const M3Result lr = m3_LinkRawFunction(mod, "potluck", "log", "v(i)", &WasmImports::log);
-        if (lr != m3Err_none && lr != m3Err_functionLookupFailed) r = lr;  // not imported: nothing to link
+        for (size_t k = 0; k < n_imports && r == m3Err_none; ++k) {
+            const M3Result lr = m3_LinkRawFunction(mod, "potluck", imports[k].name, imports[k].signature, imports[k].fn);
+            if (lr != m3Err_none && lr != m3Err_functionLookupFailed) r = lr;  // not imported: nothing to link
+        }
     }
     if (r != m3Err_none) {
         m3_FreeRuntime(rt);

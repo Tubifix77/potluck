@@ -120,6 +120,22 @@ CertError fw_trailer_check(const uint8_t ca_pub[kEdPubLen], uint32_t counter, ui
     return CertError::Ok;
 }
 
+CertError guest_check(const uint8_t ca_pub[kEdPubLen], const uint8_t* cert, const uint8_t* sig,
+                      const uint8_t* module, size_t module_len, uint16_t* author) {
+    if (cert == nullptr || sig == nullptr || module == nullptr) return CertError::Length;
+    NodeCert c{};
+    const CertError e = key_cert_check(cert, kNodeCertLen, ca_pub, kCertRoleGuest, c);
+    if (e != CertError::Ok) return e;
+    static const char kGuestDomain[] = "potluck-guest-v1";  // 16 characters + the NUL = 17
+    static_assert(sizeof(kGuestDomain) == 17, "the domain is 17 bytes with its NUL");
+    uint8_t msg[kGuestSignedLen];
+    std::memcpy(msg, kGuestDomain, sizeof(kGuestDomain));
+    crypto_sha512(msg + sizeof(kGuestDomain), module, module_len);
+    if (crypto_ed25519_check(sig, c.node_pub, msg, sizeof(msg)) != 0) return CertError::BadSignature;
+    if (author != nullptr) *author = c.node_id;
+    return CertError::Ok;
+}
+
 CertError key_cert_check(const uint8_t* raw, size_t len, const uint8_t ca_pub[kEdPubLen], uint8_t role,
                          NodeCert& out) {
     if (raw == nullptr || len != kNodeCertLen) return CertError::Length;

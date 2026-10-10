@@ -40,16 +40,25 @@ uint32_t crc32(const uint8_t* data, size_t len, uint32_t seed = 0);
 //   12      8    package_digest      first 8 bytes of SHA-256 over the signed package (traceability)
 //   20      4    body_len            bytes of actor declarations that follow
 //   24      ...  actor declarations: node_id u16 (0xFFFF = every node), type u8, cfg_len u8, cfg
+//
+// Version 2 (M7) adds, after the declarations, the guest section -- the WebAssembly programs that
+// guest actors (ActorType::Guest) run, each opaque here and parsed by pot_wasm:
+//          1    guest_count
+//          ...  guest_count x (len u32, blob)
+// A version-1 image is a version-2 image with no guest section; both are accepted.
 // ---------------------------------------------------------------------------------------------
 
 constexpr uint32_t kImageMagic = 0x44544F50u;  // "POTD"
 constexpr uint8_t kImageVersion = 1;
+constexpr uint8_t kImageVersionGuests = 2;  // M7
 constexpr size_t kImageHeaderLen = 24;
 constexpr size_t kMaxActors = 16;
-// The largest image the format can hold today is 24 + 16 x (4 + 6) = 184 bytes. 512 leaves room
-// for larger actor configs without spending §6 core DRAM on buffers nothing can fill: the first
-// cut was 2048 here, which cost 4 KB of committed headroom for two buffers 90 % empty.
-constexpr size_t kMaxImageLen = 512;
+// Without guests an image is at most 24 + 16 x (4 + 255) bytes, and usually under 200. M7's guests
+// carry their code, so the limit is 32 KB: the receive buffer lives in PSRAM on the boards (the first
+// cut, 2048 B in internal RAM, had cost 4 KB of committed headroom for buffers 90 % empty), and a slot
+// partition holds 64 KB.
+constexpr size_t kMaxImageLen = 32 * 1024;
+constexpr size_t kMaxGuests = 4;
 constexpr uint16_t kEveryNode = 0xFFFF;
 // M6 (section 7.7): placed at run time by the reconciler, among the nodes the actor's config lists.
 constexpr uint16_t kPortableNode = 0xFFFE;
@@ -62,6 +71,7 @@ enum class ActorType : uint8_t {
     DieTemp = 5,    // M8.1: the chip's own temperature sensor, published to the namespace
     McLender = 6,   // M9: lends this node's idle cores to a pure function other nodes call
     McJob = 7,      // M9: a Monte Carlo job that runs its units here and borrows idle cores elsewhere
+    Guest = 8,      // M7: a sandboxed WebAssembly program from the image's guest section (pot_wasm)
 };
 
 // M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an
@@ -78,11 +88,18 @@ struct ActorDecl {
     const uint8_t* cfg;  // points into the image buffer
 };
 
+struct GuestBlob {
+    const uint8_t* data;  // points into the image buffer
+    uint32_t len;
+};
+
 struct DeployImage {
     uint32_t rollback_counter;
     uint8_t package_digest[8];
     uint8_t actor_count;
     ActorDecl actors[kMaxActors];
+    uint8_t guest_count = 0;  // M7
+    GuestBlob guests[kMaxGuests] = {};
 };
 
 // Parses and validates. `why` names the first problem, for the log. Unknown actor types are

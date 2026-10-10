@@ -27,6 +27,8 @@ struct WasmLimits {
     uint32_t value_stack_bytes = 8 * 1024;
 };
 
+struct WasmImport;  // pot/wasm_imports.hpp
+
 struct WasmCallResult {
     const char* error = nullptr;  // nullptr: returned normally; otherwise the trap or refusal
     uint32_t value = 0;           // the i32 result, when the function has one
@@ -43,6 +45,10 @@ class WasmSandbox {
     // Parses, checks the imports, links what is allowed. nullptr on success, else why it was refused.
     // The bytes must outlive the sandbox (wasm3 keeps pointers into them).
     const char* load(const uint8_t* wasm, size_t len, const WasmLimits& limits);
+    // M7: with the caller's import table instead of the default (potluck.log alone), and `user` as what
+    // the imports read with m3_GetUserData. `user` must outlive the sandbox.
+    const char* load(const uint8_t* wasm, size_t len, const WasmLimits& limits, const WasmImport* imports,
+                     size_t n_imports, void* user);
     void unload();
     bool loaded() const { return runtime_ != nullptr; }
 

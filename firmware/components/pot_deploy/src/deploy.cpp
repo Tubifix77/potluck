@@ -52,20 +52,22 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
         w = "bad magic";
         return false;
     }
-    if (data[4] != kImageVersion) {
+    if (data[4] != kImageVersion && data[4] != kImageVersionGuests) {
         w = "unknown image version";
         return false;
     }
+    const bool v2 = data[4] == kImageVersionGuests;
     const uint8_t count = data[5];
     if (count > kMaxActors) {
         w = "more actors than kMaxActors";
         return false;
     }
     const uint32_t body_len = rd32(data + 20);
-    if (body_len != len - kImageHeaderLen) {
+    if (v2 ? body_len > len - kImageHeaderLen : body_len != len - kImageHeaderLen) {
         w = "body_len disagrees with the image length";
         return false;
     }
+    out.guest_count = 0;
     out.rollback_counter = rd32(data + 8);
     std::memcpy(out.package_digest, data + 12, sizeof(out.package_digest));
     out.actor_count = count;
@@ -87,6 +89,10 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
         }
         a.cfg = data + at;
         at += a.cfg_len;
+        if (at > kImageHeaderLen + body_len) {
+            w = "actor declarations overrun body_len";
+            return false;
+        }
         switch (a.type) {
             case ActorType::Led:
                 if (a.cfg_len != kLedCfgLen) {
@@ -140,6 +146,16 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                 }
                 break;
             }
+            case ActorType::Guest: {
+                // M7: portable, then the index of its program in the guest section, checked below.
+                TickerConfig pc{};
+                size_t hl = 0;
+                if (a.node_id != kPortableNode || !portable_header(a, pc, hl) || a.cfg_len != hl + 1) {
+                    w = "guest must be portable: the portable header, then a guest index";
+                    return false;
+                }
+                break;
+            }
             default:
                 if (is_external_type(a.type)) {
                     break;  // M8.2: an external component's; its registration row judges the config
@@ -148,9 +164,47 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                 return false;
         }
     }
-    if (at != len) {
+    if (at != kImageHeaderLen + body_len) {
         w = "trailing bytes after the last actor";
         return false;
+    }
+    if (v2) {
+        // M7: the guest section.
+        if (len - at < 1) {
+            w = "guest section missing";
+            return false;
+        }
+        const uint8_t n = data[at++];
+        if (n > kMaxGuests) {
+            w = "more guests than kMaxGuests";
+            return false;
+        }
+        for (uint8_t g = 0; g < n; ++g) {
+            if (len - at < 4) {
+                w = "guest length truncated";
+                return false;
+            }
+            const uint32_t gl = rd32(data + at);
+            at += 4;
+            if (gl == 0 || len - at < gl) {
+                w = "guest truncated";
+                return false;
+            }
+            out.guests[g] = GuestBlob{data + at, gl};
+            at += gl;
+        }
+        out.guest_count = n;
+        if (at != len) {
+            w = "trailing bytes after the last guest";
+            return false;
+        }
+    }
+    for (uint8_t i = 0; i < count; ++i) {
+        const ActorDecl& a = out.actors[i];
+        if (a.type == ActorType::Guest && a.cfg[a.cfg_len - 1] >= out.guest_count) {
+            w = "guest actor names a guest the image does not carry";
+            return false;
+        }
     }
     return true;
 }
