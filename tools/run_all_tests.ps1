@@ -69,7 +69,9 @@ if ($exe) {
 }
 
 $python = if (Get-Command python -ErrorAction SilentlyContinue) { "python" } else { "py" }
-foreach ($t in @("test_frame.py", "test_records.py", "test_differential.py", "test_paths.py", "test_sys_paths.py", "test_serial.py", "test_serial_diff.py", "test_value.py", "test_ns_diff.py", "test_bridge.py", "test_replay.py", "test_transport.py", "test_manifest.py", "test_locality.py", "test_signing.py", "test_serial_transport.py", "test_bridge_tx.py", "test_deploy.py", "test_enrol.py")) {
+# Every suite in the directory, not a list: a hand-kept list silently missed three suites that were
+# added later (test_agent, test_modules, test_reconcile; found 2026-10-10).
+foreach ($t in (Get-ChildItem (Join-Path $repo "host/potluck/tests") -Filter "test_*.py" | Sort-Object Name | ForEach-Object { $_.Name })) {
     Write-Host ""
     Write-Host "### Python: $t"
     Push-Location "host/potluck"
@@ -85,13 +87,20 @@ foreach ($t in @("test_frame.py", "test_records.py", "test_differential.py", "te
 # The strict GCC warning set over the portable core. MSVC has always been the only compiler to see
 # this code; -Wconversion, -Wsign-conversion, -Wshadow, -Wcast-qual and -Wold-style-cast had never
 # run against a GCC frontend until this gate existed.
-if (Get-Command bash -ErrorAction SilentlyContinue) {
+# Git Bash only. On Windows a bare `bash` resolves to C:\Windows\system32\bash.exe, which is WSL: it
+# boots a Linux VM the owner may have asked not to run (it did, 2026-10-10, through this very line). The
+# gate script falls back to an Xtensa GCC when no Linux g++ is there, so Git Bash is enough.
+$gitBash = @(
+    (Join-Path $env:ProgramFiles "Git\bin\bash.exe"),
+    (Join-Path ${env:ProgramFiles(x86)} "Git\bin\bash.exe")
+) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+if ($gitBash) {
     Write-Host ""
     Write-Host "### portability gate (strict GCC warnings, portable core)"
-    bash tools/check_portability.sh
+    & $gitBash tools/check_portability.sh
     Record "portable core strict warnings" $LASTEXITCODE
 } else {
-    Write-Host "note: bash not found; skipping the portability gate"
+    Write-Host "note: Git Bash not found; skipping the portability gate (never WSL's bash)"
 }
 
 if ($Firmware) {

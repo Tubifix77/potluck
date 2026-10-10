@@ -68,7 +68,10 @@ record "differential fuzz corpus" $?
 "$BUILD_DIR/pot_tests" --emit-serial-corpus host/potluck/tests/fixtures
 record "serial framing corpus" $?
 
-for t in test_frame.py test_records.py test_differential.py test_paths.py test_sys_paths.py test_serial.py test_serial_diff.py test_value.py test_ns_diff.py test_bridge.py test_replay.py test_transport.py test_manifest.py test_locality.py test_signing.py test_serial_transport.py test_bridge_tx.py test_deploy.py test_enrol.py; do
+# Every suite in the directory, not a list: a hand-kept list silently missed three suites that were
+# added later (test_agent, test_modules, test_reconcile; found 2026-10-10).
+for f in host/potluck/tests/test_*.py; do
+    t=$(basename "$f")
     echo "### Python: $t"
     ( cd host/potluck && "$PYTHON" "tests/$t" )
     record "Python $t" $?
