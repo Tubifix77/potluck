@@ -4430,3 +4430,49 @@ architecture's M6.1 and M8.2 progress, this log, the handover. The two applicati
 so Potluck's public README names them without links. Not yet accepted in M8.2: 30 minutes of empty room in
 place and 24 hours with no PC.
 
+## Session 35 -- 2026-10-10/11 (overnight, the owner asleep), M9: borrowing an idle core -- ACCEPTED
+
+**Housekeeping first.** The gate scripts' hand-kept Python suite lists had silently missed `test_agent`,
+`test_modules` and `test_reconcile`; both now run every suite. `run_all_tests.ps1` called a bare `bash`,
+which on Windows is WSL's, and booted the owner's Ubuntu; it now uses Git Bash only. All 29 gates passed,
+AddressSanitizer included. `test_deploy.py`'s `unittest.main()` sat above its `DieTemp` class, so those
+tests had never run; moved to the end. The boards came back to the desk on USB, CAN modules off.
+
+**Built** (`2da6ab0`, `84c4f3d`, `e6e82b6`, `c30bb85`): the pure function `mc_hits` (a Monte Carlo estimate of
+pi in `float`, xorshift32 seeded from (seed, unit), yielding every 65,536 samples so the idle task -- which
+the task watchdog watches on both cores -- still runs); `McLenderActor` (type 6: accepts a unit on the
+node's background workers or refuses at once, BUSY); `McJobActor` (type 7: runs units locally and lends
+one only when waiting for a local worker would take longer than the peer's p99 round trip plus its
+measured compute time; a refused, lost or overdue unit runs again; hits summed as integers, so the
+result does not depend on where units ran). `Actor::on_call` and one call handler for the reconciler and
+the actors; `BoardServices::bg_submit/bg_yield/bg_workers` with one worker per core at priority 1;
+actor slots 192 -> 384 B (in PSRAM). Six host tests, two mutations of the job each failing them.
+
+**Measured** (A and C on the normal build, B on the extender build with its station associated; the
+package `m9-mc` at counter 22: three lenders, the job on A, die_temp on B and C as witnesses; no host
+in the cell during any run):
+
+- 48 units first: 3.33-3.35x -- above three equal boards' 3x, which the stats then explained: per unit,
+  A ~460 ms, B ~330 ms, C ~480 ms, so the slowest board alone is the baseline.
+- 960 units, four alone/lending pairs: 232.5-234.4 s against 67.9-68.8 s, **3.41-3.42x**, 753,983,075
+  hits (pi 3.1415961) in every run.
+- The lenders' duties: heartbeat delivery 99.58 % lending against 99.55 % idle over five lending runs;
+  pooled over three sessions 99.33 / 99.60 / 99.69 % (lending / A alone / idle), the lending figure
+  carrying one session's 97.7 % on the B<->C link that five more runs did not repeat; die_temp 0.99-1.02
+  readings/s, no errors. First session: a computing board's probe turnaround rose ~0.3 ms (A ~970 ->
+  ~1290 us) and pushed the RTT median across the 6 ms bucket edge; with the loop in IRAM it is flat
+  (937-943 us idle, 938-942 computing).
+- B reset mid-run: the first attempt hung at 958 of 960 (`captures/m9-reset-stuck-*`) -- B came back
+  fast enough not to stay dead, and a unit sent while the two re-keyed was never answered; the node gives
+  work units no deadline by design, and the job set none. Now each lent unit has one (4 x (compute +
+  p99 RTT) + 1 s) and is cancelled, reported Unavailable once, and run again. Rerun twice: 6 units lost
+  and rerun (2 at their deadline), 73.1 and 71.9 s, the identical result.
+
+**Accepted** on all its lines, and ADR-005 is amended in the ADR itself with these numbers -- an owner
+may lend a pure function's unit to a live lender on its own measurements; idle-node stealing, code
+shipping and load gossip stay excluded.
+
+Bench at the end: A and C on the normal build of `c30bb85`, B on its extender build (station associated,
+the owner's credentials), `m9-mc` at counter 22 (next 23+). The room-sensor package is not deployed now
+(one application package per cluster); `ps-room` can go back at 23+.
+

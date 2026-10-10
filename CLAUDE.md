@@ -12,7 +12,7 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07; M6, M6.1 and M8 on 2026-10-08.** M3: deploy to the cell through one board,
+**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07; M6, M6.1 and M8 on 2026-10-08; M9 on 2026-10-10.** M3: deploy to the cell through one board,
 detach and power-cycle, and a broken module that all three nodes revert themselves (M0-LOG session 18). M2: a 10.05-minute three-board session over COM6
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
@@ -20,8 +20,8 @@ board A reads board B's value; unplugged, it reads `UNAVAILABLE`. M0-LOG session
 one caveat: the arbitration was not recorded by an instrument outside the boards (M0-LOG session 20). **M5 and M6 are
 accepted too** (sessions 21-22 and 26), and so are **M6.1** (CR-6, the combined extender node, session 29) and **M8**
 (host services, session 28). **M8.1 is built** (attached hardware -- B's die temperature read from A -- and a compiled-in actor
-API; one acceptance line left, session 31), then **M9** (borrowing an idle core: ADR-005's revisit trigger as an experiment, accepted only with no host
-attached) and **M10** (the PC as a placement node), all scheduled 2026-10-08 from the owner's status review; M7
+API; one acceptance line left, session 31), then **M9** (borrowing an idle core: ADR-005's revisit trigger as an experiment -- ACCEPTED 2026-10-10, 3.41x
+with no host attached, ADR-005 amended) and **M10** (the PC as a placement node), all scheduled 2026-10-08 from the owner's status review; M7
 stays gated. Also open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6's
 combined node; a 2-hour combined run is clean, session 30) and the extender's hunting window mid-run (needs the
 owner to take the router away). The step-0 rerun and B's low inbound PDR are closed (session 30; the PDR was an
@@ -41,6 +41,14 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-11 (morning, owner asleep since ~03:00): **M9 ACCEPTED** (M0-LOG session 35). Next: M10.
+>
+> Three boards 3.41x faster than one on a pure-function job, no host attached, identical results, B reset
+> mid-run with nothing lost, lenders' duties unchanged; ADR-005 amended in the ADR. Bench: A, C normal build
+> and B extender build of `c30bb85`; package `m9-mc` at counter 22 (next 23+); `ps-room` not deployed.
+> Tools: `tools/m9_bench.py COM3 <out> [--lend-only] [--reset-port COM4]`, `tools/m9_report.py`.
+> Gates: every Python suite now runs (three were missing), the portability gate uses Git Bash, never WSL.
+>
 > ## HANDOVER, 2026-10-10: M8.2's PS-0 PASSED in the room; both apps called done by the owner (M0-LOG session 34).
 >
 > **Back on the desk since 2026-10-10 night**, all three on USB (COM3/4/5) and the CP2102 on COM6; CAN modules
