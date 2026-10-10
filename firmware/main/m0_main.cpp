@@ -37,6 +37,11 @@
 #include "pot/dram_probe.hpp"
 #include "pot/fw.hpp"
 #include "pot/fw_esp.hpp"
+#if CONFIG_POT_WASM
+#include "pot/mc.hpp"
+#include "pot/wasm_modules.h"
+#include "pot/wasm_sandbox.hpp"
+#endif
 #include "pot/espnow_port.hpp"
 #include "pot/node.hpp"
 #include "pot/opcodes.hpp"
@@ -1610,6 +1615,58 @@ void stats_task(void*) {
 // certificate only if the CA it is handed signed it for this node id and this key. What the cell
 // does with an enrolled or unenrolled peer is the next step; this one only gives every node a
 // provable name.
+#if CONFIG_POT_WASM
+// ---------------------------------------------------------------------------------------------
+// M7's experiment, in a running node: M9's kernel in the sandbox, on a task of its own at the lowest
+// priority on core 1, while the node keeps its duties. The cost to those duties is read off the link
+// records meanwhile (tools/m7_bench.py). One guest at a time: the sandbox's fuel counter is global.
+// ---------------------------------------------------------------------------------------------
+namespace wasm_rt {
+
+std::atomic<bool> g_busy{false};
+uint32_t g_samples = 0;
+uint32_t g_runs = 0;
+
+void task(void*) {
+    const uint32_t args[3] = {0x1234u, 7u, g_samples};
+    const int64_t n0 = esp_timer_get_time();
+    const uint32_t native = mc_hits(args[0], args[1], args[2], nullptr, nullptr);
+    const int64_t n1 = esp_timer_get_time();
+    WasmSandbox sb;
+    const char* why = sb.load(wasm_modules::k_mc, sizeof(wasm_modules::k_mc), WasmLimits{0, 8 * 1024});
+    std::printf("{\"t\":\"wasm_run\",\"phase\":\"start\",\"samples\":%u,\"runs\":%u,\"native_us\":%lld,\"load\":\"%s\"}\n",
+                static_cast<unsigned>(g_samples), static_cast<unsigned>(g_runs), static_cast<long long>(n1 - n0),
+                why == nullptr ? "ok" : why);
+    for (uint32_t i = 0; why == nullptr && i < g_runs; ++i) {
+        const int64_t t0 = esp_timer_get_time();
+        const WasmCallResult r = sb.call("mc_hits", args, 3, 4000000000ull, 12 * 1024);
+        const int64_t t1 = esp_timer_get_time();
+        std::printf("{\"t\":\"wasm_run\",\"run\":%u,\"us\":%lld,\"same\":%s,\"error\":\"%s\"}\n",
+                    static_cast<unsigned>(i), static_cast<long long>(t1 - t0), r.value == native ? "true" : "false",
+                    r.error == nullptr ? "none" : r.error);
+    }
+    std::printf("{\"t\":\"wasm_run\",\"phase\":\"done\",\"stack_free_min_b\":%u}\n",
+                static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
+    sb.unload();
+    g_busy.store(false);
+    vTaskDelete(nullptr);
+}
+
+bool start(uint32_t samples, uint32_t runs) {
+    bool expected = false;
+    if (!g_busy.compare_exchange_strong(expected, true)) return false;
+    g_samples = samples;
+    g_runs = runs;
+    if (xTaskCreatePinnedToCore(&task, "pot_wasm", 16384, nullptr, 1, nullptr, portNUM_PROCESSORS > 1 ? 1 : 0) != pdPASS) {
+        g_busy.store(false);
+        return false;
+    }
+    return true;
+}
+
+}  // namespace wasm_rt
+#endif
+
 namespace trust_rt {
 
 Identity g_id;
@@ -1811,6 +1868,16 @@ bool handle_test(const char* line, size_t len) {
                     static_cast<unsigned>(r.timestamp_ms), static_cast<unsigned>(asked));
         return true;
     }
+#if CONFIG_POT_WASM
+    // M7 experiment: "POT! wasm <samples> <runs>" -- M9's kernel in the sandbox, <runs> times, while the
+    // node runs (wasm_rt above). Answers {"t":"wasm_run",...} lines as it goes.
+    unsigned long w_samples = 0, w_runs = 0;
+    if (std::sscanf(buf, "POT! wasm %lu %lu", &w_samples, &w_runs) == 2) {
+        const bool ok = wasm_rt::start(static_cast<uint32_t>(w_samples), static_cast<uint32_t>(w_runs));
+        std::printf("{\"t\":\"test\",\"cmd\":\"wasm\",\"started\":%d}\n", ok ? 1 : 0);
+        return true;
+    }
+#endif
     char scan_ssid[33] = {};
     if (std::sscanf(buf, "POT! scan %32s", scan_ssid) == 1) {
         uint8_t ch = 0;
@@ -2325,9 +2392,19 @@ extern "C" int pot_selftest_run(void);
 #if CONFIG_POT_CRYPTO_BENCH || CONFIG_POT_MEM_BENCH
 #include "crypto_bench.hpp"
 #endif
+#if CONFIG_POT_WASM_BENCH
+#include "wasm_bench.hpp"
+#endif
 
 extern "C" void app_main(void) {
     using namespace pot;
+
+#if CONFIG_POT_WASM_BENCH
+    // M7's experiment, alone on the machine like the crypto bench below.
+    const int wasm_failed = pot_wasm_bench_run();
+    ESP_LOGI(kTag, "wasm bench finished with %d failure(s)", wasm_failed);
+    return;
+#endif
 
 #if CONFIG_POT_CRYPTO_BENCH
     // M5's measurement, alone on the machine for the same reason as the self-test below.

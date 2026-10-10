@@ -1,0 +1,3 @@
+I (309) boot: Loaded app from partition at offset 0x140000
+W (2920) pot.m0: fw: image counter 4 did not pass its trial - ROLLED BACK
+I (2927) pot.m0: fw: running ota_0 (deploy-and-detach-165-g237f874-), counter 3, floor 3, confirmed; spare slot ota_1, 2048 KB

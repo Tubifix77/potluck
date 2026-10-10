@@ -187,6 +187,23 @@ config POT_MEM_BENCH
         internal, PSRAM to PSRAM, PSRAM to internal), and places a 64 KB buffer in PSRAM's BSS to show
         the section 6 gate counts internal static RAM only. Build it with the psram variant.
 
+config POT_WASM
+    bool "M7 experiment: link the WebAssembly sandbox (wasm3, patched)"
+    default n
+    help
+        Off by default, and the milestone stays gated: this exists so the sandbox's cost can be
+        measured and its limits tested, not to run guests in the cell. See
+        firmware/components/pot_wasm and ARCHITECTURE section 13, M7.
+
+config POT_WASM_BENCH
+    bool "M7 experiment: run the sandbox benchmark instead of the node"
+    depends on POT_WASM
+    default n
+    help
+        Times M9's Monte Carlo kernel native and interpreted (the answers must match), measures the
+        heap a loaded module takes, and tests each limit: fuel, memory bounds, memory growth, stack,
+        imports. One {"t":"wasm_bench"} line each, then stops. No radio, no serial link.
+
 config POT_CRYPTO_BENCH
     bool "Run the M5 signature/key-exchange benchmark instead of the node"
     default n
