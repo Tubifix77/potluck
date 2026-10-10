@@ -9,6 +9,7 @@
 #include "esp_attr.h"
 #include "esp_log.h"
 #include "pot/die_temp.hpp"
+#include "pot/mc.hpp"
 #include "pot/svc_client.hpp"
 #include "pot/ticker.hpp"
 
@@ -118,6 +119,8 @@ const ActorKind kBuiltinRows[] = {
     kSvcClientKind,
     kTickerKind,  // portable: the reconciler places it
     {ActorType::DieTemp, "die_temp", &die_temp_check, &die_temp_create, nullptr, &die_temp_outputs},
+    kMcLenderKind,  // M9
+    kMcJobKind,
 };
 }  // namespace
 

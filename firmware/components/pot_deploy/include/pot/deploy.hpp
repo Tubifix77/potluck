@@ -60,6 +60,8 @@ enum class ActorType : uint8_t {
     Ticker = 3, // M6: publishes a counter to one resource; portable, so the reconciler places it
     SvcClient = 4,  // M8: calls a host's named service (section 7.5) and publishes what it answers
     DieTemp = 5,    // M8.1: the chip's own temperature sensor, published to the namespace
+    McLender = 6,   // M9: lends this node's idle cores to a pure function other nodes call
+    McJob = 7,      // M9: a Monte Carlo job that runs its units here and borrows idle cores elsewhere
 };
 
 // M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an
@@ -172,6 +174,37 @@ struct DieTempConfig {
     uint16_t period_ms;  // 200..60000
 };
 bool die_temp_config(const ActorDecl& a, DieTempConfig& out);
+
+// McLender (M9): accept units of the pure function mc_hits (pot/mc.hpp) from other nodes and run them
+// on this node's background workers -- at most `slots` at once; a unit arriving with every slot busy
+// is refused at once (BUSY), so the caller runs it elsewhere instead of waiting. Every node or pinned.
+//
+//   slots u8 (1..4)
+constexpr uint8_t kMcLenderCfgLen = 1;
+struct McLenderConfig {
+    uint8_t slots;
+};
+bool mc_lender_config(const ActorDecl& a, McLenderConfig& out);
+
+// McJob (M9): estimate pi by Monte Carlo in `units` units of `samples` samples each, unit i seeded
+// from seed + i, so the result is the same wherever each unit ran. Runs units on this node's own
+// background workers and, when `lend` is 1, sends a unit to a peer's McLender when waiting for a
+// local worker would take longer than the peer's round trip plus its compute time. Publishes the
+// estimate (f32) to `out_hash` when the job ends. Starts `start_after_ms` after boot, or on the
+// console ("POT! mc run 0|1") when that is 0. Pinned.
+//
+//   out_hash u32, units u16 (1..4096), samples u32 (1000..100000000), seed u32, lend u8 (0..1),
+//   start_after_ms u32
+constexpr uint8_t kMcJobCfgLen = 19;
+struct McJobConfig {
+    uint32_t out_hash;
+    uint16_t units;
+    uint32_t samples;
+    uint32_t seed;
+    uint8_t lend;
+    uint32_t start_after_ms;
+};
+bool mc_job_config(const ActorDecl& a, McJobConfig& out);
 
 // ---------------------------------------------------------------------------------------------
 // The A/B state machine, persisted in NVS.

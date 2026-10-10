@@ -139,6 +139,15 @@ bool ActorRuntime::on_call_result(uint16_t from_node, uint16_t msg_id, uint32_t 
     return false;
 }
 
+int ActorRuntime::on_call(uint16_t from_node, uint16_t msg_id, uint32_t path_hash, const uint8_t* args,
+                          uint16_t len) {
+    for (size_t i = 0; i < n_run_; ++i) {
+        const int r = run_[i]->on_call(from_node, msg_id, path_hash, args, len);
+        if (r != Actor::kCallNotMine) return r;
+    }
+    return Actor::kCallNotMine;
+}
+
 bool ActorRuntime::adopt(Namespace& ns, uint32_t path_hash, const uint16_t* nodes, size_t n_nodes) {
     NsDecl out[kMaxOutputs];
     for (size_t i = 0; i < n_others_; ++i) {

@@ -43,10 +43,53 @@ ACTOR_FAULT = 2
 ACTOR_TICKER = 3  # M6: portable; placed at run time by the reconciler (potluck.reconcile)
 ACTOR_SVC_CLIENT = 4  # M8: calls a host's named service and publishes the answer
 ACTOR_DIE_TEMP = 5  # M8.1: the chip's own temperature sensor, published to node-<id>/hw/die_temp
+ACTOR_MC_LENDER = 6  # M9: lends its node's idle cores to the mc_pi pure function
+ACTOR_MC_JOB = 7  # M9: a Monte Carlo job that borrows idle cores; publishes node-<id>/job/mc/pi
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
 MAX_ACTOR_CFG = 48
 BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER,
-            "builtin:svc_client": ACTOR_SVC_CLIENT, "builtin:die_temp": ACTOR_DIE_TEMP}
+            "builtin:svc_client": ACTOR_SVC_CLIENT, "builtin:die_temp": ACTOR_DIE_TEMP,
+            "builtin:mc_lender": ACTOR_MC_LENDER, "builtin:mc_job": ACTOR_MC_JOB}
+
+
+def mc_job_path(system: str, node_id: int) -> str:
+    """M9. Where an mc_job publishes its estimate of pi when a run ends: under the node that ran it."""
+    return f"potluck://{system}/node-{node_id:04x}/job/mc/pi"
+
+
+def _mc_lender_config(a, where: str) -> bytes:
+    extra = set(a.config) - {"slots"}
+    if extra:
+        raise DeployError(f"{where}: unknown mc_lender config key(s) {sorted(extra)}")
+    if a.pin is None:
+        raise DeployError(f"{where}: an mc_lender lends the cores of the node it is pinned to")
+    slots = int(a.config.get("slots", 2))
+    if not 1 <= slots <= 4:
+        raise DeployError(f"{where}: mc_lender slots={slots} is outside 1..4")
+    return struct.pack("<B", slots)
+
+
+def _mc_job_config(m: Manifest, a, where: str) -> bytes:
+    extra = set(a.config) - {"units", "samples", "seed", "lend", "start_after_ms"}
+    if extra:
+        raise DeployError(f"{where}: unknown mc_job config key(s) {sorted(extra)}")
+    if a.pin is None:
+        raise DeployError(f"{where}: an mc_job is pinned: it runs where it is placed, and lends from there")
+    units = int(a.config.get("units", 48))
+    samples = int(a.config.get("samples", 1000000))
+    seed = int(a.config.get("seed", 1))
+    lend = a.config.get("lend", True)
+    start_after = int(a.config.get("start_after_ms", 0))
+    if not 1 <= units <= 4096:
+        raise DeployError(f"{where}: mc_job units={units} is outside 1..4096")
+    if not 1000 <= samples <= 100_000_000:
+        raise DeployError(f"{where}: mc_job samples={samples} is outside 1000..100000000")
+    if not 0 <= seed <= 0xFFFFFFFF or not 0 <= start_after <= 0xFFFFFFFF:
+        raise DeployError(f"{where}: mc_job seed and start_after_ms are u32")
+    if not isinstance(lend, bool):
+        raise DeployError(f"{where}: mc_job lend must be true or false")
+    return struct.pack("<IHIIBI", path_hash(mc_job_path(m.system, a.pin)), units, samples, seed,
+                       1 if lend else 0, start_after)
 
 
 def die_temp_path(system: str, node_id: int) -> str:
@@ -235,6 +278,11 @@ def compile_image(m: Manifest, counter: int) -> bytes:
             raise DeployError(f"{where}: placed on '{spec.label}', a host: built-in actors run on firmware")
         if a.module == "builtin:die_temp":
             cfg = _die_temp_config(m, a, where)
+            body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+            count += 1
+            continue
+        if a.module in ("builtin:mc_lender", "builtin:mc_job"):
+            cfg = _mc_lender_config(a, where) if a.module == "builtin:mc_lender" else _mc_job_config(m, a, where)
             body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
             count += 1
             continue

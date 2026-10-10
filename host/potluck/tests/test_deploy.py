@@ -165,9 +165,6 @@ class TestImageSignature(unittest.TestCase):
             en.verify_cert(bcert, ca.public)  # role node expected
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 DIE_B = {"name": "die_b", "module": "builtin:die_temp", "latency_class": 4, "pin": 0x7368,
          "config": {"period_ms": 1000}}
@@ -193,3 +190,43 @@ class DieTemp(unittest.TestCase):
             from potluck.manifest import ManifestErrors
             with self.assertRaises((dp.DeployError, ManifestErrors)):  # refused by either stage
                 dp.compile_image(parse(manifest([bad])), 1)
+
+
+MC_JOB = {"name": "job", "module": "builtin:mc_job", "latency_class": 4, "pin": 0x6300,
+          "config": {"units": 48, "samples": 1000000, "seed": 1, "lend": True, "start_after_ms": 0}}
+MC_LEND = {"name": "lend_b", "module": "builtin:mc_lender", "latency_class": 4, "pin": 0x7368,
+           "config": {"slots": 2}}
+
+
+class McJob(unittest.TestCase):
+    """M9: the Monte Carlo job and its lenders, compiled as the firmware's McJobConfig/McLenderConfig."""
+
+    def test_the_job_and_a_lender_compile_to_the_layout_the_node_parses(self) -> None:
+        from potluck.paths import path_hash
+        img = dp.compile_image(parse(manifest([MC_LEND, MC_JOB])), 7)
+        at = dp.IMAGE_HEADER_LEN
+        node, typ, cfg_len = struct.unpack_from("<HBB", img, at)
+        self.assertEqual((node, typ, cfg_len), (0x7368, dp.ACTOR_MC_LENDER, 1))
+        self.assertEqual(img[at + 4], 2)
+        at += 4 + cfg_len
+        node, typ, cfg_len = struct.unpack_from("<HBB", img, at)
+        self.assertEqual((node, typ, cfg_len), (0x6300, dp.ACTOR_MC_JOB, 19))  # kMcJobCfgLen
+        out, units, samples, seed, lend, start = struct.unpack_from("<IHIIBI", img, at + 4)
+        self.assertEqual(out, path_hash("potluck://m3-test/node-6300/job/mc/pi"))
+        self.assertEqual((units, samples, seed, lend, start), (48, 1000000, 1, 1, 0))
+
+    def test_out_of_range_or_unpinned_mc_actors_are_refused(self) -> None:
+        from potluck.manifest import ManifestErrors
+        for bad in ({k: v for k, v in MC_JOB.items() if k != "pin"},
+                    dict(MC_JOB, config=dict(MC_JOB["config"], units=0)),
+                    dict(MC_JOB, config=dict(MC_JOB["config"], samples=999)),
+                    dict(MC_JOB, config=dict(MC_JOB["config"], lend=1)),
+                    dict(MC_JOB, config=dict(MC_JOB["config"], extra=1)),
+                    dict(MC_LEND, config={"slots": 5}),
+                    {k: v for k, v in MC_LEND.items() if k != "pin"}):
+            with self.assertRaises((dp.DeployError, ManifestErrors)):
+                dp.compile_image(parse(manifest([bad])), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

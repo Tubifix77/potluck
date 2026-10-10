@@ -47,6 +47,16 @@ struct BoardServices {
     // 5 s after the last call, so call it at least every few seconds while it should stay on; an actor
     // that stops or moves away leaves nothing behind. `on` false clears it at once. Last caller wins.
     void (*led_app)(void* ctx, bool on, uint8_t r, uint8_t g, uint8_t b, uint16_t blink_period_ms) = nullptr;
+
+    // M9: background work -- a computation that must not run on the link task. Runs work(arg) on one of
+    // `bg_workers` workers (on a board: one task per core, above idle and below everything the node
+    // does). False if every worker is busy; then nothing was started. work() runs to completion on the
+    // worker and must call bg_yield (when set) at least every ~50 ms of computing, so the idle task --
+    // which the task watchdog watches -- still gets the core. Whatever work() shares with the link task
+    // it shares through atomics: it is not called with the node's lock held, and must not touch the node.
+    bool (*bg_submit)(void* ctx, void (*work)(void* arg), void* arg) = nullptr;
+    void (*bg_yield)(void* ctx) = nullptr;
+    uint8_t bg_workers = 0;
 };
 
 // What the runtime gives an actor.
@@ -85,6 +95,20 @@ class Actor {
         return false;
     }
 
+    // M9: a unit of work another node CALLed (Node::set_call_handler, routed by the runtime). Return
+    // kCallNotMine if `path_hash` is not this actor's; kCallAccepted to take it -- the answer is then
+    // owed, with node().reply_call(from_node, msg_id, ...); kCallRefused to decline it at once (busy),
+    // which the caller hears as Refused rather than waiting. Called with the node's lock held: accept or
+    // refuse, and do the work elsewhere (BoardServices::bg_submit).
+    static constexpr int kCallNotMine = 0;
+    static constexpr int kCallAccepted = 1;
+    static constexpr int kCallRefused = 2;
+    virtual int on_call(uint16_t from_node, uint16_t msg_id, uint32_t path_hash, const uint8_t* args,
+                        uint16_t len) {
+        (void)from_node, (void)msg_id, (void)path_hash, (void)args, (void)len;
+        return kCallNotMine;
+    }
+
     // M8.2 (PS-2): one frame accepted over the RADIO from a peer this node knows -- every one, in arrival order, as
     // the link task handles it (RxSample, pot/node.hpp): its sender, RSSI, local receive time,
     // beacon or unicast, the beacon's heartbeat sequence, and whether it came through the relay
@@ -114,7 +138,8 @@ class Actor {
 
 // Every instance lives in a fixed slot of this many bytes; the registration table static_asserts
 // that each actor class fits. No heap.
-constexpr size_t kActorSlotBytes = 192;
+// 384 since M9 (the job actor keeps its units in flight); the slots live in PSRAM on the boards.
+constexpr size_t kActorSlotBytes = 384;
 constexpr size_t kMaxPinnedActors = 8;
 // The longest actor configuration the runtime keeps a copy of (a ticker's is 7 + 3 x 8 = 31).
 constexpr size_t kMaxActorCfg = 48;
@@ -201,6 +226,9 @@ class ActorRuntime {
     void on_rx_sample(const RxSample& s);
     bool on_call_result(uint16_t from_node, uint16_t msg_id, uint32_t path_hash, Node::CallOutcome o,
                         const Value& v);
+    // M9: offer a CALL to the running actors; the first that is not kCallNotMine decides. kCallNotMine
+    // if none claims it.
+    int on_call(uint16_t from_node, uint16_t msg_id, uint32_t path_hash, const uint8_t* args, uint16_t len);
 
     size_t loaded() const { return n_decl_; }
     size_t remote_outputs() const { return n_remote_; }

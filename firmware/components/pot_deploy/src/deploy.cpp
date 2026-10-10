@@ -124,6 +124,22 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                 }
                 break;
             }
+            case ActorType::McLender: {
+                McLenderConfig mc{};
+                if (a.node_id == kPortableNode || !mc_lender_config(a, mc)) {
+                    w = "mc_lender must be pinned or on every node, with 1..4 slots";
+                    return false;
+                }
+                break;
+            }
+            case ActorType::McJob: {
+                McJobConfig mj{};
+                if (a.node_id == kPortableNode || a.node_id == kEveryNode || !mc_job_config(a, mj)) {
+                    w = "mc_job must be pinned, with an output, 1..4096 units and 1000..100000000 samples";
+                    return false;
+                }
+                break;
+            }
             default:
                 if (is_external_type(a.type)) {
                     break;  // M8.2: an external component's; its registration row judges the config
@@ -183,6 +199,28 @@ bool die_temp_config(const ActorDecl& a, DieTempConfig& out) {
     out.out_hash = rd32(a.cfg);
     out.period_ms = rd16(a.cfg + 4);
     return out.out_hash != 0 && out.period_ms >= 200 && out.period_ms <= 60000;
+}
+
+bool mc_lender_config(const ActorDecl& a, McLenderConfig& out) {
+    if (a.type != ActorType::McLender || a.cfg_len != kMcLenderCfgLen) {
+        return false;
+    }
+    out.slots = a.cfg[0];
+    return out.slots >= 1 && out.slots <= 4;
+}
+
+bool mc_job_config(const ActorDecl& a, McJobConfig& out) {
+    if (a.type != ActorType::McJob || a.cfg_len != kMcJobCfgLen) {
+        return false;
+    }
+    out.out_hash = rd32(a.cfg);
+    out.units = rd16(a.cfg + 4);
+    out.samples = rd32(a.cfg + 6);
+    out.seed = rd32(a.cfg + 10);
+    out.lend = a.cfg[14];
+    out.start_after_ms = rd32(a.cfg + 15);
+    return out.out_hash != 0 && out.units >= 1 && out.units <= 4096 && out.samples >= 1000 &&
+           out.samples <= 100000000u && out.lend <= 1;
 }
 
 bool portable_header(const ActorDecl& a, TickerConfig& out, size_t& len) {

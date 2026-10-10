@@ -58,6 +58,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/message_buffer.h"
+#include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "sdkconfig.h"
@@ -1984,7 +1985,60 @@ void led_app(void*, bool on, uint8_t r, uint8_t g, uint8_t b, uint16_t period_ms
     status_led::g_app.period_ms = period_ms;
     status_led::g_app.until_ms = now_ms_() + status_led::kAppLapseMs;
 }
-const BoardServices g_board_services{nullptr, &led_app};
+
+// M9: the background workers -- one task per core at priority 1, above idle (0) and below every task
+// the node runs (stats 3, console 2, link 6, Wi-Fi's own far above), so a borrowed core only ever runs
+// what nothing else wanted. They take jobs from one queue; a job is refused when every worker is
+// already busy or promised, never queued behind one, so a lender's BUSY is immediate. The work must
+// call bg_yield every few tens of ms: the task watchdog watches the idle task on both cores
+// (CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0/1, 5 s), and a worker that never blocked would starve it.
+namespace bg {
+struct Job {
+    void (*work)(void*);
+    void* arg;
+};
+constexpr UBaseType_t kPriority = 1;
+constexpr size_t kStackBytes = 3072;
+constexpr uint8_t kWorkers = portNUM_PROCESSORS;
+StaticQueue_t g_q_ctl;
+uint8_t g_q_storage[kWorkers * sizeof(Job)];
+QueueHandle_t g_q = nullptr;
+std::atomic<uint8_t> g_taken{0};  // workers busy or promised a job
+StackType_t g_stack[kWorkers][kStackBytes / sizeof(StackType_t)];
+StaticTask_t g_tcb[kWorkers];
+
+void worker(void*) {
+    for (;;) {
+        Job j{};
+        if (xQueueReceive(g_q, &j, portMAX_DELAY) != pdTRUE) continue;
+        j.work(j.arg);
+        g_taken.fetch_sub(1);
+    }
+}
+bool submit(void*, void (*work)(void*), void* arg) {
+    if (g_q == nullptr) return false;
+    uint8_t t = g_taken.load();
+    do {
+        if (t >= kWorkers) return false;
+    } while (!g_taken.compare_exchange_weak(t, static_cast<uint8_t>(t + 1)));
+    const Job j{work, arg};
+    if (xQueueSend(g_q, &j, 0) != pdTRUE) {
+        g_taken.fetch_sub(1);
+        return false;
+    }
+    return true;
+}
+void yield(void*) { vTaskDelay(1); }
+void start() {
+    g_q = xQueueCreateStatic(kWorkers, sizeof(Job), g_q_storage, &g_q_ctl);
+    for (uint8_t i = 0; i < kWorkers; ++i) {
+        xTaskCreateStaticPinnedToCore(&worker, "pot_bg", sizeof(g_stack[i]) / sizeof(StackType_t), nullptr, kPriority,
+                                      g_stack[i], &g_tcb[i], static_cast<BaseType_t>(i));
+    }
+}
+}  // namespace bg
+
+const BoardServices g_board_services{nullptr, &led_app, &bg::submit, &bg::yield, bg::kWorkers};
 }  // namespace
 
 }  // namespace pot
@@ -2217,14 +2271,20 @@ extern "C" void app_main(void) {
         if (!g_rec->load(deploy_rt::g_portable, deploy_rt::g_portable_n)) {
             ESP_LOGE(kTag, "reconciler: could not declare the portable actors' resources");
         }
-        g_node->set_call_handler(
-            [](void*, uint16_t from, uint16_t, uint32_t path, const uint8_t* args, uint16_t len) {
-                return g_rec->on_cast(from, path, args, len);
-            },
-            nullptr);
         ESP_LOGI(kTag, "reconciler: %u portable actor(s)", static_cast<unsigned>(g_rec->actor_count()));
     }
 #endif
+    // M9: one handler for every CALL and CAST -- the reconciler's own messages first, then any actor's
+    // (a lender's units). A CALL nobody accepts is refused at once, so the caller is never left waiting.
+    g_node->set_call_handler(
+        [](void*, uint16_t from, uint16_t msg_id, uint32_t path, const uint8_t* args, uint16_t len) {
+#if CONFIG_POT_RECONCILER
+            if (g_rec != nullptr && g_rec->on_cast(from, path, args, len)) return true;
+#endif
+            return g_actors.on_call(from, msg_id, path, args, len) == Actor::kCallAccepted;
+        },
+        nullptr);
+    bg::start();  // M9: before the actors, which may hand it work from their first tick
     // M8.1: start this node's pinned actors, now that the node they publish through exists.
     g_actor_env.node = g_node;
     g_actor_env.board = &g_board_services;  // PS-5

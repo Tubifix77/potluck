@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "system": "lab",
+  "min_core_version": 1,
+  "nodes": [
+    {
+      "node_id": 25344,
+      "label": "A"
+    },
+    {
+      "node_id": 29544,
+      "label": "B"
+    },
+    {
+      "node_id": 33120,
+      "label": "C"
+    }
+  ],
+  "actors": [
+    {
+      "name": "lend_a",
+      "module": "builtin:mc_lender",
+      "latency_class": 4,
+      "pin": 25344,
+      "config": {
+        "slots": 2
+      }
+    },
+    {
+      "name": "lend_b",
+      "module": "builtin:mc_lender",
+      "latency_class": 4,
+      "pin": 29544,
+      "config": {
+        "slots": 2
+      }
+    },
+    {
+      "name": "lend_c",
+      "module": "builtin:mc_lender",
+      "latency_class": 4,
+      "pin": 33120,
+      "config": {
+        "slots": 2
+      }
+    },
+    {
+      "name": "job",
+      "module": "builtin:mc_job",
+      "latency_class": 4,
+      "pin": 25344,
+      "config": {
+        "units": 48,
+        "samples": 1000000,
+        "seed": 1,
+        "lend": true,
+        "start_after_ms": 0
+      }
+    }
+  ]
+}
