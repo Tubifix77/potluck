@@ -820,7 +820,7 @@ Four, each with the experiment that settles it. Everything else in this document
 1. **Does the Locality Contract survive contact with real application code, or does everything end up L4?** *Experiment:* write three real applications at M4 — a vent controller, a joint controller, a building monitor — and count the class distribution. If they are all L4, the classes are not carrying weight and the taxonomy needs collapsing.
 2. **Is the 128-entry namespace cap right?** *Experiment:* build the largest realistic bind table you actually want at M1 and measure lookup cost and memory against §6.
 3. **Path A or Path B (§11)?** *Experiment:* at M3, with M0–M2 measurements in hand, prototype the M1 namespace on AtomVM for one week and compare lines of code and measured RAM against the native implementation.
-4. **Does deploy-and-detach need dynamic code at all, or is signed configuration enough?** *Experiment:* implement M3 with configuration-only deploys and log every occasion over the following month where you genuinely needed new code rather than new parameters. If the count is zero, ADR-003's Tier 1 never opens and the project is simpler forever.
+4. **Does deploy-and-detach need dynamic code at all, or is signed configuration enough?** *Experiment:* implement M3 with configuration-only deploys and log every occasion over the following month where you genuinely needed new code rather than new parameters *(Answered by the bench, 2026-10-10/11: yes. M8.2's passive-sensor needed new code on boards already placed around a room, which became M11's firmware over the cell; code from a party the owner does not trust became M7's guest actors.)*. If the count is zero, ADR-003's Tier 1 never opens and the project is simpler forever.
 
 ---
 
