@@ -138,10 +138,13 @@ bool Node::send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, c
     // M5 step 4: tag every unicast frame to a peer whose key we hold (frame_auth.hpp). §14 reserved
     // the eight bytes in §5.3's MTU arithmetic from day one, so no payload cap moves.
     PeerAuth* tag_with = nullptr;
-    if (trust_ != nullptr && trust_->enrolled && p != nullptr && !broadcast && !single_frame &&
-        !is_trusted_link(mac)) {
+    if (trust_ != nullptr && trust_->enrolled && p != nullptr && !broadcast && !single_frame) {
         const size_t i = peers_.index_of(p);
-        if (i < kMaxPeers && auth_[i].verified) tag_with = &auth_[i];
+        // The cable's own far end needs no tag (section 9.3). A member reached THROUGH the cable -- M10's
+        // host talking to the cell via its board's relay -- does: the tag is between the two ends, and
+        // the far member checks it; on the bench every claim the PC sent B and C was "untagged".
+        const bool cable_end = is_trusted_link(mac) && !(i < kMaxPeers && relayed_[i]);
+        if (i < kMaxPeers && auth_[i].verified && !cable_end) tag_with = &auth_[i];
     }
     spec.auth = (tag_with != nullptr);
 
