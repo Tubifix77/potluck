@@ -1,0 +1,36 @@
+     0.000 s  A   actor_stopped  why 2
+     0.031 s  PC  actor_started  term 15
+   113.922 s  PC  actor_stopped  why gone
+   114.609 s  A   actor_started  term 16
+   180.371 s  A   actor_stopped  why 2
+   180.402 s  PC  actor_started  term 17
+   294.328 s  PC  actor_stopped  why gone
+   295.009 s  A   actor_started  term 18
+   360.800 s  A   actor_stopped  why 2
+   360.823 s  PC  actor_started  term 19
+   474.928 s  PC  actor_stopped  why gone
+   475.609 s  A   actor_started  term 20
+   541.429 s  A   actor_stopped  why 2
+   541.442 s  PC  actor_started  term 21
+   655.367 s  PC  actor_stopped  why gone
+   656.009 s  A   actor_started  term 22
+   721.961 s  A   actor_stopped  why 2
+   721.968 s  PC  actor_started  term 23
+   835.980 s  PC  actor_stopped  why gone
+   836.609 s  A   actor_started  term 24
+longest overlap of two runners: 0 ms
+  failover: A declared the PC dead 684 ms after its last frame and started it 3 ms later: 687 ms
+  failover: A declared the PC dead 678 ms after its last frame and started it 3 ms later: 681 ms
+  failover: A declared the PC dead 678 ms after its last frame and started it 3 ms later: 681 ms
+  failover: A declared the PC dead 639 ms after its last frame and started it 3 ms later: 642 ms
+  failover: A declared the PC dead 626 ms after its last frame and started it 3 ms later: 629 ms
+  B declared the PC dead 649 ms after its last frame (it started nothing: not its turn)
+  B declared the PC dead 646 ms after its last frame (it started nothing: not its turn)
+  B declared the PC dead 641 ms after its last frame (it started nothing: not its turn)
+  B declared the PC dead 607 ms after its last frame (it started nothing: not its turn)
+  B declared the PC dead 693 ms after its last frame (it started nothing: not its turn)
+  C declared the PC dead 678 ms after its last frame (it started nothing: not its turn)
+  C declared the PC dead 670 ms after its last frame (it started nothing: not its turn)
+  C declared the PC dead 667 ms after its last frame (it started nothing: not its turn)
+  C declared the PC dead 632 ms after its last frame (it started nothing: not its turn)
+  C declared the PC dead 619 ms after its last frame (it started nothing: not its turn)

@@ -1,0 +1,10 @@
+cycle 1: PC on 05:26:22
+cycle 1: PC killed 05:28:22
+cycle 2: PC on 05:29:22
+cycle 2: PC killed 05:31:23
+cycle 3: PC on 05:32:23
+cycle 3: PC killed 05:34:23
+cycle 4: PC on 05:35:23
+cycle 4: PC killed 05:37:24
+cycle 5: PC on 05:38:24
+cycle 5: PC killed 05:40:24
