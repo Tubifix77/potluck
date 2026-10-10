@@ -4405,3 +4405,28 @@ never true, 134 GOOD reads against 31 NO DATA (C's own resets: failover and sett
 frames per B reset ignored as heard away from home. What the desk cannot show is still open: that a person in the
 room is detected at all (PS-0, the boards placed and the owner walking the script), and B's transmit stall.
 
+## Session 34 -- 2026-10-10 (late evening and night, owner present), PS-0 in the room, and the documents
+
+**The boards placed** per passive-sensor's run sheet: A at the PC on its cable, B on the left wall, C in the
+top-left corner, all facing into the triangle; B and C on wall chargers, the CAN modules removed. At A, B and
+C read -48 and -51 dBm (the desk: -23 and -29) with full windows. A first smoke run with four people at home
+(`captures/ps0-walk-2026-10-09-2138-*`) only showed the chain working -- the detector learned with people in
+the room -- and found a harness fault: the capture, started 2 s after the deploy, admitted A's pre-reboot epoch
+and every read timed out. The walk script now waits 40 s. A second fault was mine: editing that script while
+it ran made bash execute garbage and start a stray capture (recorded in memory; never edit a running script).
+
+**PS-0** (`captures/ps0-walk-2026-10-10-0106-*`, with a steps file, the owner's notes and their room drawing):
+`ps-room` redeployed at counter 19 with the room empty; learned at 01:08:10. Empty-1 0 of 370 verdicts
+present (one 6 s blip just after learning, the owner leaving); walking 100 % present, 99 % moving; standing
+100 / 11; still-off 92 / 32; sitting 100 / 6. Empty-2 read present throughout -- the owner had stayed in the
+room, at its bottom left, and passive-sensor found the A<->B link shifted +3.3 dB: a true detection by
+reflection. A check afterwards with the owner in the room's bottom right read empty (198 verdicts). So the
+kill criterion did not fire, PS-6 is not needed, and coverage outside the triangle is patchy. passive-sensor
+lowered its shift threshold to 2.5 dB (its D17), deployed at counter 20 with no reflash.
+
+**Documents.** The owner judged both applications done and asked each project to update its documents and
+sync. Potluck: README status (M6.1, M8.2, the figures, a paragraph on building an application in), the
+architecture's M6.1 and M8.2 progress, this log, the handover. The two application repositories are private,
+so Potluck's public README names them without links. Not yet accepted in M8.2: 30 minutes of empty room in
+place and 24 hours with no PC.
+
