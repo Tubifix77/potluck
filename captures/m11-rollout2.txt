@@ -1,0 +1,27 @@
+0x7368: image ../../firmware/build-extender/potluck_m0.bin, 887040 B, counter 2, sha512 ea173108d8b2085e...
+0x7368: before {'status': 'ok', 'node': 29544, 'received': 0, 'running': 0, 'floor': 0, 'state': 'factory', 'version': 'deploy-and-detach-161-g44d75c3-'}
+    0 %     0.1 s
+   23 %    21.7 s
+   46 %    43.3 s
+   69 %    65.1 s
+   92 %    86.7 s
+0x7368: commit ok after 94.3 s (9.2 KiB/s)
+0x7368: confirmed deploy-and-detach-162-g6aafa26- after 110.8 s
+0x8160: image ../../firmware/build/potluck_m0.bin, 848272 B, counter 2, sha512 e06728e4899b26db...
+0x8160: before {'status': 'ok', 'node': 33120, 'received': 0, 'running': 1, 'floor': 1, 'state': 'confirmed', 'version': 'deploy-and-detach-161-g44d75c3-'}
+    0 %     0.1 s
+   24 %    21.7 s
+   48 %    43.3 s
+   72 %    65.0 s
+   96 %    86.7 s
+0x8160: commit ok after 90.2 s (9.2 KiB/s)
+0x8160: confirmed deploy-and-detach-162-g6aafa26- after 106.6 s
+0x6300: image ../../firmware/build/potluck_m0.bin, 848272 B, counter 2, sha512 e06728e4899b26db...
+0x6300: before {'status': 'ok', 'node': 25344, 'received': 0, 'running': 0, 'floor': 0, 'state': 'factory', 'version': 'deploy-and-detach-162-g6aafa26-'}
+    0 %     0.1 s
+   24 %    21.7 s
+   48 %    43.3 s
+   72 %    64.9 s
+   96 %    86.6 s
+0x6300: commit ok after 90.1 s (9.2 KiB/s)
+0x6300: NOT confirmed after 277.6 s: None -- rollout stopped

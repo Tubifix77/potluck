@@ -265,6 +265,15 @@ config POT_FW_TRIAL_TIMEOUT_MS
         this long after boot, the node rolls back to the previous image and reboots. A crash before
         then rolls back by itself: ESP-IDF's bootloader does not boot an unconfirmed image twice.
 
+config POT_FW_TEST_PANIC
+    bool "M11 test instrument: this image crashes at every boot"
+    default n
+    help
+        Builds a deliberately broken image for M11's acceptance: it aborts right after the boot
+        record, before it can join the cell. Updated over the cell, it must roll itself back (the
+        bootloader does not boot an unconfirmed image twice) and stop the rollout. Never flash it
+        by cable: there is no previous image to fall back to.
+
 config POT_EXTENDER
     bool "M6.1: the extender build -- poor-mans-extender's hotspot owns Wi-Fi, Potluck attaches"
     default n

@@ -2541,6 +2541,10 @@ extern "C" void app_main(void) {
     }
     deploy_rt::boot(cfg.node_id);
     fw_rt::boot();  // M11
+#if CONFIG_POT_FW_TEST_PANIC
+    ESP_LOGE(kTag, "fw: CONFIG_POT_FW_TEST_PANIC - this image crashes at boot, on purpose");
+    abort();
+#endif
 #if CONFIG_POT_RECONCILER
     if (deploy_rt::g_portable_n > 0) {
         g_rec = new (g_rec_storage) Reconciler(*g_node);

@@ -1,0 +1,26 @@
+0x8160: image ../../firmware/build/potluck_m0.bin, 848256 B, counter 1, sha512 743c62e8cc49349e...
+0x8160: before {'status': 'ok', 'node': 33120, 'received': 0, 'running': 0, 'floor': 0, 'state': 'factory', 'version': 'deploy-and-detach-161-g44d75c3-'}
+    0 %     0.1 s
+    4 %    11.9 s
+    9 %    23.6 s
+   14 %    35.3 s
+   18 %    46.9 s
+   23 %    58.6 s
+   28 %    70.4 s
+   33 %    82.0 s
+   37 %    93.6 s
+   42 %   105.4 s
+   47 %   117.1 s
+   51 %   128.7 s
+   56 %   140.6 s
+   61 %   152.3 s
+   66 %   163.8 s
+   70 %   175.5 s
+   75 %   187.2 s
+   80 %   199.0 s
+   84 %   210.8 s
+   89 %   222.5 s
+   94 %   234.3 s
+   99 %   246.0 s
+0x8160: commit ok after 249.0 s (3.3 KiB/s)
+0x8160: confirmed deploy-and-detach-161-g44d75c3- after 265.5 s

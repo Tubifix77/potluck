@@ -117,7 +117,13 @@ def wait_confirmed(b, target: int, counter: int, timeout: float) -> dict | None:
         try:
             last = status(b, target)
         except Exception:
-            continue  # rebooting, or the cell re-forming around it
+            # Rebooting, or the cell re-forming around it. If the target is the board on the cable,
+            # it has forgotten this host with its reboot: announce again.
+            try:
+                b.hello(timeout=1.0)
+            except Exception:  # noqa: BLE001 - the next poll tries again
+                pass
+            continue
         if last["running"] == counter and last["state"] == "confirmed":
             return last
         if last["running"] != counter and last["state"] != "on_trial" and time.monotonic() > end - timeout + 20:

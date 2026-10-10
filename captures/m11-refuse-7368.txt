@@ -1,0 +1,10 @@
+before: {'status': 'ok', 'node': 29544, 'received': 0, 'running': 2, 'floor': 2, 'state': 'confirmed', 'version': 'deploy-and-detach-162-g6aafa26-'}
+  ok   downgrade      -> downgrade (want downgrade)
+  ok   foreign_ca     -> bad_signature (want bad_signature)
+  ok   wrong_counter  -> bad_signature (want bad_signature)
+  ok   flipped_byte   -> bad_signature (want bad_signature)
+  ok   not_an_image   -> bad_image (want bad_image)
+  ok   unsigned       -> bad_signature (want bad_signature)
+  ok   noise          -> store_failed (want store_failed)
+after:  {'status': 'ok', 'node': 29544, 'received': 0, 'running': 2, 'floor': 2, 'state': 'confirmed', 'version': 'deploy-and-detach-162-g6aafa26-'}
+running, floor, state and version unchanged: True
