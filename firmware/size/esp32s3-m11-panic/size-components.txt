@@ -1,14 +1,14 @@
 Executing action: size-components
-Running ninja in directory D:\Projects\potluck\firmware\build
+Running ninja in directory D:\Projects\potluck\firmware\build-m11-panic
 Executing "ninja all"...
-[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
+[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-m11-panic && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-m11-panic/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-m11-panic/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xcf190 bytes. Smallest app partition is 0x100000 bytes. 0x30e70 bytes (19%) free.
+potluck_m0.bin binary size 0xc0020 bytes. Smallest app partition is 0x100000 bytes. 0x3ffe0 bytes (25%) free.
 
 
 [2/4] Performing build step for 'bootloader'
 
-[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Projects/potluck/firmware/build/bootloader/bootloader.bin"
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-m11-panic\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Projects/potluck/firmware/build-m11-panic/bootloader/bootloader.bin"
 
 
 Bootloader binary size 0x5280 bytes. 0x2d80 bytes (36%) free.
@@ -19,9 +19,9 @@ Bootloader binary size 0x5280 bytes. 0x2d80 bytes (36%) free.
 
 [4/4] Completed 'bootloader'
 
-Running ninja in directory D:\Projects\potluck\firmware\build
+Running ninja in directory D:\Projects\potluck\firmware\build-m11-panic
 Executing "ninja size-components"...
-[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D IDF_SIZE_MODE=--archives -D MAP_FILE=D:/Projects/potluck/firmware/build/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
+[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-m11-panic && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D IDF_SIZE_MODE=--archives -D MAP_FILE=D:/Projects/potluck/firmware/build-m11-panic/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
 
                                                                                                         Per-archive contributions to ELF file                                                                                                         
 
@@ -31,69 +31,61 @@ Executing "ninja size-components"...
 
 ├─────────────────────────────────┼────────────┼──────┼───────┼──────────┼───────┼───────┼───────┼───────┼────────────┼────────┼────────────┼────────┼─────────┼──────────┼──────────────┼───────┼──────────┼───────────────┼──────────┼─────────────┤
 
-│ libnet80211.a                   │     148120 │    0 │     0 │        0 │  4818 │     0 │   938 │  3880 │     121345 │ 121345 │      14279 │      0 │   14279 │        0 │         7678 │  7678 │        0 │             0 │        0 │           0 │
+│ libnet80211.a                   │     143694 │    0 │     0 │        0 │  4818 │     0 │   938 │  3880 │     117723 │ 117723 │      13476 │      0 │   13476 │        0 │         7677 │  7677 │        0 │             0 │        0 │           0 │
 
-│ libtfpsacrypto.a                │      95849 │   80 │    80 │        0 │   572 │   444 │   128 │     0 │      79434 │  79434 │      15763 │      0 │   15763 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
-
-│ libmain.a                       │      72614 │    0 │     0 │        0 │ 39488 │ 39281 │   207 │     0 │      15804 │  15804 │        348 │      0 │     348 │        0 │        16974 │ 16974 │        0 │             0 │        0 │           0 │
-
-│ libesp_stdio.a                  │      71031 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      70621 │      0 │   70621 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libtfpsacrypto.a                │      95853 │   80 │    80 │        0 │   572 │   444 │   128 │     0 │      79438 │  79438 │      15763 │      0 │   15763 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libwpa_supplicant.a             │      67007 │    0 │     0 │        0 │     8 │     0 │     8 │     0 │      63798 │  63798 │       1838 │      0 │    1838 │        0 │         1363 │  1363 │        0 │             0 │        0 │           0 │
 
-│ libpp.a                         │      65300 │    0 │     0 │        0 │ 17348 │     0 │  2640 │ 14708 │      42764 │  42764 │       3954 │      0 │    3954 │        0 │         1234 │  1234 │        0 │             0 │        0 │           0 │
+│ libpp.a                         │      65308 │    0 │     0 │        0 │ 17348 │     0 │  2640 │ 14708 │      42772 │  42772 │       3954 │      0 │    3954 │        0 │         1234 │  1234 │        0 │             0 │        0 │           0 │
 
-│ liblwip.a                       │      64937 │    0 │     0 │        0 │    12 │     0 │    12 │     0 │      59559 │  59559 │       2896 │      0 │    2896 │        0 │         2470 │  2470 │        0 │             0 │        0 │           0 │
+│ liblwip.a                       │      64913 │    0 │     0 │        0 │    12 │     0 │    12 │     0 │      59535 │  59535 │       2896 │      0 │    2896 │        0 │         2470 │  2470 │        0 │             0 │        0 │           0 │
 
-│ libphy.a                        │      34435 │  876 │   876 │        0 │  5641 │    86 │  1277 │  4278 │      27918 │  27918 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      64751 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      64341 │      0 │   64341 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_espnow.a                 │      33408 │    0 │     0 │        0 │ 18520 │ 18500 │    20 │     0 │       3015 │   3015 │         10 │      0 │      10 │        0 │        11863 │ 11863 │        0 │             0 │        0 │           0 │
+│ libphy.a                        │      34359 │  876 │   876 │        0 │  5641 │    86 │  1277 │  4278 │      27842 │  27842 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libesp_hw_support.a             │      23543 │ 2521 │  2521 │        0 │  5441 │   157 │   544 │  4740 │      14400 │  14400 │       1121 │      0 │    1121 │        0 │            0 │     0 │       24 │            24 │       36 │          36 │
+│ libpot_espnow.a                 │      31578 │    0 │     0 │        0 │ 17040 │ 17020 │    20 │     0 │       2665 │   2665 │         10 │      0 │      10 │        0 │        11863 │ 11863 │        0 │             0 │        0 │           0 │
+
+│ libmain.a                       │      28509 │    0 │     0 │        0 │ 16884 │ 16687 │   197 │     0 │       4381 │   4381 │        236 │      0 │     236 │        0 │         7008 │  7008 │        0 │             0 │        0 │           0 │
+
+│ libesp_hw_support.a             │      23531 │ 2521 │  2521 │        0 │  5441 │   157 │   544 │  4740 │      14388 │  14388 │       1121 │      0 │    1121 │        0 │            0 │     0 │       24 │            24 │       36 │          36 │
 
 │ libspi_flash.a                  │      22058 │ 1355 │  1355 │        0 │ 18225 │    24 │  8793 │  9408 │       1336 │   1336 │       1142 │      0 │    1142 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libfreertos.a                   │      20643 │  340 │   340 │        0 │  8828 │   764 │  3108 │  4956 │       9842 │   9842 │       1633 │      0 │    1633 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
-
-│ libpot_link.a                   │      18836 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      18742 │  18742 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
-
-│ libmonocypher.a                 │      17110 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      13266 │  13266 │       3844 │      0 │    3844 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libfreertos.a                   │      20608 │  340 │   340 │        0 │  8828 │   764 │  3108 │  4956 │       9807 │   9807 │       1633 │      0 │    1633 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_system.a                 │      14109 │ 2483 │  2483 │        0 │  1594 │   317 │   538 │   739 │       9352 │   9352 │        680 │      0 │     680 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libc.a                          │      13377 │    0 │     0 │        0 │   388 │   384 │     4 │     0 │      11914 │  11914 │       1075 │      0 │    1075 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libmonocypher.a                 │      13412 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │      11592 │  11592 │       1820 │      0 │    1820 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libnvs_flash.a                  │      13339 │    0 │     0 │        0 │    24 │    24 │     0 │     0 │      13179 │  13179 │        136 │      0 │     136 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libnvs_flash.a                  │      13220 │    0 │     0 │        0 │    24 │    24 │     0 │     0 │      13060 │  13060 │        136 │      0 │     136 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libesp_driver_uart.a            │      11023 │    0 │     0 │        0 │   361 │    33 │   328 │     0 │      10157 │  10157 │        505 │      0 │     505 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_driver_uart.a            │      10868 │    0 │     0 │        0 │   361 │    33 │   328 │     0 │      10002 │  10002 │        505 │      0 │     505 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libheap.a                       │       9497 │ 1276 │  1276 │        0 │  4348 │     8 │    12 │  4328 │       2959 │   2959 │        914 │      0 │     914 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libesp_driver_rmt.a             │       8706 │  411 │   411 │        0 │  1911 │    12 │    77 │  1822 │       5923 │   5923 │        461 │      0 │     461 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libc.a                          │       8961 │    0 │     0 │        0 │   388 │   384 │     4 │     0 │       7593 │   7593 │        980 │      0 │     980 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_actors.a                 │       7507 │  209 │   209 │        0 │     0 │     0 │     0 │     0 │       6829 │   6829 │        469 │      0 │     469 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_driver_rmt.a             │       8702 │  411 │   411 │        0 │  1911 │    12 │    77 │  1822 │       5919 │   5919 │        461 │      0 │     461 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+
+│ libpot_actors.a                 │       6602 │  209 │   209 │        0 │     0 │     0 │     0 │     0 │       5924 │   5924 │        469 │      0 │     469 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_hal_mspi.a               │       5584 │   88 │    88 │        0 │  4937 │     0 │    36 │  4901 │        559 │    559 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libbootloader_support.a         │       5085 │  881 │   881 │        0 │     8 │     8 │     0 │     0 │       4108 │   4108 │         88 │      0 │      88 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
-
-│ libesp_libc.a                   │       5039 │  874 │   874 │        0 │  2542 │   540 │   332 │  1670 │       1471 │   1471 │        152 │     16 │     136 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
-
-│ libesp_driver_gpio.a            │       5035 │    0 │     0 │        0 │    36 │     0 │    36 │     0 │       4428 │   4428 │        571 │      0 │     571 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_driver_gpio.a            │       4983 │    0 │     0 │        0 │    36 │     0 │    36 │     0 │       4376 │   4376 │        571 │      0 │     571 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_driver_dma.a             │       4930 │   28 │    28 │        0 │  1222 │     0 │    12 │  1210 │       3457 │   3457 │        223 │      0 │     223 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_deploy.a                 │       4644 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       4572 │   4572 │         72 │      0 │      72 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_libc.a                   │       4880 │  874 │   874 │        0 │  2383 │   540 │   332 │  1511 │       1471 │   1471 │        152 │     16 │     136 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_ringbuf.a                │       4521 │  180 │   180 │        0 │  2122 │     0 │     0 │  2122 │       1682 │   1682 │        537 │      0 │     537 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_reconcile.a              │       4390 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       4366 │   4366 │         24 │      0 │      24 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libespnow.a                     │       4176 │    0 │     0 │        0 │    71 │    64 │     7 │     0 │       4105 │   4105 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libespnow.a                     │       4192 │    0 │     0 │        0 │    71 │    64 │     7 │     0 │       4121 │   4121 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libbootloader_support.a         │       4060 │  881 │   881 │        0 │     8 │     8 │     0 │     0 │       3083 │   3083 │         88 │      0 │      88 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_mm.a                     │       3794 │  443 │   443 │        0 │   849 │    48 │   129 │   672 │       2252 │   2252 │        250 │      0 │     250 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
-
-│ libpot_trust.a                  │       3763 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       3407 │   3407 │        356 │      0 │     356 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libxtensa.a                     │       3694 │ 2023 │  1596 │      427 │  1524 │     0 │  1060 │   464 │         99 │     99 │         48 │      0 │      48 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -103,21 +95,21 @@ Executing "ninja size-components"...
 
 │ libvfs.a                        │       3248 │    0 │     0 │        0 │   236 │    44 │   192 │     0 │       2873 │   2873 │        139 │      0 │     139 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_ns.a                     │       3081 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       2987 │   2987 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
-
 │ libesp_phy.a                    │       2977 │   89 │    89 │        0 │   196 │    43 │     9 │   144 │       2393 │   2393 │        299 │      0 │     299 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libhal.a                        │       2708 │  450 │   450 │        0 │  2258 │     5 │   274 │  1979 │          0 │      0 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libapp_update.a                 │       2676 │    0 │     0 │        0 │    12 │    12 │     0 │     0 │       2568 │   2568 │         96 │      0 │      96 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_deploy.a                 │       2638 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       2566 │   2566 │         72 │      0 │      72 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_timer.a                  │       2543 │  248 │   248 │        0 │   823 │    36 │    32 │   755 │       1373 │   1373 │         99 │      0 │      99 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_partition.a              │       2503 │    0 │     0 │        0 │     8 │     8 │     0 │     0 │       2327 │   2327 │        168 │      0 │     168 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libesp_hal_gpio.a               │       2148 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │        867 │    867 │       1281 │      0 │    1281 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_link.a                   │       2397 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       2327 │   2327 │         70 │      0 │      70 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_frame.a                  │       2074 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       1562 │   1562 │        512 │      0 │     512 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libapp_update.a                 │       2265 │    0 │     0 │        0 │    12 │    12 │     0 │     0 │       2157 │   2157 │         96 │      0 │      96 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+
+│ libesp_hal_gpio.a               │       2148 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │        867 │    867 │       1281 │      0 │    1281 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_hal_security.a           │       1933 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       1901 │   1901 │         32 │      0 │      32 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -130,6 +122,10 @@ Executing "ninja size-components"...
 │ libesp_common.a                 │       1772 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │         46 │     46 │       1726 │      0 │    1726 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ liblog.a                        │       1691 │   24 │    24 │        0 │   703 │   276 │     8 │   419 │        916 │    916 │         48 │      0 │      48 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+
+│ libpot_ns.a                     │       1569 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       1475 │   1475 │         94 │      0 │      94 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+
+│ libpot_frame.a                  │       1555 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │       1043 │   1043 │        512 │      0 │     512 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_event.a                  │       1549 │    0 │     0 │        0 │     4 │     4 │     0 │     0 │       1488 │   1488 │         57 │      0 │      57 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -146,6 +142,8 @@ Executing "ninja size-components"...
 │ libesp_rom.a                    │        772 │   96 │    96 │        0 │   610 │     0 │     4 │   606 │         66 │     66 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_app_format.a             │        753 │    0 │     0 │        0 │    10 │    10 │     0 │     0 │        479 │    479 │        264 │      0 │       8 │      256 │            0 │     0 │        0 │             0 │        0 │           0 │
+
+│ libpot_trust.a                  │        703 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │        643 │    643 │         60 │      0 │      60 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libsoc.a                        │        650 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │         30 │     30 │        620 │      0 │     620 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
@@ -166,6 +164,8 @@ Executing "ninja size-components"...
 │ libesp_hal_pmu.a                │        297 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │        297 │    297 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_coex.a                   │        272 │    0 │     0 │        0 │    97 │     0 │     0 │    97 │        175 │    175 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+
+│ libpot_reconcile.a              │        249 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │        249 │    249 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libmbedtls.a                    │         43 │    0 │     0 │        0 │     0 │     0 │     0 │     0 │         43 │     43 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

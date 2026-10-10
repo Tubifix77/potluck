@@ -1,14 +1,14 @@
 Executing action: size
-Running ninja in directory D:\Projects\potluck\firmware\build-extender
+Running ninja in directory D:\Projects\potluck\firmware\build-m11-panic
 Executing "ninja all"...
-[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-extender && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-extender/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-extender/potluck_m0.bin"
+[1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-m11-panic && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-m11-panic/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-m11-panic/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xd8900 bytes. Smallest app partition is 0x100000 bytes. 0x27700 bytes (15%) free.
+potluck_m0.bin binary size 0xc0020 bytes. Smallest app partition is 0x100000 bytes. 0x3ffe0 bytes (25%) free.
 
 
 [2/4] Performing build step for 'bootloader'
 
-[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-extender\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Projects/potluck/firmware/build-extender/bootloader/bootloader.bin"
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-m11-panic\bootloader && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Projects/potluck/firmware/build-m11-panic/bootloader/bootloader.bin"
 
 
 Bootloader binary size 0x5280 bytes. 0x2d80 bytes (36%) free.
@@ -19,9 +19,9 @@ Bootloader binary size 0x5280 bytes. 0x2d80 bytes (36%) free.
 
 [4/4] Completed 'bootloader'
 
-Running ninja in directory D:\Projects\potluck\firmware\build-extender
+Running ninja in directory D:\Projects\potluck\firmware\build-m11-panic
 Executing "ninja size"...
-[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-extender && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D MAP_FILE=D:/Projects/potluck/firmware/build-extender/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
+[0/1] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-m11-panic && C:\Users\tuebo\.espressif\tools\cmake\4.0.3\bin\cmake.exe -D IDF_SIZE_TOOL=C:/Users/tuebo/.espressif/python_env/idf6.0_py3.14_env/Scripts/python.exe;-m;esp_idf_size -D MAP_FILE=D:/Projects/potluck/firmware/build-m11-panic/potluck_m0.map -D OUTPUT_JSON= -P D:/esp/esp-idf/tools/cmake/run_size_tool.cmake"
 
                             Memory Type Usage Summary                             
 
@@ -31,29 +31,29 @@ Executing "ninja size"...
 
 ├─────────────────────┼──────────────┼──────────┼────────────────┼───────────────┤
 
-│ Flash Code          │       641628 │          │                │               │
+│ Flash Code          │       558672 │          │                │               │
 
-│    .text            │       641628 │          │                │               │
+│    .text            │       558672 │          │                │               │
 
-│ DIRAM               │       151186 │    44.24 │         190574 │        341760 │
+│ DIRAM               │       126400 │    36.99 │         215360 │        341760 │
 
-│    .text            │        67683 │     19.8 │                │               │
+│    .text            │        67223 │    19.67 │                │               │
 
-│    .bss             │        61736 │    18.06 │                │               │
+│    .bss             │        37488 │    10.97 │                │               │
 
-│    .data            │        21767 │     6.37 │                │               │
+│    .data            │        21689 │     6.35 │                │               │
 
-│ Flash Data          │       139432 │          │                │               │
+│ Flash Data          │       122344 │          │                │               │
 
-│    .rodata          │       139160 │          │                │               │
+│    .rodata          │       122072 │          │                │               │
 
 │    .appdesc         │          256 │          │                │               │
 
 │    .tdata           │           16 │          │                │               │
 
-│ External RAM        │        41716 │          │                │               │
+│ External RAM        │        31700 │          │                │               │
 
-│    .bss             │        41716 │          │                │               │
+│    .bss             │        31700 │          │                │               │
 
 │ IRAM                │        16384 │    100.0 │              0 │         16384 │
 
@@ -71,7 +71,7 @@ Executing "ninja size"...
 
 └─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
 
-Total image size: 886930 bytes (.bin may be padded larger)
+Total image size: 786348 bytes (.bin may be padded larger)
 
 Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
 
