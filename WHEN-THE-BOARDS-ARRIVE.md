@@ -520,7 +520,9 @@ the big-mesh numbers being someone else's.
   specified and never scheduled by any milestone**, while the M6 demo and the home wake-word both
   consume them. When milestone scoping resumes, that entry is standing input: it carries a
   ready-made acceptance test (seq-gap count vs. independently captured drops) and the
-  whitelist-becomes-manifest mapping. It is input, not a decision — no M9 exists.
+  whitelist-becomes-manifest mapping. It is input, not a decision — no M9 exists. *(Since 2026-10-08
+  the name M9 belongs to a different milestone -- borrowing an idle core, accepted 2026-10-10 -- not
+  to this Powersuit candidate. ARCHITECTURE section 13 is the list of what is scheduled.)*
 - Register every measured number in `.claude/zero-assumption/memory.md` with source "this bench" and
   the geometry; resolve the `[MEASURE]` tags.
 - Log the session in [M0-LOG.md](M0-LOG.md) — including anything that went wrong, and anything you

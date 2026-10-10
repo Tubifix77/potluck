@@ -622,3 +622,47 @@ python tools/wasm_modules.py                                                    
 The bench prints `{"t":"wasm_bench"}` lines and stops; deliver it with `potluck.fw rollout --targets 8160` and
 reset the board afterwards to roll it back. `POT! wasm <samples> <runs>` runs M9's kernel in the sandbox on a
 node built with `CONFIG_POT_WASM`. The host tests (`tests/test_wasm.cpp`) run the same interpreter and modules.
+
+## 13. M9: borrowing an idle core
+
+The job (`McJobActor`) runs on A and lends pieces to `McLenderActor` on B and C; both are in
+`manifests/m9-mc.json`. Sign and deploy that package at the next counter, from `host/potluck/`:
+
+```
+python -m potluck.signing sign ../../manifests/m9-mc.json --key ../../keys/deploy.key --cert ../../keys/deploy.cert --counter N --out ../../keys/m9-mc-N.pkg.json
+python -m potluck.ctl --port COM6 --node 6300 deploy ../../keys/m9-mc-N.pkg.json --ca ../../keys/ca.pub --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert
+```
+
+Then drive the job from A's console, with the IDF Python -- no host joins the cell, so nothing else may hold
+COM6 -- while B's and C's consoles are recorded, and compare the windows:
+
+```
+python tools/json_capture.py COM4 captures/m9-run-COM4.jsonl 900                     # and COM5, in two other terminals
+python tools/m9_bench.py COM3 captures/m9-run-COM3.jsonl --runs 3                    # alone, then lending
+python tools/m9_report.py captures/m9-run-COM3.jsonl captures/m9-run-COM4.jsonl captures/m9-run-COM5.jsonl
+```
+
+`--reset-port COM4` on the bench resets B in the middle of every lending run (M9's "a lender held in reset
+loses no result"); the report compares the lenders' heartbeat delivery, round trips and die_temp output
+across the idle, alone and lending windows.
+
+## 14. M10: the PC as a placement node
+
+Once, enrol the PC as node 0x00fe (the identity file stays in the git-ignored `keys/`):
+
+```
+build\tests\pot_hostnode.exe --keygen keys\host-00fe.id
+python -m potluck.enrol --host-cert keys\host-00fe.id --pub <the printed public key> --node 0x00fe --ca-key keys\ca.key
+```
+
+Then deploy a package whose manifest makes the host eligible (`"placement": true`; `manifests/m10-ticker.json`),
+switch on A's relay (`POT! relay 1` on A's console; it does not survive a reboot) and join, from `host/potluck/`:
+
+```
+python -m potluck.hostnode --port COM6 --package ../../keys/m10-ticker-N.pkg.json --identity ../../keys/host-00fe.id --out ../../captures/m10-host.jsonl
+python tools/m10_report.py captures/<name>        # from the repo root: who ran the actor when, on one clock
+```
+
+`pot_hostnode` is built by the host test build (`tools\run_host_tests.ps1`). Only one program may hold COM6:
+not `potctl` or `potluck-agent` at the same time. Stopping the program without warning is what a pulled
+cable looks like to the boards; the actor should be back on a board within ~0.7 s.

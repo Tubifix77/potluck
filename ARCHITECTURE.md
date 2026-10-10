@@ -117,9 +117,9 @@ That demand is not work-stealing. It is Kubernetes' actual property — declarat
 - **Reconciliation (§7.7)** — when a node dies, its *portable* actors are re-activated on surviving nodes from pre-provisioned flash. Code is distributed to every eligible node at deploy time; only *activation* moves at failure time — which is why the WASM arithmetic above never applies to it.
 - **Migration (§7.4)** — planned, checkpointed movement for graceful events (hot-unplug of a robot module, battery load-shedding), initiated by manifest or by the reconciler.
 
-Opportunistic offload to the host mega-node stays, but as **named services** (§7.5), not generic stealing.
+Opportunistic offload to the host mega-node stays, but as **named services** (§7.5), not generic stealing. *Since M10 (accepted 2026-10-10)* a host can also be a **placement node**: it opts in through the manifest, joins the reconciler's claims like a board, runs portable actors from the boards' own sources while it is on, and gives them back when it goes -- still placement and reconciliation, not stealing (§13, M10).
 
-> **Revisit trigger (ADR-005), restated so it can actually fire:** a profiled workload where moving work between two *live* MCUs beats both local execution and host offload. The interpretation penalty no longer appears in the trigger, because pre-provisioned native actors pay none.
+> **Revisit trigger (ADR-005), restated so it can actually fire:** a profiled workload where moving work between two *live* MCUs beats both local execution and host offload. The interpretation penalty no longer appears in the trigger, because pre-provisioned native actors pay none. *It fired in M9 (2026-10-10): three boards lending idle cores ran a pure-function job 3.41x faster than one, with no host attached; ADR-005 is amended in the ADR with exactly what was measured.*
 
 ---
 
@@ -385,7 +385,7 @@ The four-daemon split from Vision Document 2 is retained; it is sound Unix think
 | Daemon | Role | Change from Doc 2 |
 |---|---|---|
 | **potluck-bridge** | Physical link ⇄ local frame socket. C++ or Rust. Never blocks on user code. Keeps the cluster connected while everything above it restarts. | **Forwards Potluck Frames unchanged.** No Protobuf translation at this layer — same bytes on both sides. Also **tees every frame to a rotating capture file** (§7.6). |
-| **potluck-agent** | Host as a mega-node: advertises capability, hosts L4 services. | Advertises **named services**, not raw `cores:16, ram:32000`. See §7.5. What it donates is capped by a **local donation config owned by the machine's user** — how many cores, a RAM ceiling, GPU yes/no, which peripherals join the namespace, pause-on-battery — so the cluster takes what it is given and nothing more. |
+| **potluck-agent** | Host as a mega-node: advertises capability, hosts L4 services. | Advertises **named services**, not raw `cores:16, ram:32000`. See §7.5. What it donates is capped by a **local donation config owned by the machine's user** — how many cores, a RAM ceiling, GPU yes/no, which peripherals join the namespace, pause-on-battery — so the cluster takes what it is given and nothing more. *Since M10 a host may also run portable actors as a placement node (`pot_hostnode`, opted in by the manifest), alongside its named services.* |
 | **potctl / pot-dashboard** | `kubectl` for the mesh: topology, live namespace, logs, deploy. | Speaks gRPC to `potluck-agent`, which is the *only* place a second schema exists. |
 | **pot-app** | User logic in Python/Rust/C++. Consumes the namespace. | Unchanged in role. Gets the same typed/timestamped read contract as on-node actors. |
 
@@ -445,7 +445,7 @@ The lifecycle from Vision Document 3 is retained. The storage design changes, be
 
 ### 7.5 Host offload as named services
 
-Not work-stealing. A host advertises capability by publishing an **actor path** into the namespace:
+Not work-stealing. (The other host path, since M10, is a host as a placement node -- §13, M10.) A host advertises capability by publishing an **actor path** into the namespace:
 
 ```
 potluck://lab/svc/slam              L4, provided by potluck-agent on 'workstation'

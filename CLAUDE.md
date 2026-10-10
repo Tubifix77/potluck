@@ -21,9 +21,11 @@ one caveat: the arbitration was not recorded by an instrument outside the boards
 accepted too** (sessions 21-22 and 26), and so are **M6.1** (CR-6, the combined extender node, session 29) and **M8**
 (host services, session 28). **M8.1 is built** (attached hardware -- B's die temperature read from A -- and a compiled-in actor
 API; one acceptance line left, session 31), then **M9** (borrowing an idle core: ADR-005's revisit trigger as an experiment -- ACCEPTED 2026-10-10, 3.41x
-with no host attached, ADR-005 amended) and **M10** (the PC as a placement node), all scheduled 2026-10-08 from the owner's status review, and
-**M11** (firmware over the cell, ACCEPTED 2026-10-10, session 36). M7 stays gated, now with its sandbox built,
-measured and dormant (`CONFIG_POT_WASM`, default off; ADR-003 records the numbers). Also open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6's
+with no host attached, ADR-005 amended) and **M10** (the PC as a placement node -- ACCEPTED 2026-10-10, session 35, caveat: the
+cable "pulled" by killing the process), all scheduled 2026-10-08 from the owner's status review, and
+**M11** (firmware over the cell, ACCEPTED 2026-10-10, session 36). M7: its sandbox is built, measured and dormant
+(`CONFIG_POT_WASM`, default off; ADR-003 records the numbers); the feature itself (guest actors) is wanted by the
+owner and half-built -- see session 37. Also open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6's
 combined node; a 2-hour combined run is clean, session 30) and the extender's hunting window mid-run (needs the
 owner to take the router away). The step-0 rerun and B's low inbound PDR are closed (session 30; the PDR was an
 accounting bug, fixed in `c70756f`). One owner, one application package per cluster is a recorded scope choice (ARCHITECTURE section 0.1).
