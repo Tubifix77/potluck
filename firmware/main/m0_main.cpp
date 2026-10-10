@@ -242,6 +242,16 @@ uint8_t g_rec_write_mac[kMacLen];
 uint8_t g_rec_ss[kHeaderSize + 80];
 size_t g_rec_ss_len = 0;
 
+#if CONFIG_POT_SERIAL_LINK
+// M10: when the host was last heard on the cable. A host that is a full member -- pot_hostnode, which
+// keeps membership from beacons like any node -- needs the cell's broadcasts: this board's own beacons,
+// and, when it relays (ADR-009), the ones it re-broadcasts for the others. So while a host has been
+// heard in the last kHostQuietMs, every broadcast also goes down the cable. ~30 small frames a second at
+// 921,600 baud; an M2/M8 bridge that ignores them is unaffected.
+std::atomic<uint32_t> g_host_heard_ms{0};
+constexpr uint32_t kHostQuietMs = 2000;
+#endif
+
 int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
     tee_frame("tx", mac, 0, data, len);
     if (len <= sizeof(g_rec_write) && len > kHeaderSize && data[6] == kOpWrite &&
@@ -269,6 +279,10 @@ int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t 
 #if CONFIG_POT_SERIAL_LINK
     if (std::memcmp(mac, kHostMac, kMacLen) == 0) {
         return serial_port_send(data, len);
+    }
+    if (std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0) {
+        const uint32_t heard = g_host_heard_ms.load();
+        if (heard != 0 && now_ms_() - heard < kHostQuietMs) serial_port_send(data, len);
     }
 #endif
     return espnow_send(mac, data, len);
@@ -1103,6 +1117,7 @@ void link_task(void*) {
             while (serial_port_rx_pop(sbuf, sizeof(sbuf), slen, srecv)) {
                 xSemaphoreTake(g_mutex, portMAX_DELAY);
                 tee_frame("rx", kHostMac, 0, sbuf, slen);
+                g_host_heard_ms.store(now_ms_() == 0 ? 1 : now_ms_());  // M10: broadcasts follow it down the cable
                 g_node->on_rx(kHostMac, sbuf, slen, srecv, 0);
                 xSemaphoreGive(g_mutex);
             }

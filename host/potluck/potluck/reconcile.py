@@ -85,8 +85,8 @@ def eligible(m: Manifest, a: ActorSpec) -> list[tuple[int, int]]:
         return [(a.pin, 1)]
     out: list[tuple[int, int]] = []
     for n in m.nodes:
-        if n.kind == "host":
-            continue  # M8: a host runs potluck-agent, not firmware; built-in actors never land there
+        if n.kind == "host" and not n.placement:
+            continue  # M8: a host that only offers named services; M10's placement hosts opt in
         if n.headroom_bytes < a.headroom_bytes:
             continue
         if a.priority == "background" and not n.background_allowed():

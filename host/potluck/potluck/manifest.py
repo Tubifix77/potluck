@@ -168,6 +168,10 @@ class NodeSpec:
     allow_background: bool | None = None
     owns: tuple[ResourceSpec, ...] = ()
     kind: str = "mcu"
+    #: M10: a host that takes part in placement -- portable actors may run on it, ranked and pulled by
+    #: gravity like any node. Opt-in, and for hosts only (an MCU is always a placement node): a host
+    #: without it is M8's, offering named services and nothing else.
+    placement: bool = False
 
     def background_allowed(self) -> bool:
         if self.allow_background is not None:
@@ -303,6 +307,7 @@ class Manifest:
                     "headroom_bytes": n.headroom_bytes,
                     **({} if n.allow_background is None else {"allow_background": n.allow_background}),
                     **({} if n.kind == "mcu" else {"kind": n.kind}),
+                    **({"placement": True} if n.placement else {}),
                     "owns": [
                         {
                             "path": r.path,
@@ -439,7 +444,7 @@ def check_path(path: Any, where: str, errors: list[ManifestError]) -> str | None
 
 _RESOURCE_KEYS = ("path", "unit", "kind", "access", "latency_class", "staleness_bound_ms",
                   "staleness_policy")
-_NODE_KEYS = ("node_id", "label", "power", "headroom_bytes", "allow_background", "owns", "kind")
+_NODE_KEYS = ("node_id", "label", "power", "headroom_bytes", "allow_background", "owns", "kind", "placement")
 _ACTOR_KEYS = ("name", "module", "latency_class", "needs", "headroom_bytes", "priority",
                "on_host_loss", "pin", "config")
 _TOP_KEYS = ("schema", "system", "min_core_version", "nodes", "actors", "bindings", "links",
@@ -481,6 +486,13 @@ def _parse_node(d: Any, where: str, errors: list[ManifestError]) -> NodeSpec | N
     if allow is not None and not isinstance(allow, bool):
         errors.append(ManifestError(f"{where}.allow_background", f"must be true or false; got {allow!r}"))
         allow = None
+    placement = d.get("placement", False)
+    if not isinstance(placement, bool):
+        errors.append(ManifestError(f"{where}.placement", f"must be true or false; got {placement!r}"))
+        placement = False
+    elif placement and kind != "host":
+        errors.append(ManifestError(f"{where}.placement", "is for hosts: every MCU is a placement node already"))
+        placement = False
 
     owns_raw = d.get("owns", [])
     owns: list[ResourceSpec] = []
@@ -495,7 +507,7 @@ def _parse_node(d: Any, where: str, errors: list[ManifestError]) -> NodeSpec | N
     if node_id is None or label is None or power is None or headroom is None or kind is None:
         return None
     return NodeSpec(node_id=node_id, label=label, power=power, headroom_bytes=headroom,
-                    allow_background=allow, owns=tuple(owns), kind=kind)
+                    allow_background=allow, owns=tuple(owns), kind=kind, placement=placement)
 
 
 def _parse_actor(d: Any, where: str, errors: list[ManifestError]) -> ActorSpec | None:

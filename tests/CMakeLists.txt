@@ -100,12 +100,16 @@ add_executable(pot_tests
   test_mc.cpp
 )
 target_link_libraries(pot_tests PRIVATE pot_portable)
+
+# M10: the PC as a placement node -- the boards' own Node, reconciler and actors, built for the host.
+add_executable(pot_hostnode "${CMAKE_CURRENT_SOURCE_DIR}/../host/native/pot_hostnode.cpp")
+target_link_libraries(pot_hostnode PRIVATE pot_portable)
 target_include_directories(pot_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Warnings are set high deliberately. The portable code is destined for a target where a
 # sign-conversion mistake in length arithmetic is a remote memory-safety bug, so the host build is
 # the cheapest place to catch one.
-foreach(tgt pot_portable pot_tests)
+foreach(tgt pot_portable pot_tests pot_hostnode)
   if(MSVC)
     target_compile_options(${tgt} PRIVATE /W4 /permissive- /utf-8)
     if(POT_WERROR)

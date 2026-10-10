@@ -97,5 +97,36 @@ class Portability(unittest.TestCase):
         self.assertEqual(img[24:28], bytes([0xFE, 0xFF, 3, 7 + 3]))
 
 
+class HostPlacement(unittest.TestCase):
+    """M10: a host that opts in to placement is eligible like any node; one that does not stays out."""
+
+    def with_host(self, placement: bool | None) -> dict:
+        d = doc({"name": "ticker", "module": "builtin:ticker", "latency_class": 3,
+                 "needs": ["potluck://lab/node-00fe/sys/uptime"], "config": {"period_ms": 100}})
+        host = {"node_id": 0x00FE, "label": "pc", "kind": "host",
+                "owns": [dict(UPTIME_C, path="potluck://lab/node-00fe/sys/uptime")]}
+        if placement is not None:
+            host["placement"] = placement
+        d["nodes"].append(host)
+        return d
+
+    def test_a_placement_host_is_eligible_and_its_gravity_ranks_it_first(self):
+        m = parse(self.with_host(True))
+        self.assertEqual(rc.eligible(m, m.actors[0])[-1], (0x00FE, 2))
+        self.assertEqual(rc.plan(m)[0].order[0], 0x00FE)
+
+    def test_a_services_only_host_stays_out(self):
+        for placement in (None, False):
+            m = parse(self.with_host(placement))
+            self.assertNotIn(0x00FE, [n for n, _ in rc.eligible(m, m.actors[0])])
+
+    def test_placement_is_for_hosts_only(self):
+        from potluck.manifest import ManifestErrors
+        d = self.with_host(True)
+        d["nodes"][0]["placement"] = True
+        with self.assertRaises(ManifestErrors):
+            parse(d)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -202,6 +202,22 @@ def main(argv: list[str] | None = None) -> int:
             c = verify_cert(bytes.fromhex(_flag(argv, "--check-cert") or ""), ca.public)
             print(f"ok: node 0x{c.node_id:04x}, key {c.node_pub.hex()}, issued {c.issued}")
             return 0
+        if "--host-cert" in argv:
+            # M10: enrol a host node (pot_hostnode) as a board is enrolled -- its own key, certified by
+            # the cluster CA for its node id -- so the other members verify its HELLO like any board's.
+            # The identity file is pot_hostnode's ("seed <hex>"); the CA's key and the certificate are
+            # appended to it. Its public key is derived from the seed by the node itself (--keygen
+            # prints it), so it is given here rather than computed twice.
+            ident = _flag(argv, "--host-cert") or ""
+            pub = bytes.fromhex(_flag(argv, "--pub") or "")
+            node = int(_flag(argv, "--node") or "0x00fe", 0)
+            ca = read_key(_flag(argv, "--ca-key") or "")
+            cert = build_cert(ca, node, pub)
+            verify_cert(cert, ca.public)
+            with open(ident, "a", encoding="ascii") as f:
+                f.write(f"ca {ca.public.hex()}\ncert {cert.hex()}\n")
+            print(f"host node 0x{node:04x} certified by CA {ca.id} -> {ident}")
+            return 0
         if "--deploy-cert" in argv:
             # Once, with the CA key: certify the deploy key for node-side image checks (M5 step 6).
             deploy = read_key(_flag(argv, "--deploy-cert") or "")
