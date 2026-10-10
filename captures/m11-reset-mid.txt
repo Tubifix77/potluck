@@ -1,0 +1,6 @@
+0x8160: image ../../firmware/build/potluck_m0.bin, 848272 B, counter 3, sha512 e06728e4899b26db...
+0x8160: before {'status': 'ok', 'node': 33120, 'received': 0, 'running': 2, 'floor': 2, 'state': 'confirmed', 'version': 'deploy-and-detach-162-g6aafa26-'}
+    0 %     0.2 s
+   24 %    22.0 s
+0x8160: commit unreachable after 36.6 s (22.6 KiB/s)
+rollout stopped

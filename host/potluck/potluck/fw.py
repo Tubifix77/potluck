@@ -186,10 +186,11 @@ def main(argv: list[str] | None = None) -> int:
             r = send_image(b, t, img, a.counter, trailer, a.chunk,
                            progress=lambda off, n, s: print(f"  {off * 100 // n:3d} %  {s:6.1f} s", flush=True))
             sent = time.monotonic() - t0
-            print(f"0x{t:04x}: commit {r['status']} after {sent:.1f} s ({len(img) / sent / 1024:.1f} KiB/s)")
             if r["status"] != "ok":
-                print("rollout stopped")
+                print(f"0x{t:04x}: transfer stopped after {sent:.1f} s: {r['status']} with {r['received']} B taken "
+                      f"-- the target keeps the image it runs; rollout stopped")
                 return 1
+            print(f"0x{t:04x}: committed after {sent:.1f} s ({len(img) / sent / 1024:.1f} KiB/s)")
             done = wait_confirmed(b, t, a.counter, a.confirm_timeout)
             took = time.monotonic() - t0
             if done is None or done["running"] != a.counter or done["state"] != "confirmed":
