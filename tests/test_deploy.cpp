@@ -475,6 +475,41 @@ TEST(deploy, only_deploy_opcodes_can_be_sent_as_deploys) {
              static_cast<uint16_t>(0));
 }
 
+namespace {
+struct OpSeen {
+    std::vector<uint8_t> ops;
+};
+size_t record_fn(void* ctx, uint16_t, uint16_t, uint8_t op, const uint8_t*, uint16_t, uint8_t* reply, size_t cap) {
+    static_cast<OpSeen*>(ctx)->ops.push_back(op);
+    if (cap < 1) return 0;
+    reply[0] = op;
+    return 1;
+}
+}  // namespace
+
+TEST(deploy, every_opcode_in_the_deploy_range_reaches_the_deploy_server) {
+    // M11's FW_* opcodes first reached the bench answered with ERR unknown_opcode: the range check
+    // admitted them, the node's dispatch did not. Every opcode the range admits must arrive.
+    DCell c;
+    c.build(2);
+    c.start();
+    c.advance_ms(300);
+    OpSeen seen;
+    ClientSide client;
+    c.slots[1].node->set_deploy_server(record_fn, &seen);
+    uint8_t wire[4] = {0x60, 0x81, 0, 0};
+    std::vector<uint8_t> want;
+    for (int op = 0; op < 256; ++op) {
+        if (!is_deploy_opcode(static_cast<uint8_t>(op))) continue;
+        want.push_back(static_cast<uint8_t>(op));
+        CHECK(c.slots[0].node->send_deploy(c.slots[1].node->config().node_id, static_cast<uint8_t>(op), wire, 4) != 0);
+        c.advance_ms(20);
+    }
+    CHECK(seen.ops == want);
+    CHECK_EQ(want.size(), static_cast<size_t>(8));  // DEPLOY_BEGIN..ABORT, FW_BEGIN..STATUS
+    CHECK_EQ(c.slots[1].node->counters().rx_unknown_opcode, 0u);
+}
+
 TEST(deploy, the_host_compilers_golden_image_parses_here) {
     // host/potluck/tests/test_deploy.py checks that compile_image() produces exactly these bytes;
     // this checks the node reads them as the host meant. Neither side can drift alone.
