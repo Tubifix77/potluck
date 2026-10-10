@@ -1,15 +1,15 @@
 {
     "D:/esp/esp-idf/components/esp_wifi/lib/esp32s3/libnet80211.a": {
         "abbrev_name": "libnet80211.a",
-        "size": 148128,
+        "size": 148124,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 121353,
+                "size": 121349,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 121353,
+                        "size": 121349,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -219,7 +219,7 @@
     },
     "esp-idf/main/libmain.a": {
         "abbrev_name": "libmain.a",
-        "size": 70192,
+        "size": 70394,
         "size_diff": 0,
         "memory_types": {
             "DIRAM": {
@@ -255,11 +255,11 @@
                 }
             },
             "Flash Code": {
-                "size": 13897,
+                "size": 14099,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 13897,
+                        "size": 14099,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -328,15 +328,15 @@
     },
     "esp-idf/esp_stdio/libesp_stdio.a": {
         "abbrev_name": "libesp_stdio.a",
-        "size": 67212,
+        "size": 67329,
         "size_diff": 0,
         "memory_types": {
             "Flash Data": {
-                "size": 66802,
+                "size": 66919,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 66802,
+                        "size": 66919,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -764,15 +764,15 @@
     },
     "D:/esp/esp-idf/components/esp_phy/lib/esp32s3/libphy.a": {
         "abbrev_name": "libphy.a",
-        "size": 34419,
+        "size": 34423,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 27902,
+                "size": 27906,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 27902,
+                        "size": 27906,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }

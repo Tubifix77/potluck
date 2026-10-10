@@ -328,15 +328,15 @@
     },
     "esp-idf/esp_stdio/libesp_stdio.a": {
         "abbrev_name": "libesp_stdio.a",
-        "size": 73062,
+        "size": 73179,
         "size_diff": 0,
         "memory_types": {
             "Flash Data": {
-                "size": 72652,
+                "size": 72769,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 72652,
+                        "size": 72769,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -437,7 +437,7 @@
     },
     "esp-idf/main/libmain.a": {
         "abbrev_name": "libmain.a",
-        "size": 71468,
+        "size": 71670,
         "size_diff": 0,
         "memory_types": {
             "DIRAM": {
@@ -473,11 +473,11 @@
                 }
             },
             "Flash Code": {
-                "size": 15161,
+                "size": 15363,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 15161,
+                        "size": 15363,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -655,15 +655,15 @@
     },
     "D:/esp/esp-idf/components/esp_wifi/lib/esp32s3/libpp.a": {
         "abbrev_name": "libpp.a",
-        "size": 65395,
+        "size": 65391,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 42859,
+                "size": 42855,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 42859,
+                        "size": 42855,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -764,15 +764,15 @@
     },
     "D:/esp/esp-idf/components/esp_phy/lib/esp32s3/libphy.a": {
         "abbrev_name": "libphy.a",
-        "size": 34443,
+        "size": 34447,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 27926,
+                "size": 27930,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 27926,
+                        "size": 27930,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
@@ -982,15 +982,15 @@
     },
     "esp-idf/esp_hw_support/libesp_hw_support.a": {
         "abbrev_name": "libesp_hw_support.a",
-        "size": 23574,
+        "size": 23578,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 14431,
+                "size": 14435,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 14431,
+                        "size": 14435,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }

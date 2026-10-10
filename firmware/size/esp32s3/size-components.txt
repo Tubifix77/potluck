@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xcbad0 bytes. Smallest app partition is 0x100000 bytes. 0x34530 bytes (20%) free.
+potluck_m0.bin binary size 0xcbc10 bytes. Smallest app partition is 0x100000 bytes. 0x343f0 bytes (20%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -31,13 +31,13 @@ Executing "ninja size-components"...
 
 ├─────────────────────────────────┼────────────┼──────┼───────┼──────────┼───────┼───────┼───────┼───────┼────────────┼────────┼────────────┼────────┼─────────┼──────────┼──────────────┼───────┼──────────┼───────────────┼──────────┼─────────────┤
 
-│ libnet80211.a                   │     148128 │    0 │     0 │        0 │  4818 │     0 │   938 │  3880 │     121353 │ 121353 │      14279 │      0 │   14279 │        0 │         7678 │  7678 │        0 │             0 │        0 │           0 │
+│ libnet80211.a                   │     148124 │    0 │     0 │        0 │  4818 │     0 │   938 │  3880 │     121349 │ 121349 │      14279 │      0 │   14279 │        0 │         7678 │  7678 │        0 │             0 │        0 │           0 │
 
 │ libtfpsacrypto.a                │      95841 │   80 │    80 │        0 │   572 │   444 │   128 │     0 │      79426 │  79426 │      15763 │      0 │   15763 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      70192 │    0 │     0 │        0 │ 39025 │ 38835 │   190 │     0 │      13897 │  13897 │        296 │      0 │     296 │        0 │        16974 │ 16974 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      70394 │    0 │     0 │        0 │ 39025 │ 38835 │   190 │     0 │      14099 │  14099 │        296 │      0 │     296 │        0 │        16974 │ 16974 │        0 │             0 │        0 │           0 │
 
-│ libesp_stdio.a                  │      67212 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      66802 │      0 │   66802 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      67329 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      66919 │      0 │   66919 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libwpa_supplicant.a             │      67011 │    0 │     0 │        0 │     8 │     0 │     8 │     0 │      63802 │  63802 │       1838 │      0 │    1838 │        0 │         1363 │  1363 │        0 │             0 │        0 │           0 │
 
@@ -45,7 +45,7 @@ Executing "ninja size-components"...
 
 │ liblwip.a                       │      64937 │    0 │     0 │        0 │    12 │     0 │    12 │     0 │      59559 │  59559 │       2896 │      0 │    2896 │        0 │         2470 │  2470 │        0 │             0 │        0 │           0 │
 
-│ libphy.a                        │      34419 │  940 │   940 │        0 │  5577 │    86 │  1277 │  4214 │      27902 │  27902 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libphy.a                        │      34423 │  940 │   940 │        0 │  5577 │    86 │  1277 │  4214 │      27906 │  27906 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libpot_espnow.a                 │      33408 │    0 │     0 │        0 │ 18520 │ 18500 │    20 │     0 │       3015 │   3015 │         10 │      0 │      10 │        0 │        11863 │ 11863 │        0 │             0 │        0 │           0 │
 

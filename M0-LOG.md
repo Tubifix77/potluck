@@ -4476,3 +4476,31 @@ Bench at the end: A and C on the normal build of `c30bb85`, B on its extender bu
 the owner's credentials), `m9-mc` at counter 22 (next 23+). The room-sensor package is not deployed now
 (one application package per cluster); `ps-room` can go back at 23+.
 
+**Session 35, continued -- M10: the PC as a placement node -- ACCEPTED (one caveat).** Built: `pot_hostnode`
+(`host/native/pot_hostnode.cpp`, a target of the host CMake): a Potluck node compiled from the boards' own sources
+(Node, reconciler, ticker, trust), with an identity it generates (`--keygen`) and `potluck.enrol --host-cert`
+certifies under the cluster CA; frames on stdin/stdout, statistics on stderr. `potluck.hostnode` owns the serial
+port and the COBS/CRC framing, verifies the package and compiles its image. Manifest: `"placement": true` on a host
+node (hosts only), and `reconcile.eligible` admits it. Firmware: while a host was heard on the cable in the last
+2 s, every broadcast also goes down it. `manifests/m10-ticker.json`; `tools/m10_report.py` (every node's actor
+events on the PC's clock -- a board prints its events each stats period, so their host_ts is up to 10 s late, and
+the first reading of an "8.5 s double run" was exactly that).
+
+Three bench faults, each fixed with a test: (1) A trusted the cable without a signature and so never verified the
+PC, and a relay forwards only verified members' HELLOs (ADR-009) -- B and C never heard of it; a signed HELLO on
+the cable is now authenticated, a failed one leaves the cable trusted and unverified (`18f67f1`). (2) B and C
+then admitted the PC and rejected every frame it sent, "untagged": the send path skipped the tag whenever the next
+hop was the trusted cable, also for a relayed member beyond it (`aaad923`). (3) The deploy that first carried a
+host in an eligible set reached A only ("2 failed"); the retry reached all three, and the cause was not found.
+
+Measured (A, C normal build and B extender build of `e4aa07f`/`a2b17b8`, `m10-ticker` at counter 24, A relaying):
+five cycles of the PC joining for 120 s and being killed (TerminateProcess -- no BYE, frames stop) -- handover to
+the PC each time, 7-31 ms between A's stop and the PC's start on one clock, never two runners; failover to A 629-687
+ms after the PC's last frame. A 30-minute run with the PC on: one handover, no move in 1,794 s; the kill criterion
+did not fire. `POT! read <hash>` (a new console instrument) on B, C and A read the ticker's values from the PC,
+owner 0x00fe, its clock's timestamps -- B and C through A's relay. **Accepted**, with the caveat that the cable was
+not physically pulled.
+
+Bench at the end: all three on `a2b17b8`'s firmware (built from the tree at `e4aa07f`+, stamped
+`deploy-and-detach-153-ge4aa07f-`), `m10-ticker` at counter 24 (next 25+), A's relay on until it reboots.
+

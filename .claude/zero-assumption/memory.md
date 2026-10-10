@@ -695,4 +695,5 @@ doc fetched as raw markdown from its repository), not from a summary.
 | **M9: borrowing idle cores, three boards** | 960 units of 10^6 float samples: 232.5-234.4 s on A alone, 67.9-68.8 s with B and C lending: 3.41-3.42x; result identical in every run | `captures/m9-duties*`, `m9-final-*` | 2026-10-10 | volatile | measured |
 | **Unit time per board (10^6 samples, mc_hits from IRAM)** | A ~460 ms, B ~330 ms, C ~480 ms | `mc`/`mc_lend` stats lines, `captures/m9-duties3-*` | 2026-10-10 | volatile | measured |
 | **Probe turnaround while a board computes** | flash-resident loop: A ~970 -> ~1290 us median; IRAM-resident: 937-943 us idle, 938-942 computing | `captures/m9-duties-*`, `m9-duties2-*` | 2026-10-10 | volatile | measured |
+| **M10: the PC as a placement node, cabled to A** | handover to the PC 5/5 (never two runners, gap 7-31 ms on one clock); failover to A 629-687 ms after the PC's last frame (6 times); 30 min with the PC on: no ownership move in 1,794 s | `captures/m10-cycles-2026-10-11-*`, `m10-soak-2026-10-11-*` | 2026-10-11 | volatile | measured |
 

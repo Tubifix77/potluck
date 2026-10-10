@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build-extender
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build-extender && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build-extender/partition_table/partition-table.bin D:/Projects/potluck/firmware/build-extender/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xd51c0 bytes. Smallest app partition is 0x100000 bytes. 0x2ae40 bytes (17%) free.
+potluck_m0.bin binary size 0xd5310 bytes. Smallest app partition is 0x100000 bytes. 0x2acf0 bytes (17%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -37,19 +37,19 @@ Executing "ninja size-components"...
 
 │ liblwip.a                       │      75899 │    0 │     0 │        0 │    16 │     0 │    16 │     0 │      70251 │  70251 │       3145 │      0 │    3145 │        0 │         2487 │  2487 │        0 │             0 │        0 │           0 │
 
-│ libesp_stdio.a                  │      73062 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      72652 │      0 │   72652 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      73179 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      72769 │      0 │   72769 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libmain.a                       │      71468 │    0 │     0 │        0 │ 39027 │ 38837 │   190 │     0 │      15161 │  15161 │        306 │      0 │     306 │        0 │        16974 │ 16974 │        0 │             0 │        0 │           0 │
+│ libmain.a                       │      71670 │    0 │     0 │        0 │ 39027 │ 38837 │   190 │     0 │      15363 │  15363 │        306 │      0 │     306 │        0 │        16974 │ 16974 │        0 │             0 │        0 │           0 │
 
 │ libwpa_supplicant.a             │      67007 │    0 │     0 │        0 │     8 │     0 │     8 │     0 │      63798 │  63798 │       1838 │      0 │    1838 │        0 │         1363 │  1363 │        0 │             0 │        0 │           0 │
 
-│ libpp.a                         │      65395 │    0 │     0 │        0 │ 17348 │     0 │  2640 │ 14708 │      42859 │  42859 │       3954 │      0 │    3954 │        0 │         1234 │  1234 │        0 │             0 │        0 │           0 │
+│ libpp.a                         │      65391 │    0 │     0 │        0 │ 17348 │     0 │  2640 │ 14708 │      42855 │  42855 │       3954 │      0 │    3954 │        0 │         1234 │  1234 │        0 │             0 │        0 │           0 │
 
-│ libphy.a                        │      34443 │  360 │   360 │        0 │  6157 │    86 │  1277 │  4794 │      27926 │  27926 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libphy.a                        │      34447 │  360 │   360 │        0 │  6157 │    86 │  1277 │  4794 │      27930 │  27930 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libpot_espnow.a                 │      33415 │    0 │     0 │        0 │ 18520 │ 18500 │    20 │     0 │       3022 │   3022 │         10 │      0 │      10 │        0 │        11863 │ 11863 │        0 │             0 │        0 │           0 │
 
-│ libesp_hw_support.a             │      23574 │ 2521 │  2521 │        0 │  5441 │   157 │   544 │  4740 │      14431 │  14431 │       1121 │      0 │    1121 │        0 │            0 │     0 │       24 │            24 │       36 │          36 │
+│ libesp_hw_support.a             │      23578 │ 2521 │  2521 │        0 │  5441 │   157 │   544 │  4740 │      14435 │  14435 │       1121 │      0 │    1121 │        0 │            0 │     0 │       24 │            24 │       36 │          36 │
 
 │ libspi_flash.a                  │      21921 │ 1347 │  1347 │        0 │ 18154 │    24 │  8823 │  9307 │       1278 │   1278 │       1142 │      0 │    1142 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
