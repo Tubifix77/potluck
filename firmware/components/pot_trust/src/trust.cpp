@@ -95,6 +95,31 @@ CertError image_trailer_check(const uint8_t ca_pub[kEdPubLen], const uint8_t* im
     return CertError::Ok;
 }
 
+void fw_signed_message(uint32_t counter, uint32_t image_len, const uint8_t sha512[64], uint8_t out[kFwSignedLen]) {
+    static const char kFwDomain[] = "potluck-firmware-v1";  // 19 characters + the NUL = 20
+    static_assert(sizeof(kFwDomain) == 20, "the domain is 20 bytes with its NUL");
+    std::memcpy(out, kFwDomain, sizeof(kFwDomain));
+    for (int i = 0; i < 4; ++i) {
+        out[20 + i] = static_cast<uint8_t>(counter >> (8 * i));
+        out[24 + i] = static_cast<uint8_t>(image_len >> (8 * i));
+    }
+    std::memcpy(out + 28, sha512, 64);
+}
+
+CertError fw_trailer_check(const uint8_t ca_pub[kEdPubLen], uint32_t counter, uint32_t image_len,
+                           const uint8_t sha512[64], const uint8_t* trailer, size_t trailer_len) {
+    if (trailer == nullptr || trailer_len != kImageTrailerLen) return CertError::Length;
+    NodeCert c{};
+    const CertError e = key_cert_check(trailer, kNodeCertLen, ca_pub, kCertRoleDeploy, c);
+    if (e != CertError::Ok) return e;
+    uint8_t msg[kFwSignedLen];
+    fw_signed_message(counter, image_len, sha512, msg);
+    if (crypto_ed25519_check(trailer + kNodeCertLen, c.node_pub, msg, sizeof(msg)) != 0) {
+        return CertError::BadSignature;
+    }
+    return CertError::Ok;
+}
+
 CertError key_cert_check(const uint8_t* raw, size_t len, const uint8_t ca_pub[kEdPubLen], uint8_t role,
                          NodeCert& out) {
     if (raw == nullptr || len != kNodeCertLen) return CertError::Length;

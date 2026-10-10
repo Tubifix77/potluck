@@ -70,6 +70,16 @@ constexpr size_t kImageTrailerLen = kNodeCertLen + kEdSigLen;  // 176
 CertError image_trailer_check(const uint8_t ca_pub[kEdPubLen], const uint8_t* image, size_t image_len,
                               const uint8_t* trailer, size_t trailer_len);
 
+// M11: the same trailer, for a firmware image -- the deploy key's signature over
+// "potluck-firmware-v1\0" || counter (u32 LE) || length (u32 LE) || SHA-512(image). The digest is given,
+// because a firmware image is ~1 MB and is hashed as it streams into flash; the counter is signed so a
+// replayed older image cannot claim a newer number. A different domain from a package's, so neither
+// signature can be passed off as the other.
+constexpr size_t kFwSignedLen = 20 + 4 + 4 + 64;
+void fw_signed_message(uint32_t counter, uint32_t image_len, const uint8_t sha512[64], uint8_t out[kFwSignedLen]);
+CertError fw_trailer_check(const uint8_t ca_pub[kEdPubLen], uint32_t counter, uint32_t image_len,
+                           const uint8_t sha512[64], const uint8_t* trailer, size_t trailer_len);
+
 struct Identity {
     bool has_key = false;
     uint8_t seed[kEdSeedLen] = {};  // the private key; never leaves the node

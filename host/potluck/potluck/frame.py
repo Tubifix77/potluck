@@ -69,6 +69,10 @@ class Op(IntEnum):
     DEPLOY_CHUNK = 0x31
     DEPLOY_COMMIT = 0x32
     DEPLOY_ABORT = 0x33
+    FW_BEGIN = 0x34  # M11: firmware over the cell (potluck.fw)
+    FW_CHUNK = 0x35
+    FW_COMMIT = 0x36
+    FW_STATUS = 0x37
     SAFE_STATE = 0x50
     ERR = 0x7F
 

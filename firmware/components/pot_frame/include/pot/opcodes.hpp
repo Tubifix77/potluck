@@ -50,7 +50,15 @@ constexpr uint8_t kOpDeployBegin = 0x30;
 constexpr uint8_t kOpDeployChunk = 0x31;
 constexpr uint8_t kOpDeployCommit = 0x32;
 constexpr uint8_t kOpDeployAbort = 0x33;
-inline bool is_deploy_opcode(uint8_t op) { return op >= kOpDeployBegin && op <= kOpDeployAbort; }
+// M11: firmware over the cell (pot/fw.hpp). Answered with a REPLY carrying FwReply, routed like the
+// deploy opcodes above -- through the deploy server, and through the deploy client on the board that
+// passes a request on to the node it is for.
+constexpr uint8_t kOpFwBegin = 0x34;
+constexpr uint8_t kOpFwChunk = 0x35;
+constexpr uint8_t kOpFwCommit = 0x36;
+constexpr uint8_t kOpFwStatus = 0x37;
+inline bool is_deploy_opcode(uint8_t op) { return op >= kOpDeployBegin && op <= kOpFwStatus; }
+inline bool is_fw_opcode(uint8_t op) { return op >= kOpFwBegin && op <= kOpFwStatus; }
 // constexpr uint8_t kOpMigratePrepare = 0x40;
 // constexpr uint8_t kOpMigrateCommit  = 0x41;
 

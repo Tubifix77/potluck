@@ -47,7 +47,7 @@ from .value import NsError, Quality, Reading, Value
 
 #: Requests whose REPLY carries a deploy status rather than a namespace reading.
 _DEPLOY_OPS = frozenset({fr.Op.DEPLOY_BEGIN, fr.Op.DEPLOY_CHUNK, fr.Op.DEPLOY_COMMIT,
-                         fr.Op.DEPLOY_ABORT})
+                         fr.Op.DEPLOY_ABORT, fr.Op.FW_BEGIN, fr.Op.FW_CHUNK, fr.Op.FW_COMMIT, fr.Op.FW_STATUS})
 
 #: The reserved MAC the firmware routes to the UART -- pot::kHostMac in serial_port.cpp.
 HOST_MAC = bytes((0x02, 0x00, 0x00, 0x00, 0x00, 0xFE))
