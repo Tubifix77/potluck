@@ -12,7 +12,7 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07; M6, M6.1 and M8 on 2026-10-08; M9, M10 and M11 on 2026-10-10.** M3: deploy to the cell through one board,
+**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07; M6, M6.1 and M8 on 2026-10-08; M9, M10 and M11 on 2026-10-10; M7 on 2026-10-11.** M3: deploy to the cell through one board,
 detach and power-cycle, and a broken module that all three nodes revert themselves (M0-LOG session 18). M2: a 10.05-minute three-board session over COM6
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
@@ -23,9 +23,9 @@ accepted too** (sessions 21-22 and 26), and so are **M6.1** (CR-6, the combined 
 API; one acceptance line left, session 31), then **M9** (borrowing an idle core: ADR-005's revisit trigger as an experiment -- ACCEPTED 2026-10-10, 3.41x
 with no host attached, ADR-005 amended) and **M10** (the PC as a placement node -- ACCEPTED 2026-10-10, session 35, caveat: the
 cable "pulled" by killing the process), all scheduled 2026-10-08 from the owner's status review, and
-**M11** (firmware over the cell, ACCEPTED 2026-10-10, session 36). M7: its sandbox is built, measured and dormant
-(`CONFIG_POT_WASM`, default off; ADR-003 records the numbers); the feature itself (guest actors) is wanted by the
-owner and half-built -- see session 37. Also open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6's
+**M11** (firmware over the cell, ACCEPTED 2026-10-10, session 36). **M7** (guest actors in a WebAssembly sandbox,
+ACCEPTED 2026-10-11, session 38) is built into boards only with `CONFIG_POT_WASM` (default off; the bench runs
+it). Also open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6's
 combined node; a 2-hour combined run is clean, session 30) and the extender's hunting window mid-run (needs the
 owner to take the router away). The step-0 rerun and B's low inbound PDR are closed (session 30; the PDR was an
 accounting bug, fixed in `c70756f`). One owner, one application package per cluster is a recorded scope choice (ARCHITECTURE section 0.1).
@@ -55,18 +55,22 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > | **B** | 0x7368 | b8:1f:3f:da:73:68 | COM4 | extender (poor-mans-extender's hotspot) | **holds the owner's house Wi-Fi and hotspot credentials**: its ESP-IDF log can name networks, so read it with JSON-only tools (`tools/json_capture.py`, `tools/console_tap.py` writes everything -- check before committing); never type or log credentials, and an erase is the owner's to run |
 > | **C** | 0x8160 | b8:1f:3f:da:81:60 | COM5 | normal | |
 >
-> All three run firmware `599260f` at firmware counter 5 (next image 6+), enrolled under the cluster CA (keys in the
-> git-ignored `keys/`); the cell is on channel 1. The SN65HVD230 CAN modules are OFF (`bench/m4-can-wiring.html` to
+> Since session 38 all three run the M7 sandbox builds at firmware counter 8 (next image 9+): A and C `m7-node` of
+> `f738486`, B `extender-m7` of `5799bd4` (the same code); package `m7-guests` at counter 28 (next 29+). Enrolled under
+> the cluster CA (keys in the git-ignored `keys/`); the cell is on channel 1. The SN65HVD230 CAN modules are OFF (`bench/m4-can-wiring.html` to
 > rewire). The full board register (CH343 serials, bring-up history) is in WHEN-THE-BOARDS-ARRIVE.md.
 >
-> ## HANDOVER, 2026-10-11: **M7 (guest actors) is wanted by the owner and half-built** (M0-LOG session 37).
+> ## HANDOVER, 2026-10-11 (night): **M7 ACCEPTED -- guest actors run on the boards** (M0-LOG session 38).
 >
-> Commit `594538a` has the guest-author certificate, image format v2 with a guest section, a per-load import
-> table, the guest API (`guests/potluck_guest.rs`) and two compiled example guests; untested, no tests. Missing:
-> the guest blob format (`guest.hpp` is cut off), the guest actor itself, its registration, tests, host tooling,
-> M7's acceptance criteria, bench evidence -- the full list is in session 37. **Two attempts at this work were
-> stopped by safety reviews** (the first was rolled back); judge for yourself whether to continue. The tree builds
-> and every gate is green; the boards run `599260f`, which has none of it.
+> A guest is a WebAssembly module from an author the owner certifies (role-3 certificate); the owner's package pins
+> it by SHA-256 and wires its inputs and outputs. `pot/guest.hpp` holds the format, runtime and actor; host side
+> `potluck.guest` (sign/verify bundles), `potluck.enrol --guest-cert`, `ctl deploy --guests ../..`; runbook section
+> 12. On the bench: placed, failed over with its checkpoint (165 -> 167 on C -> 174 back on B), a never-returning
+> guest quarantined, a bad author refused, 134 s of fuel burned on C with no death. One bench fault fixed
+> (`fa64599`: a signed v2 image ended at body_len). Bench: firmware counter 8 (sandbox builds), package `m7-guests`
+> at counter 28; author key `keys/acme.*`, bundles `keys/*.guest.json`. Session 37's note that two earlier
+> attempts were stopped by safety reviews: this session judged the work acceptable (a sandbox that restricts code,
+> asked for by the owner) and kept section 12's line -- a guest can write nothing. Open: as before.
 >
 > ## HANDOVER, 2026-10-10 (evening, owner away): **M11 ACCEPTED; M7 measured as an experiment and left dormant** (M0-LOG session 36).
 >

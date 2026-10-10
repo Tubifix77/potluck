@@ -4680,3 +4680,75 @@ still run `599260f`, which contains none of `594538a`.
 
 Also kept, outside the repo: the uncommitted variant of the `k_pin` test module that was on disk
 (`wasm_modules.h` now matches `tools/wasm_modules.py` and HEAD again).
+
+## Session 38 -- 2026-10-11, M7: guest actors -- built, tested, ACCEPTED on the bench
+
+The owner asked for M7 finished from `594538a`, noting that earlier attempts had been stopped by safety reviews
+and leaving the judgement to this session. Judged acceptable and continued: the work is a sandbox that
+*restricts* code a third party wrote -- signed by an author the owner certifies, with no pins, radio, writable
+resources or unbounded time -- and the owner asked for it. Section 12's line is kept by construction: a guest can
+write nothing, so it is never between an actuator and anything. Acceptance and kill criteria were written into
+section 13 before the bench work (`7192689`).
+
+**Built** (`de7e1f3`, then `fa64599`, `5799bd4`):
+- *The guest blob* (pot/guest.hpp): magic, version, inputs and outputs (path hashes, i32/f32), memory pages (0-1),
+  fuel per tick, the author's role-3 certificate and signature, the module. One blob per guest actor.
+- *GuestLibrary*: at boot, after the image parses, every blob is copied out of the deploy buffer (which the
+  receiver reuses) into a PSRAM pool; each guest must be run by exactly one guest actor.
+- *GuestRuntime*: one context per guest between the link task and a single guest task (16 KB, priority 1, core 1:
+  the sandbox's fuel counter is one global, so guests run one at a time; the sandbox now refuses a second
+  concurrent call with `pot_wasm_busy`). A request/result handshake through an atomic state; a generation per
+  activation, so a run finished for an actor the reconciler destroyed is dropped and its instance unloaded --
+  the actor's slot is never touched after it is gone. The author is checked once per boot before the first load;
+  an unenrolled node runs no guest.
+- *The nine imports* (`guests/potluck_guest.rs`): input_f32/i32 and quality by index (a number of another type
+  converts), publish_f32/i32 (wrong index or type is a trap), save/restore (128 B), log, now_ms.
+- *GuestActor* (portable row, `kGuestKind`): each period it refreshes remote inputs, snapshots them with the
+  checkpoint, and hands over; it publishes a finished run's outputs with one timestamp and keeps its save. A trap
+  publishes nothing, marks every output FAULTY and discards the instance; three in a row, or one load that cannot
+  succeed (signature, import, memory, no tick), quarantine it for the activation. Outputs: read-only L3
+  resources at `act/<actor>/<name>`, staleness five periods.
+- *Board*: the library loaded in `load_and_apply` before the portable actors; guest authors checked on the crypto
+  worker with the image signature, before commit; the guest task; a meter (esp_timer, free heap) for the stats.
+  Without `CONFIG_POT_WASM` the deploy buffer is 512 B again (the default image grew 76 B, internal RAM unchanged)
+  and an image with guests is refused.
+- *Host*: `potluck.guest` (bundle = module + author cert + signature; sign, verify, encode_blob), `enrol
+  --guest-cert`, `signing keygen --role guest`; `deploy` compiles `guest:<name>` actors into a version-2 image,
+  pinned by `config.sha256`, inputs in `needs` order, outputs `name:type`, never eligible on a host; `ctl deploy
+  --guests DIR` checks every author under the CA first (`--skip-guest-check` only to test the nodes).
+- *Tests*: 22 C++ cases in `test_guest.cpp` (blob, signatures, image v2, library, actor end to end with the compiled
+  guests and hand-assembled ones, quarantine, transactional ticks, refused imports, meter, a golden blob from
+  Python), a failover on the simulated cell in `test_reconcile.cpp`, a receiver test in `test_deploy.cpp`, 9 Python
+  cases. 381 C++ cases plain and under ASan, 25 Python suites, the portability gate: green.
+
+**Bench** (firmware counter 6, then 7, then 8 over the cell with M11; captures `m7-*`):
+- *Fault found and fixed*: the first deploy of package 25 was refused at COMMIT as `bad_length` on A
+  (`captures/m7-v2fault-*`). The receiver took 24 + body_len as the image and the guest section as part of the
+  trailer -- `594538a` added the section, nothing sent a signed v2 image through the receiver. `image_extent()`
+  walks it (`fa64599`), with a test. Firmware 7 carried the fix.
+- *Package 25* (`captures/m7-guest-run-*`): die_b, the alarm (`overheat_alarm`, fuel 100k, period 1 s) and `spin`
+  (`endless_tick`, 2M fuel, period 2 s). Both ranked B (the alarm by gravity: B owns its input). The alarm read
+  52.5 degC and published 52.3, alarm 1, the count -- GOOD from A. `spin` ran out of fuel three ticks running (each
+  ~3.1-3.3 s on B, ~1.6 us a unit for that loop) and was quarantined, FAULTY from A.
+- *Failover*: B reset by esptool at count 165; one read of NO_DATA, then C published 167; B back after its boot scan
+  (~5 s NO_DATA), the alarm returned to B at 174 after C's 173. `spin` went to A for one strike and back to B for
+  three more (quarantine is per activation). Deaths: A and C declared B dead at the reset; B declared A and C dead
+  in its first 3-6 s after each boot (its known Wi-Fi scan), before any guest started there.
+- *Refusal*: package 26 with the alarm's author signature one bit wrong -- refused by the host; with
+  `--skip-guest-check`, by A at COMMIT ("guest 0's author signature failed"), nothing written, floor unchanged.
+- *Measured* (firmware 8): the alarm's tick 363 us on B, its first run 55 ms (author check, load, init); 80.6 KB of
+  heap per instance (79.7 KB for `spin`); flash 943,692 B for the sandbox node build against 848,856 B default.
+- *Duty* (`captures/m7-guest-duty-*`, package 27: `spin` pinned to C, 20M fuel a tick): 134 s of burning, three
+  faults 48 s apart, quarantine. C's turnaround as A and B measured it: median 983 us before, 1112 us burning, 955
+  after (max 2.3 ms); heartbeat loss on C's links 6.0, 4.0, 7.2 per minute; no death during the burn.
+- *Not a fault, a stated property*: deploying package 27 rebooted every board at once, so no checkpoint survived and
+  the alarm started at 1 again -- checkpoints are RAM-only (section 7.7, PS-4).
+
+**Accepted** against each line of section 13's M7; the kill criterion did not fire. Caveats in section 13: one
+guest task per node; quarantine per activation; checkpoints do not survive a whole-cell reboot; never on a PC; the
+alarm's input was remote only while C held it.
+
+Bench at the end: firmware counter 8 (next 9+), A and C `m7-node` of `f738486`, B `extender-m7` of `5799bd4` (same
+code; the stamps differ by a size-report commit); package `m7-guests` at counter 28 (next 29+), the alarm on B,
+`spin` quarantined. Author key `keys/acme.*` (author 7), bundles `keys/*.guest.json`.
+
