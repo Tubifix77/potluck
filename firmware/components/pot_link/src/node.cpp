@@ -148,7 +148,9 @@ bool Node::send_frame(PeerLink* p, const uint8_t mac[kMacLen], uint8_t opcode, c
     }
     spec.auth = (tag_with != nullptr);
 
-    const uint16_t cap = (p != nullptr) ? p->max_payload() : kMaxPayloadV1;
+    // M11: the trusted cable is a serial link, not an ESP-NOW one: section 5.3's v1 floor is about
+    // radios, and the cable's framing carries the v2 MTU both ways (serial_port, serial_framing.py).
+    const uint16_t cap = is_trusted_link(mac) ? kMaxPayloadV2 : (p != nullptr) ? p->max_payload() : kMaxPayloadV1;
     if (payload_len > cap) {
         return false;
     }
@@ -1729,7 +1731,7 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
 
     // Parse against the cap pinned for this peer (§5.3); an unknown peer gets the v1 floor, which
     // is the conservative answer when we do not yet know what it can send.
-    const uint16_t cap = (p != nullptr) ? p->max_payload() : kMaxPayloadV1;
+    const uint16_t cap = is_trusted_link(src_mac) ? kMaxPayloadV2 : (p != nullptr) ? p->max_payload() : kMaxPayloadV1;
     Frame f;
     const FrameError e = parse(data, len, f, cap);
     if (e != FrameError::Ok) {

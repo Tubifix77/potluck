@@ -29,7 +29,7 @@ namespace pot {
 constexpr size_t kFwTrailerLen = 176;  // pot_trust's kImageTrailerLen
 constexpr size_t kFwBeginLen = 2 + 4 + 4 + kFwTrailerLen;
 constexpr size_t kFwChunkHeaderLen = 2 + 4 + 2;
-constexpr size_t kFwChunkMax = 1024;  // per frame; the host sends what its link carries
+constexpr size_t kFwChunkMax = 1024;  // per frame: 1032 B of payload, inside ESP-NOW v2's 1446 and the cable's
 constexpr size_t kFwTargetLen = 2;    // COMMIT and STATUS: the target alone
 constexpr size_t kFwVersionLen = 32;  // esp_app_desc_t's version field
 

@@ -463,6 +463,64 @@ TEST(auth, the_host_cable_is_trusted_without_a_signature_and_nothing_else_is) {
     CHECK(peer_by_id(*an.node, 0x0042) == nullptr);
 }
 
+TEST(auth, the_host_cable_carries_v2_sized_frames_and_an_unpinned_radio_peer_does_not) {
+    // M11: a firmware chunk of ~1 KB arrives over the cable. Section 5.3's 226 B floor is for a radio
+    // peer whose ESP-NOW version is unknown; the cable is serial and carries the v2 MTU.
+    TestCa ca(1);
+    AuthCell c;
+    std::vector<std::unique_ptr<Identity>> ids;
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x100, 0x11)));
+    c.build(std::move(ids), true);
+    AuthNode& an = c.nodes[0];
+    delete an.node;
+    NodeConfig cfg;
+    cfg.node_id = 0x100;
+    cfg.boot_epoch = 1;
+    std::memcpy(cfg.mac, an.mac, kMacLen);
+    const uint8_t host_mac[6] = {0x02, 0, 0, 0, 0, 0xFE};
+    cfg.has_trusted_mac = true;
+    std::memcpy(cfg.trusted_mac, host_mac, 6);
+    an.node = new Node(cfg, an.hal);
+    an.node->set_trust(an.id.get(), true);
+    an.node->start();
+    static int served = 0;
+    static size_t served_len = 0;
+    served = 0;
+    an.node->set_deploy_server(
+        [](void*, uint16_t, uint16_t, uint8_t, const uint8_t*, uint16_t len, uint8_t* reply, size_t cap) -> size_t {
+            ++served;
+            served_len = len;
+            if (cap < 1) return 0;
+            reply[0] = 0;
+            return 1;
+        },
+        nullptr);
+    uint8_t base[kHelloBaseLen];
+    base_hello(0xFFFE, 1, base);
+    inject_hello(*an.node, host_mac, 0xFFFE, base, sizeof(base), c.now_us);
+    CHECK(peer_by_id(*an.node, 0xFFFE) != nullptr);
+
+    std::vector<uint8_t> payload(1032, 0x5A);
+    payload[0] = 0x00;  // a target that is the node itself
+    payload[1] = 0x01;
+    EncodeSpec spec;
+    spec.src = 0xFFFE;
+    spec.dst = 0x100;
+    spec.opcode = kOpFwChunk;
+    spec.msg_id = 7;
+    spec.ack_req = true;
+    std::vector<uint8_t> wire(encoded_size(spec, static_cast<uint16_t>(payload.size())));
+    size_t n = 0;
+    CHECK(encode(spec, payload.data(), static_cast<uint16_t>(payload.size()), wire.data(), wire.size(), n) == FrameError::Ok);
+    an.node->on_rx(host_mac, wire.data(), n, c.now_us, 0);
+    CHECK_EQ(served, 1);
+    CHECK_EQ(served_len, payload.size());
+    const uint32_t bad_before = an.node->counters().rx_bad_frame;
+    an.node->on_rx(kMacB, wire.data(), n, c.now_us, 0);  // the same bytes from a radio MAC
+    CHECK_EQ(served, 1);
+    CHECK_EQ(an.node->counters().rx_bad_frame, bad_before + 1);
+}
+
 TEST(auth, every_signature_and_key_operation_goes_through_run_heavy) {
     // On the board the link task cannot hold an Ed25519 operation on its stack, so the node must
     // hand every one to run_heavy. Count them: if one ever runs inline again, the board overflows.

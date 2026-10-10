@@ -2,7 +2,7 @@
 
     python -m potluck.fw --port COM6 status [--targets 6300,7368,8160]
     python -m potluck.fw --port COM6 rollout <image.bin> --counter N --key <deploy.key> --bcert <deploy.bcert>
-                         [--targets 7368,8160,6300] [--confirm-timeout 180]
+                         [--targets 7368,8160,6300] [--image-for 7368=<other.bin>] [--confirm-timeout 180]
 
 Every request goes to the board the host is cabled to and names its target; that board answers for
 itself and passes a request for any other node on to it (fw_rt in firmware/main/m0_main.cpp), so the image is
@@ -28,7 +28,8 @@ from . import frame as fr
 
 FW_DOMAIN = b"potluck-firmware-v1\0"
 TRAILER_LEN = 176
-CHUNK_DEFAULT = 200  # what the cable reliably carries (a package's chunks are 220)
+CHUNK_DEFAULT = 1024  # pot/fw.hpp's kFwChunkMax: the cable and ESP-NOW v2 both carry it (M11)
+CHUNK_MAX = 1024
 STATUS = {0: "ok", 1: "too_large", 2: "downgrade", 3: "not_started", 4: "bad_offset", 5: "malformed",
           6: "busy", 7: "bad_signature", 8: "store_failed", 9: "bad_image", 10: "unreachable", 11: "incomplete"}
 STATE = {0: "confirmed", 1: "on_trial", 2: "factory"}
@@ -57,6 +58,8 @@ def begin_payload(target: int, image_len: int, counter: int, trailer: bytes) -> 
 
 
 def chunk_payload(target: int, offset: int, data: bytes) -> bytes:
+    if len(data) > CHUNK_MAX:
+        raise FwError(f"a chunk is at most {CHUNK_MAX} bytes")
     return struct.pack("<HIH", target, offset, len(data)) + data
 
 
@@ -141,6 +144,8 @@ def main(argv: list[str] | None = None) -> int:
     ro.add_argument("--key", required=True)
     ro.add_argument("--bcert", required=True)
     ro.add_argument("--targets", default="7368,8160,6300")
+    ro.add_argument("--image-for", action="append", default=[], metavar="NODE=IMAGE",
+                    help="a different image for one node (a board built as another variant)")
     ro.add_argument("--chunk", type=int, default=CHUNK_DEFAULT)
     ro.add_argument("--confirm-timeout", type=float, default=180.0)
     a = ap.parse_args(argv)
@@ -156,12 +161,17 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         from .signing import read_key
 
-        img = open(a.image, "rb").read()
         key = read_key(a.key)
         bcert = bytes.fromhex(open(a.bcert, encoding="ascii").read().strip())
-        trailer = fw_trailer(img, a.counter, key.secret, bcert)
-        print(f"image {len(img)} B, counter {a.counter}, sha512 {hashlib.sha512(img).hexdigest()[:16]}...")
+        paths = {t: a.image for t in _targets(a.targets)}
+        for spec in a.image_for:
+            node, _, path = spec.partition("=")
+            paths[int(node, 16)] = path
         for t in _targets(a.targets):
+            img = open(paths[t], "rb").read()
+            trailer = fw_trailer(img, a.counter, key.secret, bcert)
+            print(f"0x{t:04x}: image {paths[t]}, {len(img)} B, counter {a.counter}, "
+                  f"sha512 {hashlib.sha512(img).hexdigest()[:16]}...")
             before = status(b, t)
             print(f"0x{t:04x}: before {before}")
             t0 = time.monotonic()
