@@ -12,7 +12,7 @@ so that stays visible.
 Code state: **M2 accepted** (a 13.7-minute session replays to a byte-identical digest), **half of M4
 accepted** (the locality-contract checker rejects a cross-node L1 binding, naming both ends), and §7.8's
 coordinator/worker pattern measured in simulation (19 workers, 18.99x, no work lost when one dies).
-**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07; M6, M6.1 and M8 on 2026-10-08; M9 on 2026-10-10; M10 on 2026-10-11.** M3: deploy to the cell through one board,
+**M0, M1, M2 and M3 are ACCEPTED on hardware (2026-10-04); M4 on 2026-10-05; M5 on 2026-10-07; M6, M6.1 and M8 on 2026-10-08; M9 on 2026-10-10; M10 on 2026-10-10.** M3: deploy to the cell through one board,
 detach and power-cycle, and a broken module that all three nodes revert themselves (M0-LOG session 18). M2: a 10.05-minute three-board session over COM6
 replays to a byte-identical 18-entry namespace (M0-LOG session 17). M0: a 24.52-hour soak, then a distance sweep through
 the owner's two-storey house in which the kill criterion did not fire. M1: potctl on a CP2102 cabled to
@@ -41,7 +41,7 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## HANDOVER, 2026-10-11 (morning): **M9 and M10 ACCEPTED** (M0-LOG session 35). The roadmap's milestones are done.
+> ## HANDOVER, 2026-10-10 (morning): **M9 and M10 ACCEPTED** (M0-LOG session 35). The roadmap's milestones are done.
 >
 > M10: the PC joins as `pot_hostnode` (`host/native/`, built by the host CMake into build/tests) through
 > `python -m potluck.hostnode --port COM6 --package <pkg> --identity ../../keys/host-00fe.id` (enrolled under the CA;

@@ -4405,7 +4405,7 @@ never true, 134 GOOD reads against 31 NO DATA (C's own resets: failover and sett
 frames per B reset ignored as heard away from home. What the desk cannot show is still open: that a person in the
 room is detected at all (PS-0, the boards placed and the owner walking the script), and B's transmit stall.
 
-## Session 34 -- 2026-10-10 (late evening and night, owner present), PS-0 in the room, and the documents
+## Session 34 -- 2026-10-09/10 (late evening and night, owner present), PS-0 in the room, and the documents
 
 **The boards placed** per passive-sensor's run sheet: A at the PC on its cable, B on the left wall, C in the
 top-left corner, all facing into the triangle; B and C on wall chargers, the CAN modules removed. At A, B and
@@ -4430,7 +4430,7 @@ architecture's M6.1 and M8.2 progress, this log, the handover. The two applicati
 so Potluck's public README names them without links. Not yet accepted in M8.2: 30 minutes of empty room in
 place and 24 hours with no PC.
 
-## Session 35 -- 2026-10-10/11 (overnight, the owner asleep), M9: borrowing an idle core -- ACCEPTED
+## Session 35 -- 2026-10-10 (early morning, the owner asleep), M9: borrowing an idle core -- ACCEPTED
 
 **Housekeeping first.** The gate scripts' hand-kept Python suite lists had silently missed `test_agent`,
 `test_modules` and `test_reconcile`; both now run every suite. `run_all_tests.ps1` called a bare `bash`,
@@ -4504,3 +4504,60 @@ not physically pulled.
 Bench at the end: all three on `a2b17b8`'s firmware (built from the tree at `e4aa07f`+, stamped
 `deploy-and-detach-153-ge4aa07f-`), `m10-ticker` at counter 24 (next 25+), A's relay on until it reboots.
 
+
+## Session 36 -- 2026-10-10 (afternoon, then the owner away), M11: firmware over the cell -- ACCEPTED; M7 as an experiment
+
+The owner's go: "do M11 then M7", with explicit permission to download a WebAssembly runtime for M7 after
+naming it from official sources. Away from the afternoon on: decisions in this session are the session's.
+
+**Dates corrected first.** The previous session wrote 2026-10-11 for M9, M10 and M11's planning; the commits
+say 2026-10-10 (M10 accepted at 06:17). Every "2026-10-11" in the documents and the ledger is now 2026-10-10,
+and sessions 34 and 35 carry the dates their commits do.
+
+**M11 built.** Portable half (`372640e`): opcodes FW_BEGIN/CHUNK/COMMIT/STATUS (0x34-0x37); a firmware signature
+in pot_trust under its own domain, the deploy key's over "potluck-firmware-v1\0" || counter || length ||
+SHA-512(image), behind the deploy key's certificate (`fw_trailer_check`); `FwReceiver` (pot/fw.hpp) -- in-order
+chunks hashed as they stream, a downgrade refused at BEGIN, nothing activated unless the signature and then the
+sink's own image check pass; `potluck.fw` (sign, status, rollout). A golden trailer from Python verifies in C++.
+Board half (`202c7c9`): `partitions.csv` keeps `factory` and appends `otadata` + `ota_0` + `ota_1` (2 MB each) so
+nothing moves; `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`; `EspOtaSink` (ESP-IDF's OTA API, sequential writes so a
+sector is erased as the image reaches it, never ~0.9 MB at once); `fw_rt` in `m0_main.cpp` -- floor and counters
+in NVS, a new image confirmed only after `CONFIG_POT_TRIAL_HEARTBEATS` heartbeats with at least one *radio*
+peer alive (the cable does not count), rolled back by the node itself after `CONFIG_POT_FW_TRIAL_TIMEOUT_MS`
+(120 s), and the board on the cable a proxy for any other target (the request passes on unchanged, the REPLY
+comes back: nothing is stored on the way). One cable flash per board brought the new table and bootloader.
+
+Two bench faults, each with a test: (1) the node's dispatch did not route the new opcodes -- the range check
+admitted them, the `switch` did not, and the boards answered ERR unknown_opcode (`44d75c3`, a test that every
+opcode the deploy range admits reaches the server); (2) the cable was capped at section 5.3's 226 B v1 floor,
+which is about radios of unknown version -- the cable is serial and its framing carries the v2 MTU both ways, so
+the trusted cable now carries v2 frames and a chunk is 1 KB (`6aafa26`; 3.3 -> 9.2 KiB/s). And two host-tool
+faults: after the cable's own board rebooted the tool never re-announced itself, and it read the proxy's
+"unreachable" for a target off the radio as that target having rolled back.
+
+**Measured** (A, C normal build, B extender build; captures `m11-*`):
+- *Over the cell*: B, C, then A, each 90-95 s of transfer at 9.1-9.2 KiB/s and confirmed 105-111 s after
+  BEGIN (reboot ~2 s, trial 100 heartbeats ~13 s); the whole cell in 5.4 min, run twice (counters 2 and 3).
+  No board died during any transfer: every `peer_dead` in the three consoles is the updated board's own reboot,
+  or B's Wi-Fi station scan in its first seconds of boot (the extender's known boot behaviour, session 30), or
+  A dropping the host when the tool exits.
+- *Refused, on all three* (`tools/m11_bench.py refuse`): a counter at the floor (at BEGIN); a deploy certificate
+  from another CA, a counter the signer did not sign, a flipped byte, and a trailer of zeros (bad_signature at
+  COMMIT); a correctly signed truncated image (bad_image: `esp_ota_end`); 4 KB of noise (store_failed at the
+  first chunk: `esp_ota_write` checks the image header). Running image, floor and state unchanged after each.
+- *Broken images roll back and stop the rollout* (order C, B, A): an image that aborts at boot
+  (`CONFIG_POT_FW_TEST_PANIC`) crashed once and the bootloader booted the previous slot -- C logged "ROLLED
+  BACK" ~8 s after the commit; an image with its radio off (never joins the cell) gave up at its trial deadline,
+  121 s after boot. Each time the rollout stopped at C and B and A were never touched.
+- *A reset in the middle of a transfer* (RTS, the chip saw POWERON): C came back on its confirmed image; the
+  rollout stopped and said where.
+
+**Accepted**, against each line: sent once through A's cable, B and C took it over the radio and confirmed it
+with no cable of their own; a broken image rolled itself back on the first node and stopped the rollout; an
+unsigned and an older image were refused; the death windows held through every transfer; three boards took 5.4
+min. The kill criterion did not fire. Caveat: power was never cut by hand mid-transfer -- the reset is the
+chip's, and ESP-IDF's rollback does not depend on which kind it is. Not done: resuming a broken transfer (it
+starts again), and a node that is not on the cable's board's radio (one hop, like a package).
+
+Bench after M11: all three on `237f874` at firmware counter 3, confirmed (floor 3: the next image is 4+);
+A and C on the normal build, B on the extender build, each in one of its two OTA slots. `m10-ticker` still at counter 24.
