@@ -1,0 +1,2 @@
+run 0 lend 1: 73122 ms, hits 753983075, pi 3.1415961, local 297 lent 663 refused 0 lost 4
+run 1 lend 1: 71921 ms, hits 753983075, pi 3.1415961, local 292 lent 668 refused 0 lost 2

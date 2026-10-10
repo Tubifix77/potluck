@@ -1,0 +1,9 @@
+== runs (board A)
+  lend    73122 ms  local  297 lent  663  refused 0 lost 4  hits 753983075  pi 3.1415961
+  lend    71921 ms  local  292 lent  668  refused 0 lost 2  hits 753983075  pi 3.1415961
+== lender 0x8160 (captures/m9-reset-2026-10-10-COM5.jsonl)
+  idle      13 s    lent 0 (unit 0 ms)
+  lend      73 s  0x6300: hb 99.37% rtt p50 6-8 ms p99 6-8 ms (n 32)  die_temp 1.00/s err 0  lent 255 (unit 480 ms)
+  idle      60 s  0x6300: hb 99.24% rtt p50 4-6 ms p99 6-8 ms (n 26)  0x7368: hb 100.00% rtt p50 4-6 ms p99 6-8 ms (n 26)  die_temp 0.99/s err 0  lent 0 (unit 365 ms)
+  lend      72 s  0x6300: hb 99.62% rtt p50 4-6 ms p99 22-30 ms (n 26)  die_temp 0.99/s err 0  lent 214 (unit 502 ms)
+  idle      55 s  0x6300: hb 100.00% rtt p50 4-6 ms p99 8-11 ms (n 27)  0x7368: hb 100.00% rtt p50 4-6 ms p99 6-8 ms (n 26)  die_temp 0.99/s err 0  lent 0 (unit 427 ms)

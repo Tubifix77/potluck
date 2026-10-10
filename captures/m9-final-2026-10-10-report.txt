@@ -1,0 +1,4 @@
+== runs (board A)
+  alone  232548 ms  local  960 lent    0  refused 0 lost 0  hits 753983075  pi 3.1415961
+  lend    68119 ms  local  278 lent  682  refused 0 lost 0  hits 753983075  pi 3.1415961
+  median alone 232548 ms, lending 68119 ms: speedup 3.41x; results identical: True
