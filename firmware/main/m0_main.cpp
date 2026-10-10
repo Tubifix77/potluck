@@ -35,6 +35,8 @@
 #include "pot/deploy.hpp"
 #include "pot/deploy_esp.hpp"
 #include "pot/dram_probe.hpp"
+#include "pot/fw.hpp"
+#include "pot/fw_esp.hpp"
 #include "pot/espnow_port.hpp"
 #include "pot/node.hpp"
 #include "pot/opcodes.hpp"
@@ -635,6 +637,14 @@ void render(Colour c, uint32_t now_ms) {
 // Deploy and detach (§7.4, M3). The image is a list of built-in actors and their configuration
 // (ADR-003 Tier 0); pot_deploy holds the format, the A/B state machine and the receiver.
 // ---------------------------------------------------------------------------------------------
+namespace fw_rt {  // M11, below trust_rt: deploy_rt routes the FW_* opcodes to it
+size_t on_fw(uint16_t from, uint16_t msg_id, uint8_t op, const uint8_t* p, uint16_t len, uint8_t* reply,
+             size_t cap);
+void on_result(uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, const uint8_t* p, uint16_t len);
+bool busy();
+void tick(uint32_t now);
+}  // namespace fw_rt
+
 namespace deploy_rt {
 
 constexpr uint8_t kMaxTrialBoots = CONFIG_POT_TRIAL_MAX_BOOTS;
@@ -817,6 +827,10 @@ void push_next_peer() {
 
 void on_result(void*, uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, const uint8_t* p,
                uint16_t len) {
+    if (is_fw_opcode(op)) {
+        fw_rt::on_result(peer, msg, op, timed_out, p, len);
+        return;
+    }
     if (!g_push.active || g_push.idx >= g_push.count || peer != g_push.peers[g_push.idx] ||
         msg != g_push.awaiting) {
         return;
@@ -847,11 +861,12 @@ void on_result(void*, uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, c
 // ---- the server, called from Node::on_rx with g_mutex held ---------------------------------------
 size_t on_deploy(void*, uint16_t from, uint16_t msg_id, uint8_t op, const uint8_t* p, uint16_t len,
                  uint8_t* reply, size_t cap) {
+    if (is_fw_opcode(op)) return fw_rt::on_fw(from, msg_id, op, p, len, reply, cap);  // M11
     DeployReply r{};
     r.status = DeployStatus::Malformed;
     if (!g_store.ready()) {
         r.status = DeployStatus::StoreFailed;
-    } else if (g_push.active || g_reboot_at_ms != 0) {
+    } else if (g_push.active || g_reboot_at_ms != 0 || fw_rt::busy()) {
         r.status = DeployStatus::Busy;
     } else if (op == kOpDeployBegin) {
         DeployBegin b{};
@@ -1188,6 +1203,7 @@ void link_task(void*) {
 
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         deploy_rt::tick(nt);
+        fw_rt::tick(nt);
         xSemaphoreGive(g_mutex);
 
         // Nothing above could have blocked, so yield explicitly. One tick minimum even when a
@@ -1993,6 +2009,228 @@ void start_console(BaseType_t core) {
 
 }  // namespace trust_rt
 
+// ---------------------------------------------------------------------------------------------
+// M11: firmware over the cell. A signed native image streams into the app slot not booted from
+// (pot_deploy's FwReceiver and EspOtaSink), is checked -- the deploy key's signature over (counter,
+// length, SHA-512), then ESP-IDF's own image check -- and boots on trial. ESP-IDF's bootloader
+// (CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE) boots it PENDING_VERIFY; this node confirms it only once it
+// has sent the trial's heartbeats with at least one radio peer alive, and rolls it back itself if that
+// has not happened by CONFIG_POT_FW_TRIAL_TIMEOUT_MS. A crash before then is a reset, and the
+// bootloader rolls back an unconfirmed image at the next reset by itself.
+//
+// A request for another node is passed on to it unchanged, and its REPLY passed back: the board on the
+// cable is a proxy, so the image is never stored on the way and the host drives the rollout.
+// ---------------------------------------------------------------------------------------------
+namespace fw_rt {
+
+constexpr const char* kNs = "pot_fw";  // floor: highest confirmed; run: counter running; pend: on trial
+constexpr uint32_t kTrialTimeoutMs = CONFIG_POT_FW_TRIAL_TIMEOUT_MS;
+
+EspOtaSink g_sink;
+bool g_sink_ok = false;
+FwState g_state = FwState::Factory;
+uint32_t g_running = 0;
+uint32_t g_floor = 0;
+uint32_t g_pending = 0;
+bool g_committed = false;  // an image is activated and the reboot into it is scheduled
+
+bool verify(void*, uint32_t counter, uint32_t len, const uint8_t sha[64], const uint8_t* tr) {
+    // Called from commit(), which runs on the crypto worker: the Ed25519 check belongs there.
+    const CertError e = fw_trailer_check(trust_rt::g_id_boot.ca_pub, counter, len, sha, tr, kFwTrailerLen);
+    if (e != CertError::Ok) {
+        ESP_LOGW(kTag, "fw: refused, signature check failed (%s)", cert_error_name(e));
+        return false;
+    }
+    return true;
+}
+FwReceiver g_rx(g_sink, &verify, nullptr);
+
+uint32_t nvs_u32(const char* key) {
+    nvs_handle_t h;
+    uint32_t v = 0;
+    if (nvs_open(kNs, NVS_READONLY, &h) != ESP_OK) return 0;
+    if (nvs_get_u32(h, key, &v) != ESP_OK) v = 0;
+    nvs_close(h);
+    return v;
+}
+void nvs_put(uint32_t floor, uint32_t run, uint32_t pend) {
+    nvs_handle_t h;
+    if (nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) {
+        ESP_LOGE(kTag, "fw: could not persist the firmware state");
+        return;
+    }
+    nvs_set_u32(h, "floor", floor);
+    nvs_set_u32(h, "run", run);
+    nvs_set_u32(h, "pend", pend);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+const char* state_str(FwState s) {
+    return s == FwState::Confirmed ? "confirmed" : s == FwState::OnTrial ? "ON TRIAL" : "factory";
+}
+
+bool busy() { return g_state == FwState::OnTrial || g_committed; }
+
+// Before any task starts.
+void boot() {
+    g_floor = nvs_u32("floor");
+    const uint32_t run = nvs_u32("run");
+    g_pending = nvs_u32("pend");
+    const esp_partition_t* part = esp_ota_get_running_partition();
+    esp_ota_img_states_t st = ESP_OTA_IMG_UNDEFINED;
+    const bool has_state = part != nullptr && esp_ota_get_state_partition(part, &st) == ESP_OK;
+    if (part != nullptr && part->subtype == ESP_PARTITION_SUBTYPE_APP_FACTORY) {
+        g_state = FwState::Factory;
+        g_running = 0;
+    } else if (has_state && st == ESP_OTA_IMG_PENDING_VERIFY) {
+        g_state = FwState::OnTrial;
+        g_running = g_pending;
+    } else {
+        g_state = FwState::Confirmed;
+        g_running = run;
+    }
+    if (g_state != FwState::OnTrial && g_pending != 0) {
+        ESP_LOGW(kTag, "fw: image counter %u did not pass its trial - ROLLED BACK",
+                 static_cast<unsigned>(g_pending));
+        g_pending = 0;
+        nvs_put(g_floor, g_running, 0);
+    }
+    g_sink_ok = g_sink.init();
+    g_rx.set_floor(g_floor);
+    g_rx.set_busy(busy());
+    ESP_LOGI(kTag, "fw: running %s (%s), counter %u, floor %u, %s; spare slot %s, %u KB",
+             part != nullptr ? part->label : "?", esp_app_get_description()->version,
+             static_cast<unsigned>(g_running), static_cast<unsigned>(g_floor), state_str(g_state),
+             g_sink_ok ? g_sink.target()->label : "none", static_cast<unsigned>(g_sink.capacity() / 1024));
+}
+
+size_t reply_with(FwStatus status, uint16_t node, uint8_t* reply, size_t cap) {
+    FwReply r{};
+    r.status = status;
+    r.node = node;
+    r.received = g_rx.received();
+    r.running = g_running;
+    r.floor = g_floor;
+    r.state = g_state;
+    std::strncpy(r.version, esp_app_get_description()->version, kFwVersionLen - 1);
+    return store_fw_reply(r, reply, cap);
+}
+
+struct CommitJob {
+    FwStatus status;
+};
+void commit_job(void* a) {
+    CommitJob& j = *static_cast<CommitJob*>(a);
+    const uint32_t t0 = now_ms_();
+    j.status = g_rx.commit();
+    if (j.status == FwStatus::Ok) {
+        g_pending = g_rx.counter();
+        nvs_put(g_floor, g_running, g_pending);
+    }
+    ESP_LOGI(kTag, "fw: commit of counter %u: %s (%u ms)", static_cast<unsigned>(g_rx.counter()),
+             fw_status_str(j.status), static_cast<unsigned>(now_ms_() - t0));
+}
+
+// ---- the proxy: one request passed on at a time --------------------------------------------------
+struct Proxy {
+    uint16_t awaiting = 0;  // msg_id of the request sent on; 0 = none
+    uint16_t target = 0;
+    uint16_t requester = 0;
+    uint16_t requester_msg = 0;
+};
+Proxy g_proxy;
+
+size_t on_fw(uint16_t from, uint16_t msg_id, uint8_t op, const uint8_t* p, uint16_t len, uint8_t* reply,
+             size_t cap) {
+    const uint16_t self = g_node->config().node_id;
+    if (p == nullptr || len < kFwTargetLen) return reply_with(FwStatus::Malformed, self, reply, cap);
+    const uint16_t target = static_cast<uint16_t>(p[0] | (p[1] << 8));
+    if (target != self) {
+        // Passed on unchanged. A newer request replaces one still waiting: the host has given up on it.
+        const uint16_t m = g_node->send_deploy(target, op, p, len);
+        if (m == 0) return reply_with(FwStatus::Unreachable, target, reply, cap);
+        g_proxy = Proxy{m, target, from, msg_id};
+        return 0;  // answered in on_result()
+    }
+    if (!g_sink_ok) return reply_with(FwStatus::StoreFailed, self, reply, cap);
+    FwStatus s = FwStatus::Malformed;
+    if (op == kOpFwStatus) {
+        s = FwStatus::Ok;
+    } else if (op == kOpFwBegin) {
+        FwBegin b{};
+        if (load_fw_begin(p, len, b)) {
+            g_rx.set_busy(busy() || deploy_rt::g_push.active || deploy_rt::g_reboot_at_ms != 0);
+            s = g_rx.begin(b);
+            ESP_LOGI(kTag, "fw: begin counter %u, %u B: %s", static_cast<unsigned>(b.counter),
+                     static_cast<unsigned>(b.image_len), fw_status_str(s));
+        }
+    } else if (op == kOpFwChunk) {
+        FwChunk c{};
+        if (load_fw_chunk(p, len, c)) s = g_rx.chunk(c);  // here: one flash write and a hash update
+    } else if (op == kOpFwCommit) {
+        CommitJob j{FwStatus::NotStarted};
+        trust_rt::run_heavy(nullptr, &commit_job, &j);  // the signature, then esp_ota_end's image check
+        s = j.status;
+        if (s == FwStatus::Ok) {
+            g_committed = true;
+            deploy_rt::schedule_reboot();
+        }
+    }
+    return reply_with(s, self, reply, cap);
+}
+
+void on_result(uint16_t peer, uint16_t msg, uint8_t, bool timed_out, const uint8_t* p, uint16_t len) {
+    if (g_proxy.awaiting == 0 || msg != g_proxy.awaiting || peer != g_proxy.target) return;
+    const Proxy q = g_proxy;
+    g_proxy = Proxy{};
+    if (timed_out || p == nullptr || len != kFwReplyLen) {
+        uint8_t wire[kFwReplyLen];
+        reply_with(FwStatus::Unreachable, q.target, wire, sizeof(wire));
+        g_node->send_reply_raw(q.requester, q.requester_msg, wire, sizeof(wire));
+        return;
+    }
+    g_node->send_reply_raw(q.requester, q.requester_msg, p, len);
+}
+
+// From link_task, every pass, with the node mutex held.
+void tick(uint32_t now) {
+    if (g_state != FwState::OnTrial) return;
+    const NodeConfig& cfg = g_node->config();
+    size_t radio_peers = 0;
+    for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+        const PeerLink& q = g_node->peers().slot(i);
+        if (q.state != PeerState::Alive) continue;
+        if (cfg.has_trusted_mac && std::memcmp(q.mac, cfg.trusted_mac, kMacLen) == 0) continue;  // the cable
+        ++radio_peers;
+    }
+    if (radio_peers > 0 && g_node->tx_tally().beacons >= deploy_rt::kTrialHeartbeats) {
+        const esp_err_t e = esp_ota_mark_app_valid_cancel_rollback();
+        if (e != ESP_OK) {
+            ESP_LOGE(kTag, "fw: could not confirm the image: %s", esp_err_to_name(e));
+            return;
+        }
+        g_running = g_pending;
+        if (g_running > g_floor) g_floor = g_running;
+        g_pending = 0;
+        nvs_put(g_floor, g_running, 0);
+        g_state = FwState::Confirmed;
+        g_rx.set_floor(g_floor);
+        g_rx.set_busy(false);
+        ESP_LOGI(kTag, "fw: trial passed after %u heartbeats with %u radio peer(s) - counter %u CONFIRMED",
+                 static_cast<unsigned>(deploy_rt::kTrialHeartbeats), static_cast<unsigned>(radio_peers),
+                 static_cast<unsigned>(g_running));
+        return;
+    }
+    if (now >= kTrialTimeoutMs) {
+        ESP_LOGE(kTag, "fw: trial not passed in %u ms (%u radio peer(s)) - rolling back",
+                 static_cast<unsigned>(kTrialTimeoutMs), static_cast<unsigned>(radio_peers));
+        esp_ota_mark_app_invalid_rollback_and_reboot();
+    }
+}
+
+}  // namespace fw_rt
+
 }  // namespace
 
 namespace {
@@ -2302,6 +2540,7 @@ extern "C" void app_main(void) {
         g_actors.set_table(kinds, n_kinds);
     }
     deploy_rt::boot(cfg.node_id);
+    fw_rt::boot();  // M11
 #if CONFIG_POT_RECONCILER
     if (deploy_rt::g_portable_n > 0) {
         g_rec = new (g_rec_storage) Reconciler(*g_node);

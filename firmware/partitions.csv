@@ -5,9 +5,16 @@
 #
 # modA / modB: section 7.4's A/B module slots (M3). Raw data partitions, subtype 0x40, one image
 # each -- see firmware/components/pot_deploy/include/pot/deploy.hpp for why not LittleFS.
+#
+# otadata / ota_0 / ota_1 (M11): ESP-IDF's OTA layout, appended after everything above so nothing
+# moves. A cable flash writes `factory` and resets otadata to boot it; an update over the cell goes
+# into ota_0 or ota_1, whichever is not running. 2 MB each, against images of ~0.85 MB.
 # Name,   Type, SubType, Offset,   Size,    Flags
 nvs,      data, nvs,     0x9000,   0x6000,
 phy_init, data, phy,     0xf000,   0x1000,
 factory,  app,  factory, 0x10000,  1M,
 modA,     data, 0x40,    0x110000, 0x10000,
 modB,     data, 0x40,    0x120000, 0x10000,
+otadata,  data, ota,     0x130000, 0x2000,
+ota_0,    app,  ota_0,   0x140000, 2M,
+ota_1,    app,  ota_1,   0x340000, 2M,

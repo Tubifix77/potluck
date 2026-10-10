@@ -5,7 +5,7 @@
                          [--targets 7368,8160,6300] [--confirm-timeout 180]
 
 Every request goes to the board the host is cabled to and names its target; that board answers for
-itself and passes a request for any other node on to it (firmware/main/fw_rt.cpp), so the image is
+itself and passes a request for any other node on to it (fw_rt in firmware/main/m0_main.cpp), so the image is
 never stored on the way. A rollout updates one target at a time: it sends the image, commits it (the
 target checks the signature and switches its boot slot, then reboots), and waits for the target to
 come back running the new counter, confirmed -- its trial passed. A target that comes back on the old

@@ -63,3 +63,9 @@ CONFIG_LOG_DEFAULT_LEVEL_INFO=y
 # was silently ignored from an overlay.
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# --- M11: firmware over the cell ---------------------------------------------------------------
+# A new image boots PENDING_VERIFY and is rolled back at the next reset unless the app confirms it
+# (esp_ota_mark_app_valid_cancel_rollback; ESP-IDF's OTA guide, "App rollback"). A bootloader
+# setting: it takes effect on a board only when the bootloader itself is flashed by cable.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
