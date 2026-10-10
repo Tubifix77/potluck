@@ -1,0 +1,26 @@
+== runs (board A)
+  alone  234425 ms  local  960 lent    0  refused 0 lost 0  hits 753983075  pi 3.1415961
+  lend    68775 ms  local  277 lent  683  refused 0 lost 0  hits 753983075  pi 3.1415961
+  alone  234442 ms  local  960 lent    0  refused 0 lost 0  hits 753983075  pi 3.1415961
+  lend    68781 ms  local  277 lent  683  refused 0 lost 0  hits 753983075  pi 3.1415961
+  median alone 234442 ms, lending 68781 ms: speedup 3.41x; results identical: True
+== lender 0x7368 (captures/m9-duties-2026-10-10-COM4.jsonl)
+  idle     118 s  0x6300: hb 100.00% rtt p50 4-6 ms p99 8-11 ms (n 58)  0x8160: hb 99.91% rtt p50 4-6 ms p99 16-22 ms (n 57)  die_temp 0.99/s err 0  lent 0 (unit 0 ms)
+  alone    234 s  0x6300: hb 99.86% rtt p50 6-8 ms p99 8-11 ms (n 111)  0x8160: hb 99.82% rtt p50 4-6 ms p99 22-30 ms (n 110)  die_temp 1.00/s err 0  lent 0 (unit 0 ms)
+  idle     120 s  0x6300: hb 99.81% rtt p50 4-6 ms p99 11-16 ms (n 52)  0x8160: hb 99.05% rtt p50 4-6 ms p99 30-42 ms (n 53)  die_temp 1.00/s err 0  lent 0 (unit 0 ms)
+  lend      69 s  0x6300: hb 99.05% rtt p50 6-8 ms p99 8-11 ms (n 31)  0x8160: hb 99.52% rtt p50 6-8 ms p99 42-60 ms (n 32)  die_temp 1.01/s err 0  lent 373 (unit 332 ms)
+  idle     120 s  0x6300: hb 100.00% rtt p50 4-6 ms p99 11-16 ms (n 53)  0x8160: hb 99.81% rtt p50 4-6 ms p99 16-22 ms (n 52)  die_temp 1.00/s err 0  lent 0 (unit 257 ms)
+  alone    234 s  0x6300: hb 99.83% rtt p50 6-8 ms p99 8-11 ms (n 116)  0x8160: hb 99.91% rtt p50 4-6 ms p99 8-11 ms (n 115)  die_temp 1.00/s err 0  lent 0 (unit 257 ms)
+  idle     120 s  0x6300: hb 99.71% rtt p50 4-6 ms p99 16-22 ms (n 53)  0x8160: hb 99.71% rtt p50 4-6 ms p99 8-11 ms (n 52)  die_temp 1.01/s err 0  lent 0 (unit 257 ms)
+  lend      69 s  0x6300: hb 99.52% rtt p50 6-8 ms p99 8-11 ms (n 32)  0x8160: hb 100.00% rtt p50 6-8 ms p99 8-11 ms (n 31)  die_temp 1.00/s err 0  lent 373 (unit 348 ms)
+  idle     114 s  0x6300: hb 99.89% rtt p50 4-6 ms p99 22-30 ms (n 47)  0x8160: hb 99.89% rtt p50 4-6 ms p99 8-11 ms (n 48)  die_temp 0.99/s err 0  lent 0 (unit 340 ms)
+== lender 0x8160 (captures/m9-duties-2026-10-10-COM5.jsonl)
+  idle     118 s  0x6300: hb 100.00% rtt p50 4-6 ms p99 8-11 ms (n 57)  0x7368: hb 99.91% rtt p50 4-6 ms p99 11-16 ms (n 58)  die_temp 1.00/s err 0  lent 0 (unit 0 ms)
+  alone    234 s  0x6300: hb 99.86% rtt p50 6-8 ms p99 8-11 ms (n 110)  0x7368: hb 99.95% rtt p50 4-6 ms p99 8-11 ms (n 110)  die_temp 1.00/s err 0  lent 0 (unit 0 ms)
+  idle     120 s  0x6300: hb 99.81% rtt p50 4-6 ms p99 16-22 ms (n 53)  0x7368: hb 100.00% rtt p50 4-6 ms p99 22-30 ms (n 52)  die_temp 0.99/s err 0  lent 0 (unit 0 ms)
+  lend      69 s  0x6300: hb 99.05% rtt p50 6-8 ms p99 8-11 ms (n 31)  0x7368: hb 99.84% rtt p50 4-6 ms p99 11-16 ms (n 32)  die_temp 1.00/s err 0  lent 254 (unit 486 ms)
+  idle     120 s  0x6300: hb 100.00% rtt p50 4-6 ms p99 11-16 ms (n 52)  0x7368: hb 100.00% rtt p50 4-6 ms p99 8-11 ms (n 53)  die_temp 1.00/s err 0  lent 0 (unit 451 ms)
+  alone    234 s  0x6300: hb 99.83% rtt p50 6-8 ms p99 11-16 ms (n 116)  0x7368: hb 99.96% rtt p50 4-6 ms p99 8-11 ms (n 115)  die_temp 1.00/s err 0  lent 0 (unit 451 ms)
+  idle     120 s  0x6300: hb 99.71% rtt p50 4-6 ms p99 8-11 ms (n 53)  0x7368: hb 100.00% rtt p50 4-6 ms p99 8-11 ms (n 52)  die_temp 1.01/s err 0  lent 0 (unit 451 ms)
+  lend      69 s  0x6300: hb 99.52% rtt p50 6-8 ms p99 16-22 ms (n 31)  0x7368: hb 100.00% rtt p50 4-6 ms p99 8-11 ms (n 32)  die_temp 1.00/s err 0  lent 254 (unit 475 ms)
+  idle     114 s  0x6300: hb 99.90% rtt p50 4-6 ms p99 11-16 ms (n 52)  0x7368: hb 100.00% rtt p50 4-6 ms p99 16-22 ms (n 53)  die_temp 1.00/s err 0  lent 0 (unit 475 ms)
