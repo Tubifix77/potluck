@@ -1,1 +1,1 @@
-owner sat at the empty-1 spot (boxed area right, below A) 01:49:00 to ~01:54:10, after the walk; detector already false at the start
+owner sat at the BOTTOM RIGHT of the open room, below the inner rooms (not on the drawing), 01:49:00 to ~01:54:10, after the walk; detector already false at the start. (Corrected 2026-10-10: first recorded as the empty-1 spot.)
