@@ -1772,6 +1772,29 @@ bool handle_test(const char* line, size_t len) {
                     static_cast<unsigned>(id));
         return true;
     }
+    // M10 test instrument: "POT! read <path hash>" -- what this board holds for a path (its owner, quality,
+    // value, age), and, when someone else owns it, a fresh READ from that owner, so the next read shows
+    // the owner's value (refresh on read). Read twice to see where a portable actor's values come from.
+    unsigned long read_hash = 0;
+    if (std::sscanf(buf, "POT! read %lu", &read_hash) == 1) {
+        lock_node();
+        const uint32_t h = static_cast<uint32_t>(read_hash);
+        const NsEntry* e = g_node->ns().find(h);
+        const uint16_t owner = e != nullptr ? e->owner_node : 0;
+        Reading r;
+        g_node->read(h, r);
+        uint16_t asked = 0;
+        if (owner != 0 && owner != g_node->config().node_id) asked = g_node->request_read(owner, h);
+        xSemaphoreGive(g_mutex);
+        uint32_t u = 0;
+        const bool has = r.value.as_u32(u);
+        std::printf("{\"t\":\"test\",\"cmd\":\"read\",\"hash\":%u,\"owner\":%u,\"quality\":\"%s\",\"value\":%s%u,"
+                    "\"age_ms\":%u,\"ts\":%u,\"asked\":%u}\n",
+                    static_cast<unsigned>(h), static_cast<unsigned>(owner), quality_str(r.quality), has ? "" : "-",
+                    has ? static_cast<unsigned>(u) : 0u, static_cast<unsigned>(r.age_ms),
+                    static_cast<unsigned>(r.timestamp_ms), static_cast<unsigned>(asked));
+        return true;
+    }
     char scan_ssid[33] = {};
     if (std::sscanf(buf, "POT! scan %32s", scan_ssid) == 1) {
         uint8_t ch = 0;
