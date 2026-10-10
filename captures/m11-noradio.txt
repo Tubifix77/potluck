@@ -1,0 +1,6 @@
+0x8160: image ../../firmware/build-m11-noradio/potluck_m0.bin, 370400 B, counter 3, sha512 812762aa79338a64...
+0x8160: before {'status': 'ok', 'node': 33120, 'received': 0, 'running': 2, 'floor': 2, 'state': 'confirmed', 'version': 'deploy-and-detach-162-g6aafa26-'}
+    0 %     0.2 s
+   55 %    22.0 s
+0x8160: commit ok after 39.9 s (9.1 KiB/s)
+0x8160: NOT confirmed after 169.8 s: {'status': 'ok', 'node': 33120, 'received': 0, 'running': 2, 'floor': 2, 'state': 'confirmed', 'version': 'deploy-and-detach-162-g6aafa26-'} -- rollout stopped

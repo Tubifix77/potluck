@@ -1,0 +1,8 @@
+0x8160: image ../../firmware/build-m11-panic/potluck_m0.bin, 786464 B, counter 3, sha512 b7f0c4714b2f53d7...
+0x8160: before {'status': 'ok', 'node': 33120, 'received': 0, 'running': 2, 'floor': 2, 'state': 'confirmed', 'version': 'deploy-and-detach-162-g6aafa26-'}
+    0 %     0.1 s
+   26 %    21.8 s
+   52 %    43.8 s
+   78 %    65.5 s
+0x8160: commit ok after 84.4 s (9.1 KiB/s)
+0x8160: NOT confirmed after 105.1 s: {'status': 'ok', 'node': 33120, 'received': 0, 'running': 2, 'floor': 2, 'state': 'confirmed', 'version': 'deploy-and-detach-162-g6aafa26-'} -- rollout stopped

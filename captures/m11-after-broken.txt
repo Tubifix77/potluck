@@ -1,0 +1,3 @@
+0x6300: {'status': 'ok', 'node': 25344, 'received': 0, 'running': 2, 'floor': 2, 'state': 'confirmed', 'version': 'deploy-and-detach-162-g6aafa26-'}
+0x7368: {'status': 'ok', 'node': 29544, 'received': 0, 'running': 2, 'floor': 2, 'state': 'confirmed', 'version': 'deploy-and-detach-162-g6aafa26-'}
+0x8160: {'status': 'ok', 'node': 33120, 'received': 0, 'running': 2, 'floor': 2, 'state': 'confirmed', 'version': 'deploy-and-detach-162-g6aafa26-'}

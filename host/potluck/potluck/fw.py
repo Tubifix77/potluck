@@ -124,6 +124,8 @@ def wait_confirmed(b, target: int, counter: int, timeout: float) -> dict | None:
             except Exception:  # noqa: BLE001 - the next poll tries again
                 pass
             continue
+        if last["status"] != "ok" or last["node"] != target:
+            continue  # the board passing it on answered for it: the target is out of reach, not rolled back
         if last["running"] == counter and last["state"] == "confirmed":
             return last
         if last["running"] != counter and last["state"] != "on_trial" and time.monotonic() > end - timeout + 20:

@@ -1,0 +1,689 @@
+1791634259.708 {"t":"clk","node":33120,"up_ms":32835}
+1791634259.708 {"t":"led","node":33120,"shows":"blue","app":0}
+1791634259.708 {"t":"event","at_ms":29754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":29854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":29954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":30054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":30154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":30254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":30354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":30454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":30554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":30654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":30754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":30854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":30954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":31954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":32054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":32154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":32254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.708 {"t":"event","at_ms":32354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.709 {"t":"event","at_ms":32454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.709 {"t":"event","at_ms":32554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.709 {"t":"event","at_ms":32654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.709 {"t":"event","at_ms":32754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.709 {"t":"event","at_ms":32854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.709 {"t":"event","at_ms":32954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.709 {"t":"event","at_ms":33054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634259.709 {"t":"auth","node":33120,"up_ms":33146,"enrolled":1,"required":1,"verified_peers":0,"verified":0,"cache_hits":0,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":0,"link_stack_free_b":2612,"crypto_stack_free_b":1924,"tags_ok":0,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":0}
+1791634259.709 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634260.124 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":0,"list":[]}
+1791634260.124 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634260.124 {"t":"rec","node":33120,"up_ms":33215,"settled":1,"sent":0,"received":0,"malformed":0,"views":0,"replies_fenced":0,"actors":[{"key":1245650351,"running":1,"term":1,"owner":33120,"owner_term":1,"assigned":33120,"starts":1,"fenced":0,"released":0}]}
+1791634260.124 {"t":"node","up_ms":33241,"node":33120,"epoch":285,"peers_alive":0,"peers_dead":0,"no_radio":1,"free_dram":335827,"largest_block":241664,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":332,"enqueue_err":332,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":228}}
+1791634260.124 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":445,"ts":32836,"updates":3,"value":0}
+1791634260.124 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":459,"ts":32836,"updates":3,"value":241664}
+1791634260.124 {"t":"ns","node":33120,"hash":1245650351,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"GOOD","age_ms":28,"ts":33280,"updates":257,"value":2170552577}
+1791634260.124 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634260.124 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":500,"ts":32836,"updates":3,"value":285}
+1791634260.124 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":514,"ts":32836,"updates":3,"value":32}
+1791634260.124 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":528,"ts":32836,"updates":3,"value":0}
+1791634260.124 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":553,"ts":32836,"updates":3,"value":335827}
+1791634270.276 {"t":"clk","node":33120,"up_ms":43403}
+1791634270.276 {"t":"led","node":33120,"shows":"blue","app":0}
+1791634270.276 {"t":"event","at_ms":40354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":40454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":40554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":40654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":40754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":40854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":40954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":41954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":42054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":42154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":42254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":42354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":42454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":42554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":42654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":42754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":42854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":42954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":43054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":43154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":43254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":43354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":43454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":43554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":43654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"event","at_ms":43680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634270.276 {"t":"auth","node":33120,"up_ms":43716,"enrolled":1,"required":1,"verified_peers":0,"verified":0,"cache_hits":0,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":0,"link_stack_free_b":2612,"crypto_stack_free_b":1924,"tags_ok":0,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":0}
+1791634270.713 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634270.713 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":0,"list":[]}
+1791634270.713 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634270.713 {"t":"rec","node":33120,"up_ms":43796,"settled":1,"sent":0,"received":0,"malformed":0,"views":0,"replies_fenced":0,"actors":[{"key":1245650351,"running":1,"term":1,"owner":33120,"owner_term":1,"assigned":33120,"starts":1,"fenced":0,"released":0}]}
+1791634270.713 {"t":"node","up_ms":43822,"node":33120,"epoch":285,"peers_alive":0,"peers_dead":0,"no_radio":1,"free_dram":335827,"largest_block":241664,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":444,"enqueue_err":444,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":304}}
+1791634270.713 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":446,"ts":43404,"updates":4,"value":0}
+1791634270.713 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":460,"ts":43404,"updates":4,"value":241664}
+1791634270.713 {"t":"ns","node":33120,"hash":1245650351,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"GOOD","age_ms":9,"ts":43880,"updates":363,"value":2170552683}
+1791634270.713 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634270.713 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":513,"ts":43404,"updates":4,"value":285}
+1791634270.713 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":527,"ts":43404,"updates":4,"value":43}
+1791634270.713 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":541,"ts":43404,"updates":4,"value":0}
+1791634270.713 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":554,"ts":43404,"updates":4,"value":335827}
+1791634280.846 {"t":"clk","node":33120,"up_ms":53973}
+1791634280.846 {"t":"led","node":33120,"shows":"blue","app":0}
+1791634280.846 {"t":"event","at_ms":51054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":51154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":51254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":51354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":51454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":51554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":51654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":51680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":51754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":51854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":51954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":52054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":52154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":52254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":52354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":52454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":52554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":52654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":52754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":52854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":52954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":53954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":54054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":54154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"event","at_ms":54254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634280.846 {"t":"auth","node":33120,"up_ms":54284,"enrolled":1,"required":1,"verified_peers":0,"verified":0,"cache_hits":0,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":0,"link_stack_free_b":2612,"crypto_stack_free_b":1924,"tags_ok":0,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":0}
+1791634280.846 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634281.267 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":0,"list":[]}
+1791634281.267 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634281.267 {"t":"rec","node":33120,"up_ms":54364,"settled":1,"sent":0,"received":0,"malformed":0,"views":0,"replies_fenced":0,"actors":[{"key":1245650351,"running":1,"term":1,"owner":33120,"owner_term":1,"assigned":33120,"starts":1,"fenced":0,"released":0}]}
+1791634281.267 {"t":"node","up_ms":54379,"node":33120,"epoch":285,"peers_alive":0,"peers_dead":0,"no_radio":1,"free_dram":335827,"largest_block":241664,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":555,"enqueue_err":555,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":380}}
+1791634281.267 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":445,"ts":53974,"updates":5,"value":0}
+1791634281.267 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":459,"ts":53974,"updates":5,"value":241664}
+1791634281.267 {"t":"ns","node":33120,"hash":1245650351,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"GOOD","age_ms":66,"ts":54380,"updates":468,"value":2170552788}
+1791634281.267 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634281.267 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":500,"ts":53974,"updates":5,"value":285}
+1791634281.267 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":514,"ts":53974,"updates":5,"value":53}
+1791634281.267 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":528,"ts":53974,"updates":5,"value":0}
+1791634281.267 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":553,"ts":53974,"updates":5,"value":335827}
+1791634291.413 {"t":"clk","node":33120,"up_ms":64541}
+1791634291.413 {"t":"led","node":33120,"shows":"blue","app":0}
+1791634291.413 {"t":"event","at_ms":61554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":61654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":61680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":61754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":61854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":61954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":62054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":62154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":62254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":62354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":62454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":62554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":62654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":62754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":62854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":62954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":63954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":64054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":64154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":64254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":64354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":64454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":64554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":64654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"event","at_ms":64754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634291.413 {"t":"auth","node":33120,"up_ms":64852,"enrolled":1,"required":1,"verified_peers":0,"verified":0,"cache_hits":0,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":0,"link_stack_free_b":2612,"crypto_stack_free_b":1924,"tags_ok":0,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":0}
+1791634291.414 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634291.839 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":0,"list":[]}
+1791634291.839 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634291.839 {"t":"rec","node":33120,"up_ms":64932,"settled":1,"sent":0,"received":0,"malformed":0,"views":0,"replies_fenced":0,"actors":[{"key":1245650351,"running":1,"term":1,"owner":33120,"owner_term":1,"assigned":33120,"starts":1,"fenced":0,"released":0}]}
+1791634291.839 {"t":"node","up_ms":64947,"node":33120,"epoch":285,"peers_alive":0,"peers_dead":0,"no_radio":1,"free_dram":335827,"largest_block":241664,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":665,"enqueue_err":665,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":455}}
+1791634291.839 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":444,"ts":64542,"updates":6,"value":0}
+1791634291.839 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":458,"ts":64542,"updates":6,"value":241664}
+1791634291.839 {"t":"ns","node":33120,"hash":1245650351,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"GOOD","age_ms":34,"ts":64980,"updates":574,"value":2170552894}
+1791634291.839 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634291.839 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":500,"ts":64542,"updates":6,"value":285}
+1791634291.839 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":514,"ts":64542,"updates":6,"value":64}
+1791634291.839 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":528,"ts":64542,"updates":6,"value":0}
+1791634291.839 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":552,"ts":64542,"updates":6,"value":335827}
+1791634301.981 {"t":"clk","node":33120,"up_ms":75109}
+1791634301.981 {"t":"led","node":33120,"shows":"blue","app":0}
+1791634301.981 {"t":"event","at_ms":72054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":72154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":72254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":72354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":72454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":72554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":72654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":72754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":72854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":72954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":73954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":74054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":74154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":74254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":74354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":74454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":74554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":74654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":74754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":74854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":74954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":75054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":75154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":75254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"event","at_ms":75354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634301.981 {"t":"auth","node":33120,"up_ms":75420,"enrolled":1,"required":1,"verified_peers":0,"verified":0,"cache_hits":0,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":0,"link_stack_free_b":2612,"crypto_stack_free_b":1924,"tags_ok":0,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":0}
+1791634301.981 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634302.403 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":0,"list":[]}
+1791634302.403 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634302.403 {"t":"rec","node":33120,"up_ms":75500,"settled":1,"sent":0,"received":0,"malformed":0,"views":0,"replies_fenced":0,"actors":[{"key":1245650351,"running":1,"term":1,"owner":33120,"owner_term":1,"assigned":33120,"starts":1,"fenced":0,"released":0}]}
+1791634302.403 {"t":"node","up_ms":75515,"node":33120,"epoch":285,"peers_alive":0,"peers_dead":0,"no_radio":1,"free_dram":335827,"largest_block":241664,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":776,"enqueue_err":776,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":531}}
+1791634302.403 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":445,"ts":75110,"updates":7,"value":0}
+1791634302.403 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":459,"ts":75110,"updates":7,"value":241664}
+1791634302.403 {"t":"ns","node":33120,"hash":1245650351,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"GOOD","age_ms":2,"ts":75580,"updates":680,"value":2170553000}
+1791634302.403 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634302.403 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":500,"ts":75110,"updates":7,"value":285}
+1791634302.403 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":514,"ts":75110,"updates":7,"value":75}
+1791634302.403 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":528,"ts":75110,"updates":7,"value":0}
+1791634302.403 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":553,"ts":75110,"updates":7,"value":335827}
+1791634312.549 {"t":"clk","node":33120,"up_ms":85677}
+1791634312.549 {"t":"led","node":33120,"shows":"blue","app":0}
+1791634312.549 {"t":"event","at_ms":82654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":82754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":82854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":82954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":83954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":84054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":84154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":84254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":84354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":84454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":84554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":84654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":84754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":84854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":84954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"event","at_ms":85954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634312.549 {"t":"auth","node":33120,"up_ms":85990,"enrolled":1,"required":1,"verified_peers":0,"verified":0,"cache_hits":0,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":0,"link_stack_free_b":2612,"crypto_stack_free_b":1924,"tags_ok":0,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":0}
+1791634312.978 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634312.978 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":0,"list":[]}
+1791634312.978 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634312.978 {"t":"rec","node":33120,"up_ms":86070,"settled":1,"sent":0,"received":0,"malformed":0,"views":0,"replies_fenced":0,"actors":[{"key":1245650351,"running":1,"term":1,"owner":33120,"owner_term":1,"assigned":33120,"starts":1,"fenced":0,"released":0}]}
+1791634312.978 {"t":"node","up_ms":86096,"node":33120,"epoch":285,"peers_alive":0,"peers_dead":0,"no_radio":1,"free_dram":335827,"largest_block":241664,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":888,"enqueue_err":888,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":607}}
+1791634312.978 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":446,"ts":85678,"updates":8,"value":0}
+1791634312.978 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":460,"ts":85678,"updates":8,"value":241664}
+1791634312.978 {"t":"ns","node":33120,"hash":1245650351,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"GOOD","age_ms":83,"ts":86080,"updates":785,"value":2170553105}
+1791634312.978 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634312.978 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":513,"ts":85678,"updates":8,"value":285}
+1791634312.978 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":527,"ts":85678,"updates":8,"value":85}
+1791634312.978 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":541,"ts":85678,"updates":8,"value":0}
+1791634312.978 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":555,"ts":85678,"updates":8,"value":335827}
+1791634323.118 {"t":"clk","node":33120,"up_ms":96247}
+1791634323.118 {"t":"led","node":33120,"shows":"blue","app":0}
+1791634323.118 {"t":"event","at_ms":93254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":93354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":93454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":93554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":93654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":93680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":93754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":93854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":93954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":94054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":94154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":94254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":94354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":94454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":94554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":94654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":94754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":94854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":94954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":95954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":96054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":96154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":96254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":96354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":96454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"event","at_ms":96554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634323.118 {"t":"auth","node":33120,"up_ms":96560,"enrolled":1,"required":1,"verified_peers":0,"verified":0,"cache_hits":0,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":0,"link_stack_free_b":2612,"crypto_stack_free_b":1924,"tags_ok":0,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":0}
+1791634323.554 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634323.554 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":0,"list":[]}
+1791634323.554 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634323.554 {"t":"rec","node":33120,"up_ms":96640,"settled":1,"sent":0,"received":0,"malformed":0,"views":0,"replies_fenced":0,"actors":[{"key":1245650351,"running":1,"term":1,"owner":33120,"owner_term":1,"assigned":33120,"starts":1,"fenced":0,"released":0}]}
+1791634323.554 {"t":"node","up_ms":96665,"node":33120,"epoch":285,"peers_alive":0,"peers_dead":0,"no_radio":1,"free_dram":335827,"largest_block":241664,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":999,"enqueue_err":999,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":682}}
+1791634323.554 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":446,"ts":96248,"updates":9,"value":0}
+1791634323.554 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":471,"ts":96248,"updates":9,"value":241664}
+1791634323.554 {"t":"ns","node":33120,"hash":1245650351,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"GOOD","age_ms":53,"ts":96680,"updates":891,"value":2170553211}
+1791634323.554 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634323.554 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":513,"ts":96248,"updates":9,"value":285}
+1791634323.554 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":526,"ts":96248,"updates":9,"value":96}
+1791634323.554 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":540,"ts":96248,"updates":9,"value":0}
+1791634323.554 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":554,"ts":96248,"updates":9,"value":335827}
+1791634333.687 {"t":"clk","node":33120,"up_ms":106816}
+1791634333.687 {"t":"led","node":33120,"shows":"blue","app":0}
+1791634333.687 {"t":"event","at_ms":103754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":103854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":103954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":104054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":104154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":104254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":104354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":104454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":104554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":104654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":104754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":104854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":104954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":105954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":106054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":106154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":106254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":106354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":106454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":106554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":106654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":106754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":106854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":106954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"event","at_ms":107054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634333.687 {"t":"auth","node":33120,"up_ms":107128,"enrolled":1,"required":1,"verified_peers":0,"verified":0,"cache_hits":0,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":0,"link_stack_free_b":2612,"crypto_stack_free_b":1924,"tags_ok":0,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":0}
+1791634333.687 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634334.109 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":0,"list":[]}
+1791634334.109 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634334.109 {"t":"rec","node":33120,"up_ms":107208,"settled":1,"sent":0,"received":0,"malformed":0,"views":0,"replies_fenced":0,"actors":[{"key":1245650351,"running":1,"term":1,"owner":33120,"owner_term":1,"assigned":33120,"starts":1,"fenced":0,"released":0}]}
+1791634334.109 {"t":"node","up_ms":107223,"node":33120,"epoch":285,"peers_alive":0,"peers_dead":0,"no_radio":1,"free_dram":335827,"largest_block":241664,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":1109,"enqueue_err":1109,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":757}}
+1791634334.109 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":445,"ts":106817,"updates":10,"value":0}
+1791634334.109 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":459,"ts":106817,"updates":10,"value":241664}
+1791634334.109 {"t":"ns","node":33120,"hash":1245650351,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"GOOD","age_ms":10,"ts":107280,"updates":997,"value":2170553317}
+1791634334.109 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634334.109 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":512,"ts":106817,"updates":10,"value":285}
+1791634334.109 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":526,"ts":106817,"updates":10,"value":106}
+1791634334.109 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":540,"ts":106817,"updates":10,"value":0}
+1791634334.109 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":554,"ts":106817,"updates":10,"value":335827}
+1791634344.256 {"t":"clk","node":33120,"up_ms":117385}
+1791634344.256 {"t":"led","node":33120,"shows":"blue","app":0}
+1791634344.256 {"t":"event","at_ms":114354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":114454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":114554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":114654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":114754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":114854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":114954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":115954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":116054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":116154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":116254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":116354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":116454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":116554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":116654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":116754,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":116854,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":116954,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":117054,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":117154,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":117254,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":117354,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":117454,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":117554,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":117654,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.256 {"t":"event","at_ms":117680,"node":33120,"kind":"tx_error","peer":0,"slot":255,"a":4294967295,"b":0}
+1791634344.699 {"t":"auth","node":33120,"up_ms":117710,"enrolled":1,"required":1,"verified_peers":0,"verified":0,"cache_hits":0,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":0,"link_stack_free_b":2612,"crypto_stack_free_b":1924,"tags_ok":0,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":0}
+1791634344.699 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634344.699 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":0,"list":[]}
+1791634344.699 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634344.699 {"t":"rec","node":33120,"up_ms":117779,"settled":1,"sent":0,"received":0,"malformed":0,"views":0,"replies_fenced":0,"actors":[{"key":1245650351,"running":1,"term":1,"owner":33120,"owner_term":1,"assigned":33120,"starts":1,"fenced":0,"released":0}]}
+1791634344.699 {"t":"node","up_ms":117804,"node":33120,"epoch":285,"peers_alive":0,"peers_dead":0,"no_radio":1,"free_dram":335827,"largest_block":241664,"rx":{"total":0,"bad_frame":0,"unknown_peer":0,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":0},"tx":{"total":1221,"enqueue_err":1221,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":833}}
+1791634344.699 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":458,"ts":117386,"updates":11,"value":0}
+1791634344.699 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":472,"ts":117386,"updates":11,"value":241664}
+1791634344.699 {"t":"ns","node":33120,"hash":1245650351,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"GOOD","age_ms":92,"ts":117780,"updates":1102,"value":2170553422}
+1791634344.699 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634344.699 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":514,"ts":117386,"updates":11,"value":285}
+1791634344.699 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":528,"ts":117386,"updates":11,"value":117}
+1791634344.699 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":542,"ts":117386,"updates":11,"value":0}
+1791634344.699 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":567,"ts":117386,"updates":11,"value":335827}
+1791634347.245 E (121097) pot.m0: fw: trial not passed in 120000 ms (0 radio peer(s)) - rolling back
+1791634347.245 I (121243) esp_ota_ops: Rollback to previously worked partition.
+1791634347.245 x��ESP-ROM:esp32s3-20210327
+1791634347.245 Build:Mar 27 2021
+1791634347.245 rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+1791634347.245 Saved PC:0x4037c8ee
+1791634347.245 SPIWP:0xee
+1791634347.245 mode:DIO, clock div:1
+1791634347.245 load:0x3fce2820,len:0x14f0
+1791634347.245 load:0x403c8700,len:0xda0
+1791634347.245 load:0x403cb700,len:0x2f9c
+1791634347.245 entry 0x403c8908
+1791634347.245 I (29) boot: ESP-IDF v6.0.2 2nd stage bootloader
+1791634347.245 I (29) boot: compile time Oct 10 2026 13:24:07
+1791634347.245 I (29) boot: Multicore bootloader
+1791634347.245 I (29) boot: chip revision: v0.2
+1791634347.245 I (32) boot: efuse block revision: v1.4
+1791634347.245 I (36) boot.esp32s3: Boot SPI Speed : 80MHz
+1791634347.246 I (40) boot.esp32s3: SPI Mode       : DIO
+1791634347.246 I (43) boot.esp32s3: SPI Flash Size : 16MB
+1791634347.246 I (47) boot: Enabling RNG early entropy source...
+1791634347.246 I (52) boot: Partition Table:
+1791634347.246 I (54) boot: ## Label            Usage          Type ST Offset   Length
+1791634347.246 I (61) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+1791634347.246 I (67) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+1791634347.246 I (74) boot:  2 factory          factory app      00 00 00010000 00100000
+1791634347.246 I (80) boot:  3 modA             Unknown data     01 40 00110000 00010000
+1791634347.246 I (87) boot:  4 modB             Unknown data     01 40 00120000 00010000
+1791634347.246 I (93) boot:  5 otadata          OTA data         01 00 00130000 00002000
+1791634347.246 I (100) boot:  6 ota_0            OTA app          00 10 00140000 00200000
+1791634347.246 I (106) boot:  7 ota_1            OTA app          00 11 00340000 00200000
+1791634347.246 I (113) boot: End of partition table
+1791634347.246 I (116) esp_image: segment 0: paddr=00340020 vaddr=3c0a0020 size=20398h (131992) map
+1791634347.246 I (148) esp_image: segment 1: paddr=003603c0 vaddr=3fc98800 size=054cch ( 21708) load
+1791634347.246 I (153) esp_image: segment 2: paddr=00365894 vaddr=40374000 size=0a784h ( 42884) load
+1791634347.246 I (163) esp_image: segment 3: paddr=00370020 vaddr=42000020 size=95160h (610656) map
+1791634347.246 I (275) esp_image: segment 4: paddr=00405188 vaddr=4037e784 size=09fb8h ( 40888) load
+1791634347.246 I (284) esp_image: segment 5: paddr=0040f148 vaddr=50000000 size=00024h (    36) load
+1791634347.246 I (293) boot: Loaded app from partition at offset 0x340000
+1791634347.246 I (293) boot: Disabling RNG early entropy source...
+1791634347.246 I (304) octal_psram: vendor id    : 0x0d (AP)
+1791634347.246 I (304) octal_psram: dev id       : 0x02 (generation 3)
+1791634347.246 I (304) octal_psram: density      : 0x03 (64 Mbit)
+1791634347.246 I (306) octal_psram: good-die     : 0x01 (Pass)
+1791634347.246 I (310) octal_psram: Latency      : 0x01 (Fixed)
+1791634347.246 I (315) octal_psram: VCC          : 0x01 (3V)
+1791634347.246 I (319) octal_psram: SRF          : 0x01 (Fast Refresh)
+1791634347.246 I (324) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+1791634347.246 I (329) octal_psram: BurstLen     : 0x01 (32 Byte)
+1791634347.246 I (333) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+1791634347.246 I (338) octal_psram: DriveStrength: 0x00 (1/1)
+1791634347.246 I (343) esp_psram: Found 8MB PSRAM device
+1791634347.246 I (346) esp_psram: Speed: 40MHz
+1791634347.246 I (349) cpu_start: Multicore app
+1791634348.284 I (1083) esp_psram: SPI SRAM memory test OK
+1791634348.284 I (1093) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+1791634348.284 I (1093) cpu_start: Pro cpu start user code
+1791634348.284 I (1093) cpu_start: cpu freq: 160000000 Hz
+1791634348.284 I (1095) app_init: Application information:
+1791634348.284 I (1099) app_init: Project name:     potluck_m0
+1791634348.284 I (1104) app_init: App version:      deploy-and-detach-162-g6aafa26-
+1791634348.284 I (1110) app_init: Compile time:     Oct 10 2026 13:38:30
+1791634348.284 I (1115) app_init: ELF file SHA256:  af12540b1...
+1791634348.284 I (1119) app_init: ESP-IDF:          v6.0.2
+1791634348.284 I (1123) efuse_init: Min chip rev:     v0.0
+1791634348.284 I (1127) efuse_init: Max chip rev:     v0.99
+1791634348.284 I (1131) efuse_init: Chip rev:         v0.2
+1791634348.284 I (1135) heap_init: Initializing. RAM available for dynamic allocation:
+1791634348.284 I (1141) heap_init: At 3FCACD60 len 0003C9B0 (242 KiB): RAM
+1791634348.284 I (1147) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+1791634348.284 I (1152) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+1791634348.284 I (1157) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+1791634348.284 I (1163) esp_psram: Adding pool of 8151K of PSRAM memory to heap allocator
+1791634348.284 I (1170) spi_flash: detected chip: generic
+1791634348.284 I (1173) spi_flash: flash io: dio
+1791634348.284 I (1177) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+1791634348.284 I (1182) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+1791634348.284 I (1190) main_task: Started on CPU0
+1791634348.284 I (1213) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+1791634348.284 I (1214) main_task: Calling app_main()
+1791634348.284 I (1228) pot.m0: channel 1 from the last boot (build default 1)
+1791634348.284 I (1229) pp: pp rom version: e7ae62f
+1791634348.284 I (1230) net80211: net80211 rom version: e7ae62f
+1791634348.284 I (1232) wifi:wifi driver task: 3fcee984, prio:23, stack:6656, core=0
+1791634348.284 I (1238) wifi:wifi firmware version: 00ad238
+1791634348.284 I (1240) wifi:wifi certification version: v7.0
+1791634348.284 I (1245) wifi:config NVS flash: disabled
+1791634348.284 I (1248) wifi:config nano formatting: disabled
+1791634348.284 I (1253) wifi:Init data frame dynamic rx buffer num: 16
+1791634348.284 I (1258) wifi:Init static rx mgmt buffer num: 5
+1791634348.284 I (1262) wifi:Init management short buffer num: 32
+1791634348.284 I (1266) wifi:Init dynamic tx buffer num: 32
+1791634348.284 I (1270) wifi:Init static tx FG buffer num: 2
+1791634348.284 I (1274) wifi:Init static rx buffer size: 1600
+1791634348.284 I (1278) wifi:Init static rx buffer num: 6
+1791634348.284 I (1282) wifi:Init dynamic rx buffer num: 16
+1791634348.284 I (1287) wifi_init: accept mbox: 6
+1791634348.284 I (1289) wifi_init: tcpip mbox: 32
+1791634348.284 I (1292) wifi_init: udp mbox: 6
+1791634348.284 I (1295) wifi_init: tcp mbox: 6
+1791634348.284 I (1298) wifi_init: tcp tx win: 5760
+1791634348.284 I (1301) wifi_init: tcp rx win: 5760
+1791634348.284 I (1305) wifi_init: tcp mss: 1440
+1791634348.284 I (1308) wifi_init: WiFi IRAM OP enabled
+1791634348.284 I (1311) wifi_init: WiFi RX IRAM OP enabled
+1791634348.284 I (1316) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+1791634348.284 I (1369) wifi:mode : sta (b8:1f:3f:da:81:60)
+1791634348.284 I (1369) wifi:enable tsf
+1791634348.284 I (1370) wifi:Set ps type: 0, coexist: 0
+1791634348.284 
+1791634348.284 I (1373) ESPNOW: espnow [version: 2.0] init
+1791634348.284 I (1373) pot.espnow: esp-now v2 up on channel 1, mac b8:1f:3f:da:81:60
+1791634348.284 I (1380) pot.epoch: boot epoch 286
+1791634348.284 I (1382) pot.m0: namespace: 6 resources declared
+1791634348.284 I (1387) pot.serial: frame link on UART1, tx=17 rx=18, 921600 baud
+1791634348.284 I (1393) pot.m0: status LED on GPIO48 and GPIO38; self-test red, green, blue
+1791634350.109 I (2902) pot.m0: deploy: image counter 24, digest 682b3a05..., 1 actor(s) in the image
+1791634350.109 I (2902) pot.m0: deploy: boot confirmed, running slot B, trial boot 0/3, counter 24
+1791634350.109 W (2907) pot.m0: fw: image counter 3 did not pass its trial - ROLLED BACK
+1791634350.109 I (2915) pot.m0: fw: running ota_1 (deploy-and-detach-162-g6aafa26-), counter 2, floor 2, confirmed; spare slot ota_0, 2048 KB
+1791634350.109 I (2924) pot.m0: reconciler: 1 portable actor(s)
+1791634350.109 {"t":"enrol","node":33120,"pub":"0392ff6cd7890c311c0b048061f7b78a8a4c8f2363360d5bc3a19d91996afe04","enrolled":1,"ca_fp":"ef76cc2e"}
+1791634350.109 I (2941) pot.m0: safe_state: high-water table restored from NVS
+1791634350.109 I (2945) pot.m0: auth: enrolled, required
+1791634350.109 I (2949) pot.m0: Potluck M0 node 0x8160 epoch 286, heartbeat 100 ms x 6 misses = 600 ms
+1791634350.109 I (2957) main_task: Returned from app_main()
+1791634350.109 {"t":"boot","node":33120,"epoch":286,"mac":"b8:1f:3f:da:81:60","espnow_ver":2,"chan":1,"hb_period_ms":100,"hb_miss_limit":6,"fw":"deploy-and-detach-162-g6aafa26-","idf":"v6.0.2","dram":{"at_boot":288335,"after_nvs":288335,"after_netif":280519,"after_wifi_init":249967,"after_wifi_start":248263,"after_espnow":248111,"largest_block":172032,"wifi_stack":32256,"espnow":152,"total_to_radio":40224}}
+1791634350.109 I (3000) pot.m0: beacon mode: broadcast_beacon
+1791634350.109 I (3129) pot.m0: discovered peer 0x7368
+1791634350.109 I (3130) pot.m0: peer 0x7368 pinned to ESP-NOW v2, payload cap 1446 B
+1791634350.109 I (3215) pot.m0: discovered peer 0x6300
+1791634350.109 I (3216) pot.m0: peer 0x6300 pinned to ESP-NOW v2, payload cap 1446 B
+1791634360.024 {"t":"clk","node":33120,"up_ms":11838}
+1791634360.024 {"t":"led","node":33120,"shows":"green","app":0}
+1791634360.024 {"t":"event","at_ms":1966,"node":33120,"kind":"peer_discovered","peer":29544,"slot":0,"a":170,"b":0}
+1791634360.024 {"t":"event","at_ms":1967,"node":33120,"kind":"version_pinned","peer":29544,"slot":0,"a":2,"b":1446}
+1791634360.024 {"t":"event","at_ms":1968,"node":33120,"kind":"peer_alive","peer":29544,"slot":0,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":1969,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":2052,"node":33120,"kind":"peer_discovered","peer":25344,"slot":1,"a":243,"b":0}
+1791634360.024 {"t":"event","at_ms":2053,"node":33120,"kind":"version_pinned","peer":25344,"slot":1,"a":2,"b":1446}
+1791634360.024 {"t":"event","at_ms":2054,"node":33120,"kind":"peer_alive","peer":25344,"slot":1,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":2055,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":2075,"node":33120,"kind":"actor_owner","peer":25344,"slot":255,"a":1245650351,"b":7}
+1791634360.024 {"t":"event","at_ms":2190,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":3243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":4185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":5243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":6185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":7243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":8185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":9246,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":10185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634360.024 {"t":"event","at_ms":11243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634360.024 {"t":"link","up_ms":12005,"node":33120,"peer":29544,"mac":"b8:1f:3f:da:73:68","state":"alive","epoch":170,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-9,"tx":{"frames":37,"cb_ok":37,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":147,"lost_seqgap":0,"reorder_dup":0,"dropped_bad":0,"hb_lost":1,"bcast_frames":101,"pdr_ppm":1000000},"rtt":{"samples":5,"min_us":5506,"max_us":5692,"timeouts":0,"txq_last_us":0,"txq_max_us":0,"remote_turnaround_us":836,"remote_turnaround_max_us":891,"p50_us":[4000,6000],"p99_us":[4000,6000],"hist":[0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0]}}
+1791634360.024 {"t":"link","up_ms":12058,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":243,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-20,"tx":{"frames":37,"cb_ok":37,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":144,"lost_seqgap":1,"reorder_dup":0,"dropped_bad":0,"hb_lost":0,"bcast_frames":101,"pdr_ppm":993103},"rtt":{"samples":5,"min_us":5923,"max_us":9176,"timeouts":0,"txq_last_us":0,"txq_max_us":0,"remote_turnaround_us":1021,"remote_turnaround_max_us":1069,"p50_us":[4000,6000],"p99_us":[8000,11000],"hist":[0,0,0,0,3,1,1,0,0,0,0,0,0,0,0,0]}}
+1791634360.024 {"t":"auth","node":33120,"up_ms":12101,"enrolled":1,"required":1,"verified_peers":2,"verified":2,"cache_hits":10,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":80110,"link_stack_free_b":1524,"crypto_stack_free_b":1268,"tags_ok":77,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":859}
+1791634360.024 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634360.024 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":106,"list":[{"id":29544,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":1,"rtt_n":5},{"id":25344,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":0,"rtt_n":5}]}
+1791634360.424 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634360.424 {"t":"rec","node":33120,"up_ms":12197,"settled":1,"sent":44,"received":43,"malformed":0,"views":1,"replies_fenced":0,"actors":[{"key":1245650351,"running":0,"term":0,"owner":25344,"owner_term":7,"assigned":25344,"starts":0,"fenced":0,"released":0}]}
+1791634360.424 {"t":"node","up_ms":12223,"node":33120,"epoch":286,"peers_alive":2,"peers_dead":0,"no_radio":0,"free_dram":250307,"largest_block":172032,"rx":{"total":526,"bad_frame":0,"unknown_peer":12,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":47},"tx":{"total":188,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+1791634360.424 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":412,"ts":11840,"updates":1,"value":2}
+1791634360.424 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":426,"ts":11840,"updates":1,"value":172032}
+1791634360.424 {"t":"ns","node":33120,"hash":1245650351,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634360.424 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634360.424 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":479,"ts":11840,"updates":1,"value":286}
+1791634360.424 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":493,"ts":11840,"updates":1,"value":11}
+1791634360.424 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":507,"ts":11840,"updates":1,"value":-19}
+1791634360.424 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":522,"ts":11840,"updates":1,"value":250307}
+1791634370.565 {"t":"clk","node":33120,"up_ms":22376}
+1791634370.565 {"t":"led","node":33120,"shows":"green","app":0}
+1791634370.565 {"t":"event","at_ms":12185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634370.565 {"t":"event","at_ms":13243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634370.565 {"t":"event","at_ms":14185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634370.565 {"t":"event","at_ms":15243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634370.565 {"t":"event","at_ms":16185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634370.565 {"t":"event","at_ms":17243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634370.565 {"t":"event","at_ms":18185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634370.565 {"t":"event","at_ms":19243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634370.565 {"t":"event","at_ms":20185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634370.565 {"t":"event","at_ms":21243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634370.565 {"t":"event","at_ms":22185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634370.565 {"t":"link","up_ms":22474,"node":33120,"peer":29544,"mac":"b8:1f:3f:da:73:68","state":"alive","epoch":170,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-8,"tx":{"frames":75,"cb_ok":75,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":294,"lost_seqgap":0,"reorder_dup":0,"dropped_bad":0,"hb_lost":1,"bcast_frames":206,"pdr_ppm":1000000},"rtt":{"samples":10,"min_us":5497,"max_us":5692,"timeouts":0,"txq_last_us":0,"txq_max_us":0,"remote_turnaround_us":788,"remote_turnaround_max_us":891,"p50_us":[4000,6000],"p99_us":[4000,6000],"hist":[0,0,0,0,10,0,0,0,0,0,0,0,0,0,0,0]}}
+1791634370.565 {"t":"link","up_ms":22528,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":243,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-20,"tx":{"frames":71,"cb_ok":71,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":288,"lost_seqgap":1,"reorder_dup":0,"dropped_bad":0,"hb_lost":0,"bcast_frames":206,"pdr_ppm":996539},"rtt":{"samples":10,"min_us":5807,"max_us":9176,"timeouts":0,"txq_last_us":0,"txq_max_us":0,"remote_turnaround_us":876,"remote_turnaround_max_us":1069,"p50_us":[4000,6000],"p99_us":[8000,11000],"hist":[0,0,0,0,7,2,1,0,0,0,0,0,0,0,0,0]}}
+1791634370.565 {"t":"auth","node":33120,"up_ms":22572,"enrolled":1,"required":1,"verified_peers":2,"verified":2,"cache_hits":21,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":80110,"link_stack_free_b":1524,"crypto_stack_free_b":1268,"tags_ok":148,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":859}
+1791634370.565 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634370.565 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":215,"list":[{"id":29544,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":1,"rtt_n":10},{"id":25344,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":0,"rtt_n":10}]}
+1791634370.565 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634370.565 {"t":"rec","node":33120,"up_ms":22667,"settled":1,"sent":86,"received":85,"malformed":0,"views":1,"replies_fenced":0,"actors":[{"key":1245650351,"running":0,"term":0,"owner":25344,"owner_term":7,"assigned":25344,"starts":0,"fenced":0,"released":0}]}
+1791634370.565 {"t":"node","up_ms":22693,"node":33120,"epoch":286,"peers_alive":2,"peers_dead":0,"no_radio":0,"free_dram":250307,"largest_block":172032,"rx":{"total":1035,"bad_frame":0,"unknown_peer":12,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":47},"tx":{"total":368,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+1791634370.895 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":344,"ts":22378,"updates":2,"value":2}
+1791634370.895 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":358,"ts":22378,"updates":2,"value":172032}
+1791634370.895 {"t":"ns","node":33120,"hash":1245650351,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634370.895 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634370.895 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":411,"ts":22378,"updates":2,"value":286}
+1791634370.895 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":425,"ts":22378,"updates":2,"value":22}
+1791634370.895 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":439,"ts":22378,"updates":2,"value":-20}
+1791634370.895 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":453,"ts":22378,"updates":2,"value":250307}
+1791634381.031 {"t":"clk","node":33120,"up_ms":32845}
+1791634381.031 {"t":"led","node":33120,"shows":"green","app":0}
+1791634381.031 {"t":"event","at_ms":23243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634381.031 {"t":"event","at_ms":24185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634381.031 {"t":"event","at_ms":25243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634381.031 {"t":"event","at_ms":26187,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634381.031 {"t":"event","at_ms":27243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634381.031 {"t":"event","at_ms":28185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634381.031 {"t":"event","at_ms":29243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634381.031 {"t":"event","at_ms":30187,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634381.031 {"t":"event","at_ms":31243,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791634381.031 {"t":"event","at_ms":32185,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791634381.031 {"t":"link","up_ms":32931,"node":33120,"peer":29544,"mac":"b8:1f:3f:da:73:68","state":"alive","epoch":170,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-9,"tx":{"frames":112,"cb_ok":112,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":441,"lost_seqgap":0,"reorder_dup":0,"dropped_bad":0,"hb_lost":1,"bcast_frames":311,"pdr_ppm":1000000},"rtt":{"samples":16,"min_us":5497,"max_us":7596,"timeouts":0,"txq_last_us":0,"txq_max_us":0,"remote_turnaround_us":828,"remote_turnaround_max_us":1092,"p50_us":[4000,6000],"p99_us":[6000,8000],"hist":[0,0,0,0,13,3,0,0,0,0,0,0,0,0,0,0]}}
+1791634381.031 {"t":"link","up_ms":32985,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":243,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-19,"tx":{"frames":106,"cb_ok":106,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":433,"lost_seqgap":1,"reorder_dup":0,"dropped_bad":0,"hb_lost":0,"bcast_frames":311,"pdr_ppm":997695},"rtt":{"samples":15,"min_us":5807,"max_us":9176,"timeouts":0,"txq_last_us":0,"txq_max_us":0,"remote_turnaround_us":1010,"remote_turnaround_max_us":1069,"p50_us":[4000,6000],"p99_us":[8000,11000],"hist":[0,0,0,0,11,3,1,0,0,0,0,0,0,0,0,0]}}
+1791634381.031 {"t":"auth","node":33120,"up_ms":33039,"enrolled":1,"required":1,"verified_peers":2,"verified":2,"cache_hits":31,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":80110,"link_stack_free_b":1524,"crypto_stack_free_b":1268,"tags_ok":219,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":859}
+1791634381.031 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791634381.031 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":322,"list":[{"id":29544,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":1,"rtt_n":16},{"id":25344,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":0,"rtt_n":15}]}
+1791634381.031 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791634381.031 {"t":"rec","node":33120,"up_ms":33123,"settled":1,"sent":127,"received":126,"malformed":0,"views":1,"replies_fenced":0,"actors":[{"key":1245650351,"running":0,"term":0,"owner":25344,"owner_term":7,"assigned":25344,"starts":0,"fenced":0,"released":0}]}
+1791634381.031 {"t":"node","up_ms":33149,"node":33120,"epoch":286,"peers_alive":2,"peers_dead":0,"no_radio":0,"free_dram":250307,"largest_block":172032,"rx":{"total":1542,"bad_frame":0,"unknown_peer":12,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":47},"tx":{"total":549,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+1791634381.346 {"t":"ns","node":33120,"hash":13581963,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":342,"ts":32847,"updates":3,"value":2}
+1791634381.346 {"t":"ns","node":33120,"hash":3142365229,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":358,"ts":32846,"updates":3,"value":172032}
+1791634381.346 {"t":"ns","node":33120,"hash":1245650351,"owner":25344,"kind":"sampled","unit":0,"class":3,"bound_ms":500,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634381.346 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791634381.346 {"t":"ns","node":33120,"hash":2347817554,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":400,"ts":32846,"updates":3,"value":286}
+1791634381.346 {"t":"ns","node":33120,"hash":1170356950,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":414,"ts":32846,"updates":3,"value":32}
+1791634381.346 {"t":"ns","node":33120,"hash":3085599597,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":427,"ts":32847,"updates":3,"value":-19}
+1791634381.346 {"t":"ns","node":33120,"hash":2486014333,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":443,"ts":32846,"updates":3,"value":250307}
