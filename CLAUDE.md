@@ -43,8 +43,9 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 
 > ## HANDOVER, 2026-10-10: M8.2's PS-0 PASSED in the room; both apps called done by the owner (M0-LOG session 34).
 >
-> The boards are placed around the owner's room (A at the PC on its cable + CP2102; B on the left wall, C in the
-> top-left corner, both on wall chargers -- no console, no reflash without carrying them back). Empty room read
+> **Back on the desk since 2026-10-10 night**, all three on USB (COM3/4/5) and the CP2102 on COM6; CAN modules
+> OFF (rewire from bench/m4-can-wiring.html only if a CAN item is worked). For PS-0 they had been placed around
+> the owner's room. Focus is back on Potluck itself; next per the status review: M9. Empty room read
 > empty, a person walking/standing/sitting read present; kill check passed, PS-6 not needed. Bench: Potluck
 > `a6feb9c` + passive-sensor `f7975d9`, `ps-room` from passive-sensor `2992b2e` (threshold 2.5 dB) at **counter 20**
 > (next 21+). Left for M8.2's acceptance: 30 min empty room in place and 24 h with no PC -- the owner decides the
