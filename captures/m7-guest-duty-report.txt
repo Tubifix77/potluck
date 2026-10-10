@@ -1,0 +1,55 @@
+target 0x8160: 3 faults, burning ~134 s (@329..462 s), one tick every ~47.9 s
+  before   5.5 min: target's turnaround as peers see it median 983 us, max 1665 us (58 samples); heartbeats lost on its links 33 (6.0/min), frames 17123
+  burn     2.2 min: target's turnaround as peers see it median 1112 us, max 2275 us (24 samples); heartbeats lost on its links 9 (4.0/min), frames 7349
+  after    5.8 min: target's turnaround as peers see it median 955 us, max 1191 us (66 samples); heartbeats lost on its links 42 (7.2/min), frames 20200
+  peer_dead during the burn: 0
+M7 guest bench report: captures/m7-guest-duty
+
+COM3: 2645 records over 13.8 min
+  actor_owner @  326.9 s: {"at_ms": 2372, "node": 25344, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 1182575845, "b": 1}
+  actor_owner @  326.9 s: {"at_ms": 3377, "node": 25344, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 3267574664, "b": 1}
+  actor_owner @  327.0 s: {"at_ms": 6038, "node": 25344, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_owner @  327.0 s: {"at_ms": 6046, "node": 25344, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 3267574664, "b": 2}
+
+COM4: 2826 records over 13.8 min
+  guest 0 (key 3267574664): runs 504 ok 504 failed 0 overruns 0 fresh 1 reads 0 ck 503 fuel 6 strikes 0 quarantined 0 error ''
+  guest 1 (key 1182575845): runs 3 ok 0 failed 3 overruns 3 fresh 3 reads 0 ck 0 fuel 0 strikes 3 quarantined 1 error '[trap] out of fuel (potluck)'
+  actor_owner @  328.0 s: {"at_ms": 2610, "node": 29544, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 1182575845, "b": 1}
+  actor_owner @  328.1 s: {"at_ms": 2909, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_owner @  328.1 s: {"at_ms": 3132, "node": 29544, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 1182575845, "b": 1}
+  actor_owner @  328.1 s: {"at_ms": 3614, "node": 29544, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 3267574664, "b": 1}
+  actor_owner @  328.1 s: {"at_ms": 3909, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_owner @  328.1 s: {"at_ms": 3909, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_owner @  328.2 s: {"at_ms": 5449, "node": 29544, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 3267574664, "b": 1}
+  actor_owner @  328.2 s: {"at_ms": 5449, "node": 29544, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 1182575845, "b": 1}
+  actor_owner @  328.2 s: {"at_ms": 6270, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_started @  328.2 s: {"at_ms": 6271, "node": 29544, "kind": "actor_started", "peer": 29544, "slot": 255, "a": 3267574664, "b": 2}
+  actor_owner @  328.2 s: {"at_ms": 6271, "node": 29544, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 3267574664, "b": 2}
+
+COM5: 2610 records over 13.8 min
+  guest 1 (key 1182575845): runs 3 ok 0 failed 3 overruns 69 fresh 3 reads 0 ck 0 fuel 0 strikes 3 quarantined 1 error '[trap] out of fuel (potluck)'
+  fault @  366.6 s: guest 1 strikes 1 quarantined 0: [trap] out of fuel (potluck)
+  fault @  414.6 s: guest 1 strikes 2 quarantined 0: [trap] out of fuel (potluck)
+  fault @  462.4 s: guest 1 strikes 3 quarantined 1: [trap] out of fuel (potluck)
+  actor_started @  328.8 s: {"at_ms": 2364, "node": 33120, "kind": "actor_started", "peer": 33120, "slot": 255, "a": 1182575845, "b": 1}
+  actor_owner @  328.8 s: {"at_ms": 2364, "node": 33120, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 1182575845, "b": 1}
+  actor_started @  328.8 s: {"at_ms": 3367, "node": 33120, "kind": "actor_started", "peer": 33120, "slot": 255, "a": 3267574664, "b": 1}
+  actor_owner @  328.8 s: {"at_ms": 3367, "node": 33120, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 3267574664, "b": 1}
+  actor_stopped @  328.9 s: {"at_ms": 6016, "node": 33120, "kind": "actor_stopped", "peer": 33120, "slot": 255, "a": 3267574664, "b": 2}
+  actor_owner @  328.9 s: {"at_ms": 6016, "node": 33120, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_owner @  328.9 s: {"at_ms": 6045, "node": 33120, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 3267574664, "b": 2}
+
+peer_dead events: 4
+  COM3 @  309.4 s: {"at_ms": 382954, "node": 25344, "kind": "peer_dead", "peer": 254, "slot": 2, "a": 6, "b": 615}
+  COM4 @  328.5 s: {"at_ms": 2907, "node": 29544, "kind": "peer_dead", "peer": 33120, "slot": 0, "a": 6, "b": 624}
+  COM4 @  328.6 s: {"at_ms": 3907, "node": 29544, "kind": "peer_dead", "peer": 33120, "slot": 0, "a": 6, "b": 660}
+  COM4 @  328.6 s: {"at_ms": 5207, "node": 29544, "kind": "peer_dead", "peer": 25344, "slot": 1, "a": 6, "b": 676}
+
+host reads through A: 4135
+  potluck://lab/act/alarm/out: {'NO_DATA': 5, 'GOOD': 822}
+  potluck://lab/act/alarm/alarm: {'NO_DATA': 5, 'GOOD': 822}
+  potluck://lab/act/alarm/count: {'NO_DATA': 4, 'GOOD': 823}
+    GOOD counts: first 1191, last 511, went backwards 1 time(s): [(1791675426.721, 1502, 1)]
+    spells not GOOD: 2, longest 3.0 s
+  potluck://lab/act/spin/out: {'NO_DATA': 48, 'FAULTY': 779}
+  potluck://lab/node-7368/hw/die_temp: {'NO_DATA': 2, 'GOOD': 825}

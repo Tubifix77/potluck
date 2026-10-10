@@ -1,0 +1,19 @@
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 246 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 246, death window 100 ms x 6 = 600 ms
+guest 'alarm': author 7, signature verified under the cluster CA
+guest 'spin': author 7, signature verified under the cluster CA
+image signed for node-side checking (176 B trailer)
+package 'lab' counter 25, signed by efb18338c77b66fe ('owner-pc')
+node image 1544 B, crc b4517d02, 3 actor(s), manifest d6a2b3975401ad5b
+  BEGIN   OK  (slot B, 0 B received)
+  CHUNK   OK  (slot B, 220 B received)
+  CHUNK   OK  (slot B, 440 B received)
+  CHUNK   OK  (slot B, 660 B received)
+  CHUNK   OK  (slot B, 880 B received)
+  CHUNK   OK  (slot B, 1100 B received)
+  CHUNK   OK  (slot B, 1320 B received)
+  CHUNK   OK  (slot B, 1540 B received)
+  CHUNK   OK  (slot B, 1544 B received)
+  COMMIT  BAD_SIGNATURE  (slot B, 1544 B received)
+FAILED: COMMIT refused by 0x6300: BAD_SIGNATURE

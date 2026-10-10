@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "system": "lab",
+  "min_core_version": 1,
+  "nodes": [
+    {
+      "node_id": 25344,
+      "label": "A"
+    },
+    {
+      "node_id": 29544,
+      "label": "B",
+      "owns": [
+        {
+          "path": "potluck://lab/node-7368/hw/die_temp",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 5000
+        }
+      ]
+    },
+    {
+      "node_id": 33120,
+      "label": "C"
+    }
+  ],
+  "actors": [
+    {
+      "name": "die_b",
+      "module": "builtin:die_temp",
+      "latency_class": 4,
+      "pin": 29544,
+      "config": {
+        "period_ms": 1000
+      }
+    },
+    {
+      "name": "alarm",
+      "module": "guest:overheat_alarm",
+      "latency_class": 4,
+      "needs": [
+        "potluck://lab/node-7368/hw/die_temp"
+      ],
+      "config": {
+        "bundle": "keys/overheat_alarm.guest.json",
+        "sha256": "cb12c6e69b59e8144d0f937cef8a29d5e45598c4828aabf4a261edd81891b650",
+        "outputs": "out:f32 alarm:i32 count:i32",
+        "fuel": 100000,
+        "memory_kib": 64,
+        "period_ms": 1000
+      }
+    },
+    {
+      "name": "spin",
+      "module": "guest:endless_tick",
+      "latency_class": 4,
+      "config": {
+        "bundle": "keys/endless_tick.guest.json",
+        "sha256": "d13f47596b98b11261b3609c09a3df9d4c221c28d60cf2ba4e55ce08e2c48a29",
+        "outputs": "out:i32",
+        "fuel": 20000000,
+        "memory_kib": 64,
+        "period_ms": 2000
+      },
+      "pin": 33120
+    }
+  ]
+}

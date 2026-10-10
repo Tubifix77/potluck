@@ -1,0 +1,101 @@
+M7 guest bench report: captures/m7-guest-run
+
+COM3: 1047 records over 5.2 min
+  guest 1 (key 1182575845): runs 0 ok 0 failed 0 overruns 1 fresh 0 reads 0 ck 0 fuel 0 strikes 0 quarantined 0 error ''
+  fault @  204.0 s: guest 1 strikes 1 quarantined 0: [trap] out of fuel (potluck)
+  actor_started @   32.5 s: {"at_ms": 3416, "node": 25344, "kind": "actor_started", "peer": 25344, "slot": 255, "a": 1182575845, "b": 1}
+  actor_owner @   32.5 s: {"at_ms": 3416, "node": 25344, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 1182575845, "b": 1}
+  actor_started @   32.5 s: {"at_ms": 4423, "node": 25344, "kind": "actor_started", "peer": 25344, "slot": 255, "a": 3267574664, "b": 1}
+  actor_owner @   32.5 s: {"at_ms": 4423, "node": 25344, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 3267574664, "b": 1}
+  actor_stopped @   32.5 s: {"at_ms": 5976, "node": 25344, "kind": "actor_stopped", "peer": 25344, "slot": 255, "a": 3267574664, "b": 2}
+  actor_owner @   32.5 s: {"at_ms": 5976, "node": 25344, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_stopped @   32.6 s: {"at_ms": 5976, "node": 25344, "kind": "actor_stopped", "peer": 25344, "slot": 255, "a": 1182575845, "b": 2}
+  actor_owner @   32.6 s: {"at_ms": 5976, "node": 25344, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_owner @   32.6 s: {"at_ms": 6085, "node": 25344, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 3267574664, "b": 2}
+  actor_owner @   32.6 s: {"at_ms": 6085, "node": 25344, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 1182575845, "b": 2}
+  actor_owner @  202.2 s: {"at_ms": 177991, "node": 25344, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_owner @  202.2 s: {"at_ms": 177991, "node": 25344, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_started @  202.2 s: {"at_ms": 177992, "node": 25344, "kind": "actor_started", "peer": 25344, "slot": 255, "a": 1182575845, "b": 3}
+  actor_owner @  202.2 s: {"at_ms": 177992, "node": 25344, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 1182575845, "b": 3}
+  actor_owner @  202.2 s: {"at_ms": 178092, "node": 25344, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 3267574664, "b": 3}
+  actor_stopped @  213.1 s: {"at_ms": 186142, "node": 25344, "kind": "actor_stopped", "peer": 25344, "slot": 255, "a": 1182575845, "b": 2}
+  actor_owner @  213.1 s: {"at_ms": 186142, "node": 25344, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_owner @  213.1 s: {"at_ms": 186150, "node": 25344, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_owner @  213.1 s: {"at_ms": 186150, "node": 25344, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 1182575845, "b": 4}
+  actor_owner @  213.1 s: {"at_ms": 186155, "node": 25344, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 3267574664, "b": 4}
+
+COM4: 699 records over 3.3 min
+  guest 0 (key 3267574664): runs 159 ok 159 failed 0 overruns 6 fresh 1 reads 0 ck 159 fuel 6 strikes 0 quarantined 0 error ''
+  guest 1 (key 1182575845): runs 3 ok 0 failed 3 overruns 3 fresh 3 reads 0 ck 0 fuel 0 strikes 3 quarantined 1 error '[trap] out of fuel (potluck)'
+  fault @   33.3 s: guest 1 strikes 1 quarantined 0: [trap] out of fuel (potluck)
+  fault @   37.3 s: guest 1 strikes 2 quarantined 0: [trap] out of fuel (potluck)
+  fault @   41.1 s: guest 1 strikes 3 quarantined 1: [trap] out of fuel (potluck)
+  actor_owner @   35.7 s: {"at_ms": 3614, "node": 29544, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 1182575845, "b": 1}
+  actor_owner @   35.8 s: {"at_ms": 4665, "node": 29544, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 3267574664, "b": 1}
+  actor_owner @   35.8 s: {"at_ms": 5722, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_owner @   35.8 s: {"at_ms": 5722, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_owner @   35.9 s: {"at_ms": 6166, "node": 29544, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 3267574664, "b": 1}
+  actor_owner @   35.9 s: {"at_ms": 6166, "node": 29544, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 1182575845, "b": 1}
+  actor_owner @   35.9 s: {"at_ms": 6190, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_started @   35.9 s: {"at_ms": 6190, "node": 29544, "kind": "actor_started", "peer": 29544, "slot": 255, "a": 3267574664, "b": 2}
+  actor_owner @   35.9 s: {"at_ms": 6190, "node": 29544, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 3267574664, "b": 2}
+  actor_owner @   35.9 s: {"at_ms": 6190, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_started @   35.9 s: {"at_ms": 6190, "node": 29544, "kind": "actor_started", "peer": 29544, "slot": 255, "a": 1182575845, "b": 2}
+  actor_owner @   35.9 s: {"at_ms": 6190, "node": 29544, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 1182575845, "b": 2}
+
+COM4b: 2147 records over 10.3 min
+  guest 0 (key 3267574664): runs 604 ok 604 failed 0 overruns 7 fresh 1 reads 0 ck 603 fuel 6 strikes 0 quarantined 0 error ''
+  guest 1 (key 1182575845): runs 3 ok 0 failed 3 overruns 3 fresh 3 reads 0 ck 0 fuel 0 strikes 3 quarantined 1 error '[trap] out of fuel (potluck)'
+  fault @  213.4 s: guest 1 strikes 1 quarantined 0: [trap] out of fuel (potluck)
+  fault @  217.4 s: guest 1 strikes 2 quarantined 0: [trap] out of fuel (potluck)
+  fault @  221.3 s: guest 1 strikes 3 quarantined 1: [trap] out of fuel (potluck)
+  actor_owner @  215.8 s: {"at_ms": 2318, "node": 29544, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 1182575845, "b": 3}
+  actor_owner @  215.8 s: {"at_ms": 3362, "node": 29544, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 3267574664, "b": 3}
+  actor_owner @  215.9 s: {"at_ms": 5251, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_owner @  215.9 s: {"at_ms": 5251, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_owner @  215.9 s: {"at_ms": 6132, "node": 29544, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 1182575845, "b": 3}
+  actor_owner @  215.9 s: {"at_ms": 6301, "node": 29544, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 3267574664, "b": 3}
+  actor_owner @  215.9 s: {"at_ms": 6308, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_started @  215.9 s: {"at_ms": 6309, "node": 29544, "kind": "actor_started", "peer": 29544, "slot": 255, "a": 1182575845, "b": 4}
+  actor_owner @  216.0 s: {"at_ms": 6309, "node": 29544, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 1182575845, "b": 4}
+  actor_owner @  216.0 s: {"at_ms": 6313, "node": 29544, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_started @  216.0 s: {"at_ms": 6314, "node": 29544, "kind": "actor_started", "peer": 29544, "slot": 255, "a": 3267574664, "b": 4}
+  actor_owner @  216.0 s: {"at_ms": 6314, "node": 29544, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 3267574664, "b": 4}
+
+COM5: 2598 records over 13.8 min
+  guest 0 (key 3267574664): runs 3 ok 3 failed 0 overruns 0 fresh 1 reads 3 ck 3 fuel 5 strikes 0 quarantined 0 error ''
+  actor_owner @   35.9 s: {"at_ms": 3428, "node": 33120, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 1182575845, "b": 1}
+  actor_owner @   36.0 s: {"at_ms": 4481, "node": 33120, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 3267574664, "b": 1}
+  actor_owner @   36.0 s: {"at_ms": 5986, "node": 33120, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_owner @   36.0 s: {"at_ms": 5986, "node": 33120, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_owner @   36.0 s: {"at_ms": 6089, "node": 33120, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 3267574664, "b": 2}
+  actor_owner @   36.0 s: {"at_ms": 6089, "node": 33120, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 1182575845, "b": 2}
+  actor_owner @  204.7 s: {"at_ms": 178007, "node": 33120, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_started @  204.7 s: {"at_ms": 178007, "node": 33120, "kind": "actor_started", "peer": 33120, "slot": 255, "a": 3267574664, "b": 3}
+  actor_owner @  204.7 s: {"at_ms": 178007, "node": 33120, "kind": "actor_owner", "peer": 33120, "slot": 255, "a": 3267574664, "b": 3}
+  actor_owner @  204.7 s: {"at_ms": 178009, "node": 33120, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 1182575845, "b": 0}
+  actor_owner @  204.8 s: {"at_ms": 178152, "node": 33120, "kind": "actor_owner", "peer": 25344, "slot": 255, "a": 1182575845, "b": 3}
+  actor_stopped @  215.4 s: {"at_ms": 186148, "node": 33120, "kind": "actor_stopped", "peer": 33120, "slot": 255, "a": 3267574664, "b": 2}
+  actor_owner @  215.4 s: {"at_ms": 186148, "node": 33120, "kind": "actor_owner", "peer": 0, "slot": 255, "a": 3267574664, "b": 0}
+  actor_owner @  215.5 s: {"at_ms": 186182, "node": 33120, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 3267574664, "b": 4}
+  actor_owner @  215.5 s: {"at_ms": 186182, "node": 33120, "kind": "actor_owner", "peer": 29544, "slot": 255, "a": 1182575845, "b": 4}
+
+peer_dead events: 9
+  COM3 @  205.6 s: {"at_ms": 177989, "node": 25344, "kind": "peer_dead", "peer": 29544, "slot": 0, "a": 6, "b": 671}
+  COM3 @  301.4 s: {"at_ms": 272589, "node": 25344, "kind": "peer_dead", "peer": 254, "slot": 2, "a": 6, "b": 600}
+  COM3 @  312.0 s: {"at_ms": 280689, "node": 25344, "kind": "peer_dead", "peer": 254, "slot": 2, "a": 6, "b": 657}
+  COM4 @   35.8 s: {"at_ms": 3908, "node": 29544, "kind": "peer_dead", "peer": 33120, "slot": 1, "a": 6, "b": 612}
+  COM4 @   35.8 s: {"at_ms": 5708, "node": 29544, "kind": "peer_dead", "peer": 25344, "slot": 0, "a": 6, "b": 623}
+  COM4 @   35.8 s: {"at_ms": 5709, "node": 29544, "kind": "peer_dead", "peer": 33120, "slot": 1, "a": 6, "b": 649}
+  COM4b @  215.8 s: {"at_ms": 5237, "node": 29544, "kind": "peer_dead", "peer": 25344, "slot": 0, "a": 6, "b": 682}
+  COM4b @  215.9 s: {"at_ms": 5238, "node": 29544, "kind": "peer_dead", "peer": 33120, "slot": 1, "a": 6, "b": 673}
+  COM5 @  204.7 s: {"at_ms": 178005, "node": 33120, "kind": "peer_dead", "peer": 29544, "slot": 0, "a": 6, "b": 682}
+
+host reads through A: 1295
+  potluck://lab/act/alarm/out: {'NO_DATA': 6, 'GOOD': 253}
+  potluck://lab/act/alarm/alarm: {'NO_DATA': 6, 'GOOD': 252, 'UNAVAILABLE': 1}
+  potluck://lab/act/alarm/count: {'NO_DATA': 7, 'GOOD': 252}
+    GOOD counts: first 3, last 251, went backwards 0 time(s)
+    spells not GOOD: 3, longest 5.0 s
+  potluck://lab/act/spin/out: {'NO_DATA': 12, 'FAULTY': 247}
+  potluck://lab/node-7368/hw/die_temp: {'NO_DATA': 1, 'GOOD': 252, 'UNAVAILABLE': 4, 'STALE': 2}

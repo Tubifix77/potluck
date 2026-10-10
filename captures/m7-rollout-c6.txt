@@ -1,0 +1,27 @@
+0x7368: image ../../firmware/build-extender-m7/potluck_m0.bin, 981984 B, counter 6, sha512 5323b3b6f9239577...
+0x7368: before {'status': 'ok', 'node': 29544, 'received': 0, 'running': 5, 'floor': 5, 'state': 'confirmed', 'version': 'deploy-and-detach-169-g599260f-'}
+    0 %     0.1 s
+   20 %    21.8 s
+   41 %    43.6 s
+   62 %    65.3 s
+   83 %    87.0 s
+0x7368: committed after 104.5 s (9.2 KiB/s)
+0x7368: confirmed deploy-and-detach-177-g7192689 after 121.0 s
+0x8160: image ../../firmware/build-m7-node/potluck_m0.bin, 943440 B, counter 6, sha512 3a5f83b43fde0cb5...
+0x8160: before {'status': 'ok', 'node': 33120, 'received': 0, 'running': 5, 'floor': 5, 'state': 'confirmed', 'version': 'deploy-and-detach-169-g599260f-'}
+    0 %     0.1 s
+   21 %    21.9 s
+   43 %    43.5 s
+   65 %    65.5 s
+   86 %    87.3 s
+0x8160: committed after 101.0 s (9.1 KiB/s)
+0x8160: confirmed deploy-and-detach-177-g7192689 after 117.5 s
+0x6300: image ../../firmware/build-m7-node/potluck_m0.bin, 943440 B, counter 6, sha512 3a5f83b43fde0cb5...
+0x6300: before {'status': 'ok', 'node': 25344, 'received': 0, 'running': 5, 'floor': 5, 'state': 'confirmed', 'version': 'deploy-and-detach-169-g599260f-'}
+    0 %     0.2 s
+   21 %    21.9 s
+   43 %    43.6 s
+   65 %    65.3 s
+   86 %    87.0 s
+0x6300: committed after 100.7 s (9.1 KiB/s)
+0x6300: confirmed deploy-and-detach-177-g7192689 after 115.9 s
