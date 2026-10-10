@@ -1,0 +1,8 @@
+     0.000 s  A   actor_stopped  why 2
+     0.075 s  PC  actor_started  term 25
+  1794.196 s  PC  actor_stopped  why gone
+  1794.877 s  A   actor_started  term 26
+longest overlap of two runners: 0 ms
+  failover: A declared the PC dead 678 ms after its last frame and started it 3 ms later: 681 ms
+  B declared the PC dead 652 ms after its last frame (it started nothing: not its turn)
+  C declared the PC dead 669 ms after its last frame (it started nothing: not its turn)

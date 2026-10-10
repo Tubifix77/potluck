@@ -1,0 +1,9 @@
+{"t":"test","cmd":"read","hash":1245650351,"owner":254,"quality":"NO_DATA","value":-0,"age_ms":0,"ts":0,"asked":52}
+{"t":"test","cmd":"read","hash":1245650351,"owner":254,"quality":"STALE","value":16646363,"age_ms":1794,"ts":29773,"asked":56}
+{"t":"test","cmd":"read","hash":1245650351,"owner":254,"quality":"STALE","value":16646380,"age_ms":1796,"ts":31622,"asked":59}
+{"t":"test","cmd":"read","hash":1245650351,"owner":254,"quality":"NO_DATA","value":-0,"age_ms":0,"ts":0,"asked":61}
+{"t":"test","cmd":"read","hash":1245650351,"owner":254,"quality":"STALE","value":16646414,"age_ms":1750,"ts":35325,"asked":65}
+{"t":"test","cmd":"read","hash":1245650351,"owner":254,"quality":"STALE","value":16646430,"age_ms":1835,"ts":37064,"asked":69}
+{"t":"test","cmd":"read","hash":1245650351,"owner":254,"quality":"NO_DATA","value":-0,"age_ms":0,"ts":0,"asked":71}
+{"t":"test","cmd":"read","hash":1245650351,"owner":254,"quality":"STALE","value":16646464,"age_ms":1685,"ts":40751,"asked":74}
+{"t":"test","cmd":"read","hash":1245650351,"owner":254,"quality":"STALE","value":16646480,"age_ms":1763,"ts":42488,"asked":78}
