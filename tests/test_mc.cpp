@@ -28,6 +28,7 @@ struct Exec {
     std::vector<Job> jobs;
     uint8_t workers = 2;
     uint32_t unit_ms = kUnitMs;
+    bool black_hole = false;  // accepts work and never finishes it: an answer that never comes
 };
 
 struct MNode {
@@ -61,7 +62,7 @@ struct MCell {
     static bool bg_submit(void* ctx, void (*work)(void*), void* arg) {
         Exec* e = static_cast<Exec*>(ctx);
         if (e->jobs.size() >= e->workers) return false;
-        e->jobs.push_back(Exec::Job{work, arg, e->cell->now_ms() + e->unit_ms});
+        e->jobs.push_back(Exec::Job{work, arg, e->black_hole ? 0xFFFFFFFFu : e->cell->now_ms() + e->unit_ms});
         return true;
     }
     static bool on_call(void* ctx, uint16_t from, uint16_t msg, uint32_t path, const uint8_t* a, uint16_t len) {
@@ -166,7 +167,7 @@ struct MCell {
             for (MNode& t : n) {
                 if (t.down) continue;
                 for (size_t j = 0; j < t.exec.jobs.size();) {
-                    if (static_cast<int32_t>(now_ms() - t.exec.jobs[j].due_ms) >= 0) {
+                    if (t.exec.jobs[j].due_ms != 0xFFFFFFFFu && static_cast<int32_t>(now_ms() - t.exec.jobs[j].due_ms) >= 0) {
                         Exec::Job jb = t.exec.jobs[j];
                         t.exec.jobs.erase(t.exec.jobs.begin() + static_cast<std::ptrdiff_t>(j));
                         jb.work(jb.arg);
@@ -274,3 +275,19 @@ TEST(mc, a_peer_without_a_lender_is_asked_and_then_left_alone) {
     CHECK(r.refused > 0u);
     CHECK(r.refused < 40u);  // it stopped asking instead of trying every unit on them
 }
+
+TEST(mc, a_unit_whose_answer_never_comes_is_cancelled_at_its_deadline_and_run_again) {
+    // Found on the bench (M0-LOG session 35): B was reset mid-run, rebooted fast enough not to stay
+    // dead, and a unit sent while it re-keyed was never answered. The node sets work units no deadline,
+    // so the job stuck at 958 of 960. Here node 1 accepts units and never finishes one.
+    MCell c(60);
+    c.run(3000);
+    c.n[1].exec.black_hole = true;
+    c.run_job(true);
+    const McJobActor::Result r = c.job->last();
+    CHECK(r.overdue > 0u);
+    CHECK_EQ(c.job->lent_to(0x101), 0u);
+    CHECK_EQ(r.hits, expected_hits(60));  // every unit counted exactly once
+    CHECK_EQ(static_cast<unsigned>(r.local_units + r.lent_units), 60u);
+}
+

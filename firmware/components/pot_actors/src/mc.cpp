@@ -306,7 +306,28 @@ void McJobActor::tick(uint32_t now) {
         finish(now);
         return;
     }
+    cancel_overdue(now);
     dispatch(now);
+}
+
+void McJobActor::cancel_overdue(uint32_t now) {
+    for (Remote& r : remote_) {
+        if (r.msg == 0) continue;
+        // Four times what the unit should take there, plus a second: generous, since a late answer is
+        // only lost time while a cancelled one is run again. The peer's measured compute time when there
+        // is one, this node's own otherwise.
+        Lender* l = lender(r.peer);
+        const uint32_t compute = (l != nullptr && l->compute_ms != 0) ? l->compute_ms : local_ms_;
+        const uint32_t deadline = 4u * (compute + rtt_ms(r.peer)) + 1000u;
+        if (now - r.sent_ms <= deadline) continue;
+        ++cur_.overdue;
+        // The node answers this with Unavailable, synchronously, through on_call_result: the unit is
+        // requeued there, and a late REPLY from the peer then finds no pending call and is dropped.
+        if (!node_.cancel_call(r.msg)) {
+            requeue(r.unit);  // the node no longer knew it: the unit is still ours
+            r = Remote{};
+        }
+    }
 }
 
 bool McJobActor::on_call_result(uint16_t from, uint16_t msg, uint32_t path, Node::CallOutcome o, const Value& v) {
@@ -355,13 +376,15 @@ void McJobActor::finish(uint32_t now) {
     node_.ns().publish(cfg_.out_hash, Value::of_f32(cur_.pi), now);
     // Once per run, so the result is on the console the moment it exists.
     std::printf("{\"t\":\"mc_done\",\"node\":%u,\"run\":%u,\"lend\":%u,\"units\":%u,\"samples\":%u,"
-                "\"elapsed_ms\":%u,\"hits\":%llu,\"pi\":%.7f,\"local\":%u,\"lent\":%u,\"refused\":%u,\"lost\":%u}\n",
+                "\"elapsed_ms\":%u,\"hits\":%llu,\"pi\":%.7f,\"local\":%u,\"lent\":%u,\"refused\":%u,\"lost\":%u,"
+                "\"overdue\":%u}\n",
                 static_cast<unsigned>(node_.config().node_id), static_cast<unsigned>(last_.run),
                 static_cast<unsigned>(last_.lend), static_cast<unsigned>(cfg_.units),
                 static_cast<unsigned>(cfg_.samples), static_cast<unsigned>(last_.elapsed_ms),
                 static_cast<unsigned long long>(last_.hits), static_cast<double>(last_.pi),
                 static_cast<unsigned>(last_.local_units), static_cast<unsigned>(last_.lent_units),
-                static_cast<unsigned>(last_.refused), static_cast<unsigned>(last_.lost));
+                static_cast<unsigned>(last_.refused), static_cast<unsigned>(last_.lost),
+                static_cast<unsigned>(last_.overdue));
 }
 
 uint16_t McJobActor::lent_to(uint16_t node_id) const {

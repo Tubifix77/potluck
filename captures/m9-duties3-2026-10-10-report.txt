@@ -1,0 +1,30 @@
+== runs (board A)
+  lend    67897 ms  local  277 lent  683  refused 0 lost 0  hits 753983075  pi 3.1415961
+  lend    68034 ms  local  278 lent  682  refused 0 lost 0  hits 753983075  pi 3.1415961
+  lend    67929 ms  local  277 lent  683  refused 0 lost 0  hits 753983075  pi 3.1415961
+  lend    68063 ms  local  278 lent  682  refused 0 lost 0  hits 753983075  pi 3.1415961
+  lend    67947 ms  local  277 lent  683  refused 0 lost 0  hits 753983075  pi 3.1415961
+== lender 0x7368 (captures/m9-duties3-2026-10-10-COM4.jsonl)
+  idle      66 s  0x6300: hb 99.37% rtt p50 6-8 ms p99 30-42 ms (n 32)  0x8160: hb 98.57% rtt p50 6-8 ms p99 8-11 ms (n 32)  die_temp 1.00/s err 0  lent 0 (unit 280 ms)
+  lend      68 s  0x6300: hb 99.81% rtt p50 4-6 ms p99 42-60 ms (n 27)  0x8160: hb 99.43% rtt p50 4-6 ms p99 8-11 ms (n 26)  die_temp 0.99/s err 0  lent 315 (unit 346 ms)
+  idle      70 s  0x6300: hb 99.68% rtt p50 4-6 ms p99 42-60 ms (n 31)  0x8160: hb 99.21% rtt p50 4-6 ms p99 6-8 ms (n 32)  die_temp 1.00/s err 0  lent 0 (unit 319 ms)
+  lend      68 s  0x6300: hb 99.24% rtt p50 4-6 ms p99 8-11 ms (n 26)  0x8160: hb 98.86% rtt p50 4-6 ms p99 16-22 ms (n 26)  die_temp 1.01/s err 0  lent 317 (unit 324 ms)
+  idle      70 s  0x6300: hb 99.84% rtt p50 4-6 ms p99 8-11 ms (n 32)  0x8160: hb 98.73% rtt p50 4-6 ms p99 6-8 ms (n 31)  die_temp 1.00/s err 0  lent 0 (unit 315 ms)
+  lend      68 s  0x6300: hb 100.00% rtt p50 4-6 ms p99 8-11 ms (n 26)  0x8160: hb 99.62% rtt p50 4-6 ms p99 8-11 ms (n 26)  die_temp 0.99/s err 0  lent 316 (unit 330 ms)
+  idle      70 s  0x6300: hb 100.00% rtt p50 4-6 ms p99 8-11 ms (n 31)  0x8160: hb 99.84% rtt p50 4-6 ms p99 6-8 ms (n 32)  die_temp 1.00/s err 0  lent 0 (unit 314 ms)
+  lend      68 s  0x6300: hb 100.00% rtt p50 4-6 ms p99 6-8 ms (n 32)  0x8160: hb 99.53% rtt p50 4-6 ms p99 16-22 ms (n 31)  die_temp 1.00/s err 0  lent 377 (unit 327 ms)
+  idle      70 s  0x6300: hb 99.81% rtt p50 4-6 ms p99 22-30 ms (n 26)  0x8160: hb 99.81% rtt p50 4-6 ms p99 6-8 ms (n 26)  die_temp 1.01/s err 0  lent 0 (unit 254 ms)
+  lend      68 s  0x6300: hb 99.68% rtt p50 4-6 ms p99 6-8 ms (n 31)  0x8160: hb 99.68% rtt p50 4-6 ms p99 8-11 ms (n 32)  die_temp 1.00/s err 0  lent 379 (unit 330 ms)
+  idle      60 s  0x6300: hb 99.76% rtt p50 4-6 ms p99 6-8 ms (n 21)  0x8160: hb 100.00% rtt p50 4-6 ms p99 22-30 ms (n 21)  die_temp 1.00/s err 0  lent 0 (unit 302 ms)
+== lender 0x8160 (captures/m9-duties3-2026-10-10-COM5.jsonl)
+  idle      66 s  0x6300: hb 99.62% rtt p50 6-8 ms p99 8-11 ms (n 27)  0x7368: hb 98.48% rtt p50 4-6 ms p99 11-16 ms (n 26)  die_temp 0.99/s err 0  lent 0 (unit 422 ms)
+  lend      68 s  0x6300: hb 99.81% rtt p50 6-8 ms p99 8-11 ms (n 26)  0x7368: hb 98.48% rtt p50 6-8 ms p99 11-16 ms (n 26)  die_temp 0.99/s err 0  lent 214 (unit 489 ms)
+  idle      70 s  0x6300: hb 99.84% rtt p50 6-8 ms p99 16-22 ms (n 32)  0x7368: hb 99.21% rtt p50 4-6 ms p99 11-16 ms (n 31)  die_temp 1.00/s err 0  lent 0 (unit 390 ms)
+  lend      68 s  0x6300: hb 99.37% rtt p50 6-8 ms p99 8-11 ms (n 32)  0x7368: hb 99.37% rtt p50 4-6 ms p99 22-30 ms (n 32)  die_temp 1.00/s err 0  lent 256 (unit 477 ms)
+  idle      70 s  0x6300: hb 99.81% rtt p50 6-8 ms p99 8-11 ms (n 26)  0x7368: hb 98.85% rtt p50 4-6 ms p99 30-42 ms (n 26)  die_temp 0.99/s err 0  lent 0 (unit 476 ms)
+  lend      68 s  0x6300: hb 100.00% rtt p50 6-8 ms p99 30-42 ms (n 32)  0x7368: hb 99.84% rtt p50 4-6 ms p99 8-11 ms (n 31)  die_temp 1.00/s err 0  lent 257 (unit 471 ms)
+  idle      70 s  0x6300: hb 100.00% rtt p50 6-8 ms p99 22-30 ms (n 26)  0x7368: hb 99.62% rtt p50 4-6 ms p99 8-11 ms (n 26)  die_temp 1.01/s err 0  lent 0 (unit 452 ms)
+  lend      68 s  0x6300: hb 100.00% rtt p50 6-8 ms p99 8-11 ms (n 31)  0x7368: hb 99.37% rtt p50 6-8 ms p99 8-11 ms (n 32)  die_temp 1.00/s err 0  lent 257 (unit 475 ms)
+  idle      70 s  0x6300: hb 99.84% rtt p50 6-8 ms p99 8-11 ms (n 32)  0x7368: hb 99.68% rtt p50 6-8 ms p99 16-22 ms (n 31)  die_temp 1.00/s err 0  lent 0 (unit 420 ms)
+  lend      68 s  0x6300: hb 99.62% rtt p50 6-8 ms p99 8-11 ms (n 26)  0x7368: hb 99.62% rtt p50 6-8 ms p99 8-11 ms (n 26)  die_temp 1.01/s err 0  lent 214 (unit 486 ms)
+  idle      60 s  0x6300: hb 99.81% rtt p50 6-8 ms p99 8-11 ms (n 26)  0x7368: hb 100.00% rtt p50 6-8 ms p99 8-11 ms (n 26)  die_temp 1.01/s err 0  lent 0 (unit 400 ms)

@@ -3,7 +3,7 @@ Running ninja in directory D:\Projects\potluck\firmware\build
 Executing "ninja all"...
 [1/4] C:\WINDOWS\system32\cmd.exe /C "cd /D D:\Projects\potluck\firmware\build && C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe D:/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Projects/potluck/firmware/build/partition_table/partition-table.bin D:/Projects/potluck/firmware/build/potluck_m0.bin"
 
-potluck_m0.bin binary size 0xcb9b0 bytes. Smallest app partition is 0x100000 bytes. 0x34650 bytes (20%) free.
+potluck_m0.bin binary size 0xcba40 bytes. Smallest app partition is 0x100000 bytes. 0x345c0 bytes (20%) free.
 
 
 [2/4] Performing build step for 'bootloader'
@@ -37,7 +37,7 @@ Executing "ninja size-components"...
 
 │ libmain.a                       │      70106 │    0 │     0 │        0 │ 39021 │ 38831 │   190 │     0 │      13815 │  13815 │        296 │      0 │     296 │        0 │        16974 │ 16974 │        0 │             0 │        0 │           0 │
 
-│ libesp_stdio.a                  │      67199 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      66789 │      0 │   66789 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libesp_stdio.a                  │      67212 │    0 │     0 │        0 │    16 │    16 │     0 │     0 │        394 │    394 │      66802 │      0 │   66802 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libwpa_supplicant.a             │      67011 │    0 │     0 │        0 │     8 │     0 │     8 │     0 │      63802 │  63802 │       1838 │      0 │    1838 │        0 │         1363 │  1363 │        0 │             0 │        0 │           0 │
 
@@ -71,7 +71,7 @@ Executing "ninja size-components"...
 
 │ libesp_driver_rmt.a             │       8706 │  411 │   411 │        0 │  1911 │    12 │    77 │  1822 │       5923 │   5923 │        461 │      0 │     461 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
-│ libpot_actors.a                 │       7372 │  209 │   209 │        0 │     0 │     0 │     0 │     0 │       6694 │   6694 │        469 │      0 │     469 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
+│ libpot_actors.a                 │       7499 │  209 │   209 │        0 │     0 │     0 │     0 │     0 │       6821 │   6821 │        469 │      0 │     469 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 
 │ libesp_hal_mspi.a               │       5584 │   88 │    88 │        0 │  4937 │     0 │    36 │  4901 │        559 │    559 │          0 │      0 │       0 │        0 │            0 │     0 │        0 │             0 │        0 │           0 │
 

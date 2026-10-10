@@ -11,6 +11,10 @@
 //   the lender can say no       it runs at background priority and refuses a unit when its slots are
 //                               full; the owner runs that unit elsewhere
 //   a lender that dies          the node reports the unit Unavailable, once; the owner runs it again
+//   an answer that never comes  the node gives units no deadline (section 7.8); the owner sets one from
+//                               its own measurements and cancels an overdue unit, which the node then
+//                               reports Unavailable, once (on the bench: a lender rebooting fast enough
+//                               not to be declared dead lost a unit sent while it re-keyed)
 //   reproducibility             unit i is seeded from (seed, i), and hits are summed as integers, so the
 //                               result is the same wherever each unit ran -- a test, not a hope
 //
@@ -110,6 +114,7 @@ class McJobActor : public Actor {
         uint16_t lent_units;   // answered by a lender
         uint16_t refused;      // units a lender declined (run again elsewhere)
         uint16_t lost;         // units whose lender died (run again elsewhere)
+        uint16_t overdue;      // units cancelled at their deadline (run again elsewhere; also counted lost)
     };
     const Result& last() const { return last_; }
     uint16_t lent_to(uint16_t node_id) const;  // units of the last run answered by that node
@@ -133,6 +138,7 @@ class McJobActor : public Actor {
     uint32_t rtt_ms(uint16_t node_id) const;
     Lender* lender(uint16_t node_id);
     void dispatch(uint32_t now_ms);
+    void cancel_overdue(uint32_t now_ms);
     void finish(uint32_t now_ms);
 
     Node& node_;

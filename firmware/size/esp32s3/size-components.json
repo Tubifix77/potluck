@@ -328,15 +328,15 @@
     },
     "esp-idf/esp_stdio/libesp_stdio.a": {
         "abbrev_name": "libesp_stdio.a",
-        "size": 67199,
+        "size": 67212,
         "size_diff": 0,
         "memory_types": {
             "Flash Data": {
-                "size": 66789,
+                "size": 66802,
                 "size_diff": 0,
                 "sections": {
                     ".flash.rodata": {
-                        "size": 66789,
+                        "size": 66802,
                         "size_diff": 0,
                         "abbrev_name": ".rodata"
                     },
@@ -2181,15 +2181,15 @@
     },
     "esp-idf/pot_actors/libpot_actors.a": {
         "abbrev_name": "libpot_actors.a",
-        "size": 7372,
+        "size": 7499,
         "size_diff": 0,
         "memory_types": {
             "Flash Code": {
-                "size": 6694,
+                "size": 6821,
                 "size_diff": 0,
                 "sections": {
                     ".flash.text": {
-                        "size": 6694,
+                        "size": 6821,
                         "size_diff": 0,
                         "abbrev_name": ".text"
                     }
