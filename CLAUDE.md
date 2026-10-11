@@ -385,6 +385,8 @@ Naming now in force, all ASCII:
 - **[M0-LOG.md](M0-LOG.md)** — the decision log, newest session last. Read its latest session before
   picking the project up; it records what is wrong as well as what is done, including withdrawn
   conclusions.
+- **[BEYOND-M12.md](BEYOND-M12.md)** — the owner's next idea (2026-10-11): a hub, a dashboard and integrations, as a
+  discussion draft. Not decided: discuss it with the owner before any of it becomes a milestone in ARCHITECTURE section 13.
 - **[M0-RUNBOOK.md](M0-RUNBOOK.md)** — how to build, flash, emulate and measure.
 - **[DEVELOPING-APPS.md](DEVELOPING-APPS.md)** — the developer manual for app authors (M12, rewritten for `potluck apply`
   2026-10-11, blind-tested twice); its worked example `examples/apps/pot_hello` is built and tested by the gates. Keep it true:

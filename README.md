@@ -278,6 +278,7 @@ python tools/can_report.py captures/m4-can.log
 | [bench/m4-can-wiring.html](bench/m4-can-wiring.html) | The two-board CAN bus for M4, as built (open in a browser) |
 | [STATUS.md](STATUS.md) | Every milestone, what it set out to prove, and exactly how far each claim has been measured -- the full ledger behind "What works today" |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the nine decision records, and milestones M0–M12 with accept/kill criteria |
+| [BEYOND-M12.md](BEYOND-M12.md) | A discussion draft, not a decision: what comes after the roadmap -- one hub on the PC that owns the link, a dashboard of the whole cell, and integrations (PC programs, Home Assistant) through it |
 | [M0-LOG.md](M0-LOG.md) | The decision log, newest session last — including the conclusions that were later **withdrawn**, kept struck-through rather than deleted. The QEMU sessions are a study in how a stale flash image manufactures false evidence |
 | [M0-RUNBOOK.md](M0-RUNBOOK.md) | Bench procedure: build, flash, emulate, soak, and the delay methodology to read *before quoting any number* |
 | [CLAUDE.md](CLAUDE.md) | Standing rules for working on this repo (largely built with [Claude Code](https://claude.com/claude-code), which these rules keep honest) |

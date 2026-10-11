@@ -800,6 +800,8 @@ Portability derivation from the manifest, rendezvous assignment, pre-provisioned
 
 ---
 
+*After M12:* a discussion draft for what comes next -- a hub on the PC, a dashboard and integrations -- is [BEYOND-M12.md](BEYOND-M12.md). It is not part of this document until its milestones are agreed and written here.
+
 ## 14. Risk register
 
 | Risk | Likelihood | Impact | Mitigation |
