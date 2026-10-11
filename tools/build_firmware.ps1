@@ -111,7 +111,12 @@ if ($needsMirror) {
 
 # --- ESP-IDF environment --------------------------------------------------------------------
 $env:IDF_PATH = $IdfPath
+# Continue, not Stop, while export.ps1 runs: its python writes progress to stderr, which Windows PowerShell 5.1
+# turns into a terminating error whenever this script's own output is captured (potluck apply).
+$eap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 & (Join-Path $IdfPath "export.ps1") *> $null
+$ErrorActionPreference = $eap
 if (-not (Get-Command idf.py -ErrorAction SilentlyContinue)) {
     throw "idf.py not on PATH after running export.ps1"
 }

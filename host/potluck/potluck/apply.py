@@ -383,7 +383,9 @@ def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
     if img.exists() and elf.exists():
         log(f"firmware: reusing the build of these sources ({version}, {out})")
         return Firmware(img, elf, elf_sha256(elf), version, False)
-    shell = "powershell" if os.name == "nt" else "pwsh"
+    # PowerShell 7 where it is installed: Windows PowerShell 5.1 turns ESP-IDF's stderr into a terminating
+    # error once the output is captured, and the build stops in export.ps1.
+    shell = "pwsh" if shutil.which("pwsh") or os.name != "nt" else "powershell"
     cmd = [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(pot_dir / "tools" / "build_firmware.ps1"),
            "-Variant", variant, "-OutDir", str(out), "-Version", version]
     if c.extra:
