@@ -43,15 +43,15 @@ _TYPE_BUILDERS = {
 }
 
 
-def canonical(path: str, node_id: int | None) -> str:
-    """Expand a shorthand like `sys/uptime` into the full path for `node_id`."""
+def canonical(path: str, node_id: int | None, system: str = "lab") -> str:
+    """Expand a shorthand like `sys/uptime` into the full path for `node_id` in cluster `system`."""
     if path.startswith("potluck://"):
         return path
     if node_id is None:
         raise SystemExit(
             f"'{path}' is a shorthand; give --node <hex id> or use the full potluck:// path"
         )
-    return f"potluck://lab/node-{node_id:04x}/{path.lstrip('/')}"
+    return f"potluck://{system}/node-{node_id:04x}/{path.lstrip('/')}"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -68,6 +68,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--baud", type=int, default=921600)
     p.add_argument("--node", type=lambda s: int(s, 16), default=None,
                    help="node id in hex, for expanding shorthand paths and as the READ destination")
+    p.add_argument("--system", default="lab",
+                   help="the cluster's name, as its package's manifest gives it (M12), for shorthand paths")
     p.add_argument("--timeout", type=float, default=1.0, help="per-request timeout in seconds")
     p.add_argument("--hello-timeout", type=float, default=3.0)
     p.add_argument("--capture", help="tee every frame to a section 7.6 capture file")
@@ -181,11 +183,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "ls":
             return cmd_ls(bridge, args.node_of if args.node_of is not None else node_id, args)
         if args.cmd == "read":
-            return cmd_read(bridge, canonical(args.path, node_id), args)
+            return cmd_read(bridge, canonical(args.path, node_id, args.system), args)
         if args.cmd == "write":
-            return cmd_write(bridge, canonical(args.path, node_id), args)
+            return cmd_write(bridge, canonical(args.path, node_id, args.system), args)
         if args.cmd == "watch":
-            return cmd_watch(bridge, canonical(args.path, node_id), args)
+            return cmd_watch(bridge, canonical(args.path, node_id, args.system), args)
         if args.cmd == "soak":
             return cmd_soak(bridge, node_id, args)
         if args.cmd == "deploy":
@@ -228,7 +230,7 @@ def cmd_info(bridge: Bridge) -> int:
 
 
 def cmd_ls(bridge: Bridge, node_id: int, args) -> int:
-    paths = sys_paths_for(node_id)
+    paths = sys_paths_for(node_id, args.system)
     width = max(len(describe(p)) for p in paths)
     failures = 0
     for p in paths:
@@ -371,7 +373,7 @@ def cmd_soak(bridge: Bridge, node_id: int, args) -> int:
     which matters, because QEMU's socket serial accepts exactly one per VM lifetime.
     """
     nodes = [int(n, 16) for n in args.nodes.split(",")] if args.nodes else [node_id]
-    paths = [p for n in nodes for p in sys_paths_for(n)]
+    paths = [p for n in nodes for p in sys_paths_for(n, args.system)]
     width = max(len(describe(p)) for p in paths)
     deadline = time.monotonic() + args.seconds
     sweeps = reads = timeouts = unusable = 0

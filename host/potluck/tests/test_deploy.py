@@ -37,8 +37,9 @@ LED_A = {"name": "led_a", "module": "builtin:led", "latency_class": 4, "pin": 0x
 #: compile_image(parse(manifest([LED_A])), counter=3), decoded by hand on 2026-10-04: magic POTD,
 #: version 1, 1 actor, reserved, counter 3, the manifest's 8-byte digest, body 10 B, then node 0x6300,
 #: LED, 6 config bytes = 160, 0, 200, blink, 1500 ms. tests/test_deploy.cpp parses these exact bytes.
-#: The digest is the manifest's own, so a change to the canonical form shows up here too.
-GOLDEN = "504f54440101000003000000bfba6702f4f20e6d0a00000000630106a000c801dc05"
+#: The digest is the manifest's own, so a change to the canonical form shows up here too. M12: the system is
+#: not "lab", so the image ends with the cluster-name actor (every node, type 9, "m3-test").
+GOLDEN = "504f54440102000003000000bfba6702f4f20e6d1500000000630106a000c801dc05ffff09076d332d74657374"
 
 
 class CompileImage(unittest.TestCase):
@@ -47,7 +48,7 @@ class CompileImage(unittest.TestCase):
         img = dp.compile_image(m, 3)
         magic, ver, count, _, counter, digest, body_len = struct.unpack_from("<IBBHI8sI", img)
         self.assertEqual(magic, dp.IMAGE_MAGIC)
-        self.assertEqual((ver, count, counter), (1, 1, 3))
+        self.assertEqual((ver, count, counter), (1, 2, 3))  # M12: the LED, then the cluster's name ("m3-test")
         self.assertEqual(digest, bytes.fromhex(m.digest())[:8])
         self.assertEqual(body_len, len(img) - dp.IMAGE_HEADER_LEN)
         node, typ, cfg_len = struct.unpack_from("<HBB", img, dp.IMAGE_HEADER_LEN)

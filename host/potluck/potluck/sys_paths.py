@@ -32,16 +32,17 @@ SYS_LABELS: dict[str, str] = {
 }
 
 
-def sys_path(node_id: int, suffix: str) -> str:
-    """The canonical path for a built-in resource on a node."""
-    return f"potluck://lab/node-{node_id:04x}/{suffix}"
+def sys_path(node_id: int, suffix: str, system: str = "lab") -> str:
+    """The canonical path for a built-in resource on a node. M12: `system` is the cluster's name, which a
+    package names (its manifest's `system`); "lab" unless it does."""
+    return f"potluck://{system}/node-{node_id:04x}/{suffix}"
 
 
-def sys_paths_for(node_id: int) -> list[str]:
-    return [sys_path(node_id, s) for s in SYS_SUFFIXES]
+def sys_paths_for(node_id: int, system: str = "lab") -> list[str]:
+    return [sys_path(node_id, s, system) for s in SYS_SUFFIXES]
 
 
-def table_for_nodes(node_ids) -> PathTable:
+def table_for_nodes(node_ids, system: str = "lab") -> PathTable:
     """A PathTable covering the built-ins of every node given.
 
     The host learns node ids from the `boot` and `link` records it is already reading, so a capture
@@ -49,7 +50,7 @@ def table_for_nodes(node_ids) -> PathTable:
     """
     t = PathTable()
     for n in node_ids:
-        for p in sys_paths_for(n):
+        for p in sys_paths_for(n, system):
             t.add(p)
     return t
 
@@ -62,7 +63,7 @@ def describe(path: str) -> str:
     return path
 
 
-def sys_path_for_hash(node_id: int, h: int) -> str | None:
+def sys_path_for_hash(node_id: int, h: int, system: str = "lab") -> str | None:
     """The built-in path on `node_id` whose hash is `h`, or None if it is not a built-in.
 
     A node ships only the hash, so this is the reverse direction: six candidates per node, hashed and
@@ -70,7 +71,7 @@ def sys_path_for_hash(node_id: int, h: int) -> str | None:
     and inventing a name for it would put a wrong label on a real reading.
     """
     for suffix in SYS_SUFFIXES:
-        p = sys_path(node_id, suffix)
+        p = sys_path(node_id, suffix, system)
         if path_hash(p) == h:
             return p
     return None

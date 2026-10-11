@@ -96,6 +96,13 @@ def eligible(m: Manifest, a: ActorSpec) -> list[tuple[int, int]]:
         owned = {r.path for r in n.owns}
         gravity = 1 + sum(1 for p in a.needs if m.bindings.get(p, p) in owned)
         out.append((n.node_id, min(gravity, 255)))
+    if len(out) > MAX_ELIGIBLE:
+        # M12: a cell bigger than a node image's list. The actor gets the MAX_ELIGIBLE nodes the
+        # reconciler would rank first with every node alive -- data gravity, then the rendezvous weight --
+        # kept in manifest order. Its output's path decides the weights, so the choice is stable.
+        key = path_hash(output_path(m, a))
+        best = set(rank(key, out)[:MAX_ELIGIBLE])
+        out = [(n, g) for n, g in out if n in best]
     return out
 
 

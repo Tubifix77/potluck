@@ -68,10 +68,16 @@ param(
     # M12: keep this build's size reports in Potluck's tracked firmware\size\, as evidence to commit. Without it
     # they stay in the build directory, so a build never dirties the tree (and never stamps later images
     # "-dirty"): found by the newcomer test of GETTING-STARTED.md, 2026-10-11.
-    [switch]$Record
+    [switch]$Record,
+    # M12: the version string stamped into the image (esp_app_desc), for a source tree with no .git -- potluck
+    # apply builds from a `git archive` export and names the commit here. Empty: ESP-IDF's git describe.
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
+# M12: through `powershell -File` (potluck apply) an array arrives as one comma-joined string: split it.
+$Extra = @($Extra | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+$AppComponents = @($AppComponents | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $repo = Split-Path -Parent $PSScriptRoot
 $src = Join-Path $repo "firmware"
 
@@ -128,6 +134,8 @@ if ($AppComponents.Count -gt 0) {
 } else {
     Remove-Item Env:POT_APP_COMPONENT_DIRS -ErrorAction SilentlyContinue
 }
+
+if ($Version) { $env:POT_PROJECT_VER = $Version } else { Remove-Item Env:POT_PROJECT_VER -ErrorAction SilentlyContinue }
 
 Push-Location $buildRoot
 try {

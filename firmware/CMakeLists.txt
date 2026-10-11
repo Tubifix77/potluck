@@ -23,5 +23,11 @@ if(DEFINED ENV{POT_APP_COMPONENT_DIRS})
   endforeach()
 endif()
 
+# M12: a build from a `git archive` export (potluck apply) has no .git to describe; the tool names the
+# version itself (tools\build_firmware.ps1 -Version). Unset, ESP-IDF's git describe applies as before.
+if(DEFINED ENV{POT_PROJECT_VER})
+  set(PROJECT_VER "$ENV{POT_PROJECT_VER}")
+endif()
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(potluck_m0)

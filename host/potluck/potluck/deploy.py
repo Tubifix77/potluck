@@ -51,6 +51,8 @@ ACTOR_DIE_TEMP = 5  # M8.1: the chip's own temperature sensor, published to node
 ACTOR_MC_LENDER = 6  # M9: lends its node's idle cores to the mc_pi pure function
 ACTOR_MC_JOB = 7  # M9: a Monte Carlo job that borrows idle cores; publishes node-<id>/job/mc/pi
 ACTOR_GUEST = 8  # M7: a sandboxed WebAssembly module from a guest author (potluck.guest); portable
+ACTOR_CLUSTER = 9  # M12: the cluster's name, every node; added by compile_image when `system` is not "lab"
+CLUSTER_NAME_MAX = 31
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
 MAX_ACTOR_CFG = 48
 BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER,
@@ -379,6 +381,15 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
             continue
         cfg = _actor_config(a.module, a.config, where)
         body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+        count += 1
+    if m.system != "lab":
+        # M12: the boards name their built-in resources under the cluster (potluck://<system>/node-...).
+        # A package for "lab" carries nothing extra, so it is byte for byte what it was before M12.
+        name = m.system.encode("ascii", "replace")
+        if not 1 <= len(name) <= CLUSTER_NAME_MAX or any(c < 0x21 or c > 0x7E or c == 0x2F for c in name):
+            raise DeployError(f"system '{m.system}': a cluster name is 1..{CLUSTER_NAME_MAX} printable ASCII "
+                              f"characters, without spaces or '/'")
+        body += struct.pack("<HBB", 0xFFFF, ACTOR_CLUSTER, len(name)) + name
         count += 1
     if count > MAX_ACTORS:
         raise DeployError(f"{count} actors; the node image holds at most {MAX_ACTORS}")

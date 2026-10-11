@@ -515,7 +515,7 @@ TEST(deploy, every_opcode_in_the_deploy_range_reaches_the_deploy_server) {
 TEST(deploy, the_host_compilers_golden_image_parses_here) {
     // host/potluck/tests/test_deploy.py checks that compile_image() produces exactly these bytes;
     // this checks the node reads them as the host meant. Neither side can drift alone.
-    const char* hex = "504f54440101000003000000bfba6702f4f20e6d0a00000000630106a000c801dc05";
+    const char* hex = "504f54440102000003000000bfba6702f4f20e6d1500000000630106a000c801dc05ffff09076d332d74657374";
     std::vector<uint8_t> img;
     for (size_t i = 0; hex[i] != 0 && hex[i + 1] != 0; i += 2) {
         auto nib = [](char ch) { return ch <= '9' ? ch - '0' : ch - 'a' + 10; };
@@ -525,8 +525,13 @@ TEST(deploy, the_host_compilers_golden_image_parses_here) {
     const char* why = nullptr;
     CHECK(parse_image(img.data(), img.size(), d, &why));
     CHECK_EQ(d.rollback_counter, 3u);
-    CHECK_EQ(static_cast<int>(d.actor_count), 1);
+    CHECK_EQ(static_cast<int>(d.actor_count), 2);
     CHECK_EQ(d.actors[0].node_id, static_cast<uint16_t>(0x6300));
+    // M12: the cluster's name, on every node.
+    CHECK_EQ(d.actors[1].node_id, kEveryNode);
+    CHECK(d.actors[1].type == ActorType::Cluster);
+    CHECK_EQ(static_cast<int>(d.actors[1].cfg_len), 7);
+    CHECK(std::memcmp(d.actors[1].cfg, "m3-test", 7) == 0);
     LedConfig lc{};
     CHECK(led_config(d.actors[0], lc));
     CHECK_EQ(static_cast<int>(lc.r), 160);
