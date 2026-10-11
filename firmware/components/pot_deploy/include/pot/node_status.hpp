@@ -8,7 +8,7 @@
 // Wire, little-endian, version 1:
 //   u8 version, u16 node,
 //   u32 fw_running, u32 fw_floor, u8 fw_state (0 factory, 1 confirmed, 2 on trial),
-//   char[24] fw_version (NUL-padded), u8[8] elf_sha,
+//   char[32] fw_version (NUL-padded), u8[8] elf_sha,
 //   u8 slot, u8 pending, u8 trial_boots, u32 pkg_counter (running; 0 = built-in behaviour), u32 pkg_floor,
 //   u8[8] pkg_digest, u8 roles, u32 live_applies, u32 ck_writes, u32 uptime_s,
 //   u8 pinned_running, u8 portable_total, u8 portable_here,
@@ -22,11 +22,11 @@
 namespace pot {
 
 constexpr uint8_t kNodeStatusVersion = 1;
-constexpr size_t kNodeStatusVersionLen = 24;
-constexpr size_t kNodeStatusFixedLen = 79;          // through portable_here
+constexpr size_t kNodeStatusVersionLen = 32;  // esp_app_desc_t::version
+constexpr size_t kNodeStatusFixedLen = 87;          // through portable_here
 constexpr size_t kNodeStatusMaxCluster = 31;
 constexpr size_t kNodeStatusMaxActors = 88;
-constexpr size_t kNodeStatusMaxLen = kNodeStatusFixedLen + 1 + kNodeStatusMaxCluster + 1 + kNodeStatusMaxActors;  // 200
+constexpr size_t kNodeStatusMaxLen = kNodeStatusFixedLen + 1 + kNodeStatusMaxCluster + 1 + kNodeStatusMaxActors;  // 208
 
 enum NodeRole : uint8_t {
     kRoleExtenderBuild = 0x01,  // the image carries the extender

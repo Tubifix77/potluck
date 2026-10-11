@@ -109,7 +109,7 @@ class NodeStatus:
                 f"actors {','.join(self.actors) or '-'} ({self.portable_here}/{self.portable_total} portable here)")
 
 
-FIXED_LEN = 79
+FIXED_LEN = 87
 
 
 def parse_node_status(raw: bytes) -> NodeStatus | None:
@@ -117,14 +117,14 @@ def parse_node_status(raw: bytes) -> NodeStatus | None:
     if len(raw) < FIXED_LEN + 2 or raw[0] != 1:
         return None
     node, fw_run, fw_floor, fw_state = struct.unpack_from("<HIIB", raw, 1)
-    version = raw[12:36].split(b"\0", 1)[0].decode("ascii", "replace")
-    elf = raw[36:44]
-    slot, pending, trial = raw[44], raw[45], raw[46]
-    pkg, pkg_floor = struct.unpack_from("<II", raw, 47)
-    digest = raw[55:63]
-    roles = raw[63]
-    live, ck, up = struct.unpack_from("<III", raw, 64)
-    pinned, ptotal, phere = raw[76], raw[77], raw[78]
+    version = raw[12:44].split(b"\0", 1)[0].decode("ascii", "replace")
+    elf = raw[44:52]
+    slot, pending, trial = raw[52], raw[53], raw[54]
+    pkg, pkg_floor = struct.unpack_from("<II", raw, 55)
+    digest = raw[63:71]
+    roles = raw[71]
+    live, ck, up = struct.unpack_from("<III", raw, 72)
+    pinned, ptotal, phere = raw[84], raw[85], raw[86]
     at = FIXED_LEN
     cl = raw[at]
     cluster = raw[at + 1:at + 1 + cl].decode("ascii", "replace")

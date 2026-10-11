@@ -30,7 +30,7 @@ def status_bytes(**kw) -> bytes:
              pinned=2, ptotal=1, phere=1, cluster=b"home", actors=b"die_temp,cluster,guest")
     v.update(kw)
     raw = struct.pack("<BHIIB", 1, v["node"], v["fw_running"], v["fw_floor"], v["fw_state"])
-    raw += v["version"].ljust(24, b"\0") + v["elf"] + bytes([v["slot"], v["pending"], v["trial"]])
+    raw += v["version"].ljust(32, b"\0") + v["elf"] + bytes([v["slot"], v["pending"], v["trial"]])
     raw += struct.pack("<II", v["pkg"], v["pkg_floor"]) + v["digest"] + bytes([v["roles"]])
     raw += struct.pack("<III", v["live"], v["ck"], v["up"]) + bytes([v["pinned"], v["ptotal"], v["phere"]])
     raw += bytes([len(v["cluster"])]) + v["cluster"] + bytes([len(v["actors"])]) + v["actors"]
