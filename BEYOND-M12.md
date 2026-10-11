@@ -156,6 +156,31 @@ each already a thing Potluck has -- only now in one model, with one API to read 
 The dashboard draws these; an integration translates them into another system's terms; `apply` and the owner's
 programs read and change them through the same API, under section 3's rules.
 
+### Basic Potluck, or added by choice (decided 2026-10-11)
+
+Much of this would be unwanted in some cells -- like the Wi-Fi extender, an app a cell chooses, not a feature of every
+installation. So every part is either **basic** (in every installation) or **optional**, because it is a **security
+liability** someone may not want (it opens the cell to something outside it) or **filler** someone will never use.
+Optional parts are added like apps -- named in the cluster file, built into a board's firmware or switched on as a hub
+plugin -- and are off by default. A part is basic only if every cell needs it and it opens nothing to the outside.
+
+| part | where | class | why |
+|---|---|---|---|
+| module plumbing: a descriptor's `requires`, each module's cost in `apply --plan`, the module list and states in `NODE_STATUS` (M13) | host tools; a few bytes on a board | **basic** | it is what makes everything below optional: without it nobody can see or choose what a board carries |
+| telemetry responder (M15) | every board | **basic** | answers only the cell's own enrolled hub, over the authenticated cell, at the rate the hub asks; costs nothing when nobody asks |
+| the hub (M14), listening on the PC itself only | a PC | **basic** for anyone with a PC (Potluck's own tools become its clients) | costs the boards nothing; reachable from nowhere but the PC by default |
+| the integration interface (M18) | the hub | **basic** | an interface, not an integration: it does nothing until an integration is added |
+| the gateway module (M13) | one board on a Wi-Fi network | **optional -- a security liability** | it opens a path from a house network into the cell and needs Wi-Fi and broker credentials on a board; costs internal RAM the board barely has |
+| writes from outside (M13) | the package, per resource | **optional -- a security liability** | read-only unless the owner declares a resource writable from outside, one by one |
+| the LED-as-a-resource actor (M13) | a board | **optional -- filler** for most | an actor in the package like any other: present only if the package names it |
+| the dashboard (M16) | a hub plugin | **optional -- filler** for some | not every cell is watched; some owners only ever use `apply` and Home Assistant |
+| the dashboard and the API reachable from the house network or a phone (M16) | the hub | **optional -- a security liability** | anything that answers beyond the PC is an attack surface: off until the owner switches it on, behind a login, encrypted |
+| the Home Assistant integration (M17) | a hub plugin, and a Home Assistant integration | **optional -- filler** without Home Assistant | of no use to a cell without Home Assistant |
+| every later integration (M18) | a hub plugin, or a board module | **optional** | each one a liability, a filler, or both, for the cells that do not want it |
+
+Already true before M13, and kept: the extender (poor-mans-extender) and the room sensor (passive-sensor) are apps a
+cell chooses, and M7's sandbox is a firmware option (`CONFIG_POT_WASM`, off by default) -- the same pattern.
+
 ### What must not change
 
 These are the existing rules this step lives inside; a design that breaks one is a design to change.
