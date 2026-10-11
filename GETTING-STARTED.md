@@ -92,7 +92,8 @@ python -m potluck.enrol --deploy-cert ..\..\keys\deploy.pub --ca-key ..\..\keys\
 ```
 
 `deploy.cert` lets the PC tools check a package; `deploy.bcert` is the same certificate in the compact form
-the boards check.
+the boards check. `keygen` never replaces an existing key: run it twice and the second is refused (`--force`
+exists for when you mean it -- replacing the CA means enrolling every board again).
 
 ## 3. Build and flash Potluck onto each board
 

@@ -1,6 +1,6 @@
 """Signing a deploy package -- ARCHITECTURE.md section 9.3, and the host half of M5.
 
-    python -m potluck.signing keygen  --role ca     --label lab-ca  --out keys/lab-ca
+    python -m potluck.signing keygen  --role ca     --label lab-ca  --out keys/lab-ca   # never replaces a key without --force
     python -m potluck.signing keygen  --role deploy --label lab-dep --out keys/lab-deploy
     python -m potluck.signing certify --ca keys/lab-ca.key --key keys/lab-deploy.pub \
                                       --out keys/lab-deploy.cert
@@ -149,16 +149,25 @@ def _key_from_dict(d: Any, where: str) -> KeyPair:
     return kp
 
 
-def write_keypair(kp: KeyPair, out_base: str) -> tuple[str, str]:
-    """Write `<base>.key` and `<base>.pub`. Returns both paths."""
+def write_keypair(kp: KeyPair, out_base: str, *, overwrite: bool = False) -> tuple[str, str]:
+    """Write `<base>.key` and `<base>.pub`. Returns both paths.
+
+    Refuses to replace an existing key unless `overwrite`: a CA key written over is every board enrolled
+    under it orphaned, and a re-run step or a mistyped --out is all it takes (found 2026-10-12, while
+    writing GETTING-STARTED.md)."""
     priv_path = out_base + ".key"
     pub_path = out_base + ".pub"
+    if not overwrite:
+        for path in (priv_path, pub_path):
+            if os.path.exists(path):
+                raise SigningError(f"{path} exists; refusing to replace a key (pass --force if you mean it)")
     parent = os.path.dirname(os.path.abspath(priv_path))
     os.makedirs(parent, exist_ok=True)
 
     # Created with owner-only permissions from the outset rather than chmod-ed afterwards: between
-    # the two there is a window, and a private key is exactly the wrong thing to leave in one.
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    # the two there is a window, and a private key is exactly the wrong thing to leave in one. O_EXCL
+    # unless overwriting: a file that appeared since the check above is refused too.
+    flags = os.O_WRONLY | os.O_CREAT | (os.O_TRUNC if overwrite else os.O_EXCL)
     fd = os.open(priv_path, flags, stat.S_IRUSR | stat.S_IWUSR)
     with os.fdopen(fd, "w", encoding="ascii") as f:
         json.dump(kp.private_dict(), f, indent=2, sort_keys=True)
@@ -428,7 +437,7 @@ def main(argv: list[str] | None = None) -> int:
             if out is None:
                 raise SigningError("keygen needs --out <path without extension>")
             kp = generate(role, label)
-            priv, pub = write_keypair(kp, out)
+            priv, pub = write_keypair(kp, out, overwrite="--force" in rest)
             print(f"{role} key '{label}'  id {kp.id}")
             print(f"  secret -> {priv}")
             print(f"  public -> {pub}")

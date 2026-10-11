@@ -346,5 +346,23 @@ class Packages(unittest.TestCase):
                 verify_package(junk, self.ca.public)
 
 
+class KeyFilesAreNeverReplacedByAccident(unittest.TestCase):
+    """A CA key written over orphans every board enrolled under it: keygen refuses unless --force."""
+
+    def test_a_second_keygen_to_the_same_path_is_refused_and_the_key_survives(self):
+        import tempfile
+
+        from potluck import signing as sg
+
+        with tempfile.TemporaryDirectory() as d:
+            base = os.path.join(d, "ca")
+            self.assertEqual(sg.main(["keygen", "--role", "ca", "--label", "x", "--out", base]), 0)
+            first = open(base + ".key", encoding="ascii").read()
+            self.assertNotEqual(sg.main(["keygen", "--role", "ca", "--label", "x", "--out", base]), 0)
+            self.assertEqual(open(base + ".key", encoding="ascii").read(), first)
+            self.assertEqual(sg.main(["keygen", "--role", "ca", "--label", "x", "--out", base, "--force"]), 0)
+            self.assertNotEqual(open(base + ".key", encoding="ascii").read(), first)
+
+
 if __name__ == "__main__":
     unittest.main()
