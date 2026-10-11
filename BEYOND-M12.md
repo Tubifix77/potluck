@@ -175,6 +175,7 @@ plugin -- and are off by default. A part is basic only if every cell needs it an
 | the presenting module (M13) | one or more boards with a network connection | **optional -- a security liability** | it opens a path from a house network into the cell and needs a broker's credentials on a board; costs internal RAM the board barely has |
 | reads from outside (M13) | the package, per resource | **optional -- a security liability** | nothing is exposed unless the package exposes it, one resource at a time: occupancy can be the most private value in a flat |
 | writes from outside (M13) | the package, per resource | **optional -- a security liability** | read-only unless the package declares a resource writable from outside; never a resource marked safety-relevant |
+| the pocket page: a board's own access point and a read-only status page for a phone in reach (M13.1) | one or more boards | **optional -- a security liability** | the one place a board listens: on a network it makes itself, behind a password the owner sets, reachable only by a phone within Wi-Fi range, showing and changing nothing it is not allowed to |
 | the LED-as-a-resource actor (M13) | a board | **optional -- filler** for most | an actor in the package like any other: present only if the package names it |
 | the dashboard (M16) | a hub plugin | **optional -- filler** for some | not every cell is watched; some owners only ever use `apply` and Home Assistant |
 | the dashboard and the API reachable from the house network or a phone (M16) | the hub | **optional -- a security liability** | anything that answers beyond the PC is an attack surface: off until the owner switches it on, behind a login, encrypted |
@@ -211,9 +212,13 @@ Home Assistant. What they changed, and what the owner settled with them:
   the owner's setting** -- the cell's presenting role by default, the hub only if configured -- so a laptop on the cable
   never takes the cell's devices away from Home Assistant.
 - **Sleeping boards are an app's business** (the owner); Potluck's part, the runtime death window, exists since M5.1.
-- **A cell with no network and no PC presents to no one**, and that is accepted: its boards talk only to each other. It is
-  seen when a laptop is cabled. A Bluetooth presentation would make a board a listener, against section 8.4; it is not
-  planned, and if ever wanted it is an optional module classed a security liability.
+- **A cell with no network and no PC still answers a phone** (the owner's boat, 2026-10-12: boards around a boat
+  sensing, switching and steering, helping each other with calculations, Potluck the substrate between them; one in the
+  mast takes salt water and dies; the captain takes out a phone, joins the nearest board and sees which one is dead).
+  This first read "presents to no one" -- a scope answer, which the project's rule calls an architecture bug. The fix is
+  M13.1: a board can make its own Wi-Fi access point and serve the dashboard's first screen to a phone in reach. It is
+  the one place a board listens, so it is optional and a security liability, and section 8.4 says so. Bluetooth is not
+  needed for it and stays unplanned.
 - **Several cells near each other**: each cell already refuses another's boards (M5: a board under another CA is refused
   as `peer_refused`); what the presentation adds is the cell's identity in every outside name (its CA fingerprint in
   every discovery id), so two cells on one broker never collide, and a warning on the dashboard when another cell shares
@@ -242,8 +247,9 @@ These are the existing rules this step lives inside; a design that breaks one is
    package (it already has `access`); the hub, or the presenting board, refuses the rest, and the owning board checks
    again, as every write is checked today. The safety line holds: Potluck is never the only thing between a motor and a
    person (section 12).
-5. **Boards stay outbound-only** (section 8.4). A board serves no page and holds no listener; a board module connects
-   out to a system the owner names.
+5. **Boards stay outbound-only** (section 8.4), with one optional exception: a board may make its own access point and
+   serve a read-only status page to a phone in reach (M13.1). Otherwise a board serves no page and holds no listener; a
+   board module connects out to a system the owner names.
 6. **Credentials are never shown or logged** -- Wi-Fi passwords, signing keys, the tokens and passwords of other
    systems are typed by the owner into files the hub (or a board) reads, and never displayed.
 
@@ -558,7 +564,7 @@ for its own time.
 
 The owner agreed the shape ("looks right now, make the milestones from it"), and the milestones are now in
 [ARCHITECTURE.md](ARCHITECTURE.md) section 13, which is where they are kept from here on: **M13** the cell presents
-itself (the presenting role, no PC), **M14** the hub, **M15** telemetry over the cell, **M16** the dashboard, **M17**
+itself (the presenting role, no PC), **M13.1** the cell answers a phone (no network, no PC), **M14** the hub, **M15** telemetry over the cell, **M16** the dashboard, **M17**
 Home Assistant first-class, **M18** the integration layer and the owner's programs. Two of this draft's questions were
 settled on the way: writes from outside are declared **per resource** in the package (question 6), and one presenter at
 a time -- the cell's presenting role, or the hub when the owner says so -- so no system sees a device twice (question 8). The sketches

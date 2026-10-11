@@ -60,8 +60,8 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 ## What works today
 
 Everything below runs on real ESP32-S3 boards and has passed a test written before it was tried -- each milestone
-has one, and a criterion that would have killed it. 14 of the 23 milestones so far are accepted, three more are built, and six (M13-M18: the cell presenting its
-resources to other systems, a dashboard, Home Assistant) are planned; the full ledger,
+has one, and a criterion that would have killed it. 14 of the 24 milestones so far are accepted, three more are built, and seven (M13-M18 and M13.1: the cell presenting
+its resources to other systems and to a phone, a dashboard, Home Assistant) are planned; the full ledger,
 with every measurement and caveat, is [STATUS.md](STATUS.md).
 
 - **Boards that find each other and know when one is gone.** Over the radio, a missing board is declared dead
