@@ -12,6 +12,15 @@ shares the radio with Potluck. Both live in their own (private) repositories, th
 command; this manual is rewritten as it lands. Everything shown here is tested: the worked example in
 section 3 is built for the boards and tested on a PC by Potluck's own test suites.
 
+**Blind-reader test, 2026-10-12.** A fresh reader with only this manual and Potluck's source built a portable
+app with a remote input and a checkpoint (9 C++ and 5 Python tests passing, a firmware image within budget) in
+about 20 minutes, and listed 23 places the manual failed it. The ones a manual can fix are fixed in this
+revision (the portable recipe in section 3, `owns` and the built-in modules in section 6, who does what in
+section 7, the test kit in section 8). Three it cannot fix are Potluck's own gaps, and M12 removes them: an
+author outside the owner's house cannot build the firmware the cell needs (it must carry every other app's
+component, and one of them is private), cannot see what the cell runs, and cannot read the package counter.
+Until then, an outside author hands the app to the cluster's owner (section 7).
+
 Terms used throughout:
 
 - **Node** -- one board (or a PC running `pot_hostnode`), with a 16-bit id such as `0x7368`.
@@ -103,6 +112,32 @@ It is tested twice before any board: `tests/test_hello_app.cpp` runs the actor o
 PC, and `host/potluck/tests/test_examples.py` checks that the host tools compile `hello.json` to exactly
 the bytes the C++ test parses. Copy that pattern (section 8).
 
+### A portable actor: what changes
+
+`pot_hello` runs on every node. An actor that should run *once* in the cell and move when its board dies is
+portable, and differs in five places:
+
+1. **The descriptor says `"placement": "portable"`** and does *not* list `period_ms`: the host writes the period
+   into the actor's standard header from the manifest's `config.period_ms` (default 1000, 50-60000).
+2. **Its config bytes start with Potluck's standard header**, then your own fields in descriptor order:
+   `out_hash u32` (the hash of `potluck://<system>/act/<name>/out` -- the actor's identity in the reconciler,
+   whether or not you publish there), `period_ms u16`, `count u8`, then `count` x (`node u16`, `gravity u8`): the
+   nodes it may run on and how much each is preferred. Parse it with
+   `portable_header(decl, TickerConfig& place, size_t& header_len)` (`pot/deploy.hpp`); your bytes start at
+   `decl.cfg + header_len`.
+3. **The row has a placement hook**: `bool placement(const ActorDecl& d, TickerConfig& out)` returns
+   `portable_header(d, out, len)` and checks the total length -- see `ticker_placement` in
+   `firmware/components/pot_actors/src/ticker.cpp`, the smallest portable actor.
+4. **The reconciler declares your outputs, not your `start()`.** It calls your `outputs()` hook with `node` 0 when
+   it loads the image, declares every output on every node with no owner, and moves their owner with the actor.
+   Your `start()` declares nothing; your `tick()` is called only while this node is the outputs' fenced owner.
+5. **Output paths come in through the config.** The board knows neither the actor's name nor the cluster's, so
+   give each output's full path as a `path` field (passive-sensor's fusion actor takes
+   `"confidence": "potluck://lab/act/rf_fusion/confidence"`), and the host sends its hash.
+
+The guest actor (`firmware/components/pot_wasm/src/guest.cpp`, `GuestActor` and `kGuestKind`) is a complete
+portable actor with several outputs, a remote input and a checkpoint, if you want one to read.
+
 ---
 
 ## 4. The actor API
@@ -140,8 +175,9 @@ looser and may only *read* the resources it binds: an actor that owns an actuato
 
 ### The lifecycle
 
-- `start(now_ms)` -- once, after the node exists. Declare the resources you own here; return false to be
-  dropped (logged, the node runs on).
+- `start(now_ms)` -- once per activation, after the node exists. A pinned or every-node actor declares the
+  resources it owns here; a portable actor's outputs are already declared by the reconciler (section 3). Return
+  false to be dropped (logged, the node runs on).
 - `tick(now_ms)` -- every pass of the link task, **with the node's lock held, beside the heartbeat. Return
   promptly.** Anything slow goes to a background worker (`BoardServices::bg_submit`).
 - `on_rx_sample(s)` -- pinned and every-node actors only: every radio frame from a known peer, with its RSSI
@@ -177,13 +213,27 @@ refresh-on-read: a remote value lags about one read period. Key consistency on t
 timestamp, not on two reads of a sequence number (passive-sensor discarded 109 of 160 sets before it did).
 Poll the minimum: ~70 reads a second pushed the heartbeat's 99th-percentile round trip to 42-85 ms.
 
+- **Whom to ask:** the owner is in the local entry: `const NsEntry* e = node.ns().find(hash)`, then
+  `e->owner_node` (0 while nobody owns it, e.g. a portable actor not placed yet). `node.read()` first creates the
+  entry if the image says the resource exists, so call it before `find()`.
+- **STALE carries a value.** Under the default "informative" policy, `Reading::get_f32()` returns true for a
+  STALE reading too -- the value with its true age. If an old value must not count, check
+  `reading.quality == Quality::Good` yourself.
+- **Units:** `Unit::None` when the unit has no code (degrees per minute, say); say the unit in the output's name.
+
 ### Checkpoints (portable actors)
 
 `ActorEnv::checkpoint` keeps up to 128 bytes for the next activation -- on another node after a failover.
 Only the current owner saves, at most once a second; the newest copy reaches every eligible node, including
 one that comes back. Checkpoints live in RAM: when every board reboots at once (a new package does that),
 they are gone. Store what the state depends on with it: a baseline learned on one radio channel is wrong on
-another, so passive-sensor keeps the channel in its checkpoint.
+another, so passive-sensor keeps the channel in its checkpoint. Put a version byte first, and refuse a
+checkpoint you do not recognise.
+
+- **`save()` may return false** -- within a second of the last save, or before this node's claim to the actor
+  has settled. Keep a "dirty" flag and save again on a later tick; the guest actor does exactly that.
+- **When it matters:** gravity places a portable actor on the node that owns its inputs, so the death that moves
+  the actor often takes its input too. A checkpoint pays when the actor's node dies and its inputs live on.
 
 ### Board services
 
@@ -221,7 +271,8 @@ it (the task watchdog watches the idle task).
 - **Config kinds:** `u8 u16 u32 i8 i16 i32 f32 bool`; `path` (a namespace path, sent as its 32-bit hash);
   `node` (a node id or a label from the manifest); `system_prefix` (no value: the hash state after
   `potluck://<system>/`). Fields are encoded little-endian in the order listed; `min`/`max` are enforced on
-  the host before anything is signed. A portable module may also take `period_ms`, which goes into its header.
+  the host before anything is signed. A portable module takes `period_ms` from the manifest without listing it
+  in the descriptor: it goes into the standard header (section 3).
 - **Type numbers.** 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components, given out in
   blocks of 16. A build with two rows for one type refuses the merge and names both components; an image naming
   a type the firmware has no row for is refused, never silently skipped.
@@ -229,7 +280,7 @@ it (the task watchdog watches the idle task).
 | block | holder |
 |---|---|
 | 0x80-0x8F | passive-sensor |
-| 0x90-0xEF | free -- ask for a block, and it is recorded here |
+| 0x90-0xEF | free: ask Potluck's maintainer for a block (an issue on the Potluck repository); it is recorded here. Until then, use one provisionally and say so in your descriptor |
 | 0xF0-0xFF | Potluck's own examples and tests (`pot_hello` is 0xF0) |
 
 ---
@@ -247,9 +298,29 @@ A manifest (JSON) names the cluster (`system`), its nodes and what they own, and
   100 us (same silicon), L1 under 10 ms (same node), L2 under 20 ms (one wired hop), L3 under 500 ms (one
   radio hop), L4 best effort. An actor may only bind resources of its class or tighter, and the build refuses
   a binding the transport cannot meet. Radio apps are typically L4 (passive-sensor's three actors all are).
-- **`needs`** -- the resources it reads; a portable actor's gravity is higher on a node that owns them.
+- **`needs`** -- the resources it reads; a portable actor's gravity is higher on a node that owns them. **Every
+  path in `needs` must be declared by some node's `owns` list** (or the manifest is refused: "...is neither a
+  declared resource nor a binding"):
+
+  ```json
+  {"node_id": 29544, "label": "B", "owns": [
+    {"path": "potluck://lab/node-7368/hw/die_temp", "unit": "celsius", "kind": "sampled",
+     "access": "read", "latency_class": 4, "staleness_bound_ms": 5000}]}
+  ```
 - **`pin`** -- a hand-written override for where it runs.
 - **`config`** -- plain values (numbers, booleans, strings), checked against the descriptor.
+- **Built-in modules** you can put in the same manifest (rules in `host/potluck/potluck/deploy.py`):
+
+  | module | placement | config | publishes |
+  |---|---|---|---|
+  | `builtin:die_temp` | pinned | `period_ms` 200-60000 (1000) | `node-<id>/hw/die_temp`, the chip's temperature, f32 degC |
+  | `builtin:ticker` | portable | `period_ms` 50-60000 (100) | `act/<name>/out`, a counter (the reconciler's test actor) |
+  | `builtin:svc_client` | pinned | `period_ms` 100-60000; one `needs` of `potluck://<system>/svc/<name>`; `on_host_loss` continue or hold | the PC service's answer |
+  | `builtin:led` | pinned | `r` `g` `b` 0-255, `blink`, `period_ms` 200-10000 | the status LED's healthy colour |
+  | `builtin:mc_lender` / `builtin:mc_job` | pinned | M9's borrowed-core job (`slots`; `units`, `samples`, `seed`, `lend`, `start_after_ms`) | `node-<id>/job/mc/pi` |
+  | `builtin:fault` | pinned | `panic_after_ms` | nothing: it crashes the node on purpose, to test reverts |
+  | `guest:<name>` | portable | section 9 | `act/<actor>/<output>` |
+
 - **One package per cluster.** Deploying a package replaces the previous one, so a manifest lists *every*
   actor the cluster should run -- yours and everyone else's. To add your app to a running cluster today, merge
   your actors into its manifest (`manifests/room-and-guests.json` merges passive-sensor's into Potluck's).
@@ -258,8 +329,10 @@ A manifest (JSON) names the cluster (`system`), its nodes and what they own, and
 
 ## 7. Building, rolling out, deploying
 
-From the Potluck repository; PowerShell for builds, the commands after it from `host/potluck/`. Keys live in
-the git-ignored `keys/`; signing is the owner's.
+From the Potluck repository. Builds run in **PowerShell 7** (`pwsh`); Windows PowerShell 5.1 fails inside
+ESP-IDF's `export.ps1`. Run the `git archive | tar` export in Git Bash (a binary pipe is safest there). The host
+commands run from `host/potluck/` with the ESP-IDF Python (it has `pyserial`). Keys live in the git-ignored
+`keys/` and are the owner's.
 
 ```
 # 1. build -- your component from a git archive export, never your working tree (see section 10)
@@ -283,11 +356,29 @@ What to know today (each is on M12's list to remove):
 - **Counters only go up.** The firmware counter and the package counter each have a floor on every board;
   `potluck.fw status` shows the firmware's. Both are numbers you track.
 - **Every package deploy reboots every board** onto the new package on trial; checkpoints do not survive it.
-- **Image size.** A firmware image must fit the 1 MB `factory` slot; the extender build with passive-sensor
-  and the sandbox is 990,642 B (6 % left).
+- **Image size.** A firmware image must fit the 1 MB `factory` slot; ESP-IDF's partition check stops the build
+  if it does not, and prints the space left (`... bytes (6%) free`). The extender build with passive-sensor and
+  the sandbox is 990,642 B. Section 6's RAM check is separate: it prints `within budget` or fails.
+- **See it run:** `python -m potluck.ctl --port COM6 --node 6300 watch potluck://lab/act/<name>/<output>` reads an
+  output through the cabled board once a second, with its age and quality; `--count N` stops after N reads.
 - **Verify what you flashed:** the build stamps a version (`deploy-and-detach-<n>-g<commit>`, in
   `build-<name>/project_description.json`; `-dirty` if Potluck's tree had uncommitted changes), and
   `potluck.fw status` shows what each board runs.
+
+### Who does what, today
+
+An app author outside the cluster owner's house cannot deploy to the owner's boards, and should not: the
+firmware the cell needs must carry **every** app component the cell runs (deploying an image without one removes
+that app), some of those components may be private, signing is the owner's, and the package counter can only be
+read by the owner's notes. So today:
+
+- **The author** delivers a commit of the component, its descriptor, a manifest fragment (its actors, the `owns`
+  its `needs` rely on), and its tests -- built and tested as in sections 3 and 8.
+- **The owner** builds the cell's images from every component it runs (`-AppComponents` takes several
+  directories; a board that runs the extender gets its own variant), rolls them out, merges the fragment into the
+  cell's manifest, signs at the next counter, and deploys.
+
+M12's `potluck apply` turns the owner's half into one command.
 
 ---
 
@@ -297,9 +388,23 @@ What to know today (each is on M12's list to remove):
   test framework -- passive-sensor's detector and link statistics are tested that way. To test the actor
   itself, run it on a real `pot::Node` with a fake clock and transport, as `tests/test_hello_app.cpp` does:
   Potluck's portable sources build on Windows and Linux (`tests/CMakeLists.txt` shows which). A reusable test
-  kit for apps in their own repositories is part of M12; until then, copy that file's `Rig`.
+  kit for apps in their own repositories is part of M12. Until then, in your own repository:
+  - **Sources:** compile Potluck's portable sources into your test -- the `pot_portable` list in
+    `tests/CMakeLists.txt` (frame, link, namespace, deploy, trust, reconciler, actors), with Monocypher, and the
+    include directories listed under it. Write your own `main`: Potluck's `tests/test_main.cpp` also emits Potluck's
+    own fixtures. `tests/test_harness.hpp` is a header-only harness you may reuse.
+  - **A compiler:** `tools/run_host_tests.ps1` shows how Potluck finds one (CMake and Ninja from the ESP-IDF tools
+    install, MSVC through `vswhere`, or gcc/clang on PATH); copy its approach or run from a Visual Studio developer
+    shell.
+  - **The rig:** `test_hello_app.cpp`'s `Rig` (a `Node` with a fake clock and transport) fits pinned and every-node
+    actors. For a portable actor, either declare its outputs yourself before `start()`, or load the image into a
+    real `Reconciler` with `collect_portable()` and let it place and tick the actor -- as Potluck's
+    `tests/test_reconcile.cpp` does for the guest actor.
 - **Share the bytes.** Check that the host tools compile your manifest to the declaration your parser accepts
-  (`host/potluck/tests/test_examples.py` against `test_hello_app.cpp`).
+  (`host/potluck/tests/test_examples.py` against `test_hello_app.cpp`). From your own repository, put
+  `<potluck>/host/potluck` on `sys.path` and `import potluck`; load your descriptor with
+  `potluck.modules.load(path)` before compiling, and check placement with
+  `python -m potluck.reconcile <manifest> --modules <descriptor>`.
 - **On the boards.** Record consoles with `tools/json_capture.py <port> <file> <seconds>` (JSON lines only --
   use it on any board that holds Wi-Fi credentials) or `tools/console_tap.py` (everything, without resetting
   the board). Read the first ten minutes of any long run with your report tool before trusting the rest.

@@ -36,7 +36,8 @@ control-loop application; radio apps counted all-L4) and 2 (namespace cap) untes
 known limitation (its trigger, a power-on, never retried). A second MCU family -- the proof of "hardware-agnostic"
 beyond the PC node -- is the next edition's.
 **NEXT: M12 (planned 2026-10-12, the owner's choice: Potluck as a platform)** -- one command, any mix: one image with roles at run time, `potluck apply <cluster.json>`, live package changes and checkpoints that survive a reboot, and a developer manual for app authors (`DEVELOPING-APPS.md`, the owner's addition -- first version written 2026-10-12,
-against today's tools; its blind-reader test is still to run) (ARCHITECTURE section 13). Then step 1: measure the all-in image and decide the partition layout, since B's image fills 94 % of the 1 MB `factory` slot.
+against today's tools; the blind-reader test ran the same day: app built and tested in ~20 min, deploy blocked
+by platform gaps now in M12, the manual revised for the rest -- rerun the test after M12's `potluck apply`) (ARCHITECTURE section 13). Then step 1: measure the all-in image and decide the partition layout, since B's image fills 94 % of the 1 MB `factory` slot.
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and

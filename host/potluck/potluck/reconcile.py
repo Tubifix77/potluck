@@ -131,13 +131,30 @@ def plan(m: Manifest) -> list[PortablePlan]:
 def main(argv: list[str] | None = None) -> int:
     from .manifest import ManifestErrors, load
 
-    args = sys.argv[1:] if argv is None else argv
+    from . import modules as mods
+
+    args = list(sys.argv[1:] if argv is None else argv)
+    # An app's actors are portable or not by its descriptor; without it they are left out of the plan
+    # (found by the blind reader of DEVELOPING-APPS.md, 2026-10-12).
+    descriptors = []
+    while "--modules" in args:
+        i = args.index("--modules")
+        if i + 1 >= len(args):
+            print("--modules needs a potluck-modules.json path")
+            return 2
+        descriptors.append(args[i + 1])
+        del args[i:i + 2]
     if len(args) != 1:
         print(__doc__.strip().splitlines()[0])
-        print("usage: python -m potluck.reconcile <manifest.json>")
+        print("usage: python -m potluck.reconcile <manifest.json> [--modules <potluck-modules.json>]...")
         return 2
     try:
+        for d in descriptors:
+            mods.load(d)
         m = load(args[0])
+    except mods.ModuleError as e:
+        print(f"descriptor: {e}")
+        return 1
     except ManifestErrors as e:
         print(e.report())
         return 1

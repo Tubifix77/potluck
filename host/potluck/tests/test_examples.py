@@ -45,5 +45,35 @@ class HelloExample(unittest.TestCase):
             dp.compile_image(m, 1)
 
 
+class PlacementReport(unittest.TestCase):
+    """`python -m potluck.reconcile --modules` plans an app's portable actors (the blind reader's finding 20)."""
+
+    def test_an_apps_portable_actor_is_planned_only_with_its_descriptor(self):
+        import contextlib
+        import io
+        import json
+        import tempfile
+
+        from potluck import reconcile as rc
+
+        with tempfile.TemporaryDirectory() as d:
+            desc = os.path.join(d, "potluck-modules.json")
+            man = os.path.join(d, "m.json")
+            with open(desc, "w", encoding="ascii") as f:
+                json.dump({"component": "pot_x", "types": [144, 159],
+                           "modules": [{"module": "ext:x/roam", "type": 144, "placement": "portable", "config": []}]}, f)
+            with open(man, "w", encoding="ascii") as f:
+                json.dump({"schema": 1, "system": "lab", "min_core_version": 1,
+                           "nodes": [{"node_id": 25344, "label": "A"}, {"node_id": 29544, "label": "B"}],
+                           "actors": [{"name": "roam", "module": "ext:x/roam", "latency_class": 4}]}, f)
+            for argv, planned in (([man], False), ([man, "--modules", desc], True)):
+                mods.clear()
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    self.assertEqual(rc.main(argv), 0)
+                self.assertEqual("roam -> potluck://lab/act/roam/out" in out.getvalue(), planned, out.getvalue())
+            mods.clear()
+
+
 if __name__ == "__main__":
     unittest.main()

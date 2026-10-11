@@ -4813,3 +4813,28 @@ cited as "in section 7" never existed. It is now in the manual (0x80-0x8F passiv
 found: an app repository cannot test its actor glue on a PC (passive-sensor tests only its pure cores), which M12
 now owes as a test kit. Left for part 4's acceptance: the blind-reader test.
 
+## Session 38, M12 part 4 -- 2026-10-12: the blind-reader test
+
+A fresh agent with only `DEVELOPING-APPS.md` and Potluck's source (no log, no handover notes, no memory, not the
+private app repositories, no serial ports) was asked to build `trend`: a portable actor reading B's die temperature
+remotely, publishing a slope and a rising flag, with a checkpoint. In ~20 minutes it delivered the component
+(type 0x90, provisional), a manifest, 9 C++ cases (111 checks; the actor on a real `pot::Node`, refusals, the
+checkpoint carried to a new instance, a real `Reconciler` placing it from the golden image, a two-node remote read)
+and 5 Python cases, all passing, and a firmware image of 851,568 B within budget. It did not deploy -- by design it
+could not touch the boards -- and could not write deploy commands that would work.
+
+**Verdict: part 4 not yet accepted.** 23 findings. Three are Potluck's, not the manual's, and are now M12
+requirements (ARCHITECTURE section 13): the cell's firmware must carry every app's component, so an author needs
+other apps' sources (one private) and cannot see what the cell runs; the package counter cannot be read; there is no
+test kit. The rest were the manual's: the portable path needed six source files (the standard header,
+`portable_header`, the placement hook, that the reconciler declares a portable actor's outputs, output paths through
+config), `owns` and the built-in modules were missing, `period_ms` for portable modules was unclear, how to find a
+remote resource's owner, that STALE readings carry a value, that `save()` can be refused, which PowerShell (5.1 fails
+in ESP-IDF's `export.ps1` -- confirmed here), the size check, observing the app, who does what. All fixed in the
+manual's revision. One was a tool's: `python -m potluck.reconcile` left an app's portable actors out of its plan for
+want of a descriptor; it now takes `--modules` (with a test). One claim of the reader's was half wrong: ESP-IDF's own
+partition check does refuse an oversized image at build time; the manual had not said so.
+
+The reader's app stays in the session scratchpad: written by an agent to test the manual, not reviewed for the
+bench. Part 4's acceptance waits for a rerun after `potluck apply`.
+
