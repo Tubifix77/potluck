@@ -1,0 +1,17 @@
+# bridge 0x00fe on serial COM6 @ 921600, peer unknown
+# node 0x6300 epoch 252 admitted; its death window is 100 ms x 6
+# node 0x6300, boot epoch 252, death window 100 ms x 6 = 600 ms
+guest 'alarm': author 7, signature verified under the cluster CA
+image signed for node-side checking (176 B trailer)
+package 'lab' counter 29, signed by efb18338c77b66fe ('owner-pc')
+node image 1240 B, crc e5b18c7c, 5 actor(s), manifest 72aa436f614dc9f3
+  BEGIN   OK  (slot A, 0 B received)
+  CHUNK   OK  (slot A, 220 B received)
+  CHUNK   OK  (slot A, 440 B received)
+  CHUNK   OK  (slot A, 660 B received)
+  CHUNK   OK  (slot A, 880 B received)
+  CHUNK   OK  (slot A, 1100 B received)
+  CHUNK   OK  (slot A, 1240 B received)
+  COMMIT  OK  (slot A, 1240 B received)
+committed on 0x6300 and passed on: 2 peer(s) committed, 0 failed
+every committed node now reboots into the new slot and runs it on trial

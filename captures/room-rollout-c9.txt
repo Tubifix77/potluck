@@ -1,0 +1,27 @@
+0x7368: image C:/Users/tuebo/AppData/Local/Temp/claude/D--Projects-potluck/6e437d22-9e7e-422f-8d34-38701061c1f4/scratchpad/fw-out/build-extender-ps-m7/potluck_m0.bin, 990752 B, counter 9, sha512 60836edb97b50842...
+0x7368: before {'status': 'ok', 'node': 29544, 'received': 0, 'running': 8, 'floor': 8, 'state': 'confirmed', 'version': 'deploy-and-detach-180-g5799bd4'}
+    0 %     0.1 s
+   20 %    21.8 s
+   41 %    43.6 s
+   62 %    65.4 s
+   82 %    87.2 s
+0x7368: committed after 105.8 s (9.1 KiB/s)
+0x7368: confirmed deploy-and-detach-186-g437face after 122.2 s
+0x8160: image C:/Users/tuebo/AppData/Local/Temp/claude/D--Projects-potluck/6e437d22-9e7e-422f-8d34-38701061c1f4/scratchpad/fw-out/build-ps-m7/potluck_m0.bin, 952352 B, counter 9, sha512 02b53b9200e5a661...
+0x8160: before {'status': 'ok', 'node': 33120, 'received': 0, 'running': 8, 'floor': 8, 'state': 'confirmed', 'version': 'deploy-and-detach-181-gf738486'}
+    0 %     0.2 s
+   21 %    22.0 s
+   43 %    43.7 s
+   64 %    65.4 s
+   86 %    87.2 s
+0x8160: committed after 101.9 s (9.1 KiB/s)
+0x8160: confirmed deploy-and-detach-186-g437face after 118.4 s
+0x6300: image C:/Users/tuebo/AppData/Local/Temp/claude/D--Projects-potluck/6e437d22-9e7e-422f-8d34-38701061c1f4/scratchpad/fw-out/build-ps-m7/potluck_m0.bin, 952352 B, counter 9, sha512 02b53b9200e5a661...
+0x6300: before {'status': 'ok', 'node': 25344, 'received': 0, 'running': 8, 'floor': 8, 'state': 'confirmed', 'version': 'deploy-and-detach-181-gf738486'}
+    0 %     0.1 s
+   21 %    21.8 s
+   43 %    43.5 s
+   64 %    65.3 s
+   86 %    86.9 s
+0x6300: committed after 101.5 s (9.2 KiB/s)
+0x6300: confirmed deploy-and-detach-186-g437face after 116.7 s

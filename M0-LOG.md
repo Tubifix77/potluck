@@ -4762,3 +4762,23 @@ known limitation in the README: it followed a *power-on*, and every boot since (
 session) was a reset, so its trigger has not been retried. The README's M7 status cell (it still opened with "gated"),
 its ADR count (nine) and its test-gate figures (381 C++ cases / 105,176 checks, 296 Python cases in 25 suites) fixed.
 
+## Session 38, last -- 2026-10-12: everything on all three boards
+
+The owner asked for everything built so far on all three boards. Firmware counter 9 over the cell (`captures/
+room-rollout-c9.txt`, 116-122 s a board): Potluck `437face` with M7's sandbox and passive-sensor's component (from
+`git archive 73d43b8`, never its live tree) on every board, and the extender on B -- 952,240 B for A and C, 990,642 B
+for B (6 % of the 1 MB factory slot left; the next feature on B's build will not fit a cable flash without a new
+partition table). The component built against today's Potluck unchanged. Static internal RAM 56.9 KB of 64 KB.
+The per-frame signal log (the RSSI tee) is left out: it was PS-0's capture aid. Package `room-and-guests` at counter
+29 (`manifests/room-and-guests.json`: ps-room's three actors as passive-sensor `2992b2e` has them, B's die
+temperature, the alarm guest; the never-returning demo guest dropped), deployed through A's cable to all three.
+
+Checked (`captures/room-c29-*`): rf_link on all three (two links each), rf_fusion placed on C and learned all six
+links within ~2 minutes, verdicts flowing (no presence, no motion on the desk); rf_indicator on all three; the alarm
+guest on B (93 ticks, 0 failures, 392 us a tick) beside B's die temperature; the extender's station joined with an
+IP and the hotspot running, 0 reconnects (its one client had not rejoined yet after the reboot). From A over the
+cable: presence false, confidence 0, motion 0, alarm count 102 -- all GOOD. Deaths: A dropped the host when the
+deploy tool exited; B declared C dead 5.7 s after its boot (its known boot scan). First time the sandbox and
+passive-sensor run together: no interaction seen. Detection learned its baseline on the desk; placed in a room, the
+boards relearn there.
+

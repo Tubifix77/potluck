@@ -61,8 +61,11 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > | **B** | 0x7368 | b8:1f:3f:da:73:68 | COM4 | extender (poor-mans-extender's hotspot) | **holds the owner's house Wi-Fi and hotspot credentials**: its ESP-IDF log can name networks, so read it with JSON-only tools (`tools/json_capture.py`, `tools/console_tap.py` writes everything -- check before committing); never type or log credentials, and an erase is the owner's to run |
 > | **C** | 0x8160 | b8:1f:3f:da:81:60 | COM5 | normal | |
 >
-> Since session 38 all three run the M7 sandbox builds at firmware counter 8 (next image 9+): A and C `m7-node` of
-> `f738486`, B `extender-m7` of `5799bd4` (the same code); package `m7-guests` at counter 28 (next 29+). Enrolled under
+> **Everything on all three (2026-10-12, at the owner's request):** firmware counter 9 (next 10+) = Potluck + the M7
+> sandbox + passive-sensor's room detection on every board, and the extender on B -- built from `437face` with passive-sensor's component from `git archive 73d43b8` and `CONFIG_POT_WASM=y` (variants `ps-m7`, and `extender-ps-m7` for B; output under the session scratchpad, so Potluck's tree is untouched). Package
+> `room-and-guests` (`manifests/room-and-guests.json`: ps-room's three actors unchanged, B's die temperature, the
+> alarm guest) at counter 29 (next 30+); deploy it with `--modules <export>/pot_passive_sensor/potluck-modules.json
+> --guests ../..`. The fusion learns its baseline where the boards stand: moved into a room, it relearns there. Enrolled under
 > the cluster CA (keys in the git-ignored `keys/`); the cell is on channel 1. The SN65HVD230 CAN modules are OFF (`bench/m4-can-wiring.html` to
 > rewire). The full board register (CH343 serials, bring-up history) is in WHEN-THE-BOARDS-ARRIVE.md.
 >
