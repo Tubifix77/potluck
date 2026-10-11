@@ -1,8 +1,9 @@
 # Developing apps for Potluck
 
-**Who this is for:** someone who has vanilla Potluck running on ESP32-S3 boards they own, wants to write an app
-of their own, run it on those boards, and later share it on GitHub for others to run on theirs. You are the
-owner of your cluster: your keys, your boards, your packages.
+**Who this is for:** someone who has vanilla Potluck running on ESP32-S3 boards they own -- however many -- and
+wants to write an app of their own, run it on those boards, and later share it on GitHub for others to run on
+theirs. You are the owner of your cluster: your keys, your boards, your packages. Not running Potluck yet? Start
+with [GETTING-STARTED.md](GETTING-STARTED.md).
 
 For anyone who wants to make an app for a Potluck cluster: code that reads the cluster's resources
 (sensors, radio, other apps' outputs), computes, and publishes results the rest of the cluster can read.
@@ -22,11 +23,9 @@ about 20 minutes, and listed 23 places the manual failed it. The ones a manual c
 revision (the portable recipe in section 3, `owns` and the built-in modules in section 6, who does what in
 section 7, the test kit in section 8). That test was aimed at the maintainer's own bench, whose cell
 already runs two other apps (one private), so its deploy blockers belonged to that bench, not to you. For your own
-boards running vanilla Potluck, the gaps that remain are these, and M12 closes them: **there is no guide yet for
-getting vanilla Potluck onto your own boards** (your own keys, the first flash, enrolment, the USB-serial adapter
-the PC talks through -- today that lives in the maintainer's bring-up notes); this manual's commands are written
-for the maintainer's bench (`COM6`, node `6300`, system `lab`); **type numbers can collide between authors who
-share apps** (section 5); and installing someone else's app is not yet described (section 7).
+boards running vanilla Potluck, getting them there is now [GETTING-STARTED.md](GETTING-STARTED.md); what remains for
+M12 is that **type numbers can collide between authors who share apps** (section 5), that every counter is yours to
+track, and a test kit for your app's own repository (section 8).
 
 Terms used throughout:
 
@@ -374,8 +373,9 @@ What to know today (each is on M12's list to remove):
 
 ### On your own boards
 
-The commands above use the maintainer's bench: replace `COM6` with your USB-serial adapter's port, `6300` with the
-id of the board that adapter is wired to (a board's id is the last two bytes of its MAC), `lab` with your cluster's
+The commands in this manual use an example cell -- boards `0x6300`, `0x7368` and `0x8160`, the PC's adapter on
+`COM6` wired to `0x6300` -- but nothing in Potluck is about three boards: list as many as you have. Replace `COM6`
+with your USB-serial adapter's port, `6300` with the id of the board that adapter is wired to (a board's id is the last two bytes of its MAC), `lab` with your cluster's
 `system` name, and `../../keys/...` with your own keys. On boards you just flashed, both counters start at 0, so
 your first firmware and your first package are counter 1; keep a note of each counter you use. Your images contain
 only what you build in: vanilla Potluck plus the components you name with `-AppComponents` (it takes several
@@ -417,8 +417,8 @@ image (the build refuses and names both).
 - **On the boards.** Record consoles with `tools/json_capture.py <port> <file> <seconds>` (JSON lines only --
   use it on any board that holds Wi-Fi credentials) or `tools/console_tap.py` (everything, without resetting
   the board). Read the first ten minutes of any long run with your report tool before trusting the rest.
-  **Count deaths from the `peer_dead` events, never from sampled state.** Test with three boards: two hide
-  multi-node bugs. Reboot each board in turn -- passive-sensor's reboot tests found four Potluck faults.
+  **Count deaths from the `peer_dead` events, never from sampled state.** Test with at least three boards: two
+  hide multi-node bugs. Reboot each board in turn -- passive-sensor's reboot tests found four Potluck faults.
 - **Run the cheapest experiment that can kill the idea first**, with its kill criterion written down
   (passive-sensor's PS-0, the extender's step 0).
 

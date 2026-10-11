@@ -120,10 +120,10 @@ If a board appears dead over USB, this is why. It is not a fault.
 
 Two further notes on this hardware:
 
-- **PSRAM is deliberately off.** §6's [MEASURE] item is about *internal* DRAM, and with the R8's
-  8 MB enabled the Wi-Fi stack could place buffers externally, making the figure unattributable.
-  Measure the baseline first; enable PSRAM and measure again as a separate run if you want that
-  number too.
+- **PSRAM is on** (since M6, `sdkconfig.defaults.esp32s3`): buffers that only tasks touch live in the R8's
+  8 MB, and section 6's gate counts internal RAM only. (Until M6 it was deliberately off, so the M0
+  measurement of the Wi-Fi stack's internal DRAM was unambiguous.) A board without PSRAM needs
+  `CONFIG_SPIRAM=n`, which compiles the reconciler out.
 - **2.4 GHz only.** The merchant listing claims dual-band; it is wrong, no ESP32 has a 5 GHz radio.
   So the soak shares the band with every access point around it, and the channel you pick matters.
   Record it (§8).

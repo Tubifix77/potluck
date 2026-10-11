@@ -5,6 +5,10 @@ dish — a sensor, some RAM, a radio — and the cluster eats together.
 
 *e(SP)luribus unum — out of many, one machine.*
 
+**Start here:** [GETTING-STARTED.md](GETTING-STARTED.md) takes you from bare ESP32-S3 boards -- two of them or
+twenty -- to a working cluster in about an hour; [DEVELOPING-APPS.md](DEVELOPING-APPS.md) then takes you to apps
+of your own.
+
 ---
 
 ## The idea
@@ -47,21 +51,21 @@ flag ends up in a script that has lost the age.
 ## What "S3 Edition" means
 
 It names the **hardware support, not the project**. This edition targets the
-[ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3) (bench fleet:
-3 × ESP32-S3-DevKitC-1 N16R8 — the standard devkit board, in its 16 MB flash / 8 MB external-RAM
-variant) with host tooling on **Windows and Linux**. The architecture is deliberately
+[ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3) (tested on the ESP32-S3-DevKitC-1 N16R8 — the
+standard devkit board, in its 16 MB flash / 8 MB external-RAM variant) with host tooling on **Windows and Linux**. The architecture is deliberately
 hardware-agnostic — no CPU is second-class, and relative performance is a placement input, never an
 exclusion rule — so later editions add targets without the name having baked one vendor's silicon
 in. (It is also why the ESP32 pun lives in the tagline and not in the project name.)
 
 ## Honest status — read this before judging anything else
 
-Work is organised as **falsifiable milestones, M0–M11** — every "M-number" in this README is one of
+Work is organised as **falsifiable milestones, M0–M12** — every "M-number" in this README is one of
 them; the ".1" and ".2" steps were added when the owner's own applications asked for something the
 platform could not yet do. Each has an acceptance test that can fail and a kill criterion (both spelled
 out in [ARCHITECTURE.md](ARCHITECTURE.md)); a milestone counts as *built* when the code exists, and
-*accepted* only when its test has passed. Where they stand as of **2026-10-10**, after ten days on real
-hardware — three ESP32-S3 boards on a desk, walked through a house, and placed around a room:
+*accepted* only when its test has passed. Where they stand as of **2026-10-12**, after twelve days on real
+hardware. The measurements come from the maintainer's own test cell -- three ESP32-S3 boards on a desk, walked
+through a house, and placed around a room -- which is a test bench, not a size: a cell holds up to 20 boards.
 
 | milestone | in one line | state |
 |---|---|---|
@@ -93,7 +97,7 @@ Beneath the milestones, the standing figures:
 | Static memory | **56.6 KB** of the 64 KB core cap in the default build and 56.9 KB with M7's sandbox (2026-10-11, measured per build; the M8.2 room-sensor builds measured 49.8 KB, 53.2 KB with the per-frame signal log on). Buffers that only tasks touch live in the boards' 8 MB of extra RAM |
 | Measured on hardware | A **24.5-hour** three-board soak: no reboots, no false deaths, **100 %** packet delivery on all six links, round trip **4–6 ms** typical and 16–22 ms at the 99th percentile, memory flat to the byte. A distance sweep through a two-storey house (up to ~16 m, four walls, a floor, a fridge): every spot held, the worst at 99 %. The Wi-Fi stack costs **31.5 KiB** with [ESP-NOW](https://www.espressif.com/en/solutions/low-power-solutions/esp-now) active. All in a home thick with competing 2.4 GHz traffic, so these are a floor, not a best case |
 
-**Known limitation, unresolved:** B's transmit stall after a power-on (2026-10-09, M0-LOG session 33): once, on the extender build with dynamic TX buffers, board B refused every ESP-NOW send as NO_MEM ("out of memory", `esp_now.h`) for ~40 minutes -- 6,131 refused, 1,133 failed, 354 completed -- while it kept receiving, until a reset ended it. It was session 28's symptom on the build that fixed session 28's cause. Not seen again in 13 resets that day, nor in B's seven boots in session 38 (three firmware updates, three deploys, one reset); but every one of those was a reset, not a power-on, so the condition that showed it has not been retried. Recorded as a known limitation, not chased: it reopens if it happens again.
+**Known limitation, unresolved:** a transmit stall after a power-on, seen once on the test cell's extender board ("B") (2026-10-09, M0-LOG session 33): once, on the extender build with dynamic TX buffers, board B refused every ESP-NOW send as NO_MEM ("out of memory", `esp_now.h`) for ~40 minutes -- 6,131 refused, 1,133 failed, 354 completed -- while it kept receiving, until a reset ended it. It was session 28's symptom on the build that fixed session 28's cause. Not seen again in 13 resets that day, nor in B's seven boots in session 38 (three firmware updates, three deploys, one reset); but every one of those was a reset, not a power-on, so the condition that showed it has not been retried. Recorded as a known limitation, not chased: it reopens if it happens again.
 
 Nothing above claims a measurement that was not made. Emulated runs stamp `"no_radio":1` on every
 statistics line precisely so they can never be mistaken for a measured one; the hardware figures come
@@ -228,9 +232,10 @@ details and the other emulator sharp edges).
 
 ## On real hardware
 
-The bench is three ESP32-S3-DevKitC-1 boards, each on its own USB cable for power and console, plus
-one USB-serial adapter wired to one board's GPIO 17, 18 and ground — the *frame link*, which is how
-the PC joins the cluster as a peer. That board reaches the others by radio.
+A cell is any number of ESP32-S3 boards up to 20, each on a USB cable for power and console while you set
+it up, plus one USB-serial adapter wired to one board's GPIO 17, 18 and ground — the *frame link*, which is how
+the PC joins the cluster as a peer. That board reaches the others by radio. **To set one up:**
+[GETTING-STARTED.md](GETTING-STARTED.md). The links below describe the maintainer's own three-board test cell.
 
 - **Wiring:** [bench/m1-wiring.html](bench/m1-wiring.html) — the adapter, the board's headers from
   Espressif's own pin table, and the three wires step by step, as actually built. GitHub shows the
@@ -283,6 +288,7 @@ python tools/can_report.py captures/m4-can.log
 | [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md) | The bench guide: unboxing, the board register, first contact, the soak and the distance sweep, written for a reader who remembers nothing |
 | [bench/m1-wiring.html](bench/m1-wiring.html) | The frame-link wiring, as built: the USB-serial adapter to one board, step by step (open in a browser) |
 | [bench/m4-can-wiring.html](bench/m4-can-wiring.html) | The two-board CAN bus for M4, as built (open in a browser) |
+| [GETTING-STARTED.md](GETTING-STARTED.md) | **Start here:** why you would use Potluck, what you need, and your own boards from bare to a working cluster -- keys, flashing, enrolment, the PC link, a first package you can watch fail over |
 | [DEVELOPING-APPS.md](DEVELOPING-APPS.md) | **For people making apps for Potluck:** native actors or sandboxed guests, the actor API, descriptors, manifests, building, deploying and testing, with a worked example and what the first two apps learned |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the nine decision records, and milestones M0–M12 with accept/kill criteria |
 | [M0-LOG.md](M0-LOG.md) | The decision log, newest session last — including the conclusions that were later **withdrawn**, kept struck-through rather than deleted. The QEMU sessions are a study in how a stale flash image manufactures false evidence |
