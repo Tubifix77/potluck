@@ -337,7 +337,7 @@ Two entry points, depending on what is on the desk:
   resumption path, written for a reader who remembers nothing. Read its unboxing notes *before*
   plugging anything in: the two USB-C sockets are visually identical and one of them is dead in this
   firmware.
-- **Still waiting** -> [HARDWARE-FREE-PLAN.md](HARDWARE-FREE-PLAN.md). **All seven steps H0-H6 are
+- **Still waiting** -> [history/HARDWARE-FREE-PLAN.md](history/HARDWARE-FREE-PLAN.md). **All seven steps H0-H6 are
   done** (2026-08-23). M2 is accepted, half of M4 is accepted, and section 7.8's compute pattern is
   measured in simulation. What is left in the milestones is hardware and only hardware; if a session
   wants more to do without boards, the honest answer is that the queue is empty and the next thing
@@ -373,14 +373,14 @@ Naming now in force, all ASCII:
 - **[DEVELOPING-APPS.md](DEVELOPING-APPS.md)** — the developer manual for app authors (M12 part 4, first version
   2026-10-11); its worked example `examples/apps/pot_hello` is built and tested by the gates. Keep it true:
   a change to the actor API, the descriptor or the deploy steps changes the manual in the same commit.
-- The three `dmuOS_Architecture_Vision_Document*.pdf` are **superseded history** — mine them for
+- The three `history/dmuOS_Architecture_Vision_Document*.pdf` are **superseded history** — mine them for
   intent, never for facts. Several of their numbers are corrected in ARCHITECTURE.md §3.1. They keep
   their old filenames deliberately: they really were written about dμOS, and renaming a historical
   artefact misrepresents it.
-- `first-analysis.md` — the external review (Fable 5 Max) that motivated the merge.
-- `second-analysis.md` — adversarial re-read of §2/§4/§8.3. **Resolved 2026-08-01** — all twelve
+- `history/first-analysis.md` — the external review (Fable 5 Max) that motivated the merge.
+- `history/second-analysis.md` — adversarial re-read of §2/§4/§8.3. **Resolved 2026-08-01** — all twelve
   findings applied to ARCHITECTURE.md (see its Resolution section). Do not re-derive them.
-- `duOS.png` / `duOS2.png` — mood boards from the old name; the second has garbled AI text layers.
+- `history/duOS.png` / `history/duOS2.png` — mood boards from the old name; the second has garbled AI text layers.
 
 ## Rules for any session in this repo
 

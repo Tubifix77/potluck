@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Author** | Tue Wincentz Boas |
-| **Status** | Decision-closed v1 architecture, amended 2026-08-01 after adversarial review (second-analysis.md). Supersedes Vision Documents 1, 2 and 3. |
+| **Status** | Decision-closed v1 architecture, amended 2026-08-01 after adversarial review (history/second-analysis.md). Supersedes Vision Documents 1, 2 and 3. |
 | **Document date** | 2026-08-01 |
 | **v1 target hardware** | ESP32 family via ESP-IDF (Xtensa + RISC-V), plus one host machine |
 | **Document type** | Architecture description with ADRs, wire spec, threat model, and falsifiable milestones |

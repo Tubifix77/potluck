@@ -1,7 +1,7 @@
 # Hardware-free work plan
 
 **This does not change M0–M8.** Those milestones are decision-closed, with acceptance tests and kill
-criteria, in [ARCHITECTURE.md](ARCHITECTURE.md) §13. This is a work *order* underneath them, which
+criteria, in [ARCHITECTURE.md](../ARCHITECTURE.md) §13. This is a work *order* underneath them, which
 knows about a constraint they do not: no ESP32-S3 is attached to this machine.
 
 Steps are numbered **H0–H6** so they can never be confused with milestones. Each says which milestone
@@ -29,7 +29,7 @@ board, and §7.8's compute pattern was measured in simulation -- then the hardwa
 measured 4-6 ms, and a modelled ~12 frames/s per node against a measured 13.6. Every conclusion H2
 reached rested on those numbers being roughly right.
 
-For what happens next, go to [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md). What remains is
+For what happens next, go to [WHEN-THE-BOARDS-ARRIVE.md](../WHEN-THE-BOARDS-ARRIVE.md). What remains is
 M0's soak, then the distance sweep that is M0's kill criterion, then M1's unplug test, M3's A/B slots,
 M4's CAN half, M5's firmware verification path and M6's reconciler.
 

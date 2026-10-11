@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check the Potluck core's static DRAM against ARCHITECTURE.md section 6's 64 KB cap.
 
-Section 6 budgets the *Potluck core* at 59.4 KB with a hard cap of 64 KB, and M0-BRIEF.md says
+Section 6 budgets the *Potluck core* at 59.4 KB with a hard cap of 64 KB, and history/M0-BRIEF.md says
 "Core above the 64 KB cap = build treated as failing". The figure that must be compared is the
 core's, not the whole image's: `idf.py size` reports DRAM for everything linked in, most of which is
 ESP-IDF's Wi-Fi stack, FreeRTOS, lwIP and libc. Section 6 accounts for the Wi-Fi stack separately as
@@ -187,7 +187,7 @@ def main(argv: list[str]) -> int:
 
     if total > CAP_BYTES:
         print(f"\n  OVER BUDGET by {total - CAP_BYTES:,} B.")
-        print("  M0-BRIEF.md: core above the 64 KB cap = build treated as failing.")
+        print("  history/M0-BRIEF.md: core above the 64 KB cap = build treated as failing.")
         return 1
 
     print(f"\n  within budget: {total / 1024:.1f} KB used, "
