@@ -4752,3 +4752,13 @@ Bench at the end: firmware counter 8 (next 9+), A and C `m7-node` of `f738486`, 
 code; the stamps differ by a size-report commit); package `m7-guests` at counter 28 (next 29+), the alarm on B,
 `spin` quarantined. Author key `keys/acme.*` (author 7), bundles `keys/*.guest.json`.
 
+**Session 38, continued -- after an audit of what is left (the owner's question: "are we done, aside a few tests?").**
+Recorded, with the owner's go: section 15's question 3 (native vs an AtomVM prototype) as *decided by building* --
+the week was never spent and the comparison never made; question 4 as answered by M11 and M7. Question 1 counted on
+radio applications only: passive-sensor's 3 actor types and 3 declared resources are L4 in all four of its
+manifests; poor-mans-extender has no actors (it shares the radio below the actor API). All-L4 is right for monitors,
+so the count cannot settle the question -- that needs a control loop, and stays open. B's transmit stall is now a
+known limitation in the README: it followed a *power-on*, and every boot since (13 resets in session 33, seven in this
+session) was a reset, so its trigger has not been retried. The README's M7 status cell (it still opened with "gated"),
+its ADR count (nine) and its test-gate figures (381 C++ cases / 105,176 checks, 296 Python cases in 25 suites) fixed.
+

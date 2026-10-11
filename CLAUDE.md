@@ -68,7 +68,10 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 12. On the bench: placed, failed over with its checkpoint (165 -> 167 on C -> 174 back on B), a never-returning
 > guest quarantined, a bad author refused, 134 s of fuel burned on C with no death. One bench fault fixed
 > (`fa64599`: a signed v2 image ended at body_len). Bench: firmware counter 8 (sandbox builds), package `m7-guests`
-> at counter 28; author key `keys/acme.*`, bundles `keys/*.guest.json`. Session 37's note that two earlier
+> at counter 28; author key `keys/acme.*`, bundles `keys/*.guest.json`. Follow-ups the same night: section 15's
+> question 3 (AtomVM) recorded as decided by building, question 1 counted on radio apps only (all L4; the
+> control-loop test stays open), and B's power-on stall recorded in the README as a known limitation -- its
+> trigger, a power-on, has never been retried; reopen it only if it recurs. Session 37's note that two earlier
 > attempts were stopped by safety reviews: this session judged the work acceptable (a sandbox that restricts code,
 > asked for by the owner) and kept section 12's line -- a guest can write nothing. Open: as before.
 >
