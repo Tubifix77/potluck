@@ -59,6 +59,20 @@
   .tag { font-size: .7rem; border-radius: 999px; padding: 0 7px; margin-left: 6px; border: 1px solid currentColor; vertical-align: 2px; }
   .gateway { margin-top: 18px; border: 2px dashed var(--ha); border-radius: 12px; padding: 12px 14px; background: var(--panel); }
   .gateway h3 { margin: 0 0 4px; color: var(--ha); font-size: .95rem; }
+  .boat { margin-top: 18px; border: 2px dashed var(--cell); border-radius: 12px; padding: 14px; background: var(--panel);
+          display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .boat .text { flex: 1 1 320px; min-width: 0; }
+  .boat h3 { margin: 0 0 4px; color: var(--cell); font-size: .95rem; }
+  .boat .steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: .82rem; }
+  .boat .steps span.step { background: var(--cell-soft); border-radius: 8px; padding: 3px 8px; }
+  .boat .steps span.arrow { color: var(--muted); }
+  .phone { flex: 0 0 auto; width: 190px; border: 3px solid var(--ink); border-radius: 22px; padding: 14px 10px 16px;
+           background: var(--bg); font-size: .76rem; }
+  .phone .bar2 { height: 4px; width: 50px; background: var(--line); border-radius: 4px; margin: 0 auto 10px; }
+  .phone .title { font-weight: 600; margin-bottom: 6px; }
+  .phone .row { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding: 4px 0; }
+  .phone .ok { color: var(--cell); font-weight: 600; }
+  .phone .dead { color: #c2412b; font-weight: 600; }
   .rules { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
   .rules .card { font-size: .86rem; }
   footer { margin-top: 22px; font-size: .78rem; color: var(--muted); }
@@ -105,7 +119,7 @@
           <h3>Board C</h3>
           <span class="sensor">room presence</span>
           <ul class="small">
-            <li>2 cores, lent when idle</li><li>8 MB PSRAM · 16 MB flash</li>
+            <li>2 cores, lent when idle</li><li>8 MB PSRAM · 16 MB flash</li><li>pocket module: its own Wi-Fi for a phone</li>
           </ul>
         </div>
       </div>
@@ -129,7 +143,7 @@
       <div class="card">
         <h3>Presented by the cell itself</h3>
         <p class="small" style="margin:0">Board B, on the Wi-Fi, presents every board's resources: Home Assistant switches the
-        lightbulb with no PC anywhere.</p>
+        lightbulb with no PC anywhere. Presenting is a role: give a second board Wi-Fi, and it takes over if B dies.</p>
       </div>
       <div class="card" style="border-left-style:dashed">
         <h3>A PC, if there is one <span class="tag">optional</span></h3>
@@ -191,6 +205,31 @@
     come and go; Home Assistant sees the same lightbulb throughout.</span>
   </div>
 
+  <div class="boat">
+    <div class="text">
+      <h3>No network and no PC at all -- on a boat, in a field</h3>
+      <span class="small">The boards keep doing their jobs and helping each other; Potluck is just how they talk. When one
+      high in the mast takes salt water and dies, the captain takes out a phone, joins the nearest board's own Wi-Fi with
+      the owner's password, and sees which board is dead and since when. The page is read-only: it shows, it never writes
+      or deploys. It is the one place a board listens, so it is optional, like every other module here.</span>
+      <div class="steps">
+        <span class="step">phone</span><span class="arrow">→</span>
+        <span class="step">nearest board's own Wi-Fi</span><span class="arrow">→</span>
+        <span class="step">status page: every board, every app</span>
+      </div>
+    </div>
+    <div class="phone" aria-label="Sketch of the phone page">
+      <div class="bar2"></div>
+      <div class="title">Boat cell · 4 of 5 alive</div>
+      <div class="row"><span>Bow</span><span class="ok">alive</span></div>
+      <div class="row"><span>Helm</span><span class="ok">alive</span></div>
+      <div class="row"><span>Mast top</span><span class="dead">dead · 14 min</span></div>
+      <div class="row"><span>Engine bay</span><span class="ok">alive</span></div>
+      <div class="row"><span>Cabin</span><span class="ok">alive</span></div>
+      <div class="row"><span>Autosteer app</span><span class="ok">working</span></div>
+    </div>
+  </div>
+
   <div class="rules">
     <div class="card"><b>One presentation, many viewers.</b> Ten phones and three integrations cost the boards what one hub costs:
     the hub asks the cell once and serves them all.</div>
@@ -202,7 +241,7 @@
   </div>
 
   <footer>Potluck -- S3 Edition. Board figures are the test cell's (ESP32-S3-DevKitC-1 N16R8). Up to 20 boards in a radio
-  cell. Everything in columns 2-4 is a proposal under discussion; the lightbulb is an example resource.</footer>
+  cell. Everything in columns 2-4 and below is planned (M13-M18, M13.1), not built; the lightbulb and the boat are examples.</footer>
 </main>
 </body>
 </html>
