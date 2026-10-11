@@ -6,6 +6,8 @@
 // that the formatted output can never lose the age.
 
 #include <cstring>
+#include <iterator>
+#include <set>
 #include <string>
 
 #include "pot/namespace.hpp"
@@ -411,4 +413,56 @@ TEST(ns, value_formats_without_a_locale_or_an_allocation) {
     const uint8_t big[16] = {};
     CHECK_EQ(static_cast<uint32_t>(Value::of_bytes(big, 16).len),
              static_cast<uint32_t>(kValueBytesMax));
+}
+
+// ---- M12: removal (a live package change drops a removed actor's outputs) ---------------------------
+
+namespace {
+NsDecl removal_decl(uint32_t h) {
+    NsDecl d;
+    d.path_hash = h;
+    d.owner_node = 0x100;
+    d.type = ValueType::U32;
+    return d;
+}
+}  // namespace
+
+TEST(ns, removing_entries_never_hides_another_and_frees_their_slots) {
+    // Hashes chosen to collide: many share a home slot, and runs wrap past the end of the table.
+    uint32_t state = 12345;
+    auto next = [&] {
+        state = state * 1664525u + 1013904223u;
+        return state;
+    };
+    for (int round = 0; round < 40; ++round) {
+        Namespace ns;
+        std::set<uint32_t> live;
+        for (int op = 0; op < 400; ++op) {
+            const uint32_t home = (next() >> 8) % 6 + 120;  // homes 120..125: the runs wrap past 127
+            const uint32_t h = (((next() >> 4) & 0x00FFFF00u) | 0x01000000u) + home;
+            if (live.size() < 100 && (next() & 1) != 0) {
+                if (ns.declare(removal_decl(h)) == NsError::Ok) live.insert(h);
+            } else if (!live.empty()) {
+                auto it = live.begin();
+                std::advance(it, static_cast<long>(next() % live.size()));
+                CHECK(ns.remove(*it) == NsError::Ok);
+                live.erase(it);
+            }
+            CHECK_EQ(ns.count(), live.size());
+        }
+        for (uint32_t h : live) CHECK(ns.find(h) != nullptr);
+        CHECK(ns.remove(0x7777777u) == NsError::NotFound);
+    }
+}
+
+TEST(ns, a_removed_resource_reads_not_found_and_can_be_declared_again) {
+    Namespace ns;
+    CHECK(ns.declare(removal_decl(0xABC)) == NsError::Ok);
+    CHECK(ns.publish(0xABC, Value::of_u32(7), 10) == NsError::Ok);
+    CHECK(ns.remove(0xABC) == NsError::Ok);
+    Reading r;
+    CHECK(ns.read(0xABC, 20, true, r) == NsError::NotFound);
+    CHECK(ns.declare(removal_decl(0xABC)) == NsError::Ok);
+    CHECK(ns.read(0xABC, 30, true, r) == NsError::Ok);
+    CHECK(r.quality == Quality::NoData);  // a fresh resource, not the old value
 }

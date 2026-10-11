@@ -529,3 +529,73 @@ TEST(actor_runtime, a_portable_actor_gets_the_boards_services) {
     }
     CHECK(g_seen_board == &board);
 }
+
+// ---- M12: a live package change ------------------------------------------------------------------------
+
+TEST(actor_runtime, a_live_reload_keeps_identical_actors_running_and_swaps_the_rest) {
+    OneNode n;
+    const uint8_t a[3] = {1, 0, 0}, b[3] = {2, 0, 0}, c[3] = {3, 0, 0};
+    ActorRuntime rt(kTable, 2);
+    ActorEnv env;
+    env.node = n.node;
+    CHECK(rt.load(image({{0x100, ActorType::Led, 3, a}, {0x100, ActorType::Led, 3, b}}), 0x100, env, nullptr));
+    rt.start(env, 0, nullptr);
+    CHECK_EQ(rt.running(), static_cast<size_t>(2));
+    Probe* kept = static_cast<Probe*>(rt.actor(0));
+    for (int i = 0; i < 5; ++i) rt.tick(static_cast<uint32_t>(i));
+    const int alive_before = Probe::alive;
+    // New image: actor 1 unchanged, actor 2 gone, actor 3 new.
+    ActorRuntime::ReloadStats st;
+    const uint16_t nodes[] = {0x100};
+    const char* why = nullptr;
+    CHECK(rt.reload(image({{0x100, ActorType::Led, 3, a}, {0x100, ActorType::Fault, 3, c}}), 0x100, env, 10, nodes, 1,
+                    &why, &st));
+    CHECK_EQ(st.kept, static_cast<size_t>(1));
+    CHECK_EQ(st.stopped, static_cast<size_t>(1));
+    CHECK_EQ(st.started, static_cast<size_t>(1));
+    CHECK_EQ(rt.running(), static_cast<size_t>(2));
+    CHECK_EQ(Probe::alive, alive_before);  // one destroyed, one constructed
+    CHECK(rt.actor(0) == kept);             // the same instance, untouched
+    CHECK_EQ(kept->ticks, 5u);
+    CHECK_EQ(static_cast<Probe*>(rt.actor(1))->id, 3u);
+    rt.tick(11);
+    CHECK_EQ(kept->ticks, 6u);
+}
+
+TEST(actor_runtime, a_live_reload_of_an_invalid_image_changes_nothing) {
+    OneNode n;
+    const uint8_t a[3] = {1, 0, 0}, bad[2] = {9, 9};
+    ActorRuntime rt(kTable, 2);
+    ActorEnv env;
+    env.node = n.node;
+    CHECK(rt.load(image({{0x100, ActorType::Led, 3, a}}), 0x100, env, nullptr));
+    rt.start(env, 0, nullptr);
+    Actor* before = rt.actor(0);
+    const char* why = nullptr;
+    const uint16_t nodes[] = {0x100};
+    CHECK(!rt.reload(image({{0x100, ActorType::Led, 2, bad}}), 0x100, env, 5, nodes, 1, &why));
+    CHECK(why != nullptr);
+    CHECK_EQ(rt.running(), static_cast<size_t>(1));
+    CHECK(rt.actor(0) == before);
+}
+
+TEST(actor_runtime, a_live_reload_removes_what_a_removed_actor_published_here) {
+    // A die_temp pinned elsewhere: this node holds its output as a replica. Remove it from the image and
+    // the replica goes too, instead of aging into STALE for ever.
+    OneNode n;
+    const uint32_t out = path_hash("potluck://lab/node-0200/hw/die_temp");
+    const uint8_t cfg[6] = {static_cast<uint8_t>(out), static_cast<uint8_t>(out >> 8),
+                            static_cast<uint8_t>(out >> 16), static_cast<uint8_t>(out >> 24), 0xE8, 0x03};
+    const ActorKind table[] = {{ActorType::DieTemp, "die_temp", &die_temp_check, nullptr, nullptr, &die_temp_outputs}};
+    ActorRuntime rt(table, 1);
+    ActorEnv env;
+    env.node = n.node;
+    CHECK(rt.load(image({{0x200, ActorType::DieTemp, 6, cfg}}), 0x100, env, nullptr));
+    rt.start(env, 0, nullptr);
+    CHECK(n.node->ns().find(out) != nullptr);
+    ActorRuntime::ReloadStats st;
+    const uint16_t nodes[] = {0x100, 0x200};
+    CHECK(rt.reload(image({}), 0x100, env, 5, nodes, 2, nullptr, &st));
+    CHECK_EQ(st.outputs_removed, static_cast<size_t>(1));
+    CHECK(n.node->ns().find(out) == nullptr);
+}

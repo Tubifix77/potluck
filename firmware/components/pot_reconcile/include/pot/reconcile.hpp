@@ -111,6 +111,19 @@ struct PortableSpec {
     uint8_t cfg[kMaxActorCfg] = {};
 };
 
+// M12: where a node keeps checkpoints across a reboot -- NVS on a board. The reconciler writes a
+// checkpoint it holds (as the owner, or a replica it accepted) at most once per interval_ms and only when it
+// changed, and restores what it finds at load(): so a whole-cell reboot does not lose an actor's state.
+// write() must copy `data` before it returns and must not block (a board queues it for another task).
+struct CheckpointPersist {
+    void* ctx = nullptr;
+    bool (*write)(void* ctx, uint32_t key, uint32_t term, uint32_t seq, const uint8_t* data, size_t len) = nullptr;
+    bool (*read)(void* ctx, uint32_t key, uint32_t* term, uint32_t* seq, uint8_t* out, size_t cap, size_t* len) = nullptr;
+    // Drop every stored checkpoint whose key is not among `keys` (an actor the package no longer has).
+    void (*retain)(void* ctx, const uint32_t* keys, size_t n) = nullptr;
+    uint32_t interval_ms = 60000;
+};
+
 // Collect an image's portable actors through a registration table. False sets `why`: a type with no
 // row, or no placement hook, or a config its row refuses, or more than `cap`.
 bool collect_portable(const DeployImage& img, const ActorKind* table, size_t n_kinds, PortableSpec* out,
@@ -123,6 +136,18 @@ class Reconciler {
     // Load the image's portable actors. Each one's output resource is declared in the namespace,
     // ownerless until a claim says otherwise. Call before start(). False if more than kMaxPortable.
     bool load(const PortableSpec* actors, size_t n);
+
+    // M12: before load(), where checkpoints survive a reboot. Null: they live in RAM only (as before M12).
+    void set_persist(const CheckpointPersist* p) { persist_ = p; }
+
+    // M12: a live package change. Every actor whose declaration is byte-identical (type and config) keeps
+    // its slot, its instance, its claim, its term and its checkpoint; the others are stopped, their outputs
+    // removed from the namespace and their claims dropped; the new ones are added, ownerless, and placed
+    // as at boot. Peers hear the new claim set at once. False (nothing changed) if more than kMaxPortable.
+    struct ReloadStats {
+        size_t kept = 0, stopped = 0, added = 0, outputs_removed = 0;
+    };
+    bool reload(const PortableSpec* actors, size_t n, uint32_t now_ms, ReloadStats* stats = nullptr);
     // Tickers only (kTickerKind), from their configs: what M6's tests and tools hold.
     bool load(const TickerConfig* actors, size_t n);
     ~Reconciler();
@@ -166,12 +191,16 @@ class Reconciler {
         uint32_t checkpoints_sent;      // CASTs to other eligible nodes
         uint32_t checkpoints_accepted;  // received from the actor's owner and newer than ours
         uint32_t checkpoints_refused;   // received from a non-owner, older, or malformed
+        // M12
+        uint32_t checkpoints_persisted;  // handed to CheckpointPersist::write
+        uint32_t checkpoints_restored;   // found by CheckpointPersist::read at load
     };
     const Counters& counters() const { return counters_; }
     bool settled() const { return settled_; }
 
   private:
     struct Slot {
+        bool active;               // M12: false for a slot a live reload freed
         TickerConfig cfg;          // the placement
         const ActorKind* kind;
         ActorDecl decl;            // cfg -> decl_cfg
@@ -193,6 +222,8 @@ class Reconciler {
         uint32_t ck_term, ck_seq, ck_at_ms, ck_last_save_ms;
         uint8_t ck_len;
         uint8_t ck[kMaxCheckpoint];
+        bool ck_dirty;             // M12: changed since it was last persisted
+        uint32_t ck_persisted_ms;  // M12: when it was last persisted (0: never)
         bool running;
         uint32_t term;
         uint32_t max_term;
@@ -210,6 +241,9 @@ class Reconciler {
         uint32_t term[kMaxPortable];  // 0 = no claim
     };
 
+    bool init_slot(size_t i, const PortableSpec& a);  // M12: fill slot i and declare its outputs
+    static bool same(const Slot& s, const PortableSpec& a);
+    void persist_tick(uint32_t now);
     static bool live_cb(void* ctx, uint16_t node);
     bool peer_live(uint16_t node, uint32_t* epoch = nullptr) const;
     const PeerClaims* claims_of(uint16_t node) const;
@@ -249,6 +283,7 @@ class Reconciler {
     bool dirty_ = false;  // our claim set changed: send it to everyone now
     uint32_t now_ = 0;    // the last tick's time (M8.2: checkpoints are saved and loaded from inside it)
     const BoardServices* board_ = nullptr;
+    const CheckpointPersist* persist_ = nullptr;  // M12
     uint32_t next_refresh_ms_ = 0;
     size_t refresh_cursor_ = 0;
     Counters counters_{};

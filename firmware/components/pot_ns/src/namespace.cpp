@@ -98,6 +98,33 @@ NsError Namespace::declare(const NsDecl& d) {
     return NsError::Full;
 }
 
+NsError Namespace::remove(uint32_t hash) {
+    NsEntry* e = find(hash);
+    if (e == nullptr) return NsError::NotFound;
+    size_t hole = static_cast<size_t>(e - entries_);
+    entries_[hole] = NsEntry{};
+    arrived_ms_[hole] = 0;
+    // Backward-shift deletion: walk the run after the hole; an entry whose home slot is not strictly
+    // between the hole and its own position (cyclically) can move into the hole, which then moves on.
+    size_t i = hole;
+    for (size_t step = 1; step < kNamespaceEntries; ++step) {
+        i = (i + 1) & (kNamespaceEntries - 1);
+        NsEntry& cur = entries_[i];
+        if (cur.free()) break;
+        const size_t home = index_for(cur.path_hash);
+        const size_t dist_home = (i - home) & (kNamespaceEntries - 1);  // how far cur sits from its home
+        const size_t dist_hole = (i - hole) & (kNamespaceEntries - 1);  // how far back the hole is
+        if (dist_home >= dist_hole) {
+            entries_[hole] = cur;
+            arrived_ms_[hole] = arrived_ms_[i];
+            cur = NsEntry{};
+            arrived_ms_[i] = 0;
+            hole = i;
+        }
+    }
+    return NsError::Ok;
+}
+
 NsEntry* Namespace::find(uint32_t hash) {
     return const_cast<NsEntry*>(static_cast<const Namespace*>(this)->find(hash));
 }
@@ -112,8 +139,7 @@ const NsEntry* Namespace::find(uint32_t hash) const {
         const NsEntry& e = entries_[i];
         if (e.free()) {
             // Linear probing never leaves a hole before an entry that hashed here, so a free slot
-            // ends the search. Nothing is ever removed from this table, which is what keeps that
-            // true — a namespace shrinks by rebuilding, not by deleting.
+            // ends the search. remove() keeps that true by shifting the rest of the run back.
             return nullptr;
         }
         if (e.path_hash == hash) {

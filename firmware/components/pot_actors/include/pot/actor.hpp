@@ -221,6 +221,19 @@ class ActorRuntime {
     // that did not (nullptr if none).
     size_t start(const ActorEnv& env, uint32_t now_ms, const char** failed);
 
+    // M12: a live package change, without a reboot. The new image is validated as load() does -- all or
+    // nothing: on false nothing changed and `why` names the first problem. Then every running actor whose
+    // declaration is byte-identical in the new image (type, node, config) keeps running untouched; the
+    // others are stopped and their outputs removed from the namespace (their own, and this node's replicas
+    // of other nodes' actors that are gone), and the new ones are started. `nodes` (this node and its
+    // peers) are the ones whose per-node and per-link outputs are looked for. Counts what it did.
+    struct ReloadStats {
+        size_t kept = 0, stopped = 0, started = 0, outputs_removed = 0;
+        const char* failed = nullptr;  // the first new actor that did not start
+    };
+    bool reload(const DeployImage& img, uint16_t node_id, const ActorEnv& env, uint32_t now_ms,
+                const uint16_t* nodes, size_t n_nodes, const char** why, ReloadStats* stats = nullptr);
+
     void tick(uint32_t now_ms);
     bool on_console(const char* line, size_t len);
     void on_rx_sample(const RxSample& s);
@@ -248,6 +261,13 @@ class ActorRuntime {
         const ActorKind* kind;
         uint8_t cfg[kMaxActorCfg];
     };
+    // Collect an image's declarations for this node (held) and for others (their outputs), validating ours.
+    bool collect(const DeployImage& img, uint16_t node_id, const ActorEnv& env, Held* held, size_t& n_held,
+                 Held* others, size_t& n_others, const char** why) const;
+    static bool same(const Held& a, const Held& b);
+    size_t remove_outputs(Namespace& ns, const Held& h, bool own, uint16_t self, const uint16_t* nodes,
+                          size_t n_nodes);
+    bool start_one(const Held& h, const ActorEnv& env, uint32_t now_ms);
     const ActorKind* table_;
     size_t n_kinds_;
     Held held_[kMaxPinnedActors] = {};
@@ -260,6 +280,12 @@ class ActorRuntime {
     alignas(max_align_t) uint8_t mem_[kMaxPinnedActors][kActorSlotBytes] = {};
     Actor* run_[kMaxPinnedActors] = {};
     const ActorKind* run_kind_[kMaxPinnedActors] = {};
+    Held run_held_[kMaxPinnedActors] = {};   // M12: what each running actor was declared as
+    uint8_t run_slot_[kMaxPinnedActors] = {};  // M12: which mem_ slot it lives in
+    bool slot_used_[kMaxPinnedActors] = {};
+    // M12: reload()'s staging -- here, not on the stack: it runs on the link task, whose stack is small.
+    Held stage_held_[kMaxPinnedActors] = {};
+    Held stage_others_[kMaxActors] = {};
     size_t n_run_ = 0;
 };
 

@@ -73,54 +73,157 @@ size_t rank_nodes(const TickerConfig& cfg, LiveFn live, void* ctx, uint16_t out[
 
 Reconciler::Reconciler(Node& node, const ReconcileConfig& cfg) : node_(node), cfg_(cfg) {}
 
+bool Reconciler::same(const Slot& s, const PortableSpec& a) {
+    return s.active && s.kind != nullptr && a.kind != nullptr && s.kind->type == a.kind->type &&
+           s.decl.cfg_len == a.decl.cfg_len && std::memcmp(s.decl_cfg, a.cfg, a.decl.cfg_len) == 0;
+}
+
+bool Reconciler::init_slot(size_t i, const PortableSpec& a) {
+    Slot& s = slots_[i];
+    s = Slot{};
+    s.cfg = a.place;
+    s.kind = a.kind;
+    if (s.kind == nullptr || a.decl.cfg_len > kMaxActorCfg) {
+        return false;
+    }
+    std::memcpy(s.decl_cfg, a.cfg, a.decl.cfg_len);
+    s.decl = a.decl;
+    s.decl.cfg = s.decl_cfg;
+    s.ck_ctx = Slot::CkCtx{this, static_cast<uint8_t>(i)};
+    s.ck_store.ctx = &s.ck_ctx;
+    s.ck_store.save = &Reconciler::ck_save;
+    s.ck_store.load = &Reconciler::ck_load;
+    NsDecl outs[kMaxOutputs];
+    size_t n_out = (s.kind->outputs != nullptr) ? s.kind->outputs(s.decl, 0, 0, outs, kMaxOutputs) : 0;
+    if (n_out == 0) {
+        // The one output at the header's out_hash, as since M6.
+        NsDecl& d = outs[0];
+        d = NsDecl{};
+        d.path_hash = s.cfg.out_hash;
+        d.type = ValueType::None;  // whatever the actor publishes (M8.1: any portable type)
+        d.unit = Unit::None;
+        d.kind = ResourceKind::Sampled;
+        d.access = Access::Read;
+        d.latency_class = kClassL3;  // section 7.7: portable actors are L3/L4 by construction
+        // Five periods: one lost publication is not staleness, a stopped instance soon is.
+        d.staleness_bound_ms = 5u * s.cfg.period_ms;
+        d.staleness_policy = StalenessPolicy::Informative;
+        n_out = 1;
+    }
+    s.n_out = 0;
+    for (size_t j = 0; j < n_out && j < kMaxOutputs; ++j) {
+        outs[j].owner_node = 0;  // nobody, until a claim says otherwise
+        if (node_.ns().declare(outs[j]) != NsError::Ok) {
+            return false;
+        }
+        s.out_hash[s.n_out++] = outs[j].path_hash;
+    }
+    s.active = true;
+    // M12: a checkpoint kept across a reboot. Its term raises the actor's floor, so the next activation's
+    // saves outrank it -- otherwise "highest term wins" would refuse every save after a whole-cell reboot.
+    if (persist_ != nullptr && persist_->read != nullptr) {
+        uint32_t term = 0, seq = 0;
+        size_t len = 0;
+        if (persist_->read(persist_->ctx, s.cfg.out_hash, &term, &seq, s.ck, sizeof(s.ck), &len) && len <= kMaxCheckpoint) {
+            s.ck_have = true;
+            s.ck_term = term;
+            s.ck_seq = seq;
+            s.ck_len = static_cast<uint8_t>(len);
+            s.ck_at_ms = now_;
+            s.ck_persisted_ms = now_ == 0 ? 1 : now_;  // what is stored is what we hold
+            if (term > s.max_term) s.max_term = term;
+            ++counters_.checkpoints_restored;
+        }
+    }
+    return true;
+}
+
 bool Reconciler::load(const PortableSpec* actors, size_t n) {
     if (n > kMaxPortable) {
         return false;
     }
     count_ = 0;
     for (size_t i = 0; i < n; ++i) {
-        Slot& s = slots_[count_];
-        s = Slot{};
-        s.cfg = actors[i].place;
-        s.kind = actors[i].kind;
-        if (s.kind == nullptr || actors[i].decl.cfg_len > kMaxActorCfg) {
+        if (!init_slot(count_, actors[i])) {
             return false;
-        }
-        std::memcpy(s.decl_cfg, actors[i].cfg, actors[i].decl.cfg_len);
-        s.decl = actors[i].decl;
-        s.decl.cfg = s.decl_cfg;
-        s.ck_ctx = Slot::CkCtx{this, static_cast<uint8_t>(count_)};
-        s.ck_store.ctx = &s.ck_ctx;
-        s.ck_store.save = &Reconciler::ck_save;
-        s.ck_store.load = &Reconciler::ck_load;
-        NsDecl outs[kMaxOutputs];
-        size_t n_out = (s.kind->outputs != nullptr) ? s.kind->outputs(s.decl, 0, 0, outs, kMaxOutputs) : 0;
-        if (n_out == 0) {
-            // The one output at the header's out_hash, as since M6.
-            NsDecl& d = outs[0];
-            d = NsDecl{};
-            d.path_hash = s.cfg.out_hash;
-            d.type = ValueType::None;  // whatever the actor publishes (M8.1: any portable type)
-            d.unit = Unit::None;
-            d.kind = ResourceKind::Sampled;
-            d.access = Access::Read;
-            d.latency_class = kClassL3;  // section 7.7: portable actors are L3/L4 by construction
-            // Five periods: one lost publication is not staleness, a stopped instance soon is.
-            d.staleness_bound_ms = 5u * s.cfg.period_ms;
-            d.staleness_policy = StalenessPolicy::Informative;
-            n_out = 1;
-        }
-        s.n_out = 0;
-        for (size_t j = 0; j < n_out && j < kMaxOutputs; ++j) {
-            outs[j].owner_node = 0;  // nobody, until a claim says otherwise
-            if (node_.ns().declare(outs[j]) != NsError::Ok) {
-                return false;
-            }
-            s.out_hash[s.n_out++] = outs[j].path_hash;
         }
         ++count_;
     }
+    if (persist_ != nullptr && persist_->retain != nullptr) {
+        uint32_t keys[kMaxPortable];
+        for (size_t i = 0; i < count_; ++i) keys[i] = slots_[i].cfg.out_hash;
+        persist_->retain(persist_->ctx, keys, count_);
+    }
     return true;
+}
+
+bool Reconciler::reload(const PortableSpec* actors, size_t n, uint32_t now_ms, ReloadStats* stats) {
+    if (n > kMaxPortable) {
+        return false;
+    }
+    now_ = now_ms;
+    ReloadStats st;
+    bool matched[kMaxPortable] = {};
+    bool keep[kMaxPortable] = {};
+    for (size_t i = 0; i < count_; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            if (!matched[j] && same(slots_[i], actors[j])) {
+                matched[j] = keep[i] = true;
+                break;
+            }
+        }
+    }
+    for (size_t i = 0; i < count_; ++i) {
+        Slot& s = slots_[i];
+        if (!s.active || keep[i]) {
+            if (keep[i]) ++st.kept;
+            continue;
+        }
+        if (s.running) stop(i, 3);  // 3: removed by a new package
+        for (uint8_t j = 0; j < s.n_out; ++j) {
+            if (node_.ns().remove(s.out_hash[j]) == NsError::Ok) ++st.outputs_removed;
+        }
+        for (PeerClaims& c : peers_) c.term[i] = 0;  // their claims were about the actor that is gone
+        s = Slot{};
+        ++st.stopped;
+    }
+    for (size_t j = 0; j < n; ++j) {
+        if (matched[j]) continue;
+        size_t i = 0;
+        while (i < kMaxPortable && slots_[i].active) ++i;
+        if (i >= kMaxPortable || !init_slot(i, actors[j])) {
+            continue;  // cannot happen with n <= kMaxPortable; never a half-built slot either way
+        }
+        for (PeerClaims& c : peers_) c.term[i] = 0;
+        if (i >= count_) count_ = i + 1;
+        ++st.added;
+    }
+    while (count_ > 0 && !slots_[count_ - 1].active) --count_;
+    if (persist_ != nullptr && persist_->retain != nullptr) {
+        uint32_t keys[kMaxPortable];
+        size_t k = 0;
+        for (size_t i = 0; i < count_; ++i) {
+            if (slots_[i].active) keys[k++] = slots_[i].cfg.out_hash;
+        }
+        persist_->retain(persist_->ctx, keys, k);
+    }
+    dirty_ = true;  // peers hear what we run now
+    if (stats != nullptr) *stats = st;
+    return true;
+}
+
+void Reconciler::persist_tick(uint32_t now) {
+    if (persist_ == nullptr || persist_->write == nullptr) return;
+    for (size_t i = 0; i < count_; ++i) {
+        Slot& s = slots_[i];
+        if (!s.active || !s.ck_dirty || !s.ck_have) continue;
+        if (s.ck_persisted_ms != 0 && now - s.ck_persisted_ms < persist_->interval_ms) continue;
+        if (persist_->write(persist_->ctx, s.cfg.out_hash, s.ck_term, s.ck_seq, s.ck, s.ck_len)) {
+            s.ck_dirty = false;
+            s.ck_persisted_ms = now == 0 ? 1 : now;
+            ++counters_.checkpoints_persisted;
+        }
+    }
 }
 
 bool Reconciler::load(const TickerConfig* actors, size_t n) {
@@ -140,7 +243,7 @@ bool Reconciler::load(const TickerConfig* actors, size_t n) {
 
 Reconciler::~Reconciler() {
     for (size_t i = 0; i < count_; ++i) {
-        if (slots_[i].inst != nullptr) slots_[i].inst->~Actor();
+        if (slots_[i].active && slots_[i].inst != nullptr) slots_[i].inst->~Actor();
     }
 }
 
@@ -280,7 +383,7 @@ bool Reconciler::on_cast(uint16_t from_node, uint32_t path_hash, const uint8_t* 
         const uint32_t key = rd32(e);
         const uint32_t term = rd32(e + 4);
         for (size_t i = 0; i < count_; ++i) {
-            if (slots_[i].cfg.out_hash == key) {
+            if (slots_[i].active && slots_[i].cfg.out_hash == key) {
                 c->term[i] = term;
                 if (term > slots_[i].max_term) {
                     slots_[i].max_term = term;
@@ -368,6 +471,7 @@ void Reconciler::update_settled(uint32_t now) {
     // the actor C was running (M0-LOG session 33). settle_max_ms still bounds the wait.
     bool all_heard = up >= cfg_.settle_min_ms && node_.channel_known();
     for (size_t i = 0; all_heard && i < count_; ++i) {
+        if (!slots_[i].active) continue;
         for (uint8_t k = 0; all_heard && k < slots_[i].cfg.count; ++k) {
             const uint16_t n = slots_[i].cfg.node[k];
             if (n != self && claims_of(n) == nullptr) {
@@ -515,7 +619,7 @@ size_t Reconciler::encode(uint8_t* out, size_t cap) const {
     out[1] = settled_ ? kClaimFlagSettled : 0;
     uint8_t n = 0;
     for (size_t i = 0; i < count_; ++i) {
-        if (slots_[i].running) {
+        if (slots_[i].active && slots_[i].running) {
             uint8_t* e = out + kClaimHeaderLen + n * kClaimEntryLen;
             wr32(e, slots_[i].cfg.out_hash);
             wr32(e + 4, slots_[i].term);
@@ -552,6 +656,7 @@ void Reconciler::tick(uint32_t now) {
     }
     update_settled(now);
     for (size_t i = 0; i < count_; ++i) {
+        if (!slots_[i].active) continue;
         resolve_owner(i);
         if (settled_) {
             decide(i, now);
@@ -559,6 +664,7 @@ void Reconciler::tick(uint32_t now) {
         }
         run(i, now);
     }
+    persist_tick(now);  // M12
     if (dirty_) {
         dirty_ = false;
         send_all();
@@ -578,6 +684,9 @@ Reconciler::ActorView Reconciler::view(size_t i) const {
         return v;
     }
     const Slot& s = slots_[i];
+    if (!s.active) {
+        return v;  // freed by a live reload: key 0, nothing running
+    }
     v.key = s.cfg.out_hash;
     v.running = s.running;
     v.term = s.running ? s.term : 0;
@@ -621,6 +730,7 @@ bool Reconciler::ck_save(void* ctx, const uint8_t* data, size_t len) {
     s.ck_at_ms = now;
     s.ck_len = static_cast<uint8_t>(len);
     if (len > 0) std::memcpy(s.ck, data, len);
+    s.ck_dirty = true;  // M12
     ++r.counters_.checkpoints_saved;
     for (uint8_t i = 0; i < s.cfg.count; ++i) {
         const uint16_t n = s.cfg.node[i];
@@ -645,7 +755,9 @@ void Reconciler::send_checkpoints_to(uint16_t node) {
     const uint16_t self = node_.config().node_id;
     for (size_t i = 0; i < count_; ++i) {
         const Slot& s = slots_[i];
-        if (!s.running || s.owner != self || !s.ck_have) continue;
+        // As the owner; or (M12) while nobody owns it yet -- after a whole-cell reboot every node holds only
+        // what it restored, and the newest copy must reach whoever starts the actor.
+        if (!s.active || !s.ck_have || !((s.running && s.owner == self) || s.owner == 0)) continue;
         for (uint8_t k = 0; k < s.cfg.count; ++k) {
             if (s.cfg.node[k] == node) {
                 ck_send(s, node);
@@ -677,7 +789,7 @@ bool Reconciler::on_checkpoint(uint16_t from, const uint8_t* args, uint16_t len)
     const uint32_t seq = ck_rd32(args + 8);
     for (size_t i = 0; i < count_; ++i) {
         Slot& s = slots_[i];
-        if (s.cfg.out_hash != key) continue;
+        if (!s.active || s.cfg.out_hash != key) continue;
         // The outputs' fencing: highest term wins. From the owner we see, at its term -- or a higher
         // term than any we know, whose claim set has not reached us yet (a new holder may save before
         // its claims arrive). Never an older term: a fenced instance cannot overwrite the winner's.
@@ -693,6 +805,8 @@ bool Reconciler::on_checkpoint(uint16_t from, const uint8_t* args, uint16_t len)
         s.ck_at_ms = now_;
         s.ck_len = args[12];
         std::memcpy(s.ck, args + kCheckpointHeaderLen, s.ck_len);
+        s.ck_dirty = true;  // M12: a replica is worth keeping across a reboot too
+        if (term > s.max_term) s.max_term = term;
         ++counters_.checkpoints_accepted;
         return true;
     }

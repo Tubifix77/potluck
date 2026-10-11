@@ -143,6 +143,10 @@ class Namespace {
     // Declare a resource. Returns HashCollision if a *different* path already hashes here, and Ok
     // if the same path is re-declared (idempotent, so a manifest reload is not a special case).
     NsError declare(const NsDecl& d);
+    // M12: forget a resource -- an actor that a live package change removed. NotFound if it was not
+    // declared. Linear probing with backward-shift deletion: the entries after it in its probe run move back
+    // so that a free slot still ends every search, and nothing else's lookup changes.
+    NsError remove(uint32_t hash);
 
     NsEntry* find(uint32_t hash);
     const NsEntry* find(uint32_t hash) const;

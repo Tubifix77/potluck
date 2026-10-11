@@ -39,6 +39,11 @@ struct RNode {
     Node* node = nullptr;
     Reconciler* rec = nullptr;
     NodeHal hal{};
+    // M12: a stand-in for the board's NVS -- survives revive(), as flash survives a reboot.
+    bool use_persist = false;
+    std::map<uint32_t, std::vector<uint8_t>> nvs;  // key -> term u32, seq u32, data
+    int nvs_writes = 0;
+    CheckpointPersist persist{};
 };
 
 struct RCell {
@@ -88,6 +93,40 @@ struct RCell {
         t.hal.now_us = [](void* c) { return static_cast<RNode*>(c)->cell->now_us; };
         t.node = new Node(cfg, t.hal);
         t.rec = new Reconciler(*t.node);
+        if (t.use_persist) {
+            t.persist.ctx = &t;
+            t.persist.interval_ms = 2000;
+            t.persist.write = [](void* c, uint32_t key, uint32_t term, uint32_t seq, const uint8_t* d, size_t len) {
+                RNode& n = *static_cast<RNode*>(c);
+                std::vector<uint8_t> v(8 + len);
+                std::memcpy(v.data(), &term, 4);
+                std::memcpy(v.data() + 4, &seq, 4);
+                if (len > 0) std::memcpy(v.data() + 8, d, len);
+                n.nvs[key] = v;
+                ++n.nvs_writes;
+                return true;
+            };
+            t.persist.read = [](void* c, uint32_t key, uint32_t* term, uint32_t* seq, uint8_t* out, size_t cap,
+                                size_t* len) {
+                RNode& n = *static_cast<RNode*>(c);
+                auto it = n.nvs.find(key);
+                if (it == n.nvs.end() || it->second.size() - 8 > cap) return false;
+                std::memcpy(term, it->second.data(), 4);
+                std::memcpy(seq, it->second.data() + 4, 4);
+                *len = it->second.size() - 8;
+                std::memcpy(out, it->second.data() + 8, *len);
+                return true;
+            };
+            t.persist.retain = [](void* c, const uint32_t* keys, size_t n) {
+                RNode& r = *static_cast<RNode*>(c);
+                for (auto it = r.nvs.begin(); it != r.nvs.end();) {
+                    bool keep = false;
+                    for (size_t i = 0; i < n; ++i) keep = keep || keys[i] == it->first;
+                    it = keep ? std::next(it) : r.nvs.erase(it);
+                }
+            };
+            t.rec->set_persist(&t.persist);
+        }
         if (specs.empty()) {
             CHECK(t.rec->load(actors.data(), actors.size()));
         } else {
@@ -714,4 +753,101 @@ TEST(reconcile, a_guest_moves_when_its_node_dies_and_counts_on_from_its_checkpoi
     guest_runtime().service();
     guest_library().clear();
     guest_runtime().reset();
+}
+
+// ---- M12: live package changes, and checkpoints that survive a whole-cell reboot ------------------------
+
+namespace {
+PortableSpec saver_spec(uint32_t key, size_t n_nodes) {
+    PortableSpec sp;
+    sp.place.out_hash = key;
+    sp.place.period_ms = 100;
+    sp.place.count = static_cast<uint8_t>(n_nodes);
+    for (size_t i = 0; i < n_nodes; ++i) {
+        sp.place.node[i] = static_cast<uint16_t>(0x100 + i);
+        sp.place.gravity[i] = 1;
+    }
+    sp.kind = &kSaverKind;
+    // The key in the config too, so two savers are two different declarations.
+    sp.cfg[0] = static_cast<uint8_t>(key);
+    sp.cfg[1] = static_cast<uint8_t>(key >> 8);
+    sp.decl = ActorDecl{kPortableNode, static_cast<ActorType>(0x82), 2, sp.cfg};
+    return sp;
+}
+int runner_of(const RCell& c, size_t slot) {
+    for (const RNode& t : c.nodes) {
+        if (!t.down && t.rec->view(slot).running) return static_cast<int>(t.index);
+    }
+    return -1;
+}
+}  // namespace
+
+TEST(reconcile, a_live_reload_keeps_the_unchanged_actor_running_and_swaps_the_rest_everywhere) {
+    const uint32_t k1 = path_hash("potluck://lab/act/one/out"), k2 = path_hash("potluck://lab/act/two/out"),
+                   k3 = path_hash("potluck://lab/act/three/out");
+    RCell c;
+    c.specs = {saver_spec(k1, 3), saver_spec(k2, 3)};
+    c.build(3, {});
+    c.run(8000);
+    const int r1 = runner_of(c, 0);
+    CHECK(r1 >= 0);
+    if (r1 < 0) return;
+    Actor* inst = c.nodes[static_cast<size_t>(r1)].rec->instance(0);
+    const uint32_t count_before = static_cast<Saver*>(inst)->count;
+    // Every node takes the new package live, one after another, as a deploy's push would deliver it.
+    const std::vector<PortableSpec> next = {saver_spec(k1, 3), saver_spec(k3, 3)};
+    for (RNode& t : c.nodes) {
+        Reconciler::ReloadStats st;
+        CHECK(t.rec->reload(next.data(), next.size(), c.now_us / 1000, &st));
+        CHECK_EQ(st.kept, static_cast<size_t>(1));
+        CHECK_EQ(st.stopped, static_cast<size_t>(1));
+        CHECK_EQ(st.added, static_cast<size_t>(1));
+        CHECK(t.node->ns().find(k2) == nullptr);  // the removed actor's output is gone, not aging
+        c.run(50);
+    }
+    c.run(6000);
+    CHECK(c.nodes[static_cast<size_t>(r1)].rec->instance(0) == inst);  // the same instance, never restarted
+    CHECK(static_cast<Saver*>(inst)->count > count_before + 50);         // and still counting
+    int running_k3 = 0;
+    for (const RNode& t : c.nodes) {
+        for (size_t i = 0; i < t.rec->actor_count(); ++i) {
+            if (t.rec->view(i).key == k3 && t.rec->view(i).running) ++running_k3;
+            CHECK(t.rec->view(i).key != k2);
+        }
+    }
+    CHECK_EQ(running_k3, 1);  // the new actor placed, exactly once
+}
+
+TEST(reconcile, a_checkpoint_survives_a_reboot_of_every_node_at_once) {
+    std::memset(g_ck_had, 0, sizeof(g_ck_had));
+    std::memset(g_ck_last_saved, 0, sizeof(g_ck_last_saved));
+    const uint32_t k = path_hash("potluck://lab/act/persist/out");
+    RCell c;
+    c.specs = {saver_spec(k, 3)};
+    c.nodes.resize(3);
+    for (RNode& t : c.nodes) t.use_persist = true;
+    c.build(3, {});
+    c.run(12000);
+    const int first = runner_of(c, 0);
+    CHECK(first >= 0);
+    if (first < 0) return;
+    const uint32_t saved = g_ck_last_saved[first];
+    CHECK(saved > 50);
+    int writes = 0;
+    for (const RNode& t : c.nodes) writes += t.nvs_writes;
+    CHECK(writes > 0);
+    CHECK(writes < 3 * 8);  // at most one a node per 2 s interval, not one per save
+    // Every board loses power at once: RAM is gone, the stand-in NVS is not.
+    for (size_t i = 0; i < c.nodes.size(); ++i) c.kill(i);
+    c.run(100);
+    std::memset(g_ck_had, 0, sizeof(g_ck_had));
+    for (size_t i = 0; i < c.nodes.size(); ++i) c.revive(i);
+    c.run(12000);
+    const int second = runner_of(c, 0);
+    CHECK(second >= 0);
+    if (second < 0) return;
+    CHECK(g_ck_had[second]);  // it resumed, instead of starting from nothing
+    CHECK(g_ck_loaded[second] + 30 >= saved);  // from no older than one persist interval (2 s = 20 saves) back
+    // And the new activation's saves outrank what was restored: the count keeps moving after the reboot.
+    CHECK(g_ck_last_saved[second] > g_ck_loaded[second]);
 }
