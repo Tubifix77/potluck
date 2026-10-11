@@ -34,11 +34,13 @@ the project's ledger), not from taste.
 - **Integrations are modules you choose (the owner, 2026-10-11):** like passive-sensor and poor-mans-extender, each
   integration a board would carry is an optional component, built into a cell's firmware only when its cluster file
   names it, because an ESP32-S3's flash and RAM are limited and not every cell wants every integration (section 6).
-- **What "integration" means (the owner, 2026-10-11):** *Potluck's resources show up in Home Assistant* -- a board's
-  LED, a sensor, the room sensor's presence -- as ordinary devices of the house's IoT network, whether the cell reaches
-  the house through the PC that runs the hub or through a board that is already on the house Wi-Fi (an extender).
-  Home Assistant does not run on Potluck, and Potluck does not present Home Assistant: the direction that matters is
-  Potluck into Home Assistant, read and written there.
+- **What "integration" means (the owner, 2026-10-11):** *anything else that could benefit from Potluck's resources gets
+  a way to use them.* An integration is an adapter between Potluck and another system: it offers that system the cell's
+  resources -- a board's LED, a sensor, the room sensor's presence, a portable actor's output, a board's idle cores --
+  to read and, where the package allows, to write, in that system's own terms. Home Assistant is the **first**
+  integration, because it is the one most in demand now (section 6), not the only one or the shape of all of them.
+  Integrations reach the other system through the PC that runs the hub, or through a board that is itself connected to
+  it (a board on a Wi-Fi network, say). Potluck does not run the other system, and does not present it.
 
 ## 2. What is already there, and what was planned
 
@@ -233,6 +235,25 @@ phone's width as well as a desk's. A phone reaches the cell three ways:
 
 ## 6. Integrations
 
+**An integration, in general.** Whatever the other system is -- a home-automation hub, a message broker, a data or
+charting tool, a factory or robot controller, a cloud service, a program of the owner's own -- an integration does the
+same five things, and the hub gives it all five, so each new one is an adapter, not a new design:
+
+1. **Names Potluck's resources in the other system's terms** (an entity, a topic, a tag, a metric), from the package's
+   paths and labels;
+2. **Carries section 4's tuple across** -- the value with its age and quality, unavailable when it is not GOOD, never a
+   bare number (rule 2);
+3. **Writes only what the package declares writable** (rule 4), checked by the hub or the gateway board and again by
+   the owning board; never deploys (rule 3);
+4. **Is a module the owner chooses** -- a hub plugin, or a board module where it must be on a board (below) -- with its
+   cost known before it is chosen;
+5. **Reports its own state** to the hub -- connected or not, what it offers, what it was asked -- so the dashboard can
+   show it (on and active, on and idle, or not there) like every other part of the cell.
+
+Which integrations come after Home Assistant is decided the way Home Assistant was: by evidence of what users of a
+system like Potluck use (section 6's data covers Home Assistant users only, and says so), and by the S3 filter for any
+part that would have to live on a board. The candidates are named in the questions (section 7), not ranked here.
+
 ### PC programs (`pot-app`)
 
 A PC program talks to the hub, not to the serial port: it registers with a name, reads and subscribes to resources,
@@ -240,7 +261,7 @@ writes where the package allows, offers named services (M8's, moved behind the h
 (M10's, moved behind the hub). The hub knows every client by name, so the dashboard can say which program reads what.
 Section 7.1 named gRPC for this API; whether it is gRPC, a local WebSocket with JSON, or both, is open.
 
-### Home Assistant: Potluck's resources as the house's devices
+### The first integration: Home Assistant -- Potluck's resources as the house's devices
 
 The bar (owner, 2026-10-11): someone who runs Home Assistant adds Potluck, and the cell's resources appear there --
 read and written like any other devices of the house -- with nothing about Potluck's internals to learn. Open: the code
@@ -323,7 +344,7 @@ that holds Wi-Fi credentials and a broker address).
 | the Home Assistant integration | Home Assistant, talking to the hub | installed in Home Assistant (HACS); nothing on the boards |
 | MQTT discovery from the PC | the hub | a hub plugin, switched on in the hub's configuration |
 | the hub's API for PC programs | the hub | always there: Potluck's own tools use it |
-| later ones (exporters, other ecosystems' bridges) | the hub, or Home Assistant | hub plugins; on the boards only if one cannot be done from the PC |
+| any later integration (another system that can use Potluck's resources) | the hub; Home Assistant only when it is the way in | a hub plugin; a board module only when it cannot be done from the PC |
 
 Two rules follow from the S3's limits:
 
@@ -413,15 +434,19 @@ PCs, each cabled to its own board) -- each a decision for its own time.
 7. ~~Home Assistant first, or the dashboard first?~~ *In tandem*: the hub first, then the dashboard and the Home
    Assistant integration side by side, both its clients.
 8. **Several PCs.** One hub per PC with one owning the deploys, or one hub per cell?
-9. **Module dependencies.** How a descriptor says `requires` (another component, a capability such as a Wi-Fi station,
+9. **Which integrations next, after Home Assistant.** Gather the evidence the way section 6 did for Home Assistant --
+   what people running systems like Potluck use, measured where it is published -- for the candidate families: message
+   brokers and flow tools; data, metrics and charting; industrial and robot controllers; cloud IoT services; the
+   owner's own programs (the hub's API covers those already). Rank by that, filtered by the S3 for any board-side part.
+10. **Module dependencies.** How a descriptor says `requires` (another component, a capability such as a Wi-Fi station,
    PSRAM), and whether `apply` adds a required module itself or only refuses the cluster file that lacks it.
-10. **The gateway board.** Is the extender the only board that may speak MQTT for the cell, or any board an owner gives
+11. **The gateway board.** Is the extender the only board that may speak MQTT for the cell, or any board an owner gives
    Wi-Fi credentials? And when both the hub and a gateway board are up, which one presents the devices?
-11. **Where the integration lives.** In Potluck's repository (one release for both) or its own public repository (the
+12. **Where the integration lives.** In Potluck's repository (one release for both) or its own public repository (the
    way HACS lists integrations), and what Home Assistant versions it supports.
-12. **Entity mapping.** How a resource's kind and unit become a Home Assistant entity type, and what an app's author
+13. **Entity mapping.** How a resource's kind and unit become a Home Assistant entity type, and what an app's author
     adds to their descriptor to make their outputs look right in Home Assistant (a device class, an icon, a name).
-13. **The firmware update entity's "install".** Home Assistant lets a user "install an offered update directly"; for
+14. **The firmware update entity's "install".** Home Assistant lets a user "install an offered update directly"; for
     Potluck that would run `apply`'s firmware step with the owner's keys. Allowed only when the owner switches it on in
     the hub, or never (rule 3)?
 
