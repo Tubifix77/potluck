@@ -98,10 +98,10 @@ become necessary, not just tidy.
 
 ## 3. The shape: the presentation, its clients, and board modules
 
-Two presenters of the one presentation: **the gateway board** (a board on the house Wi-Fi with the gateway module: the
+Two presenters of the one presentation: **the cell's presenting role** (held by a board on the house Wi-Fi with the presenting module, moved by the reconciler when it dies: the
 cell's resources, their availability and the writes the package allows, to any system that speaks MQTT -- lean, because
 it lives on an ESP32-S3) and **the hub** (a PC's full model and API, when a PC is there). The picture below is the hub's
-side; the gateway board is at its bottom left, and works without the rest.
+side; the presenting board is at its bottom left, and works without the rest.
 
 ```
                        ┌────────────────────── potluck-hub (one per PC) ──────────────────────┐
@@ -116,7 +116,7 @@ side; the gateway board is at its bottom left, and works without the rest.
      │                               a phone)                          Assistant,
      │                                                                 MQTT
      │
-     └─ a board with an integration module (e.g. the MQTT gateway on a board on the house Wi-Fi):
+     └─ a board with an integration module (e.g. the presenting module on a board on the house Wi-Fi):
         presents the cell to another system by itself, with no PC on
 ```
 
@@ -167,16 +167,21 @@ plugin -- and are off by default. A part is basic only if every cell needs it an
 | part | where | class | why |
 |---|---|---|---|
 | module plumbing: a descriptor's `requires`, each module's cost in `apply --plan`, the module list and states in `NODE_STATUS` (M13) | host tools; a few bytes on a board | **basic** | it is what makes everything below optional: without it nobody can see or choose what a board carries |
-| telemetry responder (M15) | a board, when the cell has a hub | **optional -- filler** without a hub | the minimal case (below) never asks for it; it answers only the cell's own enrolled hub, at the rate the hub asks. Basic only if its built-in cost is measured near zero |
-| the hub (M14), listening on the PC itself only | a PC | **basic** for anyone with a PC (Potluck's own tools become its clients) | costs the boards nothing; reachable from nowhere but the PC by default |
+| the hub on demand: started by a tool, holding the cable while the tool runs (M14) | a PC | **basic** for anyone with a PC | Potluck's own tools (`apply`, `fw`, `potctl`) need it; costs the boards nothing |
 | the integration interface (M18) | the hub | **basic** | an interface, not an integration: it does nothing until an integration is added |
-| the gateway module (M13) | one board on a Wi-Fi network | **optional -- a security liability** | it opens a path from a house network into the cell and needs Wi-Fi and broker credentials on a board; costs internal RAM the board barely has |
-| writes from outside (M13) | the package, per resource | **optional -- a security liability** | read-only unless the owner declares a resource writable from outside, one by one |
+| telemetry responder (M15) | a board, when the cell has a hub | **optional -- filler** without a hub | a cell with no hub never asks for it; it answers only the cell's own enrolled hub, at the rate the hub asks. Basic only if its built-in cost is measured near zero |
+| the hub resident: always on, presenting, recording every frame (M14) | a PC | **optional -- filler** on a laptop | a laptop cabled for two minutes to run `apply` must not take over presenting the cell, or record it |
+| a board's own network connection (a Wi-Fi station, Potluck's own) (M13) | a board | **optional -- a security liability** | it puts a board on a house network and its credentials on the board; the extender app brings one too, but no public cell should need a private app for it |
+| the presenting module (M13) | one or more boards with a network connection | **optional -- a security liability** | it opens a path from a house network into the cell and needs a broker's credentials on a board; costs internal RAM the board barely has |
+| reads from outside (M13) | the package, per resource | **optional -- a security liability** | nothing is exposed unless the package exposes it, one resource at a time: occupancy can be the most private value in a flat |
+| writes from outside (M13) | the package, per resource | **optional -- a security liability** | read-only unless the package declares a resource writable from outside; never a resource marked safety-relevant |
 | the LED-as-a-resource actor (M13) | a board | **optional -- filler** for most | an actor in the package like any other: present only if the package names it |
 | the dashboard (M16) | a hub plugin | **optional -- filler** for some | not every cell is watched; some owners only ever use `apply` and Home Assistant |
 | the dashboard and the API reachable from the house network or a phone (M16) | the hub | **optional -- a security liability** | anything that answers beyond the PC is an attack surface: off until the owner switches it on, behind a login, encrypted |
 | the Home Assistant integration (M17) | a hub plugin, and a Home Assistant integration | **optional -- filler** without Home Assistant | of no use to a cell without Home Assistant |
+| Home Assistant's "install" for a firmware update (M17) | the Home Assistant integration | **optional -- a security liability**, and off | it would run a firmware rollout from Home Assistant with the owner's keys; the update entity shows versions only |
 | every later integration (M18) | a hub plugin, or a board module | **optional** | each one a liability, a filler, or both, for the cells that do not want it |
+| sleeping boards (a board that wakes for seconds every few minutes) | an app | **optional -- an app** | an app's power management, not Potluck's: Potluck already lets a board widen its own death window while running (M5.1), so a sleeping board is "asleep for N s", not dead |
 
 Already true before M13, and kept: the extender (poor-mans-extender) and the room sensor (passive-sensor) are apps a
 cell chooses, and M7's sandbox is a firmware option (`CONFIG_POT_WASM`, off by default) -- the same pattern.
@@ -184,13 +189,41 @@ cell chooses, and M7's sandbox is a firmware option (`CONFIG_POT_WASM`, off by d
 **The min/max test (the owner, 2026-10-11).** Each part was checked against two real cells. *Minimal:* two boards on the
 home network, both detecting whether plants are watered, one of them also the Wi-Fi extender. *Maximal:* a
 multifunction platform -- three detectors, often idle and lending their cores to Monte Carlo jobs (M9), lightbulbs in
-Home Assistant, large reports to the dashboard, surveillance software reading the cell. The classes above are the
-result; three things changed because of it. **Telemetry** is optional, not basic: the minimal cell has no hub to ask for
-it. **The gateway's cost** is measured on the minimal cell's tightest board -- the extender, an app and the gateway
-together -- since that is where a PC-less owner sees "plant dry" on a phone (M13). **The maximal cell needs two things
-nothing else settled:** how much history and how large a report the hub keeps (M16), and how much an outside program --
-surveillance software, say -- may pull from the cell, so one client cannot load the radio for everyone (M18). Note too
-what the minimal cell shows about a PC: it needs one to be set up (`apply` deploys through a PC's cable), never to run.
+Home Assistant, large reports to the dashboard, surveillance software reading the cell. Three things changed because of
+it: **telemetry** is optional, not basic (the minimal cell has no hub to ask for it); **the presenting module's cost** is
+measured on the minimal cell's tightest board -- the extender, an app and the presenting module together (M13); and the
+maximal cell needs **how much history and how large a report the hub keeps** (M16) and **a bounded share of the cell for
+each outside program** (M18). A PC is needed to set a cell up (`apply` deploys through a PC's cable), never to run it.
+
+**Eight more scenarios (2026-10-12),** the same test on a laptop-only owner, cells with no Wi-Fi (a field, a boat; a
+van with a small computer on CAN), a 20-board house with no PC, two PCs, battery boards, a privacy-sensitive owner (a
+rented flat, a small office), a classroom of fifteen cells on one broker, and a workshop with fans and Node-RED but no
+Home Assistant. What they changed, and what the owner settled with them:
+
+- **Exposure is opt-in per resource**, reads as well as writes, and **a resource marked safety-relevant is never
+  writable from outside** (section 9.3: its writes need the owner's signature, which no broker holds); an actuator
+  written from outside declares in the package what it does when that writer goes away, the way `on_host_loss` does for
+  a host.
+- **Presenting is a role, not a board** (the owner: any board can be the Wi-Fi point; "no programming around" a chain's
+  root being more critical than its ends). Give two boards a network connection and the module, and the reconciler keeps
+  one presenting and moves the role in about the time M6 measured for any portable actor (0.46-0.69 s).
+- **The hub splits**: on demand for tools (basic), resident only when the owner says so (optional), and **who presents is
+  the owner's setting** -- the cell's presenting role by default, the hub only if configured -- so a laptop on the cable
+  never takes the cell's devices away from Home Assistant.
+- **Sleeping boards are an app's business** (the owner); Potluck's part, the runtime death window, exists since M5.1.
+- **A cell with no network and no PC presents to no one**, and that is accepted: its boards talk only to each other. It is
+  seen when a laptop is cabled. A Bluetooth presentation would make a board a listener, against section 8.4; it is not
+  planned, and if ever wanted it is an optional module classed a security liability.
+- **Several cells near each other**: each cell already refuses another's boards (M5: a board under another CA is refused
+  as `peer_refused`); what the presentation adds is the cell's identity in every outside name (its CA fingerprint in
+  every discovery id), so two cells on one broker never collide, and a warning on the dashboard when another cell shares
+  the radio channel (its refused frames counted). No hard limit is set.
+- **MQTT done right**: no retained state (Home Assistant: a retained "last value sent will be replayed ... when Home
+  Assistant restarts", and "it is not recommended to retain the sensor's state payload"), every payload carrying value,
+  unit, age and quality, an expiry so a silent resource turns unavailable, and the network's time on the presenting board
+  (SNTP, ESP-IDF's `esp_netif_sntp_init()`) for timestamps; ledger.
+- **Two hubs, or two `apply`s at once**: one resident hub per cell, a second refused by name; and one deploy at a time --
+  `apply` holds the cell's deploy lock, so two PCs never race for the same counter.
 
 ### What must not change
 
@@ -206,7 +239,7 @@ These are the existing rules this step lives inside; a design that breaks one is
    deploys anything the owner did not sign. A deploy from the dashboard is `potluck apply` with the owner's keys, on
    the owner's PC.
 4. **Writes only where the package allows them.** A resource another system may write is declared writable in the
-   package (it already has `access`); the hub, or the gateway board, refuses the rest, and the owning board checks
+   package (it already has `access`); the hub, or the presenting board, refuses the rest, and the owning board checks
    again, as every write is checked today. The safety line holds: Potluck is never the only thing between a motor and a
    person (section 12).
 5. **Boards stay outbound-only** (section 8.4). A board serves no page and holds no listener; a board module connects
@@ -368,13 +401,13 @@ The same way apps are (M8.2, M12): what an integration needs on a board is an **
 descriptor, in its own repository or in Potluck's, and a cell's cluster file names it under `apps` -- or leaves it out.
 `potluck apply` builds into the cell's one image exactly the components its cluster file names, so a cell that wants
 no board-side integration carries none. M12's "one image, roles at run time" still holds: one image per *cell*, the
-image being what that cell chose; within it, a module's role runs only where it applies (the MQTT gateway only on a
+image being what that cell chose; within it, a module's role runs only where it applies (presenting only on a
 board that holds Wi-Fi credentials and a broker address).
 
 | integration part | where it runs | how it is chosen |
 |---|---|---|
 | a hub plugin (Home Assistant's, MQTT from the PC, later ones) | the hub | switched on in the hub's configuration |
-| a board module (the MQTT gateway: a board presenting the cell to a broker) | one board connected to that system | named in the cluster file; it **requires** what it runs on (for the gateway, the extender's Wi-Fi station) |
+| a board module (the presenting module: a board presenting the cell to a broker) | one board connected to that system | named in the cluster file; it **requires** what it runs on (for presenting, a network connection: Potluck's own Wi-Fi station, or the extender's) |
 | the other system's own side (Home Assistant's integration) | that system | installed there the usual way (for Home Assistant, HACS) |
 | the hub's API for the owner's own programs | the hub | always there: Potluck's own tools use it |
 
@@ -391,9 +424,9 @@ Two rules follow from the S3's limits:
 
 **The dashboard shows every module on every board (decided):** for each board, each module is
 
-- **on, and active** -- built into the board's image and running its role there (the MQTT gateway connected to its
+- **on, and active** -- built into the board's image and running its role there (the presenting module connected to its
   broker, the extender serving its hotspot);
-- **on, idle** -- built in, with nothing to do on this board (the gateway on a board with no Wi-Fi credentials), and why;
+- **on, idle** -- built in, with nothing to do on this board (the presenting module on a board with no network connection), and why;
 - **not on the board** -- not in this image; choosing it means a new firmware, which `apply` rolls out.
 
 The board says this itself, so the dashboard shows what is running rather than what was meant to be: its inventory
@@ -430,8 +463,10 @@ repository under Potluck's license, its protocol documented, and nothing in it i
   integration's discovery step "is invoked" when it is discovered, and setup happens in Home Assistant's UI through a
   config flow ([config flows](https://developers.home-assistant.io/docs/config_entries_config_flow_handler/)). The PC
   may be any PC on the house network, including, but not necessarily, the one Home Assistant runs on.
-- **Through a board, with no PC (a board module: the MQTT gateway).** An extender board is already a station on the
-  house Wi-Fi (M6.1), and every board's resources reach it over the cell. So it can present the whole cell by itself, as
+- **Through a board, with no PC (a board module: the presenting role).** A board with a network connection -- Potluck's own
+  Wi-Fi station module, or the extender app's (M6.1) -- is on the house network, and every board's resources reach it over
+  the cell. So it can present the whole cell by itself (the presenting role; the reconciler moves it to another connected
+  board when it dies), as
   an **MQTT client**: it connects out to the broker the owner names and publishes each resource's discovery config, its
   state and its availability, and receives writes on the resources the package declares writable. MQTT discovery is
   how a device announces itself to Home Assistant over MQTT: "the configuration is done on the device itself and the
@@ -444,7 +479,7 @@ repository under Potluck's license, its protocol documented, and nothing in it i
   The same discovery messages can come from the hub as a plugin, for cells whose PC stays on.
 
 Both show the **same devices with the same names**, so a cell can move from one to the other (the PC switched off, the
-gateway board taking over) without Home Assistant's automations noticing more than a moment of "unavailable".
+presenting role taking over) without Home Assistant's automations noticing more than a moment of "unavailable".
 
 **What a Home Assistant user sees:**
 
@@ -503,8 +538,8 @@ for its own time.
 6. **Writes from outside.** Is `access: write` in the package enough as the rule, or does each outside writer need to
    be named in it too (an integration, a program, a phone)?
 7. **Several PCs.** One hub per PC with one owning the deploys, or one hub per cell?
-8. **The gateway board.** Is the extender the only board that may carry a board-side integration, or any board an owner
-   gives a network's credentials? And when both the hub and a gateway board are up, which one presents the devices?
+8. ~~The gateway board~~ *Settled 2026-10-12*: presenting is a portable role any connected board with the module can
+   hold, moved by the reconciler; who presents (the cell's role or the hub) is the owner's setting.
 9. **Which integrations next.** Gather the evidence the way 6.3 did -- what people running systems like Potluck use,
    measured where it is published -- for the candidate families: message brokers and flow tools; data, metrics and
    charting; industrial and robot controllers; cloud IoT services. Rank by that, filtered by the S3 for any board-side part.
@@ -523,10 +558,10 @@ for its own time.
 
 The owner agreed the shape ("looks right now, make the milestones from it"), and the milestones are now in
 [ARCHITECTURE.md](ARCHITECTURE.md) section 13, which is where they are kept from here on: **M13** the cell presents
-itself (the gateway module, no PC), **M14** the hub, **M15** telemetry over the cell, **M16** the dashboard, **M17**
+itself (the presenting role, no PC), **M14** the hub, **M15** telemetry over the cell, **M16** the dashboard, **M17**
 Home Assistant first-class, **M18** the integration layer and the owner's programs. Two of this draft's questions were
 settled on the way: writes from outside are declared **per resource** in the package (question 6), and one presenter at
-a time -- the gateway with no PC, the hub when a PC is on -- so no system sees a device twice (question 8). The sketches
+a time -- the cell's presenting role, or the hub when the owner says so -- so no system sees a device twice (question 8). The sketches
 below are the draft's first versions, kept for the record; section 13 supersedes them.
 
 - **M13 -- the hub.** One program owns the link; every existing tool works as its client, several at once (a placement
@@ -545,8 +580,8 @@ below are the draft's first versions, kept for the record; section 13 supersedes
   board appears as a device and the room sensor, the die temperature, a board's LED and the alarm guest as entities with
   the right types and units; an automation changes the LED and the board shows it; a board unplugged turns its entities
   unavailable within the death window and back when it returns; with the PC switched off, the same devices stay live
-  through the gateway board's MQTT connection, and come back to the hub's when the PC returns; the dashboard shows the
-  gateway module on, active, on its board and not on the others; a blind reader -- a Home Assistant user who has never
+  through the cell's presenting role, and come back to the hub's when the PC returns; the dashboard shows the
+  presenting module on, active, on its board and not on the others; a blind reader -- a Home Assistant user who has never
   seen Potluck -- gets from the README to their boards in Home Assistant with no other help. *Kill:* if a resource
   cannot be shown with its quality intact, or writes cannot be confined to what the package allows.
 - **M17 -- the owner's programs.** The client API as a documented interface, with a worked example, the way
