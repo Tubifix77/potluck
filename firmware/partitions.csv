@@ -1,20 +1,25 @@
-# Potluck partition table. The first three entries are ESP-IDF's stock single-app table
-# (components/partition_table/partitions_singleapp.csv) at the offsets it resolves to, written out
-# explicitly so that adding the module slots can never move NVS: every board's boot epoch and
-# deploy state live there, and a moved NVS would silently start both again from zero.
+# Potluck partition table. NVS and phy_init are at the offsets ESP-IDF's stock single-app table
+# (components/partition_table/partitions_singleapp.csv) resolves to, written out explicitly so that adding
+# partitions can never move NVS: every board's boot epoch, keys, counters, deploy state and (on an extender)
+# Wi-Fi credentials live there, and a moved NVS would silently start all of it again from zero.
 #
 # modA / modB: section 7.4's A/B module slots (M3). Raw data partitions, subtype 0x40, one image
 # each -- see firmware/components/pot_deploy/include/pot/deploy.hpp for why not LittleFS.
 #
-# otadata / ota_0 / ota_1 (M11): ESP-IDF's OTA layout, appended after everything above so nothing
-# moves. A cable flash writes `factory` and resets otadata to boot it; an update over the cell goes
-# into ota_0 or ota_1, whichever is not running. 2 MB each, against images of ~0.85 MB.
+# otadata / ota_0 / ota_1 (M11): ESP-IDF's OTA layout. A cable flash writes `factory` and resets otadata to
+# boot it; an update over the cell goes into ota_0 or ota_1, whichever is not running. 2 MB each.
+#
+# factory (M12, 2026-10-11): moved from 0x10000 (1 MB, where it sat until then) to after ota_1, at 2 MB like the
+# update slots. One image now carries everything a cell runs -- the sandbox, apps, the extender -- and the
+# largest, 990,642 B, had 6 % of the old 1 MB left. Every other partition stays at its offset, so the one
+# cable flash that brings this table loses nothing: NVS, both package slots and both update slots are where
+# they were. 0x10000-0x110000 is left unused, rather than shifting anything into it.
 # Name,   Type, SubType, Offset,   Size,    Flags
 nvs,      data, nvs,     0x9000,   0x6000,
 phy_init, data, phy,     0xf000,   0x1000,
-factory,  app,  factory, 0x10000,  1M,
 modA,     data, 0x40,    0x110000, 0x10000,
 modB,     data, 0x40,    0x120000, 0x10000,
 otadata,  data, ota,     0x130000, 0x2000,
 ota_0,    app,  ota_0,   0x140000, 2M,
 ota_1,    app,  ota_1,   0x340000, 2M,
+factory,  app,  factory, 0x540000, 2M,

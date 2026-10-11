@@ -64,7 +64,11 @@ param(
     # Given, the build directory, the generated config fragment and the size reports all land under
     # it (<OutDir>\build-<Variant>, <OutDir>\size\<target>-<Variant>), and Potluck's tree is untouched.
     #   tools\build_firmware.ps1 -Variant room -AppComponents <dir> -OutDir D:\Projects\passive-sensor\firmware\out
-    [string]$OutDir = ""
+    [string]$OutDir = "",
+    # M12: keep this build's size reports in Potluck's tracked firmware\size\, as evidence to commit. Without it
+    # they stay in the build directory, so a build never dirties the tree (and never stamps later images
+    # "-dirty"): found by the newcomer test of GETTING-STARTED.md, 2026-10-11.
+    [switch]$Record
 )
 
 $ErrorActionPreference = "Stop"
@@ -178,7 +182,11 @@ try {
     # --- size reports -------------------------------------------------------------------------
     # Per target, so an S3 report never overwrites an esp32 one and the two stay comparable.
     $sizeDir = if ($Variant) { Join-Path $repo "firmware\size\$Target-$Variant" } else { Join-Path $repo "firmware\size\$Target" }
-    if ($OutDir) { $sizeDir = Join-Path (Resolve-Path $OutDir).Path "size\$Target-$Variant" }
+    if ($OutDir) {
+        $sizeDir = Join-Path (Resolve-Path $OutDir).Path "size\$Target-$Variant"
+    } elseif (-not $Record) {
+        $sizeDir = Join-Path (Join-Path $buildRoot $bdir) "size-report"  # inside the (git-ignored) build directory
+    }
     $null = New-Item -ItemType Directory -Force -Path $sizeDir
 
     idf.py @idfArgs size            2>&1 | Tee-Object -FilePath (Join-Path $sizeDir "size.txt")           | Out-Null
