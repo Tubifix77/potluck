@@ -89,7 +89,7 @@ Beneath the milestones, the standing figures:
 | | |
 |---|---|
 | Architecture | decision-closed v1, with nine [Architecture Decision Records](https://adr.github.io/) and the trigger that would reopen each ([ARCHITECTURE.md](ARCHITECTURE.md)) |
-| Test gates | **32 green (2026-10-11):** 381 C++ cases / 105,176 checks, run plain and under [AddressSanitizer](https://github.com/google/sanitizers/wiki/AddressSanitizer); 296 Python cases in 25 suites; three independent wire-format implementations agreeing byte-for-byte over generated corpora; a strict-GCC portability gate; plus the firmware build with its memory-budget check and on-target self-tests |
+| Test gates | **33 green (2026-10-12):** 385 C++ cases / 105,196 checks, run plain and under [AddressSanitizer](https://github.com/google/sanitizers/wiki/AddressSanitizer); 299 Python cases in 26 suites; three independent wire-format implementations agreeing byte-for-byte over generated corpora; a strict-GCC portability gate; plus the firmware build with its memory-budget check and on-target self-tests |
 | Static memory | **56.6 KB** of the 64 KB core cap in the default build and 56.9 KB with M7's sandbox (2026-10-11, measured per build; the M8.2 room-sensor builds measured 49.8 KB, 53.2 KB with the per-frame signal log on). Buffers that only tasks touch live in the boards' 8 MB of extra RAM |
 | Measured on hardware | A **24.5-hour** three-board soak: no reboots, no false deaths, **100 %** packet delivery on all six links, round trip **4–6 ms** typical and 16–22 ms at the 99th percentile, memory flat to the byte. A distance sweep through a two-storey house (up to ~16 m, four walls, a floor, a fridge): every spot held, the worst at 99 %. The Wi-Fi stack costs **31.5 KiB** with [ESP-NOW](https://www.espressif.com/en/solutions/low-power-solutions/esp-now) active. All in a home thick with competing 2.4 GHz traffic, so these are a floor, not a best case |
 
@@ -283,7 +283,8 @@ python tools/can_report.py captures/m4-can.log
 | [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md) | The bench guide: unboxing, the board register, first contact, the soak and the distance sweep, written for a reader who remembers nothing |
 | [bench/m1-wiring.html](bench/m1-wiring.html) | The frame-link wiring, as built: the USB-serial adapter to one board, step by step (open in a browser) |
 | [bench/m4-can-wiring.html](bench/m4-can-wiring.html) | The two-board CAN bus for M4, as built (open in a browser) |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the eight decision records, and milestones M0–M8 with accept/kill criteria |
+| [DEVELOPING-APPS.md](DEVELOPING-APPS.md) | **For people making apps for Potluck:** native actors or sandboxed guests, the actor API, descriptors, manifests, building, deploying and testing, with a worked example and what the first two apps learned |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the nine decision records, and milestones M0–M12 with accept/kill criteria |
 | [M0-LOG.md](M0-LOG.md) | The decision log, newest session last — including the conclusions that were later **withdrawn**, kept struck-through rather than deleted. The QEMU sessions are a study in how a stale flash image manufactures false evidence |
 | [M0-RUNBOOK.md](M0-RUNBOOK.md) | Bench procedure: build, flash, emulate, soak, and the delay methodology to read *before quoting any number* |
 | [CLAUDE.md](CLAUDE.md) | Standing rules for working on this repo (largely built with [Claude Code](https://claude.com/claude-code), which these rules keep honest) |

@@ -75,7 +75,7 @@ enum class ActorType : uint8_t {
 };
 
 // M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an
-// application's actors in its own repository), allocated in blocks of 16 by ARCHITECTURE section 7.
+// application's actors in its own repository), allocated in blocks of 16 by the table in DEVELOPING-APPS.md, section 5.
 // The image format carries an external type's config opaquely: only the build's registration row
 // for that type can judge it.
 constexpr uint8_t kFirstExternalType = 0x80;

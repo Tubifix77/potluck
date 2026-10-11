@@ -4794,3 +4794,22 @@ naming a fixed mix is a bundle. M12 is in section 13: one image with roles at ru
 changes and kept state, with step 1 the image-size and partition question (the update slots are 2 MB each and the
 flash 16 MB; the 1 MB `factory` slot is what limits B's 990,642 B image).
 
+## Session 38, M12 part 4 -- 2026-10-12: the developer manual, first version
+
+The owner added a developer manual to M12: what was built for app authors was nowhere in one place.
+`DEVELOPING-APPS.md` now covers the two ways to write an app (native external component, or guest) and how to
+choose, the actor API, the descriptor, manifests and latency classes, building, rolling out, deploying,
+testing, guests, the lessons of passive-sensor and poor-mans-extender (gathered by a read-only pass over sessions
+23-34, 38 and the two apps' change requests and docs; no links to the private repositories), and the contract an
+app inherits. Its worked example, `examples/apps/pot_hello` (`ext:hello/peers`, type 0xF0), is original code, not
+passive-sensor's: compiled into `pot_tests` from its own directory and run on a real `pot::Node`
+(`tests/test_hello_app.cpp`, 4 cases), its manifest compiled by the host tools to golden bytes the C++ test parses
+(`host/potluck/tests/test_examples.py`), and built for the boards (`-Variant hello -AppComponents examples/apps`:
+850,008 B, +1,152 B); not deployed to the bench, which runs `room-and-guests`.
+
+Found on the way: the type-block allocation table that ARCHITECTURE (M8.2), `deploy.hpp` and `potluck.modules`
+cited as "in section 7" never existed. It is now in the manual (0x80-0x8F passive-sensor, 0xF0-0xFF Potluck's own,
+0x90-0xEF free; poor-mans-extender has no actors and holds no block), and the three pointers lead there. Also
+found: an app repository cannot test its actor glue on a PC (passive-sensor tests only its pure cores), which M12
+now owes as a test kit. Left for part 4's acceptance: the blind-reader test.
+

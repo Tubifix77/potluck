@@ -1,0 +1,15 @@
+{
+  "component": "pot_hello",
+  "types": [240, 255],
+  "modules": [
+    {
+      "module": "ext:hello/peers",
+      "type": 240,
+      "placement": "every",
+      "config": [
+        {"name": "system_prefix", "kind": "system_prefix"},
+        {"name": "period_ms", "kind": "u16", "default": 5000, "min": 1000, "max": 60000}
+      ]
+    }
+  ]
+}

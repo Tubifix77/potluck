@@ -18,7 +18,7 @@ its hash); "node" (a node id or label); "system_prefix" (no value: the FNV-1a st
 ``potluck://<system>/``, from which the board can hash paths it builds itself).
 
 Types: 0x00-0x7F are Potluck's built-ins; 0x80-0xFF are external, given out in blocks of 16
-(ARCHITECTURE section 7). 0xF0-0xFF is Potluck's own block, for test components.
+(the table in DEVELOPING-APPS.md, section 5). 0xF0-0xFF is Potluck's own block, for examples and tests.
 """
 
 from __future__ import annotations

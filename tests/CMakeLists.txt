@@ -119,8 +119,12 @@ add_executable(pot_tests
   test_fw.cpp
   test_wasm.cpp
   test_guest.cpp
+  test_hello_app.cpp
+  # DEVELOPING-APPS.md's worked example, compiled from its own directory as an app's component would be.
+  "${POT_FIRMWARE}/../examples/apps/pot_hello/src/hello.cpp"
 )
 target_link_libraries(pot_tests PRIVATE pot_portable)
+target_include_directories(pot_tests PRIVATE "${POT_FIRMWARE}/../examples/apps/pot_hello/include")
 
 # M10: the PC as a placement node -- the boards' own Node, reconciler and actors, built for the host.
 add_executable(pot_hostnode "${CMAKE_CURRENT_SOURCE_DIR}/../host/native/pot_hostnode.cpp")
