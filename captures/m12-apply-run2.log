@@ -1,0 +1,24 @@
+[    0.2 s] package: modules from app 'passive-sensor' (pot_passive_sensor)
+[    0.3 s] package: guest 'alarm' by 7, signature verified under the cluster CA
+[    0.3 s] package: 'lab', 2 actor(s) (1 portable), image 998 B, for 3 board(s)
+[    0.5 s] firmware: reusing the build of these sources (e793001-ea7965, C:\Users\tuebo\AppData\Local\potluck\cache\fw\ea79651a3ec5)
+[    1.0 s] inventory: 0x6300  fw e793001-ea7965 (counter 11, floor 11, confirmed)  package 30 (floor 30)  cluster 'lab'  up 58 s  roles extender-build,sandbox,reconciler,enrolled,cabled  actors rf_link,rf_indicator (0/2 portable here)
+[    1.0 s] inventory: 0x7368  fw e793001-ea7965 (counter 11, floor 11, confirmed)  package 30 (floor 30)  cluster 'lab'  up 304 s  roles extender-build,extender,sandbox,reconciler,relay,enrolled  actors die_temp,rf_link,rf_indicator,guest (1/2 portable here)
+[    1.0 s] inventory: 0x8160  fw e793001-ea7965 (counter 11, floor 11, confirmed)  package 30 (floor 30)  cluster 'lab'  up 181 s  roles extender-build,sandbox,reconciler,enrolled  actors rf_link,rf_indicator,rf_fusion (1/2 portable here)
+[    1.0 s] firmware: every board already runs e793001-ea7965
+[    2.0 s] package: counter 31 committed on 0x6300, passed on to 2 board(s)
+[   14.8 s] verify: 0x6300 confirmed package 31: -
+[   14.8 s] verify: 0x7368 confirmed package 31: die_temp,guest
+[   14.9 s] verify: 0x8160 confirmed package 31: -
+[   15.0 s] verify: potluck://lab/act/alarm/out = 52.4025  [STALE, age 44495 ms, ts 273860, class L3]
+[   15.0 s] verify: potluck://lab/act/alarm/alarm = 1  [STALE, age 42561 ms, ts 275860, class L3]
+[   15.1 s] verify: potluck://lab/act/alarm/count = 296  [STALE, age 15627 ms, ts 302856, class L3]
+[   15.2 s] verify: potluck://lab/node-7368/hw/die_temp = 52.5 C  [STALE, age 38456 ms, ts 280120, class L4]
+
+  plan (package, firmware build)       0.6 s
+  inventory                            0.2 s
+  package                              1.0 s
+  verify                              13.2 s
+  command to verified                 15.3 s
+  package 31: live on 3 board(s); rebooted for it: none
+VERIFIED: cluster 'lab' runs package 31 on 3 board(s)

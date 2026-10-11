@@ -1,0 +1,161 @@
+1791745347.542 ALL reset (EN held 200 ms)
+1791745348.144 COM5 ESP-ROM:esp32s3-20210327
+1791745348.144 COM5 Build:Mar 27 2021
+1791745348.144 COM5 rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+1791745348.144 COM5 SPIWP:0xee
+1791745348.144 COM5 mode:DIO, clock div:1
+1791745348.144 COM5 load:0x3fce2820,len:0x14f0
+1791745348.144 COM5 load:0x403c8700,len:0xda0
+1791745348.144 COM5 load:0x403cb700,len:0x2f9c
+1791745348.144 COM5 entry 0x403c8908
+1791745348.144 COM5 I (24) boot: ESP-IDF v6.0.2 2nd stage bootloader
+1791745348.144 COM5 I (25) boot: compile time Oct 11 2026 18:07:33
+1791745348.144 COM5 I (25) boot: Multicore bootloader
+1791745348.144 COM5 I (25) boot: chip revision: v0.2
+1791745348.144 COM5 I (28) boot: efuse block revision: v1.4
+1791745348.144 COM5 I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+1791745348.144 COM5 I (35) boot.esp32s3: SPI Mode       : DIO
+1791745348.144 COM5 I (39) boot.esp32s3: SPI Flash Size : 16MB
+1791745348.144 COM5 I (43) boot: Enabling RNG early entropy source...
+1791745348.144 COM5 I (47) boot: Partition Table:
+1791745348.144 COM5 I (50) boot: ## Label            Usage          Type ST Offset   Length
+1791745348.144 COM5 I (56) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+1791745348.144 COM5 I (63) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+1791745348.144 COM5 I (69) boot:  2 modA             Unknown data     01 40 00110000 00010000
+1791745348.144 COM5 I (76) boot:  3 modB             Unknown data     01 40 00120000 00010000
+1791745348.144 COM5 I (82) boot:  4 otadata          OTA data         01 00 00130000 00002000
+1791745348.144 COM5 I (89) boot:  5 ota_0            OTA app          00 10 00140000 00200000
+1791745348.144 COM5 I (95) boot:  6 ota_1            OTA app          00 11 00340000 00200000
+1791745348.144 COM5 I (102) boot:  7 factory          factory app      00 00 00540000 00200000
+1791745348.144 COM5 I (108) boot: End of partition table
+1791745348.144 COM5 I (112) esp_image: segment 0: paddr=00140020 vaddr=3c0c0020 size=25ab0h (154288) map
+1791745348.144 COM5 I (147) esp_image: segment 1: paddr=00165ad8 vaddr=3fc98900 size=05e08h ( 24072) load
+1791745348.144 COM5 I (153) esp_image: segment 2: paddr=0016b8e8 vaddr=40374000 size=04730h ( 18224) load
+1791745348.144 COM5 I (157) esp_image: segment 3: paddr=00170020 vaddr=42000020 size=b4658h (738904) map
+1791745348.144 COM5 I (294) esp_image: segment 4: paddr=00224680 vaddr=40378730 size=10134h ( 65844) load
+1791745348.144 COM5 I (309) esp_image: segment 5: paddr=002347bc vaddr=50000000 size=00024h (    36) load
+1791745348.144 COM5 I (318) boot: Loaded app from partition at offset 0x140000
+1791745348.144 COM5 I (318) boot: Disabling RNG early entropy source...
+1791745348.144 COM5 I (329) octal_psram: vendor id    : 0x0d (AP)
+1791745348.144 COM5 I (329) octal_psram: dev id       : 0x02 (generation 3)
+1791745348.144 COM5 I (329) octal_psram: density      : 0x03 (64 Mbit)
+1791745348.144 COM5 I (331) octal_psram: good-die     : 0x01 (Pass)
+1791745348.144 COM5 I (335) octal_psram: Latency      : 0x01 (Fixed)
+1791745348.144 COM5 I (340) octal_psram: VCC          : 0x01 (3V)
+1791745348.144 COM5 I (344) octal_psram: SRF          : 0x01 (Fast Refresh)
+1791745348.144 COM5 I (349) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+1791745348.144 COM5 I (353) octal_psram: BurstLen     : 0x01 (32 Byte)
+1791745348.144 COM5 I (358) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+1791745348.144 COM5 I (363) octal_psram: DriveStrength: 0x00 (1/1)
+1791745348.144 COM5 I (367) esp_psram: Found 8MB PSRAM device
+1791745348.144 COM5 I (371) esp_psram: Speed: 40MHz
+1791745348.144 COM5 I (374) cpu_start: Multicore app
+1791745349.138 COM5 I (1108) esp_psram: SPI SRAM memory test OK
+1791745349.138 COM5 I (1122) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+1791745349.138 COM5 I (1122) cpu_start: Pro cpu start user code
+1791745349.138 COM5 I (1122) cpu_start: cpu freq: 240000000 Hz
+1791745349.138 COM5 I (1124) app_init: Application information:
+1791745349.138 COM5 I (1128) app_init: Project name:     potluck_m0
+1791745349.138 COM5 I (1132) app_init: App version:      ab88545-af55bd
+1791745349.138 COM5 I (1137) app_init: Compile time:     Oct 11 2026 20:50:10
+1791745349.139 COM5 I (1142) app_init: ELF file SHA256:  8dfca14ad...
+1791745349.139 COM5 I (1146) app_init: ESP-IDF:          v6.0.2
+1791745349.139 COM5 I (1150) efuse_init: Min chip rev:     v0.0
+1791745349.139 COM5 I (1154) efuse_init: Max chip rev:     v0.99
+1791745349.139 COM5 I (1158) efuse_init: Chip rev:         v0.2
+1791745349.139 COM5 I (1162) heap_init: Initializing. RAM available for dynamic allocation:
+1791745349.139 COM5 I (1169) heap_init: At 3FCAECC0 len 0003AA50 (234 KiB): RAM
+1791745349.139 COM5 I (1174) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+1791745349.139 COM5 I (1179) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+1791745349.139 COM5 I (1184) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+1791745349.139 COM5 I (1190) esp_psram: Adding pool of 8082K of PSRAM memory to heap allocator
+1791745349.139 COM5 I (1197) spi_flash: detected chip: generic
+1791745349.139 COM5 I (1200) spi_flash: flash io: dio
+1791745349.139 COM5 I (1204) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+1791745349.139 COM5 I (1210) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+1791745349.139 COM5 I (1217) main_task: Started on CPU0
+1791745349.139 COM5 I (1240) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+1791745349.139 COM5 I (1241) main_task: Calling app_main()
+1791745349.139 COM5 I (1252) pot.m0: channel 1 from the last boot (build default 1)
+1791745349.139 COM5 W (1252) pot.extender: hotspot not started (ESP_ERR_INVALID_ARG): running as an ordinary member. Give it credentials with `POT! pme sta ...` and `POT! pme ap ...`, then reset.
+1791745349.139 COM5 I (1263) pp: pp rom version: e7ae62f
+1791745349.139 COM5 I (1266) net80211: net80211 rom version: e7ae62f
+1791745349.139 COM5 I (1273) wifi_init: rx ba win: 16
+1791745349.139 COM5 I (1274) wifi_init: accept mbox: 6
+1791745349.139 COM5 I (1276) wifi_init: tcpip mbox: 32
+1791745349.139 COM5 I (1279) wifi_init: udp mbox: 6
+1791745349.139 COM5 I (1282) wifi_init: tcp mbox: 6
+1791745349.139 COM5 I (1285) wifi_init: tcp tx win: 5760
+1791745349.139 COM5 I (1288) wifi_init: tcp rx win: 5760
+1791745349.139 COM5 I (1291) wifi_init: tcp mss: 1440
+1791745349.139 COM5 I (1294) wifi_init: WiFi IRAM OP enabled
+1791745349.139 COM5 I (1298) wifi_init: WiFi RX IRAM OP enabled
+1791745349.139 COM5 I (1302) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+1791745349.139 COM5 I (1358) ESPNOW: espnow [version: 2.0] init
+1791745349.139 COM5 I (1359) pot.espnow: esp-now v2 up on channel 1, mac b8:1f:3f:da:81:60
+1791745349.139 COM5 I (1361) pot.epoch: boot epoch 319
+1791745349.139 COM5 I (1362) pot.m0: namespace: 6 resources declared
+1791745349.139 COM5 I (1366) pot.serial: frame link on UART1, tx=17 rx=18, 921600 baud
+1791745349.139 COM5 I (1372) pot.m0: status LED on GPIO48 and GPIO38; self-test red, green, blue
+1791745350.943 COM5 I (2878) pot.actors: external component: pot_passive_sensor
+1791745350.943 COM5 I (2881) pot.m0: deploy: image counter 41, digest 26e14b86..., 3 actor(s) in the image
+1791745350.943 COM5 I (2882) pot.m0: deploy: boot confirmed, running slot B, trial boot 0/3, counter 41
+1791745350.943 COM5 I (2888) pot.m0: fw: running ota_0 (ab88545-af55bd), counter 16, floor 16, confirmed; spare slot ota_1, 2048 KB
+1791745350.943 COM5 {"t":"ck_restored","key":512092854,"term":2,"seq":108,"len":12}
+1791745350.943 COM5 I (2903) pot.m0: reconciler: 1 portable actor(s)
+1791745350.943 COM5 I (2908) pot.m0: actors: cluster running
+1791745350.943 COM5 {"t":"enrol","node":33120,"pub":"0392ff6cd7890c311c0b048061f7b78a8a4c8f2363360d5bc3a19d91996afe04","enrolled":1,"ca_fp":"ef76cc2e"}
+1791745350.943 COM5 I (2923) pot.m0: safe_state: high-water table restored from NVS
+1791745350.943 COM5 I (2928) pot.m0: guest: 1 guest(s) in the image, author checks under the cluster CA
+1791745350.943 COM5 I (2935) pot.m0: auth: enrolled, required
+1791745350.943 COM5 I (2939) pot.m0: relay: on, as saved
+1791745350.943 COM5 I (2942) pot.m0: Potluck M0 node 0x8160 epoch 319, heartbeat 100 ms x 6 misses = 600 ms
+1791745350.943 COM5 I (2950) main_task: Returned from app_main()
+1791745350.943 COM5 {"t":"boot","node":33120,"epoch":319,"mac":"b8:1f:3f:da:81:60","espnow_ver":2,"chan":1,"hb_period_ms":100,"hb_miss_limit":6,"fw":"ab88545-af55bd","idf":"v6.0.2","dram":{"at_boot":280271,"after_nvs":280271,"after_netif":272455,"after_wifi_init":225095,"after_wifi_start":223355,"after_espnow":223203,"largest_block":147456,"wifi_stack":49100,"espnow":152,"total_to_radio":57068}}
+1791745350.943 COM5 I (2991) pot.m0: beacon mode: broadcast_beacon
+1791745350.943 COM5 W (2992) pot.m0: Wi-Fi stack used 49100 B of DRAM, above §6's ~40 KB expectation - §6 says the RX ring shrinks first
+1791745350.943 COM5 I (3092) pot.m0: discovered peer 0x7368
+1791745350.943 COM5 I (3093) pot.m0: peer 0x7368 pinned to ESP-NOW v2, payload cap 1446 B
+1791745350.943 COM5 I (3176) pot.m0: discovered peer 0x6300
+1791745350.943 COM5 I (3177) pot.m0: peer 0x6300 pinned to ESP-NOW v2, payload cap 1446 B
+1791745360.913 COM5 {"t":"clk","node":33120,"up_ms":11816}
+1791745360.913 COM5 {"t":"hs","up_s":11,"running":0,"sta":0,"has_ip":0,"ch":0,"rssi":0,"clients":0,"reconnects":0,"int_free":208907,"psram_free":8266332,"boot_pick":0}
+1791745360.913 COM5 {"t":"led","node":33120,"shows":"green","app":0}
+1791745360.913 COM5 {"t":"event","at_ms":1901,"node":33120,"kind":"peer_discovered","peer":29544,"slot":0,"a":194,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":1902,"node":33120,"kind":"version_pinned","peer":29544,"slot":0,"a":2,"b":1446}
+1791745360.913 COM5 {"t":"event","at_ms":1903,"node":33120,"kind":"peer_alive","peer":29544,"slot":0,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":1904,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":1986,"node":33120,"kind":"peer_discovered","peer":25344,"slot":1,"a":266,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":1986,"node":33120,"kind":"version_pinned","peer":25344,"slot":1,"a":2,"b":1446}
+1791745360.913 COM5 {"t":"event","at_ms":1987,"node":33120,"kind":"peer_alive","peer":25344,"slot":1,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":1988,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":2396,"node":33120,"kind":"actor_owner","peer":29544,"slot":255,"a":512092854,"b":2}
+1791745360.913 COM5 {"t":"event","at_ms":3087,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":3247,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":5086,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":5247,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":7086,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":7247,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":9086,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":9247,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":11086,"node":33120,"kind":"peer_admitted","peer":25344,"slot":1,"a":0,"b":0}
+1791745360.913 COM5 {"t":"event","at_ms":11247,"node":33120,"kind":"peer_admitted","peer":29544,"slot":0,"a":0,"b":0}
+1791745360.913 COM5 {"t":"link","up_ms":11996,"node":33120,"peer":29544,"mac":"b8:1f:3f:da:73:68","state":"alive","epoch":194,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-8,"tx":{"frames":40,"cb_ok":40,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":157,"lost_seqgap":3,"reorder_dup":0,"dropped_bad":0,"hb_lost":0,"bcast_frames":100,"pdr_ppm":981250},"rtt":{"samples":5,"min_us":5443,"max_us":10349,"timeouts":0,"txq_last_us":0,"txq_max_us":0,"remote_turnaround_us":922,"remote_turnaround_max_us":922,"p50_us":[4000,6000],"p99_us":[8000,11000],"hist":[0,0,0,0,3,1,1,0,0,0,0,0,0,0,0,0]}}
+1791745360.913 COM5 {"t":"link","up_ms":12047,"node":33120,"peer":25344,"mac":"b8:1f:3f:da:63:00","state":"alive","epoch":266,"espnow_ver":2,"mtu":1446,"misses":0,"rssi":-16,"tx":{"frames":38,"cb_ok":38,"cb_fail":0,"enqueue_err":0,"pdr_ppm":1000000},"rx":{"frames":147,"lost_seqgap":1,"reorder_dup":0,"dropped_bad":0,"hb_lost":1,"bcast_frames":100,"pdr_ppm":993243},"rtt":{"samples":5,"min_us":5220,"max_us":5248,"timeouts":0,"txq_last_us":0,"txq_max_us":0,"remote_turnaround_us":703,"remote_turnaround_max_us":705,"p50_us":[4000,6000],"p99_us":[4000,6000],"hist":[0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0]}}
+1791745360.913 COM5 {"t":"auth","node":33120,"up_ms":12098,"enrolled":1,"required":1,"verified_peers":2,"verified":2,"cache_hits":10,"refused":0,"rate_limited":0,"stale_epoch":0,"verify_us_max":59758,"link_stack_free_b":3040,"crypto_stack_free_b":1276,"tags_ok":93,"bad_tag":0,"replayed":0,"untagged":0,"bcast_dropped":0,"beacon_epoch_ignored":0,"tag_us_max":689}
+1791745360.913 COM5 {"t":"act","node":33120,"setpoint":0,"has_value":0,"writes_served":0}
+1791745361.367 COM5 {"t":"peers","node":33120,"own_period_ms":100,"own_busy":0,"channel":1,"scanning":0,"scans":0,"hops":0,"found":0,"lost_to_found_ms":0,"moves_followed":0,"moves_refused":0,"sweeps":0,"sweep_found":0,"sweeping":0,"search_visits":0,"relay":0,"fwd_u":0,"fwd_b":0,"fwd_h":0,"relay_dup":101,"list":[{"id":29544,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":1,"rtt_n":5},{"id":25344,"state":"alive","via_relay":0,"period_ms":100,"misses":6,"busy":0,"rtt_n":5}]}
+1791745361.367 COM5 {"t":"ss","node":33120,"accepted":0,"unsigned":0,"unknown_sender":0,"bad_signature":0,"replayed":0,"rate_limited":0,"verify_us_max":0,"floors":[{"src":25344,"epoch":139,"counter":1}]}
+1791745361.367 COM5 {"t":"rec","node":33120,"up_ms":12188,"settled":1,"sent":44,"received":41,"malformed":0,"views":1,"replies_fenced":0,"ck_persisted":0,"ck_restored":1,"ck_nvs_writes":0,"ck_nvs_errors":0,"ck_nvs_last_err":0,"nvs_used":109,"nvs_available":521,"actors":[{"key":512092854,"running":0,"term":0,"owner":29544,"owner_term":2,"assigned":29544,"starts":0,"fenced":0,"released":0}]}
+1791745361.367 COM5 {"t":"node","up_ms":12226,"node":33120,"epoch":319,"peers_alive":2,"peers_dead":0,"no_radio":0,"free_dram":208907,"largest_block":131072,"rx":{"total":528,"bad_frame":0,"unknown_peer":12,"wrong_dst":0,"short_payload":0,"unknown_opcode":0,"queue_dropped":56},"tx":{"total":195,"enqueue_err":0,"done_queue_dropped":0},"membership":{"deaths":0,"revivals":0,"reboots_seen":0,"table_full":0,"events_dropped":0}}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":3547399324,"owner":29544,"kind":"sampled","unit":50,"class":4,"bound_ms":3000,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":601617059,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":447,"ts":11830,"updates":1,"value":208907}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":1262031272,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":0,"quality":"GOOD","age_ms":460,"ts":11830,"updates":1,"value":319}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":62370601,"owner":29544,"kind":"sampled","unit":0,"class":3,"bound_ms":5000,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":3848093227,"owner":33120,"kind":"sampled","unit":101,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":486,"ts":11830,"updates":1,"value":131072}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":512092854,"owner":29544,"kind":"sampled","unit":0,"class":3,"bound_ms":5000,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":2033492666,"owner":33120,"kind":"sampled","unit":0,"class":3,"bound_ms":0,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":2105585595,"owner":33120,"kind":"sampled","unit":0,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":536,"ts":11830,"updates":1,"value":-17}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":2934643925,"owner":33120,"kind":"sampled","unit":100,"class":4,"bound_ms":5000,"quality":"GOOD","age_ms":549,"ts":11830,"updates":1,"value":2}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":2972183135,"owner":29544,"kind":"sampled","unit":0,"class":3,"bound_ms":5000,"quality":"NO_DATA","age_ms":0,"ts":0,"updates":0,"value":null}
+1791745361.367 COM5 {"t":"ns","node":33120,"hash":3624846432,"owner":33120,"kind":"sampled","unit":80,"class":4,"bound_ms":30000,"quality":"GOOD","age_ms":576,"ts":11830,"updates":1,"value":11}

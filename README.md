@@ -60,15 +60,17 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 ## What works today
 
 Everything below runs on real ESP32-S3 boards and has passed a test written before it was tried -- each milestone
-has one, and a criterion that would have killed it. 13 of the 17 milestones so far are accepted, three more are built and one (M12) is planned; the full ledger,
+has one, and a criterion that would have killed it. 14 of the 17 milestones so far are accepted and three more are built; the full ledger,
 with every measurement and caveat, is [STATUS.md](STATUS.md).
 
 - **Boards that find each other and know when one is gone.** Over the radio, a missing board is declared dead
   within 600 ms. A 24.5-hour run delivered 100 % of packets, with round trips of 4-6 ms.
 - **Any board's sensor, read from anywhere** -- another board or your PC -- with its age and quality, never a bare
   number. Unplug the board and the read says `UNAVAILABLE`.
-- **One signed package changes what every board does**, sent through one board on your PC's cable. A package that
-  breaks the boards is reverted by the boards themselves.
+- **One command sets up the whole cell**: `potluck apply <cluster file>` builds the firmware, updates the boards that
+  need it, deploys one signed package to every board and reads every output back -- no counters, variants or order
+  to know. Change the package and the boards take it without rebooting; a package that breaks them is reverted by
+  the boards themselves.
 - **Firmware updates over the radio**, board by board; a board that fails on a new image rolls itself back.
 - **Work that moves.** An actor not tied to a board's pins runs on whichever board is alive and moves within
   about a second when its board dies -- carrying up to 128 bytes of saved state.
@@ -80,10 +82,9 @@ with every measurement and caveat, is [STATUS.md](STATUS.md).
 - **Potluck shares the radio**: a board can be a cluster member and a Wi-Fi extender at the same time.
 - **Record and replay** a session byte for byte, to see exactly what happened.
 
-Not there yet: one command that sets up any mix of apps on your boards (milestone M12 -- today it is the
-[getting-started guide](GETTING-STARTED.md) and a handful of commands), a few long soak tests, and the limits
-listed at the end of the guide (up to 20 boards in a radio cell, ESP32-S3 boards and PCs only, one package per
-cluster).
+Not there yet: a few long soak tests, and the limits listed at the end of the
+[getting-started guide](GETTING-STARTED.md) (up to 20 boards in a radio cell, ESP32-S3 boards and PCs only, one
+package per cluster).
 
 ## Ninety seconds of architecture
 

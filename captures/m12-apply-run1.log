@@ -1,0 +1,29 @@
+[    0.2 s] package: modules from app 'passive-sensor' (pot_passive_sensor)
+[    0.2 s] package: guest 'alarm' by 7, signature verified under the cluster CA
+[    0.2 s] package: 'lab', 5 actor(s) (2 portable), image 1064 B, for 3 board(s)
+[    0.5 s] firmware: reusing the build of these sources (e793001-ea7965, C:\Users\tuebo\AppData\Local\potluck\cache\fw\ea79651a3ec5)
+[    0.9 s] inventory: 0x6300  fw deploy-and-detach-203-g24514b6 (counter 10, floor 10, confirmed)  package 0 (floor 29)  cluster 'lab'  up 31 s  roles reconciler,enrolled,cabled  actors - (0/0 portable here)
+[    0.9 s] inventory: 0x7368  fw deploy-and-detach-203-g24514b6 (counter 10, floor 10, confirmed)  package 0 (floor 29)  cluster 'lab'  up 745 s  roles reconciler,enrolled  actors - (0/0 portable here)
+[    0.9 s] inventory: 0x8160  fw deploy-and-detach-203-g24514b6 (counter 10, floor 10, confirmed)  package 0 (floor 29)  cluster 'lab'  up 139 s  roles reconciler,enrolled  actors - (0/0 portable here)
+[    0.9 s] firmware: e793001-ea7965 to 0x7368, 0x8160, 0x6300 at counter 11
+[  123.5 s] firmware: 0x7368 confirmed e793001-ea7965 in 123 s
+[  246.5 s] firmware: 0x8160 confirmed e793001-ea7965 in 123 s
+[  367.5 s] firmware: 0x6300 confirmed e793001-ea7965 in 121 s
+[  368.8 s] package: counter 30 committed on 0x6300, passed on to 2 board(s)
+[  381.5 s] verify: 0x6300 confirmed package 30: rf_link,rf_indicator
+[  381.6 s] verify: 0x7368 confirmed package 30: die_temp,rf_link,rf_indicator,guest
+[  381.7 s] verify: 0x8160 confirmed package 30: rf_link,rf_indicator,rf_fusion
+[  381.8 s] verify: potluck://lab/act/rf_fusion/out = false  [GOOD, age 1337 ms, ts 147788, class L4]
+[  384.0 s] verify: potluck://lab/act/alarm/out = 52.3476  [GOOD, age 2348 ms, ts 271840, class L3]
+[  386.1 s] verify: potluck://lab/act/alarm/alarm = 1  [GOOD, age 2505 ms, ts 273860, class L3]
+[  388.3 s] verify: potluck://lab/act/alarm/count = 269  [GOOD, age 2652 ms, ts 275860, class L3]
+[  390.4 s] verify: potluck://lab/node-7368/hw/die_temp = 52.5 C  [GOOD, age 2555 ms, ts 278120, class L4]
+
+  plan (package, firmware build)       0.5 s
+  inventory                            0.2 s
+  firmware                           366.6 s
+  package                              1.0 s
+  verify                              21.6 s
+  command to verified                390.5 s
+  package 30: live on 3 board(s); rebooted for it: none
+VERIFIED: cluster 'lab' runs package 30 on 3 board(s)

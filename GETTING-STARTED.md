@@ -260,7 +260,8 @@ ESP-IDF's own `idf.py -p COM7 monitor` works too, but resets the board when it o
 ## Limits of this edition
 
 Stated so they do not surprise you: up to **20 boards in a radio cell**, all within radio range of each other (a
-board told to relay, `POT! relay 1` on its console, carries one more hop and keeps doing so across reboots);
+board told to relay, `POT! relay 1` on its console, carries one more hop and keeps doing so across reboots -- one relay
+per cell: with two, the lower node id keeps the role);
 **ESP32-S3** boards, plus PCs as members; **one package per cluster**, which lists everything the cluster runs
 (`apply` composes it from every app's part); up to 16 actors in a package, a portable actor placed among at most
 8 boards (the best 8 of a bigger cell), and 128 named resources per board. Every one of these is a number in the

@@ -35,9 +35,11 @@ physical cable pull (M10) and a hand power cut (M11) -- all the owner's to run; 
 control-loop application; radio apps counted all-L4) and 2 (namespace cap) untested; B's power-on transmit stall a
 known limitation (its trigger, a power-on, never retried). A second MCU family -- the proof of "hardware-agnostic"
 beyond the PC node -- is the next edition's.
-**NEXT: M12 (planned 2026-10-11, the owner's choice: Potluck as a platform)** -- one command, any mix: one image with roles at run time, `potluck apply <cluster.json>`, live package changes and checkpoints that survive a reboot, and a developer manual for app authors (`DEVELOPING-APPS.md`, the owner's addition -- first version written 2026-10-11,
-against today's tools; the blind-reader test ran the same day: app built and tested in ~20 min, deploy blocked
-by platform gaps now in M12, the manual revised for the rest -- rerun the test after M12's `potluck apply`) (ARCHITECTURE section 13). Then step 1: measure the all-in image and decide the partition layout, since B's image fills 94 % of the 1 MB `factory` slot.
+**M12 ACCEPTED (2026-10-11, M0-LOG session 39)** -- Potluck as a platform: one image, `potluck apply
+<cluster.json>`, live package changes, checkpoints in NVS, inventory, catch-up, the test kit, presets, and the
+developer manual rewritten for it (blind reader: a new app written, tested and deployed in ~18 min). Caveat: the
+whole-cell power cycle was a reset of every chip, not a hand power cut. Every roadmap milestone is now built and
+14 of 17 accepted; what is left is the list above, all the owner's to run.
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
@@ -53,6 +55,19 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-11 (late evening): **M12 ACCEPTED** (M0-LOG session 39).
+>
+> **Everything goes through `potluck apply` now** (from `host/potluck/`, ESP-IDF Python, any shell):
+> `python -m potluck.apply ../../keys/desk-cell.json [--plan | inventory]`. `keys/desk-cell.json` (git-ignored: it
+> names the private app repos by path) is the bench's whole cell -- Potluck at HEAD with the sandbox, passive-sensor
+> at `73d43b8` (its own `manifests/ps-room.json`), the extender at `bed3685`, `manifests/die-and-alarm.json` (B's
+> die temperature, the alarm guest). `desk-no-room.json`, `desk-c-off.json`, `desk-home.json` (cluster "home"),
+> `fail-*.cluster.json` are the acceptance variants. Counters, variants and order are the tool's: never hand-pick
+> them again. Builds are cached under `%LOCALAPPDATA%\potluck\cache`, keyed by the firmware tree (a docs commit
+> sends no firmware). Every board runs ONE image; B is an extender because it holds credentials.
+> **Do not run `tools/console_tap.py` on several ports at once from parallel jobs**: one such start reset C. For a
+> whole-cell test use `tools/reset_capture.py` (JSON lines only, all ports in one process).
+>
 > ## THE BENCH NOW (2026-10-11) -- what the owner calls A, B and C
 >
 > All three ESP32-S3 boards sit on the desk, each on its own USB cable (power and console, 115200 baud), plus
@@ -64,13 +79,13 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > | **B** | 0x7368 | b8:1f:3f:da:73:68 | COM4 | extender (poor-mans-extender's hotspot) | **holds the owner's house Wi-Fi and hotspot credentials**: its ESP-IDF log can name networks, so read it with JSON-only tools (`tools/json_capture.py`, `tools/console_tap.py` writes everything -- check before committing); never type or log credentials, and an erase is the owner's to run |
 > | **C** | 0x8160 | b8:1f:3f:da:81:60 | COM5 | normal | |
 >
-> **Everything on all three (2026-10-11, at the owner's request):** firmware counter 9 (next 10+) = Potluck + the M7
-> sandbox + passive-sensor's room detection on every board, and the extender on B -- built from `437face` with passive-sensor's component from `git archive 73d43b8` and `CONFIG_POT_WASM=y` (variants `ps-m7`, and `extender-ps-m7` for B; output under the session scratchpad, so Potluck's tree is untouched). Package
-> `room-and-guests` (`manifests/room-and-guests.json`: ps-room's three actors unchanged, B's die temperature, the
-> alarm guest) at counter 29 (next 30+); deploy it with `--modules <export>/pot_passive_sensor/potluck-modules.json
-> --guests ../..`. The fusion learns its baseline where the boards stand: moved into a room, it relearns there. **`potluck.fw` has no default boards since 2026-10-11:** pass `--targets 7368,8160,6300` (or `--manifest`); old handovers' commands lack it. Enrolled under
-> the cluster CA (keys in the git-ignored `keys/`); the cell is on channel 1. The SN65HVD230 CAN modules are OFF (`bench/m4-can-wiring.html` to
-> rewire). The full board register (CH343 serials, bring-up history) is in WHEN-THE-BOARDS-ARRIVE.md.
+> **Now (2026-10-11 late):** all three run the one image built by `apply` from Potluck HEAD + passive-sensor
+> `73d43b8` + the extender `bed3685` + `CONFIG_POT_WASM=y` (version `<commit>-<key>`; firmware counter 16, next
+> 17+ -- `apply` picks it), package from `keys/desk-cell.json` (counter 42, next 43+ -- `apply` picks it). B is the
+> extender with the owner's credentials. `python -m potluck.apply ../../keys/desk-cell.json inventory` shows it all.
+> Enrolled under the cluster CA (keys in the git-ignored `keys/`); the cell is on channel 1. The SN65HVD230 CAN
+> modules are OFF (`bench/m4-can-wiring.html` to rewire). The full board register (CH343 serials, bring-up history)
+> is in WHEN-THE-BOARDS-ARRIVE.md.
 >
 > ## HANDOVER, 2026-10-11 (night): **M7 ACCEPTED -- guest actors run on the boards** (M0-LOG session 38).
 >

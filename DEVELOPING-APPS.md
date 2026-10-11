@@ -409,7 +409,8 @@ What `apply` does, in order:
    with a radio peer, else rolls back; a rollback stops the rollout there. About two minutes a board.
 3. **The package**, signed at a counter above every board's and sent through the cabled board to the whole cell.
    Each board takes it in place when it can -- actors whose declaration is unchanged keep running with their
-   state, the rest stop and their outputs leave the namespace, new ones start -- on trial exactly as before: a
+   state, the rest stop and their outputs leave the namespace, new ones start (a changed portable actor from its
+   checkpoint) -- on trial exactly as before: a
    board that crashes on it reverts by itself. Only a change to a guest's code needs a reboot, and the board does
    that itself. A board that was off gets the package from a peer when it comes back.
 4. **Verify**: every board confirmed on the package, with the actors the package gives it; every portable actor
@@ -595,8 +596,10 @@ radio samples for actors, several outputs per actor with replicas on demand, che
 Potluck's failure modes -- the 600 ms death window, stale values delivered marked, a portable actor's move,
 at-least-once activation during a partition, firmware updates taking a board out for ~15 s -- are listed in the
 README's [failure contract](README.md#the-failure-contract). A package change adds one: an actor whose
-declaration changed (its config, its placement, its type) is stopped and a new instance started, its outputs
-removed and declared again -- readers see NO_DATA until it publishes; an actor whose declaration did not change
-is not touched. A checkpoint restored after every board rebooted is up to a minute old. Your app inherits every one of them. The safety
+declaration changed (its config or its placement) is stopped and a new instance started, its outputs removed and
+declared again -- readers see NO_DATA until it publishes; a portable one resumes from its checkpoint, as after a
+failover. An actor whose declaration did not change is not touched. An actor whose output path changes (another
+name, another cluster name) is a new actor, and starts without a checkpoint. A checkpoint restored after every
+board rebooted is up to a minute old. Your app inherits every one of them. The safety
 line holds for apps too: Potluck must never be the only thing between a motor and a person
 ([ARCHITECTURE.md](ARCHITECTURE.md), section 12).

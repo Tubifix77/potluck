@@ -75,3 +75,5 @@ firmware/build-*/
 # checkpoints written to and restored from flash. A few KB of evidence.
 !/captures/m12-apply-run*.log
 !/captures/m12-ck-rec-lines.log
+!/captures/m12-reset2.log
+!/captures/m12-relay-reset*.log

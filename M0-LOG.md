@@ -4892,3 +4892,97 @@ log to a newcomer, and the repository's root holds historical PDFs and mood boar
 Verdicts: getting started -- yes for a cell of up to 8 boards with the fixes; your own app -- yes; sharing -- yes,
 but a type block still needs the maintainer.
 
+
+## Session 39 -- 2026-10-11 (evening): M12 built and accepted on three boards
+
+**What was built** (commits `6235e98`..HEAD):
+
+- **The cluster's name in the package** (`ActorType::Cluster` = 9, every node, `pot/cluster.hpp`): the boards'
+  built-in resources move from `potluck://lab/...` to `potluck://<system>/...` when it starts and back when it goes;
+  the host adds it only when `system` is not `lab`, so a `lab` package is byte for byte what it was. `potctl --system`.
+- **Live package changes** (`m0_main.cpp` `apply_live`): a committed package is taken in place when its guests' code
+  is unchanged -- identical actors kept (same instance, same state), the rest stopped with their outputs removed
+  from the namespace (`Namespace::remove`, backward-shift deletion), new ones started, the reconciler reloaded the
+  same way. The slot is written and on trial exactly as before; the live run counts as the trial's first boot and
+  the trial still needs `CONFIG_POT_TRIAL_HEARTBEATS` heartbeats from its start; a package whose actors are refused
+  reverts the slot with nothing changed and answers BAD_IMAGE. A changed guest falls back to the reboot. So section
+  7.4's signed trial-and-revert is unchanged: M12's kill criterion did not fire.
+- **Checkpoints in NVS** (`ck_persist`, namespace `pot_ck`): the reconciler asks at most once a minute per changing
+  checkpoint; the write is queued under the node mutex and done by the stats task; read back at boot only; terms
+  restored with them (`max_term`), so a restored owner's claims still fence. Counters in the `rec` line.
+- **Inventory** (`NODE_STATUS` 0x38, `pot/node_status.hpp`, proxied like FW_STATUS): firmware counter/floor/state/
+  version/ELF SHA prefix, package slot/trial/counter/floor/digest, roles, live applies, NVS writes, uptime, actors.
+- **Catch-up**: CAST `potluck:sys/package/v1` -- a board running a confirmed package announces it every minute and
+  5 s after a peer appears; a board whose committed floor is lower asks; the holder sends its slot's signed stream
+  (slots now keep image + trailer). **Relay kept in NVS** (`POT! relay`). Link task stack +1.5 KB (static internal
+  RAM 59.9 KB plain, 60.1 KB with everything, cap 64).
+- **`potluck apply`** (`host/potluck/potluck/apply.py`): plan (compose fragments, compile, check guest authors, keys,
+  `git archive` exports, build or reuse, inventory) before any change; firmware where the ELF differs, at a counter
+  above every floor, cabled board last; package above every counter; verify (confirmed, actor counts, each
+  portable once, every output GOOD by the deadline); report with timings and reboots. `inventory`. Firmware builds
+  keyed by the firmware tree and build script, not the commit; `build_firmware.ps1 -Version`; presets
+  `examples/cells/{minimal,hello}.json`; a portable actor among the best 8 of a bigger cell.
+- **Test kit** (`tests/testkit`, `pot/testkit.hpp`, `potluck_app_test()`), used by `examples/apps/pot_hello/tests`,
+  built and run by Potluck's own suite, and shown standalone from a copy outside the tree.
+
+**Found on the bench and fixed the same evening:** the NODE_STATUS version field was 24 bytes (a tagged describe is
+30); `powershell -File` hands an array as one comma-joined string; Windows PowerShell 5.1 turns ESP-IDF's stderr into
+a terminating error once output is captured (`pwsh` preferred, `export.ps1` under Continue); Git Bash's MSYS
+variables make ESP-IDF's activation export for bash, so `idf.py` was not on PATH (stripped for the build); keying the
+firmware cache by commit would have rolled firmware to every board for a docs commit; verify accepted STALE (a read
+of another board's output first answers from the cabled board's copy, which the read refreshes) and gave up before a
+learning actor published.
+
+**Acceptance on A, B, C** (`captures/m12-apply-run*.log`, `m12-ck-rec-lines.log`):
+
+1. From minimal Potluck (a plain build of `24514b6` rolled out at firmware counter 10; the old package could not run
+   on it), one `apply keys/desk-cell.json` -- Potluck at HEAD, passive-sensor from its repository at `73d43b8` with its
+   own `manifests/ps-room.json`, the extender at `bed3685`, B's die temperature and the alarm guest -- built nothing
+   new (cached), rolled firmware to all three (counter 11, 123 s a board), deployed package 30 live on all three and
+   verified every output: **390.5 s command to verified**, nothing typed but the command. B came up an extender
+   (`roles extender`, from its stored credentials) and relay. With a fresh build (run 4, after the cache key changed):
+   951.6 s, of which the build 547 s.
+2. The same file without the room sensor (`desk-no-room.json`): package 34, **23.5 s, live on 3 boards, none
+   rebooted**, the guest's count 1507 -> 1551 straight on.
+3. **Whole-cell reset** (all three EN lines pulled together for 200 ms): the guest resumed at ~1532 against 1576
+   before (one write interval lost), `ck_restored` 1 on A and C. Caveat, as for M11: a reset, not a power cut by hand.
+4. **Failing applies change nothing**: a guest whose author signature does not cover its module, 18 actors (16 is the
+   image's limit), a board that is not there -- each `REFUSED, nothing changed` with the reason, exit 2, the inventory
+   unchanged. Counters are the tool's, so a counter conflict cannot be typed; the case that could produce one -- a
+   board whose floor cannot be read -- is the third.
+5. **[MEASURE] closed:** times above; NVS writes at most 1/min per changing checkpoint per eligible board (A: 6 in 228 s
+   holding two), 0 errors. With 32 B entries and 126 per 4 KB page (ESP-IDF docs), a ~24 B checkpoint costs 3 entries,
+   so each of NVS's 6 pages is erased about every 250 writes: ~6 erases a day per page per checkpointing actor.
+   The module's endurance (reported >100,000 cycles) is not verified against a readable datasheet: ledger `unverified`.
+6. **Catch-up:** C held in reset 180 s while package 35 went to A and B; C ran 35, confirmed, 22 s after release.
+
+7. **The blind reader** (a fresh session given only the public files and what an owner knows of their boards):
+   wrote `tempavg` (a pinned running average of the die temperature, type 0x90 provisional), tested it with the kit
+   (7 cases), wrote a cluster file with the extender and the sandbox, and `apply` deployed it: VERIFIED in 386.8 s,
+   about 18 minutes from first read to its output read back GOOD. Its eleven findings, all fixed: verify read
+   nothing of an app's own outputs (descriptors now list `outputs`, with `{node}`/`{actor}`, and `apply` reads them
+   and die_temp's); the reboot line said "none" when every board rebooted (measured from before the firmware; now
+   from after, against elapsed time); `--plan` did not say what it would change (now: firmware to which boards,
+   what runs now and what replaces it, and whether the boards must reboot); the extender entry's form; getting an
+   actor's declaration bytes for a test (`python -m potluck.deploy decl`); a pinned actor's rig needs its node id;
+   `needs`/`owns` for a local built-in; `NotFound` before a producer starts; which shell; `POTLUCK_DIR`; the first
+   read's NO_DATA.
+
+**And a bug the evening's own runs found.** After the blind reader's package and mine, the guest resumed at 1331
+-- below every count it had shown. The new diagnostics (`ck_restored` events with term and sequence, NVS
+used/available in the `rec` line) ruled out a full NVS (518 of 630 entries free, no write errors) and pointed at
+run 6: its package listed only A and B, so the guest's eligible nodes changed, the live reload took it for a new
+actor, and it restarted at term 1 with no checkpoint; the copy in flash was overwritten by the new one's. A reboot
+would have kept it (the restore is keyed by the output, not the declaration). Fixed: a portable actor kept under its
+identity (output key and type) with a changed declaration resumes from its checkpoint and term floor, as across a
+failover (`ReloadStats::carried`, a test). Section 7.4's trial and revert are untouched by it. A renamed actor or a
+renamed cluster is a new identity, and starts without one -- in the manual.
+
+**After the fix, on the bench:** the firmware with it rolled out by `apply` (run 9, counter 16); a package that
+changed the guest's eligible nodes went out live and its count went straight on (2857 -> 2945; run 10). **Cluster
+name:** `desk-home.json` (system `home`) -- every board reports cluster `home`, the built-ins read under
+`potluck://home/node-7368/sys/uptime` (GOOD), the `lab` path is gone; the guest's wiring changed with the name, so
+the boards rebooted into it and it started fresh (a new identity, as the manual now says). **Relay:** `POT! relay 1`
+on C is saved (`"saved":1`) and restored at boot (`relay: on, as saved`); ADR-009's one-relay rule then hands the
+role to the lower id (B, the extender). C set back to 0. Bench left on `desk-cell.json`: firmware counter 16, package
+42, all verified. Evidence: `captures/m12-apply-run1..12.log`, `m12-reset2.log`, `m12-relay-reset*.log`.
