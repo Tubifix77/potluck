@@ -70,3 +70,8 @@ keys/
 # build_firmware.ps1 -Variant: generated defaults fragments and per-variant build trees
 firmware/sdkconfig.variant.*
 firmware/build-*/
+
+# M12's acceptance runs (M0-LOG session 39): potluck apply's own output, and the reconciler lines that show the
+# checkpoints written to and restored from flash. A few KB of evidence.
+!/captures/m12-apply-run*.log
+!/captures/m12-ck-rec-lines.log

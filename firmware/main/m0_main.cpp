@@ -389,6 +389,7 @@ uint32_t g_retain[kMaxPortable];
 size_t g_retain_n = 0;
 uint32_t g_writes = 0;       // NVS writes done this boot (the wear figure)
 uint32_t g_write_errors = 0;
+int g_last_error = 0;        // the last esp_err_t a write or commit returned (0 = none)
 
 void key_name(char* out, uint32_t key) { std::snprintf(out, 12, "k%08x", static_cast<unsigned>(key)); }
 
@@ -428,6 +429,8 @@ bool read(void*, uint32_t key, uint32_t* term, uint32_t* seq, uint8_t* out, size
     std::memcpy(seq, buf + 4, 4);
     std::memcpy(out, buf + 8, n - 8);
     *len = n - 8;
+    std::printf("{\"t\":\"ck_restored\",\"key\":%u,\"term\":%u,\"seq\":%u,\"len\":%u}\n", static_cast<unsigned>(key),
+                static_cast<unsigned>(*term), static_cast<unsigned>(*seq), static_cast<unsigned>(*len));
     return true;
 }
 
@@ -497,9 +500,19 @@ void flush() {
         std::memcpy(buf + 8, s_out[i].data, s_out[i].len);
         char name[12];
         key_name(name, s_out[i].key);
-        if (nvs_set_blob(h, name, buf, 8u + s_out[i].len) == ESP_OK) ++g_writes; else ++g_write_errors;
+        const esp_err_t e = nvs_set_blob(h, name, buf, 8u + s_out[i].len);
+        if (e == ESP_OK) {
+            ++g_writes;
+        } else {
+            ++g_write_errors;
+            g_last_error = e;
+        }
     }
-    if (nvs_commit(h) != ESP_OK) ++g_write_errors;
+    const esp_err_t ce = nvs_commit(h);
+    if (ce != ESP_OK) {
+        ++g_write_errors;
+        g_last_error = ce;
+    }
     nvs_close(h);
 }
 }  // namespace ck_persist
@@ -1999,15 +2012,19 @@ void stats_task(void*) {
                 for (size_t i = 0; i < na; ++i) av[i] = g_rec->view(i);
                 const uint32_t fenced_replies = g_node->ns_counters().replies_fenced;
                 xSemaphoreGive(g_mutex);
+                nvs_stats_t nvs_st{};
+                nvs_get_stats(nullptr, &nvs_st);  // M12: how full the store the checkpoints share is
                 std::printf("{\"t\":\"rec\",\"node\":%u,\"up_ms\":%u,\"settled\":%d,\"sent\":%u,\"received\":%u,"
                             "\"malformed\":%u,\"views\":%u,\"replies_fenced\":%u,\"ck_persisted\":%u,"
-                            "\"ck_restored\":%u,\"ck_nvs_writes\":%u,\"ck_nvs_errors\":%u,\"actors\":[",
+                            "\"ck_restored\":%u,\"ck_nvs_writes\":%u,\"ck_nvs_errors\":%u,\"ck_nvs_last_err\":%d,"
+                            "\"nvs_used\":%u,\"nvs_available\":%u,\"actors\":[",
                             static_cast<unsigned>(node_id), static_cast<unsigned>(now_ms_()), settled ? 1 : 0,
                             static_cast<unsigned>(rc.sets_sent), static_cast<unsigned>(rc.sets_received),
                             static_cast<unsigned>(rc.sets_malformed), static_cast<unsigned>(rc.view_changes),
                             static_cast<unsigned>(fenced_replies), static_cast<unsigned>(rc.checkpoints_persisted),
                             static_cast<unsigned>(rc.checkpoints_restored), static_cast<unsigned>(ck_persist::g_writes),
-                            static_cast<unsigned>(ck_persist::g_write_errors));
+                            static_cast<unsigned>(ck_persist::g_write_errors), ck_persist::g_last_error,
+                            static_cast<unsigned>(nvs_st.used_entries), static_cast<unsigned>(nvs_st.available_entries));
                 for (size_t i = 0; i < na; ++i) {
                     std::printf("%s{\"key\":%u,\"running\":%d,\"term\":%u,\"owner\":%u,\"owner_term\":%u,"
                                 "\"assigned\":%u,\"starts\":%u,\"fenced\":%u,\"released\":%u}",
