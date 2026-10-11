@@ -29,9 +29,10 @@ it). Also open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6
 combined node; a 2-hour combined run is clean, session 30) and the extender's hunting window mid-run (needs the
 owner to take the router away). The step-0 rerun and B's low inbound PDR are closed (session 30; the PDR was an
 accounting bug, fixed in `c70756f`). One owner, one application package per cluster is a recorded scope choice (ARCHITECTURE section 0.1).
-**What is left (audit, 2026-10-11, session 38):** every roadmap milestone is built and 13 of 16 accepted; left are
-M5.1's two 24 h soaks, M8.1's "value moves when B is warmed", M8.2's 30 min empty room and 24 h with no PC, a
-physical cable pull (M10) and a hand power cut (M11) -- all the owner's to run; section 15's questions 1 (needs a
+**What is left (audit, 2026-10-11, session 39, after M12):** every roadmap milestone is built and 14 of 17 accepted; left
+are M5.1's two 24 h soaks, M8.1's "value moves when B is warmed", M8.2's 30 min empty room and 24 h with no PC, a
+physical cable pull (M10) and a hand power cut (M11, M12) -- all the owner's to run; the flash endurance figure behind
+M12's wear bound is unverified (ledger); section 15's questions 1 (needs a
 control-loop application; radio apps counted all-L4) and 2 (namespace cap) untested; B's power-on transmit stall a
 known limitation (its trigger, a power-on, never retried). A second MCU family -- the proof of "hardware-agnostic"
 beyond the PC node -- is the next edition's.
@@ -385,8 +386,8 @@ Naming now in force, all ASCII:
   picking the project up; it records what is wrong as well as what is done, including withdrawn
   conclusions.
 - **[M0-RUNBOOK.md](M0-RUNBOOK.md)** — how to build, flash, emulate and measure.
-- **[DEVELOPING-APPS.md](DEVELOPING-APPS.md)** — the developer manual for app authors (M12 part 4, first version
-  2026-10-11); its worked example `examples/apps/pot_hello` is built and tested by the gates. Keep it true:
+- **[DEVELOPING-APPS.md](DEVELOPING-APPS.md)** — the developer manual for app authors (M12, rewritten for `potluck apply`
+  2026-10-11, blind-tested twice); its worked example `examples/apps/pot_hello` is built and tested by the gates. Keep it true:
   a change to the actor API, the descriptor or the deploy steps changes the manual in the same commit.
 - The three `history/dmuOS_Architecture_Vision_Document*.pdf` are **superseded history** — mine them for
   intent, never for facts. Several of their numbers are corrected in ARCHITECTURE.md §3.1. They keep

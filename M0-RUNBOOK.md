@@ -691,7 +691,8 @@ python -m potluck.enrol --host-cert keys\host-00fe.id --pub <the printed public 
 ```
 
 Then deploy a package whose manifest makes the host eligible (`"placement": true`; `manifests/m10-ticker.json`),
-switch on A's relay (`POT! relay 1` on A's console; it does not survive a reboot) and join, from `host/potluck/`:
+switch on A's relay (`POT! relay 1` on A's console; saved across reboots since M12 -- `POT! relay 0` when done, since
+one relay per cell is kept, the lower id's, and A's would take the role from B the extender) and join, from `host/potluck/`:
 
 ```
 python -m potluck.hostnode --port COM6 --package ../../keys/m10-ticker-N.pkg.json --identity ../../keys/host-00fe.id --out ../../captures/m10-host.jsonl
@@ -701,3 +702,29 @@ python tools/m10_report.py captures/<name>        # from the repo root: who ran 
 `pot_hostnode` is built by the host test build (`tools\run_host_tests.ps1`). Only one program may hold COM6:
 not `potctl` or `potluck-agent` at the same time. Stopping the program without warning is what a pulled
 cable looks like to the boards; the actor should be back on a board within ~0.7 s.
+
+## 15. M12: the whole cell from one file
+
+From `host/potluck/`, with the ESP-IDF Python, in any shell. The bench's cell is `keys/desk-cell.json` (git-ignored:
+it names the private app repositories by path); `examples/cells/` holds the public presets.
+
+```
+python -m potluck.apply ../../keys/desk-cell.json --plan       # what it would change; changes nothing
+python -m potluck.apply ../../keys/desk-cell.json              # firmware where it differs, the package, verify
+python -m potluck.apply ../../keys/desk-cell.json inventory    # every board: firmware, package, counters, actors
+python -m potluck.deploy decl <manifest> --modules <descriptor>  # an actor's declaration bytes, for a test
+```
+
+Counters, variants and the order are the tool's: it reads every board's floors and goes one above. Builds come
+from `git archive` exports into `%LOCALAPPDATA%\potluck\cache`, keyed by the firmware tree and the build script,
+so a commit that changes neither sends nothing to the boards (a first build is ~7-9 min, a board's update ~2 min).
+The acceptance variants beside it: `desk-no-room.json` (the room sensor off, live), `desk-c-off.json` (C left out,
+for the catch-up test), `desk-home.json` (cluster "home"), `fail-*.cluster.json` (refused before any change).
+
+- **A whole-cell reset with every console recorded:** `python tools/reset_capture.py captures/<name>.log 25 75`
+  (JSON lines only, so safe for B; all ports in one process). Do not start several `console_tap.py` jobs at once:
+  one such start reset C.
+- **Checkpoints in flash:** the `rec` line carries `ck_persisted`, `ck_restored`, `ck_nvs_writes`, `ck_nvs_errors`,
+  `ck_nvs_last_err`, `nvs_used` and `nvs_available`; each restored copy prints `{"t":"ck_restored",...}` at boot.
+- **Live changes:** a board prints `{"t":"package_live",...}` with what it kept, stopped and started.
+

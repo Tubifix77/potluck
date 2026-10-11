@@ -230,18 +230,21 @@ the PC joins the cluster as a peer. That board reaches the others by radio. **To
   with every finding along the way, is [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).)
 - **Soak and measurement procedure:** [M0-RUNBOOK.md](M0-RUNBOOK.md).
 - **Building an application in:** an application keeps its actors in its own repository and names them
-  in a `potluck-modules.json`; `tools\build_firmware.ps1 -AppComponents <its components folder>` builds
-  them into the image, and `potctl ... deploy --modules <that file>` checks a manifest against it. The
+  in a `potluck-modules.json`; a cluster file names the repository at a commit, and `potluck apply` builds it
+  into the image and deploys it ([DEVELOPING-APPS.md](DEVELOPING-APPS.md)). The
   two applications built so far are the owner's `passive-sensor` (the room sensor, M8.2) and
   `poor-mans-extender` (the Wi-Fi extender, M5.1 and M6.1), both private repositories; one board runs
   both at once.
 
-Then, from `host/potluck/`, the same tool as above over the adapter's port:
+Then, from `host/potluck/`, over the adapter's port:
 
 ```
+python -m potluck.apply my-cell.json                 # M12: the whole cell as the file says -- firmware where it
+                                                     # differs, the package, every output read back
+python -m potluck.apply my-cell.json inventory       # what every board runs, with its counters
 python -m potluck.ctl --port COM6 --node 7368 watch sys/uptime        # M1: board B, read through board A
 python -m potluck.ctl --port COM6 --node 6300 deploy pkg.json --ca ca.pub --key deploy.key --bcert deploy.bcert
-                                                     # M3: a signed package, whole cell
+                                                     # M3: one signed package by hand, whole cell
 python -m potluck.hostnode --port COM6 --package pkg.json --identity host.id
                                                      # M10: the PC joins as a placement node
 python -m potluck.fw --port COM6 rollout potluck_m0.bin --counter 4 --key deploy.key --bcert deploy.bcert --manifest my-cell.json
@@ -331,8 +334,8 @@ runtime states them. Here they are:
   0.46-0.69 s on the bench, for the default 600 ms death window. The actor restarts from its initial
   state -- nothing it held in memory moves -- unless it saved a checkpoint (since M8.2): up to 128
   bytes, kept by every other board that may run it, which the new holder starts from with its age.
-  A checkpoint lives in memory only: if every such board reboots, it is gone, and the actor starts
-  fresh. While ownership moves, the actor's outputs read NO DATA, not an old value, until the new
+  Each of those boards also keeps it in flash, at most a minute old (since M12), so it survives every board
+  rebooting at once. While ownership moves, the actor's outputs read NO DATA, not an old value, until the new
   holder publishes. Whatever was physically wired to the dead node does not move either. An actor
   that owns an actuator is never portable.
 - **A host service can vanish at any moment** (since M8): a PC that offers services to the cluster
@@ -349,6 +352,11 @@ runtime states them. Here they are:
   warning, its actors run on a board again within the death window (0.63-0.69 s after its last frame on
   the bench); back, it takes them again by a handover that never runs an actor twice, about 6 s after
   it starts. Whatever needs the PC's hardware still needs the PC.
+- **A package change takes effect without a reboot** (since M12) when only actors change: an unchanged actor
+  keeps running untouched; a changed or new one starts as a new instance (a changed portable actor from its
+  checkpoint), and its outputs read NO DATA until it publishes; a removed one's outputs disappear. A change to a
+  sandboxed guest's code reboots the boards into the package instead. Either way the boards try it before they keep
+  it, and go back to the previous one by themselves if it fails.
 - **A firmware update takes a board out of the cell for about 15 s** (since M11): it reboots into the
   new image, rejoins, and keeps the image only after 100 heartbeats with at least one radio peer alive.
   Its peers declare it dead and alive again meanwhile, and its portable actors move and come back like
