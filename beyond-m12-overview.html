@@ -76,8 +76,9 @@
 <main>
   <h1>Potluck: one presentation of the cell</h1>
   <p class="lede">The original idea -- Kubernetes for compute <em>and</em> attached hardware. Every board brings its sensors,
-  cores and memory; the hub on a PC presents them all as one machine; an integration layer lets any program see them the
-  way it usually sees resources. A discussion draft (<a href="BEYOND-M12.md">BEYOND-M12.md</a>), not built yet.</p>
+  cores and memory; the cell presents them all as one machine, on the house network, by itself; an integration layer lets
+  any program see them the way it usually sees resources. A PC is welcome, never required. A discussion draft
+  (<a href="BEYOND-M12.md">BEYOND-M12.md</a>), not built yet.</p>
 
   <div class="flow">
     <!-- 1. the cell -->
@@ -85,7 +86,7 @@
       <h2>1 · The cell: ESP32-S3 boards</h2>
       <div class="cellbox">
         <div class="card">
-          <h3>Board A <span class="small">· on the PC's cable</span></h3>
+          <h3>Board A <span class="small">· a PC's cable, if there is one</span></h3>
           <span class="sensor">sensor → temperature</span>
           <ul class="small">
             <li>2 cores · 240 MHz</li><li>8 MB PSRAM · 16 MB flash</li>
@@ -94,9 +95,9 @@
         <div class="radio">⇅ radio (ESP-NOW) ⇅</div>
         <div class="card">
           <h3>Board B <span class="small">· on the house Wi-Fi</span></h3>
-          <span class="sensor">status LED</span><span class="sensor">room presence</span>
+          <span class="sensor">lightbulb</span><span class="sensor">status LED</span><span class="sensor">room presence</span>
           <ul class="small">
-            <li>2 cores · 8 MB PSRAM</li><li>Wi-Fi extender module</li>
+            <li>2 cores · 8 MB PSRAM</li><li>Wi-Fi extender module</li><li>gateway module: presents the cell</li>
           </ul>
         </div>
         <div class="radio">⇅ radio (ESP-NOW) ⇅</div>
@@ -111,16 +112,11 @@
       <p class="small">Up to 20 boards in a cell. Each board's resources are reachable from every other board.</p>
     </section>
 
-    <div class="link"><div class="bar both"></div><span>serial cable</span></div>
+    <div class="link"><div class="bar both"></div><span>Wi-Fi (board B)<br>or a PC's cable</span></div>
 
-    <!-- 2. the hub and the presentation -->
+    <!-- 2. the presentation, on the house network -->
     <section class="col hub">
-      <h2>2 · The PC on the house network</h2>
-      <div class="card">
-        <h3>The hub</h3>
-        <p class="small" style="margin:0">One program on the PC owns the cable to the cell, follows everything that happens in it,
-        and keeps running whether or not anyone is looking.</p>
-      </div>
+      <h2>2 · The house network</h2>
       <div class="present">
         <h3>Resource presentation</h3>
         <p class="small" style="margin:0 0 4px">The whole cell, seen as one machine -- what Kubernetes' API server is to a cluster.</p>
@@ -131,8 +127,14 @@
         what runs where, what talks to what.</p>
       </div>
       <div class="card">
-        <h3>The cell keeps running without it</h3>
-        <p class="small" style="margin:0">PC asleep, hub stopped, dashboard closed: the boards carry on, and the hub catches up.</p>
+        <h3>Presented by the cell itself</h3>
+        <p class="small" style="margin:0">Board B, on the Wi-Fi, presents every board's resources: Home Assistant switches the
+        lightbulb with no PC anywhere.</p>
+      </div>
+      <div class="card" style="border-left-style:dashed">
+        <h3>A PC, if there is one <span class="tag">optional</span></h3>
+        <p class="small" style="margin:0">Cabled to a board, its hub adds what a small board cannot hold: the full dashboard,
+        history, your own programs. Switch it off and the cell, and Home Assistant's control of it, carry on.</p>
       </div>
     </section>
 
@@ -182,10 +184,11 @@
   </div>
 
   <div class="gateway">
-    <h3>And with no PC at all</h3>
-    <span class="small">Board B is already on the house Wi-Fi. With a gateway module chosen for it, it connects out to the
-    house's MQTT broker and presents the whole cell to Home Assistant by itself -- the same devices, the same names. Turn the PC
-    back on and the hub takes over again.</span>
+    <h3>With a PC, and without one</h3>
+    <span class="small"><b>Without:</b> board B connects out to the house's MQTT broker and presents the whole cell -- every
+    board's lightbulb, LED and sensors -- to Home Assistant and any MQTT tool, read and controlled there. <b>With:</b> the PC's
+    hub presents the same devices under the same names, plus the full dashboard, history and your own programs. Either can
+    come and go; Home Assistant sees the same lightbulb throughout.</span>
   </div>
 
   <div class="rules">
@@ -198,7 +201,7 @@
   </div>
 
   <footer>Potluck -- S3 Edition. Board figures are the test cell's (ESP32-S3-DevKitC-1 N16R8). Up to 20 boards in a radio
-  cell. Everything in columns 2-4 is a proposal under discussion.</footer>
+  cell. Everything in columns 2-4 is a proposal under discussion; the lightbulb is an example resource.</footer>
 </main>
 </body>
 </html>

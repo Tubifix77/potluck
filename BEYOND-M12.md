@@ -60,8 +60,13 @@ changed.
 
 So, for Potluck (decided by the draft, on that evidence):
 
-- **The presentation is the hub's model and API** (section 3): every node, every resource with its tuple, every actor
-  and app, every module, every program and integration, every event -- one model, one API.
+- **The presentation belongs to the cell, not to a PC.** Potluck runs without a PC (rule 1), and a board on the house
+  Wi-Fi is part of the house's network itself: so the cell presents its resources by itself, through that board -- Home
+  Assistant switches a lightbulb on a board with no PC anywhere (6.3). **A PC is an addition, never the way in:** cabled
+  to a board, its hub presents the same resources under the same names, and adds what a small board cannot hold -- the
+  full model (every node, resource with its tuple, actor, app, module, program, integration and event), its history,
+  the dashboard and the API for the owner's programs (section 3). The two presenters can come and go; what another
+  system sees stays the same.
 - **The integration layer sits on that API, beside the dashboard, not inside it.** An integration presents the same
   resources to another system that the dashboard presents to a person. Built into the dashboard, an integration would
   stop when the dashboard page closes and would have to be rebuilt with every dashboard; on the API it runs on its own,
@@ -92,6 +97,11 @@ watched, but not all at once. That is the strongest reason for this whole step: 
 become necessary, not just tidy.
 
 ## 3. The shape: the presentation, its clients, and board modules
+
+Two presenters of the one presentation: **the gateway board** (a board on the house Wi-Fi with the gateway module: the
+cell's resources, their availability and the writes the package allows, to any system that speaks MQTT -- lean, because
+it lives on an ESP32-S3) and **the hub** (a PC's full model and API, when a PC is there). The picture below is the hub's
+side; the gateway board is at its bottom left, and works without the rest.
 
 ```
                        ┌────────────────────── potluck-hub (one per PC) ──────────────────────┐
