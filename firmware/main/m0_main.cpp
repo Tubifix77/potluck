@@ -1134,50 +1134,6 @@ void push_next_peer() {
     push_begin();
 }
 
-void on_result(void*, uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, const uint8_t* p,
-               uint16_t len) {
-    if (is_fw_opcode(op)) {
-        fw_rt::on_result(peer, msg, op, timed_out, p, len);
-        return;
-    }
-    if (op == kOpNodeStatus) {  // M12: a proxied inventory reply
-        if (g_status_proxy.awaiting == 0 || msg != g_status_proxy.awaiting || peer != g_status_proxy.target) return;
-        const StatusProxy sp = g_status_proxy;
-        g_status_proxy = StatusProxy{};
-        if (timed_out || p == nullptr || len == 0) {
-            status_unreachable(sp.requester, sp.requester_msg, sp.target);
-        } else {
-            g_node->send_reply_raw(sp.requester, sp.requester_msg, p, len);
-        }
-        return;
-    }
-    if (!g_push.active || g_push.idx >= g_push.count || peer != g_push.peers[g_push.idx] ||
-        msg != g_push.awaiting) {
-        return;
-    }
-    DeployReply r{};
-    const bool ok = !timed_out && load_deploy_reply(p, len, r) && r.status == DeployStatus::Ok;
-    if (!ok) {
-        ESP_LOGW(kTag, "deploy: peer 0x%04x %s at step 0x%02x", peer,
-                 timed_out ? "timed out" : deploy_status_str(r.status), op);
-        ++g_push.failed;
-        ++g_push.idx;
-        push_next_peer();
-        return;
-    }
-    if (op == kOpDeployBegin || (op == kOpDeployChunk && g_push.offset < g_push.begin.image_len)) {
-        push_chunk();
-    } else if (op == kOpDeployChunk) {
-        uint8_t wire[kDeployCommitLen];
-        push_send(kOpDeployCommit, wire, store_deploy_commit(g_push.begin.image_crc, wire, sizeof(wire)));
-    } else if (op == kOpDeployCommit) {
-        ESP_LOGI(kTag, "deploy: peer 0x%04x committed", peer);
-        ++g_push.ok;
-        ++g_push.idx;
-        push_next_peer();
-    }
-}
-
 // ---- M12: catch-up -- a package reaching a board that was off when it was deployed ----------------
 // Every minute, and soon after a peer appears or reboots, a board running a confirmed package tells its
 // radio peers which (CAST "potluck:sys/package/v1", kind 1, counter). A board whose highest committed
@@ -1292,6 +1248,50 @@ void on_node_status(uint16_t from, uint16_t msg_id, const uint8_t* p, uint16_t l
     static uint8_t wire[kNodeStatusMaxLen];  // off the link task's stack
     const size_t n = build_node_status(wire, sizeof(wire), cabled);
     if (n > 0) g_node->send_reply_raw(from, msg_id, wire, static_cast<uint16_t>(n));
+}
+
+void on_result(void*, uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, const uint8_t* p,
+               uint16_t len) {
+    if (is_fw_opcode(op)) {
+        fw_rt::on_result(peer, msg, op, timed_out, p, len);
+        return;
+    }
+    if (op == kOpNodeStatus) {  // M12: a proxied inventory reply
+        if (g_status_proxy.awaiting == 0 || msg != g_status_proxy.awaiting || peer != g_status_proxy.target) return;
+        const StatusProxy sp = g_status_proxy;
+        g_status_proxy = StatusProxy{};
+        if (timed_out || p == nullptr || len == 0) {
+            status_unreachable(sp.requester, sp.requester_msg, sp.target);
+        } else {
+            g_node->send_reply_raw(sp.requester, sp.requester_msg, p, len);
+        }
+        return;
+    }
+    if (!g_push.active || g_push.idx >= g_push.count || peer != g_push.peers[g_push.idx] ||
+        msg != g_push.awaiting) {
+        return;
+    }
+    DeployReply r{};
+    const bool ok = !timed_out && load_deploy_reply(p, len, r) && r.status == DeployStatus::Ok;
+    if (!ok) {
+        ESP_LOGW(kTag, "deploy: peer 0x%04x %s at step 0x%02x", peer,
+                 timed_out ? "timed out" : deploy_status_str(r.status), op);
+        ++g_push.failed;
+        ++g_push.idx;
+        push_next_peer();
+        return;
+    }
+    if (op == kOpDeployBegin || (op == kOpDeployChunk && g_push.offset < g_push.begin.image_len)) {
+        push_chunk();
+    } else if (op == kOpDeployChunk) {
+        uint8_t wire[kDeployCommitLen];
+        push_send(kOpDeployCommit, wire, store_deploy_commit(g_push.begin.image_crc, wire, sizeof(wire)));
+    } else if (op == kOpDeployCommit) {
+        ESP_LOGI(kTag, "deploy: peer 0x%04x committed", peer);
+        ++g_push.ok;
+        ++g_push.idx;
+        push_next_peer();
+    }
 }
 
 // ---- the server, called from Node::on_rx with g_mutex held ---------------------------------------

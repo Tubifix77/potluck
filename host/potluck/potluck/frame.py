@@ -73,6 +73,7 @@ class Op(IntEnum):
     FW_CHUNK = 0x35
     FW_COMMIT = 0x36
     FW_STATUS = 0x37
+    NODE_STATUS = 0x38  # M12: potluck apply's inventory
     SAFE_STATE = 0x50
     ERR = 0x7F
 
