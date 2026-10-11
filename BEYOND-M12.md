@@ -42,6 +42,9 @@ claim cited and in the project's ledger), not from taste.
 
 ### The core: one presentation of the whole cell's resources
 
+*As a picture:* [beyond-m12-overview.html](beyond-m12-overview.html) -- the boards and their resources, the hub's presentation,
+the integration layer, and the programs on top (open it in a browser after cloning; GitHub shows it as source).
+
 It comes down to the original idea -- *Kubernetes for CPU/GPU/RAM and attached hardware* (ARCHITECTURE section 0.1).
 What this step adds is the part of Kubernetes Potluck does not have yet: **one presentation of every resource on all
 the cell's boards and PCs**, the cell seen as one machine, that everything else is built on.

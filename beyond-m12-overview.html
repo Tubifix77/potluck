@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Potluck: one presentation of the cell</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --panel: #ffffff; --ink: #1d1d1b; --muted: #6a6a64; --line: #c9c7bd;
+    --cell: #2f6f5e; --cell-soft: #e3f0eb; --hub: #7a4fb8; --hub-soft: #efe8f8;
+    --int: #b8641f; --int-soft: #f8ecdf; --ha: #1d7fc4; --ha-soft: #e2f0fa; --idea: #8a8a82;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --panel: #212120; --ink: #ecebe6; --muted: #a3a29b; --line: #45443f;
+      --cell: #6cc3a8; --cell-soft: #1f3330; --hub: #b896ea; --hub-soft: #2c2438;
+      --int: #e39a5c; --int-soft: #382a1d; --ha: #6bb7ee; --ha-soft: #1b2d3b; --idea: #8f8e87;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161614; --panel: #212120; --ink: #ecebe6; --muted: #a3a29b; --line: #45443f;
+    --cell: #6cc3a8; --cell-soft: #1f3330; --hub: #b896ea; --hub-soft: #2c2438;
+    --int: #e39a5c; --int-soft: #382a1d; --ha: #6bb7ee; --ha-soft: #1b2d3b; --idea: #8f8e87;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1280px; margin: 0 auto; padding: 24px 16px 40px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .lede { color: var(--muted); margin: 0 0 22px; max-width: 70ch; }
+  .flow { display: flex; align-items: stretch; gap: 0; }
+  .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  .col > h2 { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 2px; color: var(--muted); }
+  .link { flex: 0 0 56px; display: flex; align-items: center; justify-content: center; position: relative; }
+  .link .bar { width: 100%; height: 0; border-top: 2px solid var(--line); position: relative; }
+  .link .bar::after { content: ""; position: absolute; right: -2px; top: -7px; border: 6px solid transparent; border-left: 10px solid var(--line); }
+  .link .bar.both::before { content: ""; position: absolute; left: -2px; top: -7px; border: 6px solid transparent; border-right: 10px solid var(--line); }
+  .link span { position: absolute; top: calc(50% + 8px); font-size: .72rem; color: var(--muted); text-align: center; width: 90px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .card h3 { margin: 0 0 4px; font-size: .95rem; }
+  .card ul { margin: 0; padding-left: 18px; }
+  .card li { margin: 1px 0; }
+  .small { font-size: .82rem; color: var(--muted); }
+  .cell .card { border-left: 4px solid var(--cell); }
+  .cellbox { background: var(--cell-soft); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .radio { text-align: center; font-size: .75rem; color: var(--cell); }
+  .sensor { display: inline-block; background: var(--cell); color: var(--panel); border-radius: 6px; padding: 1px 7px; font-size: .78rem; margin: 2px 4px 2px 0; }
+  .hub .card { border-left: 4px solid var(--hub); }
+  .present { background: var(--hub-soft); border: 2px solid var(--hub); border-radius: 12px; padding: 12px; }
+  .present h3 { color: var(--hub); margin: 0 0 6px; }
+  .kinds { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
+  .kinds b { font-weight: 600; background: var(--panel); border: 1px solid var(--hub); color: var(--ink); border-radius: 999px; padding: 1px 9px; font-size: .8rem; }
+  .intlayer { background: var(--int-soft); border: 2px solid var(--int); border-radius: 12px; padding: 12px; height: 100%; }
+  .intlayer h3 { color: var(--int); margin: 0 0 6px; }
+  .clients .card { border-left: 4px solid var(--int); }
+  .clients .card.ha { border-left-color: var(--ha); background: var(--ha-soft); }
+  .clients .card.ha h3 { color: var(--ha); }
+  .clients .card.idea { border-left-color: var(--idea); border-style: dashed; border-left-style: solid; }
+  .tag { font-size: .7rem; border-radius: 999px; padding: 0 7px; margin-left: 6px; border: 1px solid currentColor; vertical-align: 2px; }
+  .gateway { margin-top: 18px; border: 2px dashed var(--ha); border-radius: 12px; padding: 12px 14px; background: var(--panel); }
+  .gateway h3 { margin: 0 0 4px; color: var(--ha); font-size: .95rem; }
+  .rules { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+  .rules .card { font-size: .86rem; }
+  footer { margin-top: 22px; font-size: .78rem; color: var(--muted); }
+  @media (max-width: 900px) {
+    .flow { flex-direction: column; }
+    .link { flex: 0 0 46px; }
+    .link .bar { width: 0; height: 100%; border-top: 0; border-left: 2px solid var(--line); }
+    .link .bar::after { right: auto; left: -8px; top: auto; bottom: -2px; border: 6px solid transparent; border-top: 10px solid var(--line); }
+    .link .bar.both::before { left: -8px; top: -2px; border: 6px solid transparent; border-bottom: 10px solid var(--line); }
+    .link span { top: auto; left: calc(50% + 10px); width: auto; text-align: left; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Potluck: one presentation of the cell</h1>
+  <p class="lede">The original idea -- Kubernetes for compute <em>and</em> attached hardware. Every board brings its sensors,
+  cores and memory; the hub on a PC presents them all as one machine; an integration layer lets any program see them the
+  way it usually sees resources. A discussion draft (<a href="BEYOND-M12.md">BEYOND-M12.md</a>), not built yet.</p>
+
+  <div class="flow">
+    <!-- 1. the cell -->
+    <section class="col cell">
+      <h2>1 · The cell: ESP32-S3 boards</h2>
+      <div class="cellbox">
+        <div class="card">
+          <h3>Board A <span class="small">· on the PC's cable</span></h3>
+          <span class="sensor">sensor → temperature</span>
+          <ul class="small">
+            <li>2 cores · 240 MHz</li><li>8 MB PSRAM · 16 MB flash</li>
+          </ul>
+        </div>
+        <div class="radio">⇅ radio (ESP-NOW) ⇅</div>
+        <div class="card">
+          <h3>Board B <span class="small">· on the house Wi-Fi</span></h3>
+          <span class="sensor">status LED</span><span class="sensor">room presence</span>
+          <ul class="small">
+            <li>2 cores · 8 MB PSRAM</li><li>Wi-Fi extender module</li>
+          </ul>
+        </div>
+        <div class="radio">⇅ radio (ESP-NOW) ⇅</div>
+        <div class="card">
+          <h3>Board C</h3>
+          <span class="sensor">room presence</span>
+          <ul class="small">
+            <li>2 cores, lent when idle</li><li>8 MB PSRAM · 16 MB flash</li>
+          </ul>
+        </div>
+      </div>
+      <p class="small">Up to 20 boards in a cell. Each board's resources are reachable from every other board.</p>
+    </section>
+
+    <div class="link"><div class="bar both"></div><span>serial cable</span></div>
+
+    <!-- 2. the hub and the presentation -->
+    <section class="col hub">
+      <h2>2 · The PC on the house network</h2>
+      <div class="card">
+        <h3>The hub</h3>
+        <p class="small" style="margin:0">One program on the PC owns the cable to the cell, follows everything that happens in it,
+        and keeps running whether or not anyone is looking.</p>
+      </div>
+      <div class="present">
+        <h3>Resource presentation</h3>
+        <p class="small" style="margin:0 0 4px">The whole cell, seen as one machine -- what Kubernetes' API server is to a cluster.</p>
+        <div class="kinds">
+          <b>Nodes</b><b>Resources</b><b>Capacity</b><b>Apps</b><b>Actors</b><b>Modules</b><b>Integrations</b><b>Clients</b><b>Events</b>
+        </div>
+        <p class="small" style="margin:0">Every value with its age and quality -- never a bare number. What is used, what is free,
+        what runs where, what talks to what.</p>
+      </div>
+      <div class="card">
+        <h3>The cell keeps running without it</h3>
+        <p class="small" style="margin:0">PC asleep, hub stopped, dashboard closed: the boards carry on, and the hub catches up.</p>
+      </div>
+    </section>
+
+    <div class="link"><div class="bar both"></div><span>one API</span></div>
+
+    <!-- 3. the integration layer -->
+    <section class="col">
+      <h2>3 · Integration layer</h2>
+      <div class="intlayer">
+        <h3>Adapters on the API</h3>
+        <ul class="small">
+          <li>each resource named in the other program's own terms</li>
+          <li>age and quality kept: "unavailable", not a stale number</li>
+          <li>writes only where the package allows; never a deploy</li>
+          <li>chosen per cell, like an app -- on the PC, or on a board when it must be</li>
+          <li>its own state shown on the dashboard</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="link"><div class="bar both"></div><span>their usual way</span></div>
+
+    <!-- 4. programs -->
+    <section class="col clients">
+      <h2>4 · Programs that use the cell</h2>
+      <div class="card">
+        <h3>Dashboard <span class="tag">first</span></h3>
+        <span class="small">Monitor everything -- on a desk or a phone.</span>
+      </div>
+      <div class="card ha">
+        <h3>Home Assistant <span class="tag">first integration</span></h3>
+        <span class="small">The LED is a light, the sensor a sensor, presence a binary sensor -- on its phone app too.</span>
+      </div>
+      <div class="card">
+        <h3>MQTT tools</h3>
+        <span class="small">Every resource as a topic, for anything that speaks MQTT.</span>
+      </div>
+      <div class="card">
+        <h3>Your own programs</h3>
+        <span class="small">Read, watch and write the cell from any language.</span>
+      </div>
+      <div class="card idea"><h3>Flow tools <span class="tag">idea</span></h3><span class="small">wire resources into automations</span></div>
+      <div class="card idea"><h3>Charts and data <span class="tag">idea</span></h3><span class="small">history of every resource</span></div>
+      <div class="card idea"><h3>Robots, workshops, labs <span class="tag">idea</span></h3><span class="small">controllers that use the boards' pins and sensors</span></div>
+      <div class="card idea"><h3>Cloud services <span class="tag">idea</span></h3><span class="small">reports out, never commands in</span></div>
+    </section>
+  </div>
+
+  <div class="gateway">
+    <h3>And with no PC at all</h3>
+    <span class="small">Board B is already on the house Wi-Fi. With a gateway module chosen for it, it connects out to the
+    house's MQTT broker and presents the whole cell to Home Assistant by itself -- the same devices, the same names. Turn the PC
+    back on and the hub takes over again.</span>
+  </div>
+
+  <div class="rules">
+    <div class="card"><b>One presentation, many viewers.</b> Ten phones and three integrations cost the boards what one hub costs:
+    the hub asks the cell once and serves them all.</div>
+    <div class="card"><b>Small boards, chosen modules.</b> An ESP32-S3 has little memory to spare, so a cell carries only the
+    integration modules its owner picks -- and the dashboard shows each one as on, idle or not there.</div>
+    <div class="card"><b>The owner stays in charge.</b> Only the owner's signed package changes what the boards do. Other
+    programs read, and write only what the package allows.</div>
+  </div>
+
+  <footer>Potluck -- S3 Edition. Board figures are the test cell's (ESP32-S3-DevKitC-1 N16R8). Up to 20 boards in a radio
+  cell. Everything in columns 2-4 is a proposal under discussion.</footer>
+</main>
+</body>
+</html>
