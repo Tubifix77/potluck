@@ -627,6 +627,18 @@ def send_package(b, node: int, img: bytes, counter: int, digest8: bytes, log) ->
 
 # ---- what each board should run ------------------------------------------------------------------------
 
+def _outputs(m, spec, a, nodes: list[int]) -> list[str]:
+    """The paths a module's descriptor says an actor publishes ({node}, {actor} filled in)."""
+    if spec is None or not spec.outputs:
+        return []
+    out = []
+    for t in spec.outputs:
+        t = t.replace("{actor}", a.name)
+        for n in (nodes if "{node}" in t else [None]):
+            out.append(f"potluck://{m.system}/" + (t.replace("{node}", f"node-{n:04x}") if n is not None else t))
+    return out
+
+
 def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
     """(pinned actors per board, portable actors in the cell, output paths to read back)."""
     from . import deploy as dp
@@ -646,13 +658,18 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
         elif a.module == "builtin:ticker" or (spec is not None and spec.placement == "portable"):
             portable += 1
             reads.append(rc.output_path(m, a))
+            reads += _outputs(m, spec, a, [])
         elif spec is not None and spec.placement == "every":
             for n in boards:
                 pinned[n] += 1
+            reads += _outputs(m, spec, a, boards)
         else:
             node = m.placement_of(a)
             if node in pinned:
                 pinned[node] += 1
+            if a.module == "builtin:die_temp" and node is not None:
+                reads.append(dp.die_temp_path(m.system, node))
+            reads += _outputs(m, spec, a, [node] if node is not None else [])
     if m.system != "lab":
         for n in boards:
             pinned[n] += 1  # the cluster-name actor
@@ -731,6 +748,19 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             print(f"REFUSED, nothing changed: the board on the cable (0x{cabled:04x}) is not in the cluster file")
             return 2
         times["inventory"] = time.monotonic() - t0
+        if fwb is not None:
+            need = [n for n in boards if inv[n] is None or inv[n].elf_sha != fwb.elf_sha[:8]]
+            log("plan: firmware " + (f"{fwb.version} to " + ", ".join(f"0x{n:04x}" for n in need) if need
+                                     else "unchanged on every board"))
+        if pkg is not None:
+            now = sorted({x for st in inv.values() if st is not None for x in st.actors})
+            log(f"plan: package '{c.system}' replaces what runs now ({', '.join(now) or 'nothing'}) with "
+                f"{', '.join(a.name + ' (' + a.module + ')' for a in pkg.manifest.actors)}")
+            runs_guest = "guest" in now
+            has_guest = any(a.module.startswith("guest:") for a in pkg.manifest.actors)
+            if runs_guest != has_guest or (has_guest and not all(st is not None and st.pkg_counter for st in inv.values())):
+                log("plan: the cell's guests change (a guest's code is never changed in place), so every board "
+                    "reboots into the package, on trial")
         if plan_only:
             print("plan only: nothing changed")
             return 0
@@ -774,6 +804,9 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                 if bad:
                     print("FAILED: no inventory after the firmware from " + ", ".join(f"0x{n:04x}" for n in bad))
                     return 1
+                # What the package step does is measured from here: the firmware's reboots are reported above.
+                uptime0 = {n: inv[n].uptime_s for n in boards}
+                reboots_expected.clear()
             else:
                 log(f"firmware: every board already runs {fwb.version}")
 

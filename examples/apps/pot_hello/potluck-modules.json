@@ -6,6 +6,7 @@
       "module": "ext:hello/peers",
       "type": 240,
       "placement": "every",
+      "outputs": ["{node}/hello/peers"],
       "config": [
         {"name": "system_prefix", "kind": "system_prefix"},
         {"name": "period_ms", "kind": "u16", "default": 5000, "min": 1000, "max": 60000}

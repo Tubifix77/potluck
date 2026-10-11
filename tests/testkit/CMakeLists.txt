@@ -6,7 +6,7 @@
 #
 #   cmake_minimum_required(VERSION 3.20)
 #   project(my_app_tests CXX)
-#   set(POTLUCK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../potluck" CACHE PATH "a Potluck checkout")
+#   set(POTLUCK_DIR "$ENV{POTLUCK_DIR}" CACHE PATH "a Potluck checkout")   # or -DPOTLUCK_DIR=<checkout>
 #   add_subdirectory("${POTLUCK_DIR}/tests/testkit" potluck_testkit)
 #   enable_testing()
 #   potluck_app_test(my_app_tests

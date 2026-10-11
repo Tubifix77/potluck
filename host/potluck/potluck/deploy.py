@@ -458,3 +458,58 @@ def package_digest8(m: Manifest) -> bytes:
 
 def manifest_digest(m: Manifest) -> str:
     return hashlib.sha256(m.canonical_bytes()).hexdigest()
+
+
+def declarations(img: bytes) -> list[bytes]:
+    """M12: each actor's declaration in a node image -- node u16 (little-endian), type u8, length u8, config --
+    the bytes a board's registration row is handed, and what a test kit rig takes (Rig::declare_bytes)."""
+    _, _, count, _, _, _, body_len = struct.unpack_from("<IBBHI8sI", img)
+    out, at = [], IMAGE_HEADER_LEN
+    for _ in range(count):
+        n = 4 + img[at + 3]
+        out.append(img[at:at + n])
+        at += n
+    return out
+
+
+def main(argv: list[str] | None = None) -> int:
+    """python -m potluck.deploy decl <manifest> [--modules <descriptor>]... [--actor <name>] [--guests <dir>]
+
+    Prints each actor's declaration bytes (hex, and as a C++ array) -- the bytes to test a row with."""
+    import argparse
+    import sys
+
+    from . import modules as mods
+    from .manifest import load
+
+    ap = argparse.ArgumentParser(prog="potluck.deploy")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    d = sub.add_parser("decl", help="each actor's declaration bytes, for a test")
+    d.add_argument("manifest")
+    d.add_argument("--modules", action="append", default=[])
+    d.add_argument("--actor", default=None)
+    d.add_argument("--guests", default=None)
+    a = ap.parse_args(argv)
+    try:
+        for path in a.modules:
+            mods.load(path)
+        m = load(a.manifest)
+        decls = declarations(compile_image(m, 1, a.guests))
+    except (DeployError, mods.ModuleError, OSError, ValueError) as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 2
+    names = [x.name for x in m.actors]
+    if m.system != "lab":
+        names.append("(cluster name)")
+    for name, b in zip(names, decls):
+        if a.actor and name != a.actor:
+            continue
+        node, typ, n = struct.unpack_from("<HBB", b)
+        print(f"{name}: node 0x{node:04x}, type 0x{typ:02x}, {n} config bytes")
+        print(f"  {b.hex()}")
+        print("  const uint8_t kDecl[] = {" + ", ".join(f"0x{x:02x}" for x in b) + "};")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

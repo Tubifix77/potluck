@@ -92,6 +92,7 @@ lights its status LED cyan while it sees none. Read its four files in this order
   ```json
   {"component": "pot_hello", "types": [240, 255],
    "modules": [{"module": "ext:hello/peers", "type": 240, "placement": "every",
+                "outputs": ["{node}/hello/peers"],
                 "config": [{"name": "system_prefix", "kind": "system_prefix"},
                            {"name": "period_ms", "kind": "u16", "default": 5000, "min": 1000, "max": 60000}]}]}
   ```
@@ -221,6 +222,9 @@ Poll the minimum: ~70 reads a second pushed the heartbeat's 99th-percentile roun
 - **STALE carries a value.** Under the default "informative" policy, `Reading::get_f32()` returns true for a
   STALE reading too -- the value with its true age. If an old value must not count, check
   `reading.quality == Quality::Good` yourself.
+- **Before the producer exists:** `node.read()` returns `NsError::NotFound` until some actor (or the image, for
+  another node's output) has declared the resource -- the order actors start in on a board is the image's, and
+  is not a contract. Treat NotFound like NO_DATA: skip this period, read again next.
 - **Units:** `Unit::None` when the unit has no code (degrees per minute, say); say the unit in the output's name.
 
 ### Checkpoints (portable actors)
@@ -270,9 +274,14 @@ it (the task watchdog watches the idle task).
 ```json
 {"component": "<directory name>", "types": [first, last],
  "modules": [{"module": "ext:<app>/<actor>", "type": <n>, "placement": "pinned|every|portable",
+              "outputs": ["{node}/<app>/<output>"],
               "config": [{"name": "...", "kind": "...", "default": ..., "min": ..., "max": ...}]}]}
 ```
 
+- **`outputs`** (optional, but give it): the paths an actor of the module publishes, under `potluck://<system>/`,
+  with `{node}` for `node-<id>` of the node it runs on and `{actor}` for its name -- `"{node}/hello/peers"`,
+  `"act/{actor}/out"`. `potluck apply` reads every one back before it says VERIFIED; an output it is not told
+  about it cannot check.
 - **Config kinds:** `u8 u16 u32 i8 i16 i32 f32 bool`; `path` (a namespace path, sent as its 32-bit hash);
   `node` (a node id or a label from the manifest); `system_prefix` (no value: the hash state after
   `potluck://<system>/`). Fields are encoded little-endian in the order listed; `min`/`max` are enforced on
@@ -316,6 +325,9 @@ others into the owner's one package (below):
     {"path": "potluck://lab/node-7368/hw/die_temp", "unit": "celsius", "kind": "sampled",
      "access": "read", "latency_class": 4, "staleness_bound_ms": 5000}]}
   ```
+  This holds for a pinned actor reading a built-in on its own board too: `builtin:die_temp` on node 0x8160 is
+  `potluck://<system>/node-8160/hw/die_temp`, and an actor that reads it lists it in `needs`, with the board's
+  `owns` declaring it (as above). A package with no actor reading it needs no `owns` for it.
 - **`pin`** -- a hand-written override for where it runs.
 - **`config`** -- plain values (numbers, booleans, strings), checked against the descriptor.
 - **Built-in modules** you can put in the same manifest (rules in `host/potluck/potluck/deploy.py`):
@@ -347,7 +359,7 @@ others into the owner's one package (below):
 ## 7. Building, rolling out, deploying: `potluck apply`
 
 A cluster file says what the cell should be; `apply` makes it so. From `host/potluck/`, with the ESP-IDF Python
-(it has `pyserial`):
+(it has `pyserial`), in any shell (PowerShell or Git Bash):
 
 ```
 python -m potluck.apply <cluster.json> --plan       # check everything, change nothing
@@ -375,7 +387,7 @@ paths are relative to the file):
 | `port` | the serial port of the PC's adapter, wired to one of the boards (`--port` overrides it) |
 | `boards` | every board: its node id in hex (the last two bytes of its MAC) and a label |
 | `keys` | the owner's CA certificate and deploy key ([GETTING-STARTED.md](GETTING-STARTED.md) makes them) |
-| `firmware` | Potluck at a commit (`potluck`), extra Kconfig lines (`extra`), the extender if a board should be one (`extender`: its repository and commit) -- or `{"image": ..., "elf": ...}` for a build made elsewhere, or `null` to leave the firmware alone |
+| `firmware` | Potluck at a commit (`potluck`), extra Kconfig lines (`extra`), and `extender` if a board should be a Wi-Fi extender: `{"git": ..., "rev": ..., "components": "firmware/components"}`, like an app. Every board gets the same image; a board becomes an extender only if it holds Wi-Fi credentials, the others are ordinary members. Or `{"image": ..., "elf": ...}` for a build made elsewhere, or `null` to leave the firmware alone |
 | `apps` | each app: `git` (a local repository or a URL), `rev` (a commit or a tag), `components` (built into the firmware; every `potluck-modules.json` under it is loaded), `manifests` (its fragments) |
 | `package` | more fragments (`"manifests": [path, or {"manifest": path, "root": dir for its relative paths}]`), more descriptors (`"modules"`), and `guests_root` |
 | `verify` | `timeout_s`, and `read`: more paths to read back |
@@ -386,7 +398,9 @@ What `apply` does, in order:
    the descriptors, composes and compiles the package (every actor's config checked, every guest's author
    signature checked under the cluster CA), finds the keys, builds the firmware -- or reuses the cached build of
    the same firmware sources, so a commit that changes only documents or host tools sends nothing to the boards --
-   and reads every board's inventory. Any problem stops it here, saying why: `REFUSED, nothing changed: ...`
+   and reads every board's inventory, then says what it would change: which boards get firmware, what runs now
+   and what the package replaces it with, and whether the boards must reboot for it. Any problem stops it here,
+   saying why: `REFUSED, nothing changed: ...`
    (exit code 2). A firmware image larger than its 2 MB update slot, a package over the node image's limits, a
    guest whose signature does not verify, a type number two apps share, a board that does not answer -- all
    stop here.
@@ -399,8 +413,10 @@ What `apply` does, in order:
    board that crashes on it reverts by itself. Only a change to a guest's code needs a reboot, and the board does
    that itself. A board that was off gets the package from a peer when it comes back.
 4. **Verify**: every board confirmed on the package, with the actors the package gives it; every portable actor
-   running once in the cell; every output the package names (and `verify.read`) read back GOOD -- not just with
-   a value: a fresh actor that learns before it publishes gets until `timeout_s`. Then a report: what each step
+   running once in the cell; every output read back GOOD -- not just with a value; a fresh actor that learns
+   before it publishes gets until `timeout_s`. The outputs it reads are the ones it can know: each node's `owns`,
+   the built-ins' (`die_temp`, a ticker's, a guest's), the paths your descriptor lists in `outputs` (section 5)
+   and any in `verify.read`. An app whose descriptor lists none is not checked beyond "it runs". Then a report: what each step
    took, which boards took the package live, and which rebooted. `VERIFIED` (exit 0) or `NOT VERIFIED` and why
    (exit 1).
 
@@ -415,7 +431,10 @@ board rebooting, the guest's count carrying on; a fresh firmware build adds abou
   will not build.
 - **See it run:** `python -m potluck.ctl --port COM6 --node <cabled board> watch potluck://<system>/act/<name>/<output>`
   reads an output once a second, with its age and quality; `--count N` stops after N reads; `--system` names the
-  cluster for shorthand paths.
+  cluster for shorthand paths. The first read of another board's output is often NO_DATA or STALE: the cabled
+  board answers from its copy and refreshes the copy as it does (section 4), so the next read is fresh.
+- **Removing every app's actors but yours** is what a cluster file with only your app does: one package per
+  cluster. To add your app to a cell that runs others, add it to that cell's cluster file beside them.
 - **The tools underneath** are still there for one step at a time: `potluck.fw` (firmware over the cell),
   `potluck.signing` and `potluck.ctl deploy` (a package), `potluck.reconcile` (where portable actors would run).
   M0-RUNBOOK.md shows them.
@@ -466,14 +485,20 @@ refuses the pair by name.
 
   TEST(my_app, publishes_after_one_period) {
       pot::testkit::Rig rig;                      // node 0x0100 in cluster "lab", the clock at 0
-      CHECK(rig.declare_bytes(kDecl, sizeof(kDecl)));  // the bytes the host compiles for your actor
+      CHECK(rig.declare_bytes(kDecl, sizeof(kDecl)));  // your actor's declaration (below)
       CHECK(rig.start(my::row()));                // your row's check(), create(), start()
       rig.advance(1000);                          // 1000 ms, ticking the actor every millisecond
       CHECK(rig.read("potluck://lab/node-0100/my/out").quality == pot::Quality::Good);
   }
   ```
 
-  Run it with `POTLUCK_DIR` set to your Potluck checkout. On Windows Potluck's script finds CMake, Ninja and a
+  The declaration is what the host compiles for one actor -- node `u16` (little-endian), type `u8`, config length
+  `u8`, then the config -- and Potluck prints it for your manifest, ready to paste:
+  `python -m potluck.deploy decl <manifest> --modules <your descriptor> [--actor <name>]`. A **pinned** actor's
+  declaration carries its pin, so build the rig as that node -- `pot::testkit::Rig rig(0x8160);` -- and read its
+  outputs under `node-8160`; the default node, 0x0100, suits an every-node actor.
+
+  Run it with `POTLUCK_DIR` set to your Potluck checkout (an environment variable, or `-DPOTLUCK_DIR=` to CMake). On Windows Potluck's script finds CMake, Ninja and a
   compiler for you: `tools\run_host_tests.ps1 -Source <your repo>\tests -BuildDir <your repo>\build\tests`; elsewhere
   `cmake -S tests -B build && cmake --build build && ctest --test-dir build`. `rig.feed(path, value, type)`
   publishes an input as another actor would; `rig.start(row, &why, true)` gives a portable actor the checkpoint
@@ -488,7 +513,7 @@ refuses the pair by name.
   `python -m potluck.reconcile <manifest> --modules <descriptor>`.
 - **On the boards.** Record consoles with `tools/json_capture.py <port> <file> <seconds>` (JSON lines only --
   use it on any board that holds Wi-Fi credentials) or `tools/console_tap.py` (everything, without resetting
-  the board). Read the first ten minutes of any long run with your report tool before trusting the rest.
+  the board). CTest counts one test per executable; the kit's own output lists every case. Read the first ten minutes of any long run with your report tool before trusting the rest.
   **Count deaths from the `peer_dead` events, never from sampled state.** Test with at least three boards: two
   hide multi-node bugs. Reboot each board in turn -- passive-sensor's reboot tests found four Potluck faults.
 - **Run the cheapest experiment that can kill the idea first**, with its kill criterion written down

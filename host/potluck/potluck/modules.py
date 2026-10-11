@@ -19,6 +19,9 @@ its hash); "node" (a node id or label); "system_prefix" (no value: the FNV-1a st
 
 Types: 0x00-0x7F are Potluck's built-ins; 0x80-0xFF are external, given out in blocks of 16
 (the table in DEVELOPING-APPS.md, section 5). 0xF0-0xFF is Potluck's own block, for examples and tests.
+
+M12: a module may list its ``outputs`` -- paths under ``potluck://<system>/`` with ``{node}`` (``node-<id>`` of
+the node it runs on) and ``{actor}`` (the actor's name) -- and ``potluck apply`` reads each one back.
 """
 
 from __future__ import annotations
@@ -56,6 +59,9 @@ class ModuleSpec:
     placement: str
     fields: tuple[Field, ...]
     component: str
+    # M12: the outputs an actor of this module publishes, for `potluck apply` to read back: paths under
+    # potluck://<system>/, with {node} for "node-<id>" (the node it runs on) and {actor} for the actor's name.
+    outputs: tuple[str, ...] = ()
 
 
 _REGISTRY: dict[str, ModuleSpec] = {}
@@ -107,6 +113,11 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
         if not isinstance(m, dict):
             raise ModuleError(f"{w}: must be an object")
         name, typ, place, cfg = m.get("module"), m.get("type"), m.get("placement"), m.get("config", [])
+        outs = m.get("outputs", [])
+        if not isinstance(outs, list) or not all(isinstance(o, str) and o and not o.startswith("potluck://")
+                                                 for o in outs):
+            raise ModuleError(f"{w}: 'outputs' must be a list of paths under potluck://<system>/, "
+                              f"such as \"{{node}}/my/out\" or \"act/{{actor}}/out\"")
         if not isinstance(name, str) or not name.startswith("ext:"):
             raise ModuleError(f"{w}: 'module' must be a name starting with 'ext:'")
         if not isinstance(typ, int) or not types[0] <= typ <= types[1]:
@@ -121,7 +132,7 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
             if not isinstance(f, dict) or not isinstance(f.get("name"), str) or f.get("kind") not in _KINDS:
                 raise ModuleError(f"{fw}: needs a name and a kind, one of {sorted(_KINDS)}")
             fields.append(Field(f["name"], f["kind"], f.get("default"), f.get("min"), f.get("max")))
-        out.append(ModuleSpec(name, typ, place, tuple(fields), comp))
+        out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs)))
     return out
 
 

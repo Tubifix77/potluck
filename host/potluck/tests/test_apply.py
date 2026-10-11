@@ -159,6 +159,27 @@ class Presets(unittest.TestCase):
                     dp.compile_image(m, 1)
 
 
+class AppOutputs(unittest.TestCase):
+    """The blind reader's run (2026-10-11): verify read nothing of an app whose output the board builds itself.
+    A descriptor's `outputs` now name them, and `apply` reads each one back."""
+
+    def tearDown(self):
+        mods.clear()
+
+    def test_the_hello_apps_output_is_read_back_on_every_board(self):
+        mods.clear()
+        mods.load(str(ROOT / "examples" / "apps" / "pot_hello" / "potluck-modules.json"))
+        m = mf.load(str(ROOT / "examples" / "apps" / "hello.json"))
+        _, _, reads = ap.expected(m, [0x6300, 0x7368])
+        self.assertEqual(reads, ["potluck://lab/node-6300/hello/peers", "potluck://lab/node-7368/hello/peers"])
+
+    def test_the_declaration_helper_gives_the_bytes_a_rig_takes(self):
+        mods.clear()
+        mods.load(str(ROOT / "examples" / "apps" / "pot_hello" / "potluck-modules.json"))
+        img = dp.compile_image(mf.load(str(ROOT / "examples" / "apps" / "hello.json")), 1)
+        self.assertEqual([d.hex() for d in dp.declarations(img)], ["fffff006271139618813"])
+
+
 class BiggerCell(unittest.TestCase):
     def test_a_portable_actor_gets_the_best_eight_of_twelve(self):
         nodes = [{"node_id": 0x100 + i, "label": f"n{i}"} for i in range(12)]
