@@ -167,7 +167,7 @@ plugin -- and are off by default. A part is basic only if every cell needs it an
 | part | where | class | why |
 |---|---|---|---|
 | module plumbing: a descriptor's `requires`, each module's cost in `apply --plan`, the module list and states in `NODE_STATUS` (M13) | host tools; a few bytes on a board | **basic** | it is what makes everything below optional: without it nobody can see or choose what a board carries |
-| telemetry responder (M15) | every board | **basic** | answers only the cell's own enrolled hub, over the authenticated cell, at the rate the hub asks; costs nothing when nobody asks |
+| telemetry responder (M15) | a board, when the cell has a hub | **optional -- filler** without a hub | the minimal case (below) never asks for it; it answers only the cell's own enrolled hub, at the rate the hub asks. Basic only if its built-in cost is measured near zero |
 | the hub (M14), listening on the PC itself only | a PC | **basic** for anyone with a PC (Potluck's own tools become its clients) | costs the boards nothing; reachable from nowhere but the PC by default |
 | the integration interface (M18) | the hub | **basic** | an interface, not an integration: it does nothing until an integration is added |
 | the gateway module (M13) | one board on a Wi-Fi network | **optional -- a security liability** | it opens a path from a house network into the cell and needs Wi-Fi and broker credentials on a board; costs internal RAM the board barely has |
@@ -180,6 +180,17 @@ plugin -- and are off by default. A part is basic only if every cell needs it an
 
 Already true before M13, and kept: the extender (poor-mans-extender) and the room sensor (passive-sensor) are apps a
 cell chooses, and M7's sandbox is a firmware option (`CONFIG_POT_WASM`, off by default) -- the same pattern.
+
+**The min/max test (the owner, 2026-10-11).** Each part was checked against two real cells. *Minimal:* two boards on the
+home network, both detecting whether plants are watered, one of them also the Wi-Fi extender. *Maximal:* a
+multifunction platform -- three detectors, often idle and lending their cores to Monte Carlo jobs (M9), lightbulbs in
+Home Assistant, large reports to the dashboard, surveillance software reading the cell. The classes above are the
+result; three things changed because of it. **Telemetry** is optional, not basic: the minimal cell has no hub to ask for
+it. **The gateway's cost** is measured on the minimal cell's tightest board -- the extender, an app and the gateway
+together -- since that is where a PC-less owner sees "plant dry" on a phone (M13). **The maximal cell needs two things
+nothing else settled:** how much history and how large a report the hub keeps (M16), and how much an outside program --
+surveillance software, say -- may pull from the cell, so one client cannot load the radio for everyone (M18). Note too
+what the minimal cell shows about a PC: it needs one to be set up (`apply` deploys through a PC's cable), never to run.
 
 ### What must not change
 
