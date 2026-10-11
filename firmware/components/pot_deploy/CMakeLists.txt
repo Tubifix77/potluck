@@ -2,7 +2,7 @@
 # deploy_esp.cpp is the flash/NVS backend and builds only here. M11: fw.cpp is portable too, and
 # fw_esp.cpp is its OTA backend.
 idf_component_register(
-  SRCS "src/deploy.cpp" "src/deploy_esp.cpp" "src/fw.cpp" "src/fw_esp.cpp"
+  SRCS "src/deploy.cpp" "src/deploy_esp.cpp" "src/fw.cpp" "src/fw_esp.cpp" "src/node_status.cpp"
   INCLUDE_DIRS "include"
   REQUIRES esp_partition nvs_flash spi_flash monocypher app_update
 )

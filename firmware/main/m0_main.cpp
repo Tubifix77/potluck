@@ -45,6 +45,7 @@
 #endif
 #include "pot/espnow_port.hpp"
 #include "pot/node.hpp"
+#include "pot/node_status.hpp"
 #include "pot/opcodes.hpp"
 #include "pot/reconcile.hpp"
 #include "pot/actor.hpp"
@@ -117,7 +118,7 @@ bool g_no_radio = false;
 StaticTask_t g_link_tcb;
 // 5 KB since M5 step 4: every unicast frame is tagged and checked here (HMAC-SHA-512, ~0.4 KB of
 // stack); the heavier Ed25519/X25519 work goes to the crypto worker instead (run_heavy).
-StackType_t g_link_stack[5120 / sizeof(StackType_t)];
+StackType_t g_link_stack[6656 / sizeof(StackType_t)];  // M12: +1.5 KB, a live package change runs here
 TaskHandle_t g_link_handle = nullptr;
 // M5: the lowest free stack the crypto worker (the console task) has had after a job, in bytes.
 uint32_t g_heavy_stack_free_min = 0;
@@ -352,7 +353,158 @@ void save_if_with_cell(uint8_t ch, size_t radio_peers_alive) {
     }
     nvs_close(h);
 }
+// M12: the relay setting (ADR-009) outlives a reboot: `POT! relay 1` once, and the board keeps relaying.
+uint8_t relay_load() {
+    nvs_handle_t h;
+    uint8_t v = 0;
+    if (nvs_open(kNs, NVS_READONLY, &h) != ESP_OK) return 0;
+    if (nvs_get_u8(h, "relay", &v) != ESP_OK) v = 0;
+    nvs_close(h);
+    return v;
+}
+void relay_save(bool on) {
+    nvs_handle_t h;
+    if (nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_u8(h, "relay", on ? 1 : 0);
+    nvs_commit(h);
+    nvs_close(h);
+}
 }  // namespace chan_store
+
+// M12: portable actors' checkpoints in NVS, so a whole-cell power cut does not lose them. The reconciler
+// asks at most once per interval per actor, and only for a checkpoint that changed; the write itself is
+// queued here and done by the stats task, because NVS can take milliseconds and the reconciler runs on
+// the link task. Blob per actor, key "k<out_hash>": term u32, seq u32, then the checkpoint bytes.
+namespace ck_persist {
+constexpr const char* kNs = "pot_ck";
+struct Pending {
+    bool used = false;
+    uint32_t key = 0, term = 0, seq = 0;
+    uint8_t len = 0;
+    uint8_t data[kMaxCheckpoint];
+};
+EXT_RAM_BSS_ATTR Pending g_q[kMaxPortable];  // under g_mutex
+bool g_retain_due = false;
+uint32_t g_retain[kMaxPortable];
+size_t g_retain_n = 0;
+uint32_t g_writes = 0;       // NVS writes done this boot (the wear figure)
+uint32_t g_write_errors = 0;
+
+void key_name(char* out, uint32_t key) { std::snprintf(out, 12, "k%08x", static_cast<unsigned>(key)); }
+
+bool write(void*, uint32_t key, uint32_t term, uint32_t seq, const uint8_t* data, size_t len) {
+    if (len > kMaxCheckpoint) return false;
+    Pending* free_slot = nullptr;
+    for (Pending& p : g_q) {
+        if (p.used && p.key == key) { free_slot = &p; break; }
+        if (!p.used && free_slot == nullptr) free_slot = &p;
+    }
+    if (free_slot == nullptr) return false;
+    free_slot->used = true;
+    free_slot->key = key;
+    free_slot->term = term;
+    free_slot->seq = seq;
+    free_slot->len = static_cast<uint8_t>(len);
+    std::memcpy(free_slot->data, data, len);
+    return true;
+}
+
+// Read back at boot only (the reconciler's first load, on app_main's stack): an actor a live change adds
+// is new to the package, and NVS on the link task's stack is not worth the bytes.
+bool g_boot_reads = true;
+
+bool read(void*, uint32_t key, uint32_t* term, uint32_t* seq, uint8_t* out, size_t cap, size_t* len) {
+    if (!g_boot_reads) return false;
+    nvs_handle_t h;
+    if (nvs_open(kNs, NVS_READONLY, &h) != ESP_OK) return false;
+    char name[12];
+    key_name(name, key);
+    uint8_t buf[8 + kMaxCheckpoint];
+    size_t n = sizeof(buf);
+    const bool ok = nvs_get_blob(h, name, buf, &n) == ESP_OK && n >= 8 && n - 8 <= cap;
+    nvs_close(h);
+    if (!ok) return false;
+    std::memcpy(term, buf, 4);
+    std::memcpy(seq, buf + 4, 4);
+    std::memcpy(out, buf + 8, n - 8);
+    *len = n - 8;
+    return true;
+}
+
+void retain(void*, const uint32_t* keys, size_t n) {
+    g_retain_n = std::min(n, kMaxPortable);
+    std::memcpy(g_retain, keys, sizeof(uint32_t) * g_retain_n);
+    g_retain_due = true;
+    for (Pending& p : g_q) {  // a queued write for an actor that is gone is dropped with it
+        bool kept = false;
+        for (size_t i = 0; i < g_retain_n && !kept; ++i) kept = g_retain[i] == p.key;
+        if (!kept) p.used = false;
+    }
+}
+
+const CheckpointPersist g_hook{nullptr, &write, &read, &retain, 60000};
+
+// From the stats task: take the queue under the mutex, then write without it.
+void flush() {
+    static Pending s_out[kMaxPortable];
+    static uint32_t s_keep[kMaxPortable];
+    size_t n_out = 0, n_keep = 0;
+    bool retain_due = false;
+    xSemaphoreTake(g_mutex, portMAX_DELAY);
+    for (Pending& p : g_q) {
+        if (p.used) { s_out[n_out++] = p; p.used = false; }
+    }
+    if (g_retain_due) {
+        retain_due = true;
+        g_retain_due = false;
+        n_keep = g_retain_n;
+        std::memcpy(s_keep, g_retain, sizeof(uint32_t) * n_keep);
+    }
+    xSemaphoreGive(g_mutex);
+    if (n_out == 0 && !retain_due) return;
+    nvs_handle_t h;
+    if (nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) {
+        ++g_write_errors;
+        return;
+    }
+    if (retain_due) {
+        nvs_iterator_t it = nullptr;
+        char gone[kMaxPortable][16];
+        size_t n_gone = 0;
+        for (esp_err_t e = nvs_entry_find("nvs", kNs, NVS_TYPE_BLOB, &it); e == ESP_OK && it != nullptr;
+             e = nvs_entry_next(&it)) {
+            nvs_entry_info_t info;
+            nvs_entry_info(it, &info);
+            bool keep = false;
+            for (size_t i = 0; i < n_keep && !keep; ++i) {
+                char name[12];
+                key_name(name, s_keep[i]);
+                keep = std::strcmp(name, info.key) == 0;
+            }
+            if (!keep && n_gone < kMaxPortable) {
+                std::strncpy(gone[n_gone], info.key, sizeof(gone[0]) - 1);
+                gone[n_gone][sizeof(gone[0]) - 1] = 0;
+                ++n_gone;
+            }
+        }
+        nvs_release_iterator(it);
+        for (size_t i = 0; i < n_gone; ++i) nvs_erase_key(h, gone[i]);
+    }
+    for (size_t i = 0; i < n_out; ++i) {
+        uint8_t buf[8 + kMaxCheckpoint];
+        std::memcpy(buf, &s_out[i].term, 4);
+        std::memcpy(buf + 4, &s_out[i].seq, 4);
+        std::memcpy(buf + 8, s_out[i].data, s_out[i].len);
+        char name[12];
+        key_name(name, s_out[i].key);
+        if (nvs_set_blob(h, name, buf, 8u + s_out[i].len) == ESP_OK) ++g_writes; else ++g_write_errors;
+    }
+    if (nvs_commit(h) != ESP_OK) ++g_write_errors;
+    nvs_close(h);
+}
+}  // namespace ck_persist
+
+void deploy_package_soon();  // M12, in deploy_rt below
 
 void hal_on_event(void*, const Event& e) {
     // The loud ones go to the log as they happen; all of them are in the event ring for the JSON
@@ -365,13 +517,16 @@ void hal_on_event(void*, const Event& e) {
             break;
         case EventKind::PeerRevived:
             ESP_LOGI(kTag, "peer 0x%04x revived", e.node_id);
+            deploy_package_soon();  // M12: it may have missed a package
             break;
         case EventKind::PeerRebooted:
             ESP_LOGW(kTag, "peer 0x%04x rebooted, epoch now %u", e.node_id,
                      static_cast<unsigned>(e.detail_a));
+            deploy_package_soon();
             break;
         case EventKind::PeerDiscovered:
             ESP_LOGI(kTag, "discovered peer 0x%04x", e.node_id);
+            deploy_package_soon();
             break;
         case EventKind::PeerLeft:
             ESP_LOGI(kTag, "peer 0x%04x left", e.node_id);
@@ -652,6 +807,8 @@ bool busy();
 void tick(uint32_t now);
 }  // namespace fw_rt
 
+extern const BoardServices g_board_services;  // below, with the background workers it names
+
 namespace deploy_rt {
 
 constexpr uint8_t kMaxTrialBoots = CONFIG_POT_TRIAL_MAX_BOOTS;
@@ -674,11 +831,17 @@ EXT_RAM_BSS_ATTR uint8_t g_rx_buf[kImageBufLen];  // M6: PSRAM when present; tas
 uint8_t* const g_image = g_rx_buf;
 DeployReceiver g_rx(g_store, g_rx_buf, sizeof(g_rx_buf));
 bool g_trial = false;            // running a pending slot, not yet confirmed
+uint32_t g_trial_base = 0;       // M12: heartbeats sent when the trial began (a live change starts one mid-boot)
 uint32_t g_reboot_at_ms = 0;     // 0 = no reboot scheduled
 uint16_t g_node_id = 0;
 // M6: the image's portable actors, handed to the reconciler once the node exists.
 EXT_RAM_BSS_ATTR PortableSpec g_portable[kMaxPortable];  // M8.1: any portable actor type
 size_t g_portable_n = 0;
+// M12: what is running, for the inventory: the package's counter and digest (0 = built-in behaviour).
+uint32_t g_pkg_counter = 0;
+uint8_t g_pkg_digest[8] = {};
+uint32_t g_live_applies = 0;     // packages taken without a reboot, this boot
+bool g_live = false;             // the commit being answered was applied live: no reboot after the push
 
 const char* slot_name(uint8_t s) { return s == kSlotA ? "A" : s == kSlotB ? "B" : "none"; }
 
@@ -696,6 +859,10 @@ bool load_and_apply(const char** why) {
         *why = "slot unreadable or fails its CRC";
         return false;
     }
+    // M12: a slot holds the whole signed stream (so it can be passed on to a board that was off); the
+    // image is its first part. A slot written before M12 holds the image alone, and its extent is all of it.
+    const size_t extent = image_extent(g_image, len);
+    if (extent != 0 && extent <= len) len = extent;
     DeployImage img{};
     if (!parse_image(g_image, len, img, why)) {
         return false;
@@ -736,6 +903,8 @@ bool load_and_apply(const char** why) {
         return false;
     }
     g_portable_n = portable_n;
+    g_pkg_counter = img.rollback_counter;
+    std::memcpy(g_pkg_digest, img.package_digest, sizeof(g_pkg_digest));
     ESP_LOGI(kTag, "deploy: image counter %u, digest %02x%02x%02x%02x..., %u actor(s) in the image",
              static_cast<unsigned>(img.rollback_counter), img.package_digest[0],
              img.package_digest[1], img.package_digest[2], img.package_digest[3],
@@ -776,6 +945,113 @@ void boot(uint16_t node_id) {
              static_cast<unsigned>(g_state.counter));
 }
 
+// ---- M12: a committed package taken without a reboot ---------------------------------------------
+// The slot is written and on trial exactly as before (pending, the fallback kept); what changes is only
+// that the running actors move to it in place: identical ones are kept (their state, their outputs), the
+// rest stop and their outputs leave the namespace, new ones start. The live run counts as the trial's
+// first boot, so a package that crashes the board gets no more boots than one that arrived by reboot,
+// and the trial still ends only after kTrialHeartbeats heartbeats from the moment it began.
+// Returns false, changing nothing, when the change cannot be live (a guest's code differs: the running
+// guests read it from the pool) -- the caller then reboots into the slot as before.
+EXT_RAM_BSS_ATTR PortableSpec g_portable_stage[kMaxPortable];
+
+size_t cell_nodes(uint16_t* ids) {
+    size_t n = 0;
+    ids[n++] = g_node_id;
+    for (size_t i = 0; i < PeerTable::capacity() && n < kMaxPeers + 1; ++i) {
+        const PeerLink& q = g_node->peers().slot(i);
+        if (q.state != PeerState::Free && std::memcmp(q.mac, kHostMac, kMacLen) != 0) ids[n++] = q.node_id;
+    }
+    return n;
+}
+
+void rec_create();  // after the board services exist, below
+
+bool apply_live(DeployStatus* refused) {
+    static DeployImage img;  // off the link task's stack, which this runs on
+    *refused = DeployStatus::Ok;
+    const char* why = "?";
+    const size_t extent = image_extent(g_rx.image(), g_rx.image_len());
+    if (extent == 0 || !parse_image(g_rx.image(), extent, img, &why)) return false;
+#if CONFIG_POT_WASM
+    if (!guest_library().same_guests(img)) {
+        ESP_LOGI(kTag, "deploy: the package changes a guest's code - rebooting into it");
+        return false;
+    }
+#else
+    if (img.guest_count > 0) return false;  // the reboot refuses it, the way it always has
+#endif
+    size_t portable_n = 0;
+#if CONFIG_POT_RECONCILER
+    size_t n_kinds = 0;
+    const ActorKind* kinds = app::actor_table(&n_kinds);
+    if (!collect_portable(img, kinds, n_kinds, g_portable_stage, kMaxPortable, portable_n, &why)) {
+        *refused = DeployStatus::BadImage;
+    }
+#else
+    for (uint8_t i = 0; i < img.actor_count; ++i) {
+        if (img.actors[i].node_id == kPortableNode) {
+            why = "portable actor, and this build has no reconciler (CONFIG_POT_RECONCILER)";
+            *refused = DeployStatus::BadImage;
+        }
+    }
+#endif
+    uint16_t ids[kMaxPeers + 1];
+    const size_t n_ids = cell_nodes(ids);
+    ActorRuntime::ReloadStats as;
+    if (*refused == DeployStatus::Ok &&
+        !g_actors.reload(img, g_node_id, g_actor_env, now_ms_(), ids, n_ids, &why, &as)) {
+        *refused = DeployStatus::BadImage;
+    }
+    if (*refused != DeployStatus::Ok) {
+        // Nothing changed; the slot just written is not what runs, so it must not be what boots either.
+        ESP_LOGE(kTag, "deploy: package counter %u refused (%s) - the running package stays",
+                 static_cast<unsigned>(img.rollback_counter), why);
+        revert_now(g_state);
+        save();
+        return false;
+    }
+    if (as.failed != nullptr) ESP_LOGE(kTag, "actors: %s could not start; dropped", as.failed);
+#if CONFIG_POT_RECONCILER
+    std::memcpy(g_portable, g_portable_stage, sizeof(PortableSpec) * portable_n);
+    g_portable_n = portable_n;
+    Reconciler::ReloadStats rs;
+    if (g_rec == nullptr) {
+        if (portable_n > 0) {
+            ck_persist::g_boot_reads = false;
+            rec_create();
+            g_rec->start(now_ms_());
+        }
+        rs.added = portable_n;
+    } else {
+        g_rec->reload(g_portable, g_portable_n, now_ms_(), &rs);
+    }
+#endif
+    g_state.trial_boots = 1;  // this run is the trial's first boot
+    save();
+    g_trial = true;
+    g_trial_base = g_node->tx_tally().beacons;
+    g_pkg_counter = img.rollback_counter;
+    std::memcpy(g_pkg_digest, img.package_digest, sizeof(g_pkg_digest));
+    ++g_live_applies;
+    std::printf("{\"t\":\"package_live\",\"node\":%u,\"counter\":%u,\"kept\":%u,\"stopped\":%u,\"started\":%u,"
+                "\"outputs_removed\":%u"
+#if CONFIG_POT_RECONCILER
+                ",\"portable_kept\":%u,\"portable_stopped\":%u,\"portable_added\":%u,\"portable_outputs_removed\":%u"
+#endif
+                "}\n",
+                static_cast<unsigned>(g_node_id), static_cast<unsigned>(img.rollback_counter),
+                static_cast<unsigned>(as.kept), static_cast<unsigned>(as.stopped), static_cast<unsigned>(as.started),
+                static_cast<unsigned>(as.outputs_removed)
+#if CONFIG_POT_RECONCILER
+                ,
+                static_cast<unsigned>(rs.kept), static_cast<unsigned>(rs.stopped), static_cast<unsigned>(rs.added),
+                static_cast<unsigned>(rs.outputs_removed)
+#endif
+    );
+    return true;
+}
+
 // ---- passing a committed image on to the peers (A's half of "one artifact per system") ----------
 struct Push {
     bool active = false;
@@ -788,6 +1064,7 @@ struct Push {
     uint8_t failed = 0;
     uint16_t requester = 0;
     uint16_t requester_msg = 0;
+    bool catchup = false;  // M12: this node's own package, sent to a peer that was off; nobody to answer
     DeployBegin begin{};
 };
 Push g_push;
@@ -826,6 +1103,12 @@ void push_chunk() {
 
 void push_finish() {
     g_push.active = false;
+    if (g_push.catchup) {
+        ESP_LOGI(kTag, "deploy: catch-up of counter %u to peer 0x%04x %s",
+                 static_cast<unsigned>(g_push.begin.rollback_counter), g_push.peers[0], g_push.ok ? "committed" : "failed");
+        g_push.catchup = false;
+        return;
+    }
     DeployReply r{};
     r.status = DeployStatus::Ok;
     r.slot = g_state.active;
@@ -837,10 +1120,10 @@ void push_finish() {
     uint8_t wire[kDeployReplyLen];
     store_deploy_reply(r, wire, sizeof(wire));
     g_node->send_reply_raw(g_push.requester, g_push.requester_msg, wire, sizeof(wire));
-    ESP_LOGI(kTag, "deploy: passed on to %u peer(s), %u failed; rebooting into slot %s",
+    ESP_LOGI(kTag, "deploy: passed on to %u peer(s), %u failed; %s slot %s",
              static_cast<unsigned>(g_push.ok), static_cast<unsigned>(g_push.failed),
-             slot_name(g_state.active));
-    schedule_reboot();
+             g_live ? "running, live, on trial:" : "rebooting into", slot_name(g_state.active));
+    if (!g_live) schedule_reboot();
 }
 
 void push_next_peer() {
@@ -855,6 +1138,17 @@ void on_result(void*, uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, c
                uint16_t len) {
     if (is_fw_opcode(op)) {
         fw_rt::on_result(peer, msg, op, timed_out, p, len);
+        return;
+    }
+    if (op == kOpNodeStatus) {  // M12: a proxied inventory reply
+        if (g_status_proxy.awaiting == 0 || msg != g_status_proxy.awaiting || peer != g_status_proxy.target) return;
+        const StatusProxy sp = g_status_proxy;
+        g_status_proxy = StatusProxy{};
+        if (timed_out || p == nullptr || len == 0) {
+            status_unreachable(sp.requester, sp.requester_msg, sp.target);
+        } else {
+            g_node->send_reply_raw(sp.requester, sp.requester_msg, p, len);
+        }
         return;
     }
     if (!g_push.active || g_push.idx >= g_push.count || peer != g_push.peers[g_push.idx] ||
@@ -884,10 +1178,130 @@ void on_result(void*, uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, c
     }
 }
 
+// ---- M12: catch-up -- a package reaching a board that was off when it was deployed ----------------
+// Every minute, and soon after a peer appears or reboots, a board running a confirmed package tells its
+// radio peers which (CAST "potluck:sys/package/v1", kind 1, counter). A board whose highest committed
+// counter is lower asks that peer for it (kind 2), at most once per cooldown; the peer, when idle, sends
+// the signed stream from its slot exactly as a deploy would (BEGIN, CHUNKs, COMMIT), and the receiver
+// checks and takes it on trial as if the host had sent it. A slot written before M12 holds no signature;
+// a board that checks signatures refuses it, and waits for the next deploy.
+constexpr uint32_t kPkgAnnounceMs = 60000;
+constexpr uint32_t kPkgSoonMs = 5000;      // after a peer appears: long enough for its trust to settle
+constexpr uint32_t kPkgAskCooldownMs = 45000;
+constexpr uint8_t kPkgAnnounce = 1, kPkgAsk = 2;
+const uint32_t kPkgPath = path_hash("potluck:sys/package/v1");
+uint32_t g_pkg_next_announce_ms = 30000;
+uint32_t g_pkg_last_ask_ms = 0;
+uint32_t g_catchups_sent = 0, g_catchups_asked = 0;
+
+void package_soon() {  // a peer appeared or rebooted
+    const uint32_t t = now_ms_() + kPkgSoonMs;
+    if (static_cast<int32_t>(g_pkg_next_announce_ms - t) > 0) g_pkg_next_announce_ms = t;
+}
+
+bool idle_for_catchup() {
+    return g_store.ready() && !g_push.active && g_reboot_at_ms == 0 && !fw_rt::busy() && !g_rx.in_progress();
+}
+
+void package_announce(uint32_t now) {
+    if (static_cast<int32_t>(now - g_pkg_next_announce_ms) < 0) return;
+    g_pkg_next_announce_ms = now + kPkgAnnounceMs;
+    if (g_state.active == kSlotNone || g_state.pending != 0 || g_pkg_counter == 0) return;
+    uint8_t args[5] = {kPkgAnnounce};
+    std::memcpy(args + 1, &g_pkg_counter, 4);
+    for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+        const PeerLink& q = g_node->peers().slot(i);
+        if (q.state == PeerState::Alive && std::memcmp(q.mac, kHostMac, kMacLen) != 0) g_node->cast(q.node_id, kPkgPath, args, sizeof(args));
+    }
+}
+
+void catchup_start(uint16_t peer) {
+    size_t len = 0;
+    if (!g_store.read_slot(g_state.active, g_rx_buf, sizeof(g_rx_buf), len)) return;
+    DeployImage img{};
+    const size_t extent = image_extent(g_rx_buf, len);
+    if (extent == 0 || extent > len || !parse_image(g_rx_buf, extent, img, nullptr)) return;
+    g_push = Push{};
+    g_push.catchup = true;
+    g_push.begin.image_len = static_cast<uint32_t>(len);
+    g_push.begin.image_crc = crc32(g_rx_buf, len);
+    g_push.begin.rollback_counter = img.rollback_counter;
+    std::memcpy(g_push.begin.package_digest, img.package_digest, sizeof(img.package_digest));
+    g_push.begin.flags = 0;  // one hop
+    g_push.peers[g_push.count++] = peer;
+    g_push.active = true;
+    ++g_catchups_sent;
+    ESP_LOGI(kTag, "deploy: peer 0x%04x was off for counter %u - sending it (%u B)", peer,
+             static_cast<unsigned>(img.rollback_counter), static_cast<unsigned>(len));
+    push_next_peer();
+}
+
+// From the call handler, g_mutex held.
+bool on_package_cast(uint16_t from, uint32_t path, const uint8_t* args, uint16_t len) {
+    if (path != kPkgPath) return false;
+    if (args == nullptr || len < 5) return true;
+    uint32_t counter = 0;
+    std::memcpy(&counter, args + 1, 4);
+    if (args[0] == kPkgAnnounce) {
+        const uint32_t now = now_ms_();
+        if (counter <= g_state.counter || g_state.pending != 0 || !idle_for_catchup()) return true;
+        if (g_pkg_last_ask_ms != 0 && now - g_pkg_last_ask_ms < kPkgAskCooldownMs) return true;
+        g_pkg_last_ask_ms = now;
+        uint8_t ask[5] = {kPkgAsk};
+        std::memcpy(ask + 1, &counter, 4);
+        if (g_node->cast(from, kPkgPath, ask, sizeof(ask))) {
+            ++g_catchups_asked;
+            ESP_LOGI(kTag, "deploy: peer 0x%04x runs counter %u, newer than %u here - asking for it", from,
+                     static_cast<unsigned>(counter), static_cast<unsigned>(g_state.counter));
+        }
+    } else if (args[0] == kPkgAsk) {
+        if (counter == g_pkg_counter && g_state.pending == 0 && idle_for_catchup()) catchup_start(from);
+    }
+    return true;
+}
+
+// ---- M12: the inventory (NODE_STATUS) ------------------------------------------------------------
+// Payload: u16 target (0 = whoever answers). Another node's is passed on over the radio, one at a time,
+// the way FW_STATUS is; a reply of {0, target} means it could not be reached.
+size_t build_node_status(uint8_t* out, size_t cap, bool cabled);  // below, where every part is known
+
+struct StatusProxy {
+    uint16_t awaiting = 0, target = 0, requester = 0, requester_msg = 0;
+};
+StatusProxy g_status_proxy;
+
+void status_unreachable(uint16_t to, uint16_t msg, uint16_t target) {
+    const uint8_t wire[3] = {0, static_cast<uint8_t>(target), static_cast<uint8_t>(target >> 8)};
+    g_node->send_reply_raw(to, msg, wire, sizeof(wire));
+}
+
+void on_node_status(uint16_t from, uint16_t msg_id, const uint8_t* p, uint16_t len) {
+    const uint16_t target = (p != nullptr && len >= 2) ? static_cast<uint16_t>(p[0] | (p[1] << 8)) : 0;
+    if (target != 0 && target != g_node_id) {
+        const uint16_t m = g_node->send_deploy(target, kOpNodeStatus, p, len);
+        if (m == 0) {
+            status_unreachable(from, msg_id, target);
+            return;
+        }
+        if (g_status_proxy.awaiting != 0) status_unreachable(g_status_proxy.requester, g_status_proxy.requester_msg, g_status_proxy.target);
+        g_status_proxy = StatusProxy{m, target, from, msg_id};
+        return;
+    }
+    const PeerLink* q = g_node->peers().find_by_node_id(from);
+    const bool cabled = q != nullptr && std::memcmp(q->mac, kHostMac, kMacLen) == 0;
+    static uint8_t wire[kNodeStatusMaxLen];  // off the link task's stack
+    const size_t n = build_node_status(wire, sizeof(wire), cabled);
+    if (n > 0) g_node->send_reply_raw(from, msg_id, wire, static_cast<uint16_t>(n));
+}
+
 // ---- the server, called from Node::on_rx with g_mutex held ---------------------------------------
 size_t on_deploy(void*, uint16_t from, uint16_t msg_id, uint8_t op, const uint8_t* p, uint16_t len,
                  uint8_t* reply, size_t cap) {
     if (is_fw_opcode(op)) return fw_rt::on_fw(from, msg_id, op, p, len, reply, cap);  // M11
+    if (op == kOpNodeStatus) {  // M12: answered whatever else is going on
+        on_node_status(from, msg_id, p, len);
+        return 0;
+    }
     DeployReply r{};
     r.status = DeployStatus::Malformed;
     if (!g_store.ready()) {
@@ -905,8 +1319,17 @@ size_t on_deploy(void*, uint16_t from, uint16_t msg_id, uint8_t op, const uint8_
         if (load_deploy_commit(p, len, crc)) r = g_rx.commit(crc);
         if (r.status == DeployStatus::Ok) {
             g_store.load_state(g_state);
-            ESP_LOGI(kTag, "deploy: committed counter %u to slot %s, on trial from the next boot",
-                     static_cast<unsigned>(g_rx.header().rollback_counter), slot_name(g_state.active));
+            // M12: taken in place when it can be; else on trial from the next boot, as before.
+            DeployStatus refused = DeployStatus::Ok;
+            g_live = apply_live(&refused);
+            if (refused != DeployStatus::Ok) {
+                r.status = refused;
+                r.pending = 0;
+                return store_deploy_reply(r, reply, cap);
+            }
+            ESP_LOGI(kTag, "deploy: committed counter %u to slot %s, on trial %s",
+                     static_cast<unsigned>(g_rx.header().rollback_counter), slot_name(g_state.active),
+                     g_live ? "now, without a reboot" : "from the next boot");
             if (g_rx.distribute()) {
                 g_push = Push{};
                 g_push.begin = g_rx.header();
@@ -924,7 +1347,7 @@ size_t on_deploy(void*, uint16_t from, uint16_t msg_id, uint8_t op, const uint8_
                 push_next_peer();
                 return 0;  // answered by push_finish(), once the peers have committed
             }
-            schedule_reboot();
+            if (!g_live) schedule_reboot();
         }
     } else if (op == kOpDeployAbort) {
         g_rx.abort();
@@ -935,7 +1358,8 @@ size_t on_deploy(void*, uint16_t from, uint16_t msg_id, uint8_t op, const uint8_
 
 // From link_task, every pass.
 void tick(uint32_t now) {
-    if (g_trial && g_node->tx_tally().beacons >= kTrialHeartbeats) {
+    package_announce(now);  // M12: catch-up
+    if (g_trial && g_node->tx_tally().beacons - g_trial_base >= kTrialHeartbeats) {
         confirm(g_state);
         save();
         g_trial = false;
@@ -949,6 +1373,8 @@ void tick(uint32_t now) {
 }
 
 }  // namespace deploy_rt
+
+void deploy_package_soon() { deploy_rt::package_soon(); }
 
 
 // ---------------------------------------------------------------------------------------------
@@ -1364,6 +1790,7 @@ void stats_task(void*) {
 
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(kStatsIntervalMs));
+        ck_persist::flush();  // M12: the checkpoints the reconciler asked to keep, off the link task
 #if CONFIG_POT_RSSI_TEE
         if (g_print_gate != nullptr) xSemaphoreTake(g_print_gate, portMAX_DELAY);  // whole lines (above)
 #endif
@@ -1573,11 +2000,14 @@ void stats_task(void*) {
                 const uint32_t fenced_replies = g_node->ns_counters().replies_fenced;
                 xSemaphoreGive(g_mutex);
                 std::printf("{\"t\":\"rec\",\"node\":%u,\"up_ms\":%u,\"settled\":%d,\"sent\":%u,\"received\":%u,"
-                            "\"malformed\":%u,\"views\":%u,\"replies_fenced\":%u,\"actors\":[",
+                            "\"malformed\":%u,\"views\":%u,\"replies_fenced\":%u,\"ck_persisted\":%u,"
+                            "\"ck_restored\":%u,\"ck_nvs_writes\":%u,\"ck_nvs_errors\":%u,\"actors\":[",
                             static_cast<unsigned>(node_id), static_cast<unsigned>(now_ms_()), settled ? 1 : 0,
                             static_cast<unsigned>(rc.sets_sent), static_cast<unsigned>(rc.sets_received),
                             static_cast<unsigned>(rc.sets_malformed), static_cast<unsigned>(rc.view_changes),
-                            static_cast<unsigned>(fenced_replies));
+                            static_cast<unsigned>(fenced_replies), static_cast<unsigned>(rc.checkpoints_persisted),
+                            static_cast<unsigned>(rc.checkpoints_restored), static_cast<unsigned>(ck_persist::g_writes),
+                            static_cast<unsigned>(ck_persist::g_write_errors));
                 for (size_t i = 0; i < na; ++i) {
                     std::printf("%s{\"key\":%u,\"running\":%d,\"term\":%u,\"owner\":%u,\"owner_term\":%u,"
                                 "\"assigned\":%u,\"starts\":%u,\"fenced\":%u,\"released\":%u}",
@@ -1969,7 +2399,8 @@ bool handle_test(const char* line, size_t len) {
         lock_node();
         g_node->set_relay(relay_on != 0);
         xSemaphoreGive(g_mutex);
-        std::printf("{\"t\":\"test\",\"cmd\":\"relay\",\"relay\":%u}\n", relay_on != 0 ? 1u : 0u);
+        chan_store::relay_save(relay_on != 0);  // M12: kept across reboots
+        std::printf("{\"t\":\"test\",\"cmd\":\"relay\",\"relay\":%u,\"saved\":1}\n", relay_on != 0 ? 1u : 0u);
         return true;
     }
     unsigned deaf_tail = 0;
@@ -2459,6 +2890,78 @@ void start() {
 }  // namespace bg
 
 const BoardServices g_board_services{nullptr, &led_app, &bg::submit, &bg::yield, bg::kWorkers};
+
+// M12: the inventory record (pot/node_status.hpp). With g_mutex held (on_deploy).
+size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {
+    NodeStatus st;
+    st.node = g_node->config().node_id;
+    st.fw_running = fw_rt::g_running;
+    st.fw_floor = fw_rt::g_floor;
+    st.fw_state = fw_rt::g_state == FwState::Confirmed ? 1 : fw_rt::g_state == FwState::OnTrial ? 2 : 0;
+    const esp_app_desc_t* app = esp_app_get_description();
+    std::strncpy(st.fw_version, app->version, kNodeStatusVersionLen);
+    std::memcpy(st.elf_sha, app->app_elf_sha256, sizeof(st.elf_sha));
+    st.slot = deploy_rt::g_state.active;
+    st.pending = deploy_rt::g_state.pending;
+    st.trial_boots = deploy_rt::g_state.trial_boots;
+    st.pkg_counter = deploy_rt::g_state.active != kSlotNone ? deploy_rt::g_pkg_counter : 0;
+    st.pkg_floor = deploy_rt::g_state.counter;
+    std::memcpy(st.pkg_digest, deploy_rt::g_pkg_digest, sizeof(st.pkg_digest));
+#if CONFIG_POT_EXTENDER
+    st.roles |= kRoleExtenderBuild;
+#endif
+    if (extender::active()) st.roles |= kRoleExtenderActive;
+#if CONFIG_POT_WASM
+    st.roles |= kRoleSandbox;
+#endif
+#if CONFIG_POT_RECONCILER
+    st.roles |= kRoleReconciler;
+#endif
+    if (g_node->relay()) st.roles |= kRoleRelay;
+    if (trust_rt::g_id_boot.enrolled) st.roles |= kRoleEnrolled;
+    if (cabled) st.roles |= kRoleCabled;
+    st.live_applies = deploy_rt::g_live_applies;
+    st.ck_writes = ck_persist::g_writes;
+    st.uptime_s = now_ms_() / 1000;
+    std::strncpy(st.cluster, sys_system(), kNodeStatusMaxCluster);
+    size_t at = 0;
+    auto add = [&](const char* name) {
+        const size_t n = std::strlen(name);
+        if (n == 0 || at + (at ? 1 : 0) + n > kNodeStatusMaxActors) return;
+        if (at) st.actors[at++] = ',';
+        std::memcpy(st.actors + at, name, n);
+        at += n;
+    };
+    st.pinned_running = static_cast<uint8_t>(g_actors.running());
+    for (size_t i = 0; i < g_actors.running(); ++i) add(g_actors.name(i));
+#if CONFIG_POT_RECONCILER
+    if (g_rec != nullptr) {
+        for (size_t i = 0; i < g_rec->actor_count(); ++i) {
+            if (g_rec->kind_name(i)[0] == 0) continue;
+            ++st.portable_total;
+            if (g_rec->view(i).running) {
+                ++st.portable_here;
+                add(g_rec->kind_name(i));
+            }
+        }
+    }
+#endif
+    st.actors[at] = 0;
+    return store_node_status(st, out, cap);
+}
+
+// M6, and M12's live change: the reconciler, made for the first package with a portable actor.
+void deploy_rt::rec_create() {
+#if CONFIG_POT_RECONCILER
+    g_rec = new (g_rec_storage) Reconciler(*g_node);
+    g_rec->set_board(&g_board_services);  // PS-5: portable actors get the LED too
+    g_rec->set_persist(&ck_persist::g_hook);  // M12: checkpoints that survive a reboot
+    if (!g_rec->load(deploy_rt::g_portable, deploy_rt::g_portable_n)) {
+        ESP_LOGE(kTag, "reconciler: could not declare the portable actors' resources");
+    }
+    ESP_LOGI(kTag, "reconciler: %u portable actor(s)", static_cast<unsigned>(g_rec->actor_count()));
+#endif
+}
 }  // namespace
 
 }  // namespace pot
@@ -2701,12 +3204,8 @@ extern "C" void app_main(void) {
 #endif
 #if CONFIG_POT_RECONCILER
     if (deploy_rt::g_portable_n > 0) {
-        g_rec = new (g_rec_storage) Reconciler(*g_node);
-        g_rec->set_board(&g_board_services);  // PS-5: portable actors get the LED too
-        if (!g_rec->load(deploy_rt::g_portable, deploy_rt::g_portable_n)) {
-            ESP_LOGE(kTag, "reconciler: could not declare the portable actors' resources");
-        }
-        ESP_LOGI(kTag, "reconciler: %u portable actor(s)", static_cast<unsigned>(g_rec->actor_count()));
+        deploy_rt::rec_create();
+        ck_persist::g_boot_reads = false;
     }
 #endif
     // M9: one handler for every CALL and CAST -- the reconciler's own messages first, then any actor's
@@ -2716,6 +3215,7 @@ extern "C" void app_main(void) {
 #if CONFIG_POT_RECONCILER
             if (g_rec != nullptr && g_rec->on_cast(from, path, args, len)) return true;
 #endif
+            if (deploy_rt::on_package_cast(from, path, args, len)) return true;  // M12: catch-up
             return g_actors.on_call(from, msg_id, path, args, len) == Actor::kCallAccepted;
         },
         nullptr);
@@ -2743,7 +3243,7 @@ extern "C" void app_main(void) {
             return g_actors.adopt(g_node->ns(), hash, ids, n);
         },
         nullptr);
-    if (g_actors.running() > 0) {
+    {  // M12: always, since a live package change can bring an actor that calls
         g_node->set_call_result(
             [](void*, uint16_t from, uint16_t msg_id, uint32_t path, Node::CallOutcome o, const Value& v) {
                 g_actors.on_call_result(from, msg_id, path, o, v);
@@ -2794,6 +3294,10 @@ extern "C" void app_main(void) {
         g_node->set_busy(true);
         g_node->set_relay(true);
         ESP_LOGI(kTag, "extender: declared BUSY and RELAY; channel %u from the router", static_cast<unsigned>(g_node->channel()));
+    }
+    if (chan_store::relay_load() != 0 && !g_node->relay()) {
+        g_node->set_relay(true);  // M12: `POT! relay 1` was saved
+        ESP_LOGI(kTag, "relay: on, as saved");
     }
     g_node->set_deploy_server(&deploy_rt::on_deploy, nullptr);
     g_node->set_deploy_result(&deploy_rt::on_result, nullptr);

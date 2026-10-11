@@ -178,6 +178,10 @@ class Reconciler {
     void set_board(const BoardServices* b) { board_ = b; }
     // M8.2: the instance running here for actor i, or nullptr -- for its stats line.
     Actor* instance(size_t i) { return i < count_ ? slots_[i].inst : nullptr; }
+    // M12: the actor's type name (its registration row's), "" for a slot a live reload freed.
+    const char* kind_name(size_t i) const {
+        return i < count_ && slots_[i].active && slots_[i].kind != nullptr ? slots_[i].kind->name : "";
+    }
 
     struct Counters {
         uint32_t sets_sent;

@@ -64,6 +64,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_ns/src/sys_resources.cpp"
   "${POT_FIRMWARE}/components/pot_deploy/src/deploy.cpp"
   "${POT_FIRMWARE}/components/pot_deploy/src/fw.cpp"
+  "${POT_FIRMWARE}/components/pot_deploy/src/node_status.cpp"
   "${POT_FIRMWARE}/components/pot_can/src/can_profile.cpp"
   "${POT_FIRMWARE}/components/pot_trust/src/trust.cpp"
   "${POT_FIRMWARE}/components/pot_trust/src/hello_auth.cpp"
@@ -118,6 +119,7 @@ add_executable(pot_tests
   test_die_temp.cpp
   test_mc.cpp
   test_cluster.cpp
+  test_node_status.cpp
   test_fw.cpp
   test_wasm.cpp
   test_guest.cpp
