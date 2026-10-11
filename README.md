@@ -60,7 +60,8 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 ## What works today
 
 Everything below runs on real ESP32-S3 boards and has passed a test written before it was tried -- each milestone
-has one, and a criterion that would have killed it. 14 of the 17 milestones so far are accepted and three more are built; the full ledger,
+has one, and a criterion that would have killed it. 14 of the 23 milestones so far are accepted, three more are built, and six (M13-M18: the cell presenting its
+resources to other systems, a dashboard, Home Assistant) are planned; the full ledger,
 with every measurement and caveat, is [STATUS.md](STATUS.md).
 
 - **Boards that find each other and know when one is gone.** Over the radio, a missing board is declared dead
@@ -82,7 +83,8 @@ with every measurement and caveat, is [STATUS.md](STATUS.md).
 - **Potluck shares the radio**: a board can be a cluster member and a Wi-Fi extender at the same time.
 - **Record and replay** a session byte for byte, to see exactly what happened.
 
-Not there yet: a few long soak tests, and the limits listed at the end of the
+Not there yet: a dashboard and integrations with other systems such as Home Assistant (milestones M13-M18, planned
+in [BEYOND-M12.md](BEYOND-M12.md)), a few long soak tests, and the limits listed at the end of the
 [getting-started guide](GETTING-STARTED.md) (up to 20 boards in a radio cell, ESP32-S3 boards and PCs only, one
 package per cluster).
 

@@ -483,9 +483,15 @@ for its own time.
     that would run `apply`'s firmware step with the owner's keys. Allowed only when the owner switches it on in the hub,
     or never (rule 3)?
 
-## 8. Candidate milestones (to be argued, not yet scheduled)
+## 8. Milestones: scheduled as M13-M18 (2026-10-11)
 
-Sketches in the roadmap's form, so the discussion has something to falsify:
+The owner agreed the shape ("looks right now, make the milestones from it"), and the milestones are now in
+[ARCHITECTURE.md](ARCHITECTURE.md) section 13, which is where they are kept from here on: **M13** the cell presents
+itself (the gateway module, no PC), **M14** the hub, **M15** telemetry over the cell, **M16** the dashboard, **M17**
+Home Assistant first-class, **M18** the integration layer and the owner's programs. Two of this draft's questions were
+settled on the way: writes from outside are declared **per resource** in the package (question 6), and one presenter at
+a time -- the gateway with no PC, the hub when a PC is on -- so no system sees a device twice (question 8). The sketches
+below are the draft's first versions, kept for the record; section 13 supersedes them.
 
 - **M13 -- the hub.** One program owns the link; every existing tool works as its client, several at once (a placement
   host, a service, `potctl watch` and `apply` together). *Accept:* the M8 service, the M10 placement host and a `potctl

@@ -39,8 +39,12 @@ beyond the PC node -- is the next edition's.
 **M12 ACCEPTED (2026-10-11, M0-LOG session 39)** -- Potluck as a platform: one image, `potluck apply
 <cluster.json>`, live package changes, checkpoints in NVS, inventory, catch-up, the test kit, presets, and the
 developer manual rewritten for it (blind reader: a new app written, tested and deployed in ~18 min). Caveat: the
-whole-cell power cycle was a reset of every chip, not a hand power cut. Every roadmap milestone is now built and
-14 of 17 accepted; what is left is the list above, all the owner's to run.
+whole-cell power cycle was a reset of every chip, not a hand power cut. Every milestone through M12 is built and
+14 of 17 accepted; what is left there is the list above, all the owner's to run. **NEXT: M13-M18 (planned 2026-10-11,
+ARCHITECTURE section 13, from BEYOND-M12.md and its picture beyond-m12-overview.html)** -- the cell presenting its
+resources to other systems: M13 the gateway module (no PC; start here), M14 the hub, M15 telemetry, M16 the dashboard,
+M17 Home Assistant first-class, M18 the integration layer. The owner is the idea-giver; the evidence for what to show and
+which integrations came from primary sources (ledger).
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
