@@ -60,6 +60,18 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-12: **M13-M18 and M13.1 PLANNED and externally reviewed** (M0-LOG session 40). Nothing built.
+>
+> **Start the next session like this:** read ARCHITECTURE section 13 from "*After M12, from the owner*" -- the preamble,
+> the basic/optional table, the scenario rounds, the **binding review block (15 items)**, then M13 -- and BEYOND-M12.md
+> only for the reasoning behind it. Then **start M13**, in this order: (1) the enforcement the review found missing:
+> `exposed`, `outside_writable`, `safety_relevant` in manifest and namespace entry, and the owner-checked origin marker on
+> proxied writes; (2) module plumbing (`requires`, per-module cost in `apply --plan`, module list in NODE_STATUS);
+> (3) Potluck's own Wi-Fi station module; (4) the presenting module (the MQTT client is the managed component
+> `espressif/mqtt` -- **ask the owner before downloading it**); measure heap/NO_MEM on the tightest board (extender + an
+> app + presenting) with same-session A/B radio runs. The bench is as left by session 39 (counters: firmware 16, package
+> 42; `apply` picks them). The owner is the idea-giver; engineering decisions are the session's (rule 1).
+>
 > ## HANDOVER, 2026-10-11 (late evening): **M12 ACCEPTED** (M0-LOG session 39).
 >
 > **Everything goes through `potluck apply` now** (from `host/potluck/`, ESP-IDF Python, any shell):

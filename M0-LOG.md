@@ -4986,3 +4986,30 @@ the boards rebooted into it and it started fresh (a new identity, as the manual 
 on C is saved (`"saved":1`) and restored at boot (`relay: on, as saved`); ADR-009's one-relay rule then hands the
 role to the lower id (B, the extender). C set back to 0. Bench left on `desk-cell.json`: firmware counter 16, package
 42, all verified. Evidence: `captures/m12-apply-run1..12.log`, `m12-reset2.log`, `m12-relay-reset*.log`.
+
+## Session 40 -- 2026-10-11/12: beyond M12 -- the presentation, its milestones, and an external review
+
+The owner's next idea after M12: a presentation of the whole cell's resources (the original Kubernetes idea seen from
+outside), used by a dashboard and by integrations that let any other system use the cell's resources, Home Assistant
+first. Worked out in `BEYOND-M12.md` and its picture `beyond-m12-overview.html`, settled by evidence (Home Assistant's
+published analytics, Google SRE's golden signals, the USE method; ledger) and by the owner's corrections, each of which
+changed the design: integration means another system using Potluck's resources (not Home Assistant running on
+Potluck); the presentation belongs to the cell, not a PC (a board on the Wi-Fi presents it; a PC only adds); integrations
+are modules chosen per cell, classed basic or optional (security liability, or filler) and off by default; presenting
+is a role any connected board can hold, not a special gateway; and the boat -- no network, no PC, a phone joining the
+nearest board's own access point to see which board died -- is the normal case, not an edge (M13.1). Two scenario
+rounds (the owner's min/max; eight more by a subagent) moved telemetry to optional, split the hub into on demand and
+resident, made reads opt-in like writes, and barred outside writes to safety-relevant resources.
+
+**Planned in ARCHITECTURE section 13:** M13 the cell presents itself (MQTT, no PC), M13.1 the cell answers a phone, M14
+the hub, M15 telemetry over the cell, M16 the dashboard, M17 Home Assistant first-class, M18 the integration layer.
+
+**External review (Fable 5.1, max effort), 15 findings, all adopted** as a binding block in section 13: the per-resource
+enforcement M13 relied on does not exist in the code (no `safety_relevant` flag; section 9.3's signed WRITE never
+built) and is now part of M13; presenter failover is measured at the broker (MQTT Will timing, Home Assistant's
+`availability_mode`); presenting fits the reconciler only with a `connected` caps bit, a proxy-writer exemption from
+ADR-006 and one channel authority by lowest id; kills measure runtime heap and NO_MEM, not only section 6's static cap
+(the chip's free heap is 166-209 KB; the 64 KB cap is Potluck's own design budget); radio baselines are same-session
+A/B runs; section 8.4 restated without self-contradiction; ADR-002's staleness toggle kept at the edge; five threat rows
+added to section 9.4; ADR-004 amended (its trigger fired: MQTT discovery is a typed schema below the hub); the deploy
+lock owned by the lowest-id board; M16 given a kill of its own. Nothing was built this session.

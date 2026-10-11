@@ -562,6 +562,9 @@ for its own time.
 
 ## 8. Milestones: scheduled as M13-M18 (2026-10-11)
 
+*Reviewed externally 2026-10-12 (Fable 5.1, max effort): fifteen findings, all adopted as a binding block in
+ARCHITECTURE.md section 13 -- read that block before this draft.*
+
 The owner agreed the shape ("looks right now, make the milestones from it"), and the milestones are now in
 [ARCHITECTURE.md](ARCHITECTURE.md) section 13, which is where they are kept from here on: **M13** the cell presents
 itself (the presenting role, no PC), **M13.1** the cell answers a phone (no network, no PC), **M14** the hub, **M15** telemetry over the cell, **M16** the dashboard, **M17**
