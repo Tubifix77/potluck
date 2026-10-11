@@ -115,6 +115,7 @@ These are the existing rules this step lives inside; a design that breaks one is
 |---|---|---|
 | boards and PCs in the cell, alive or dead | the cabled board's peer table, HELLO/heartbeats on the frame link | the hub sees only the cabled board's view; other boards' peer tables are on their consoles |
 | each board's firmware, package, roles, actors, counters | `NODE_STATUS` (M12), proxied to every board | none: built |
+| which modules each board's image carries, and each one's state (active, idle, failed) | -- | new: the list in `NODE_STATUS`, and a state per module |
 | links: signal strength, delivery, round trips | each board's `link`/`peers` stats lines | on the consoles only; a board on a charger has none |
 | resources: namespace entries used of 128, actor slots of 16/8/8, RAM headroom, cores lent, NVS | partly `sys/*` resources (heap, uptime, peers), the rest stats lines | most on the consoles only |
 | every resource's value and quality | READ through the cabled board | none, but reads cost radio time: the hub must cache and pace them |
@@ -185,7 +186,8 @@ what the first screen watches.
 
 ### Layer 4: the drill-down tabs
 
-The tabs of the first draft remain the drill-downs -- **Cell** (topology, roles, channel), **Resources** (layer 3
+The tabs of the first draft remain the drill-downs -- **Cell** (topology, roles, channel, and every board's modules:
+on and active, on and idle, or not on the board), **Resources** (layer 3
 in full), **Apps** (packages, actors, where each runs, moves, checkpoints, guests), **Data** (the namespace browser with
 the tuple and history), **Clients and integrations**, **Deploys**, **Logs and events** (on one clock, from every
 board), **Replay** -- and every number on layers 1-3 links to the tab that explains it ("what's broken" first, then
@@ -333,6 +335,20 @@ Two rules follow from the S3's limits:
   update slot, static internal RAM against the 64 KB cap (60.1 KB with the sandbox, the room sensor and the extender) --
   and refuses a choice that does not fit, before any board changes, as it refuses everything else (M12). The build
   already measures both (`tools/build_firmware.ps1`'s budget check); the plan has to say it per module.
+
+**The dashboard shows every module on every board (the owner, 2026-10-11):** for each board, each module is one of
+
+- **on, and active** -- built into the board's image and running its role there (the MQTT gateway connected to the
+  broker, the extender serving its hotspot);
+- **on, idle** -- built in, with nothing to do on this board (the gateway on a board with no Wi-Fi credentials), and
+  why;
+- **not on the board** -- not in this image; choosing it means a new firmware, which `apply` rolls out.
+
+The board says this itself, so the dashboard shows what is running rather than what was meant to be: its inventory
+(`NODE_STATUS`, M12) grows a list of the components built into its image -- today it reports only roles and running
+actors -- and each module reports its own state (active, idle and why, or failed). The hub cross-checks that against
+the build it made for the cell (the cluster file and the cache record which components went into which image), and a
+board whose image does not match is shown as such. Hub plugins are shown the same way on the hub's own row.
 
 ### Which integrations, settled
 
