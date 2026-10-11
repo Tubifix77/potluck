@@ -4782,3 +4782,15 @@ deploy tool exited; B declared C dead 5.7 s after its boot (its known boot scan)
 passive-sensor run together: no interaction seen. Detection learned its baseline on the desk; placed in a room, the
 boards relearn there.
 
+## Session 38, planning -- 2026-10-12: M12 scheduled
+
+The install above was the owner's eye-opener: everything had been tested, yet combining it took two hand-named
+variants, a `git archive` export, a descriptor named twice, a hand-stitched package, two counters read from notes,
+an order to know and a whole-cell reboot. The owner weighed two takes -- Potluck as a platform, or fixed
+per-product bundles (minimal, +extender, +room sensor, all three) and no ecosystem -- and chose the platform. This
+session's analysis agreed: bundles freeze the variant explosion instead of removing it, undo what M7 and M8.2 were
+for, and contradict section 0.1's hyper-flexibility corollary; and a platform contains them, since a cluster file
+naming a fixed mix is a bundle. M12 is in section 13: one image with roles at run time, `potluck apply`, live
+changes and kept state, with step 1 the image-size and partition question (the update slots are 2 MB each and the
+flash 16 MB; the 1 MB `factory` slot is what limits B's 990,642 B image).
+
