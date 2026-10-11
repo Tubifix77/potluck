@@ -27,13 +27,16 @@ def status_bytes(**kw) -> bytes:
     """pot/node_status.hpp's layout, written out field by field."""
     v = dict(node=0x7368, fw_running=10, fw_floor=9, fw_state=1, version=b"6235e98", elf=bytes(range(8)), slot=2,
              pending=0, trial=0, pkg=31, pkg_floor=31, digest=b"\x11" * 8, roles=0x2D, live=1, ck=4, up=99,
-             pinned=2, ptotal=1, phere=1, cluster=b"home", actors=b"die_temp,cluster,guest")
+             pinned=2, ptotal=1, phere=1, cluster=b"home", actors=b"die_temp,cluster,guest", version_byte=1,
+             modules=b"")
     v.update(kw)
-    raw = struct.pack("<BHIIB", 1, v["node"], v["fw_running"], v["fw_floor"], v["fw_state"])
+    raw = struct.pack("<BHIIB", v["version_byte"], v["node"], v["fw_running"], v["fw_floor"], v["fw_state"])
     raw += v["version"].ljust(32, b"\0") + v["elf"] + bytes([v["slot"], v["pending"], v["trial"]])
     raw += struct.pack("<II", v["pkg"], v["pkg_floor"]) + v["digest"] + bytes([v["roles"]])
     raw += struct.pack("<III", v["live"], v["ck"], v["up"]) + bytes([v["pinned"], v["ptotal"], v["phere"]])
     raw += bytes([len(v["cluster"])]) + v["cluster"] + bytes([len(v["actors"])]) + v["actors"]
+    if v["version_byte"] == 2:  # M13: the module section
+        raw += bytes([len(v["modules"]) // 3]) + v["modules"]
     return raw
 
 
@@ -54,7 +57,14 @@ class Inventory(unittest.TestCase):
     def test_unreachable_and_short_replies_are_not_a_status(self):
         self.assertIsNone(ap.parse_node_status(bytes([0, 0x68, 0x73])))
         self.assertIsNone(ap.parse_node_status(status_bytes()[:-1]))
-        self.assertIsNone(ap.parse_node_status(b"\x02" + status_bytes()[1:]))
+        self.assertIsNone(ap.parse_node_status(b"\x03" + status_bytes()[1:]))
+        self.assertIsNone(ap.parse_node_status(status_bytes(version_byte=2, modules=b"\x01\x01\x00")[:-1]))
+
+    def test_version_2_lists_the_modules_and_what_each_is_doing(self):
+        st = ap.parse_node_status(status_bytes(version_byte=2, modules=b"\x01\x01\x00\x02\x02\x01"))
+        self.assertEqual(st.modules, [("sandbox", "active", ""), ("extender", "idle", "no credentials")])
+        self.assertIn("modules sandbox:active,extender:idle (no credentials)", st.line())
+        self.assertEqual(ap.parse_node_status(status_bytes()).modules, [])  # version 1: none listed
 
 
 def write(d: Path, name: str, doc) -> Path:
@@ -206,6 +216,70 @@ class BiggerCell(unittest.TestCase):
         self.assertIn((0x10B, 2), el)  # the one with the data is always among them
         self.assertEqual(el, rc.eligible(m, m.actors[0]))  # stable
         dp.compile_image(m, 1)  # and the image takes it
+
+
+class BoardModules(unittest.TestCase):
+    """M13: Potluck's optional board modules -- named in the cluster file, required by descriptors, costed."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.d = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def cluster(self, fw):
+        doc = {"schema": ap.SCHEMA, "system": "home", "boards": [{"node": "0100", "label": "kitchen"}], "firmware": fw}
+        return ap.load_cluster(str(write(self.d, "cell.json", doc)))
+
+    def test_a_named_module_turns_its_config_on_and_the_old_spelling_still_counts(self):
+        c = self.cluster({"modules": ["sandbox"]})
+        self.assertEqual(c.board_modules, ("sandbox",))
+        self.assertIn("CONFIG_POT_WASM=y", c.extra)
+        c = self.cluster({"extra": ["CONFIG_POT_WASM=y"]})  # M12's cluster files
+        self.assertEqual(c.board_modules, ("sandbox",))
+        self.assertEqual(c.extra, ["CONFIG_POT_WASM=y"])  # the same build key as before
+        self.assertEqual(self.cluster({}).board_modules, ())
+
+    def test_unknown_unbuilt_and_sourceless_modules_are_refused(self):
+        with self.assertRaisesRegex(ap.ApplyError, "not one of Potluck's board modules"):
+            self.cluster({"modules": ["teleport"]})
+        with self.assertRaisesRegex(ap.ApplyError, "own repository"):
+            self.cluster({"modules": ["extender"]})
+
+    def test_a_descriptor_that_requires_a_module_the_cell_lacks_is_refused(self):
+        desc = {"component": "needs_box", "types": [0xF4, 0xF4], "requires": ["sandbox"],
+                "modules": [{"module": "ext:needs_box/a", "type": 0xF4, "placement": "pinned"}]}
+        with self.assertRaisesRegex(mods.ModuleError, "requires"):
+            mods.parse_descriptor({**desc, "requires": ["teleport"]})
+        self.assertEqual(mods.parse_descriptor(desc)[0].requires, ("sandbox",))
+        write(self.d, "needs_box.json", desc)
+        frag = {"schema": 1, "system": "home", "nodes": [], "actors": []}
+        write(self.d, "frag.json", frag)
+        doc = {"schema": ap.SCHEMA, "system": "home", "boards": [{"node": "0100", "label": "kitchen"}],
+               "firmware": None, "package": {"manifests": ["frag.json"], "modules": ["needs_box.json"]}}
+        c = ap.load_cluster(str(write(self.d, "cell.json", doc)))
+        try:
+            with self.assertRaisesRegex(ap.ApplyError, "requires sandbox"):
+                ap.plan_package(c, self.d, lambda m: None)
+        finally:
+            mods.clear()
+
+    def test_each_modules_cost_comes_from_the_builds_size_report(self):
+        def row(flash=0, dram=0, ext=0):
+            return {"memory_types": {"Flash Code": {"size": flash}, "DIRAM": {"size": dram},
+                                     "External RAM": {"size": ext}}}
+        report = {"a/libpot_wasm.a": {"abbrev_name": "libpot_wasm.a", **row(80000, 2673)},
+                  "a/libpot_room.a": {"abbrev_name": "libpot_room.a", **row(7000, 82, 1390)},
+                  "a/libmain.a": {"abbrev_name": "libmain.a", **row(20000, 43000)},
+                  "a/libpot_espnow.a": {"abbrev_name": "libpot_espnow.a", **row(3000, 18520)}}
+        sj = write(self.d, "size-components.json", report)
+        c = self.cluster({"modules": ["sandbox"]})
+        fw = ap.Firmware(sj, sj, b"", "v", False, sj, ("pot_room",))
+        lines = ap.module_costs(c, fw)
+        self.assertEqual(lines[0], "module sandbox: 80,000 B flash, 2,673 B internal RAM, 0 B PSRAM (static)")
+        self.assertEqual(lines[1], "module app component pot_room: 7,000 B flash, 82 B internal RAM, 1,390 B PSRAM (static)")
+        self.assertEqual(lines[2], "Potluck core: 61,520 B of 65,536 B static internal RAM (4,016 B left)")
 
 
 if __name__ == "__main__":

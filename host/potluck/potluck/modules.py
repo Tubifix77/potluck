@@ -43,6 +43,11 @@ class ModuleError(Exception):
     pass
 
 
+#: M13: Potluck's optional board modules (ARCHITECTURE section 13's table), by the names a cluster file's
+#: `firmware.modules` and a descriptor's `requires` use. pot/node_status.hpp's ModuleId numbers them.
+BOARD_MODULES = ("sandbox", "extender", "wifi", "present", "pocket")
+
+
 @dataclass(frozen=True)
 class Field:
     name: str
@@ -62,6 +67,8 @@ class ModuleSpec:
     # M12: the outputs an actor of this module publishes, for `potluck apply` to read back: paths under
     # potluck://<system>/, with {node} for "node-<id>" (the node it runs on) and {actor} for the actor's name.
     outputs: tuple[str, ...] = ()
+    # M13: the board modules the component needs in the image (BOARD_MODULES): its descriptor's `requires`.
+    requires: tuple[str, ...] = ()
 
 
 _REGISTRY: dict[str, ModuleSpec] = {}
@@ -107,6 +114,9 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
         raise ModuleError(f"{where}: 'types' must be [first, last] inside 0x80..0xFF")
     if not isinstance(mods, list) or not mods:
         raise ModuleError(f"{where}: 'modules' must be a non-empty list")
+    req = doc.get("requires", [])
+    if not isinstance(req, list) or not all(isinstance(r, str) and r in BOARD_MODULES for r in req):
+        raise ModuleError(f"{where}: 'requires' must be a list of Potluck's board modules, from {list(BOARD_MODULES)}")
     out: list[ModuleSpec] = []
     for i, m in enumerate(mods):
         w = f"{where}.modules[{i}]"
@@ -132,7 +142,7 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
             if not isinstance(f, dict) or not isinstance(f.get("name"), str) or f.get("kind") not in _KINDS:
                 raise ModuleError(f"{fw}: needs a name and a kind, one of {sorted(_KINDS)}")
             fields.append(Field(f["name"], f["kind"], f.get("default"), f.get("min"), f.get("max")))
-        out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs)))
+        out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req)))
     return out
 
 

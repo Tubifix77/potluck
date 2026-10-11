@@ -32,9 +32,12 @@ TEST(node_status, round_trips_every_field) {
     a.portable_here = 1;
     std::strcpy(a.cluster, "home");
     std::strcpy(a.actors, "die_temp,rf_link,guest");
+    a.module_count = 2;
+    a.modules[0] = ModuleStatus{ModuleId::Sandbox, ModuleState::Active, ModuleReason::None};
+    a.modules[1] = ModuleStatus{ModuleId::Extender, ModuleState::Idle, ModuleReason::NoCredentials};
     uint8_t wire[kNodeStatusMaxLen];
     const size_t n = store_node_status(a, wire, sizeof(wire));
-    CHECK_EQ(n, kNodeStatusFixedLen + 1 + 4 + 1 + std::strlen(a.actors));
+    CHECK_EQ(n, kNodeStatusFixedLen + 1 + 4 + 1 + std::strlen(a.actors) + 1 + 6);
     NodeStatus b;
     CHECK(load_node_status(wire, n, b));
     CHECK_EQ(b.node, a.node);
@@ -58,6 +61,10 @@ TEST(node_status, round_trips_every_field) {
     CHECK_EQ(static_cast<int>(b.portable_here), 1);
     CHECK_STR_EQ(static_cast<const char*>(b.cluster), "home");
     CHECK_STR_EQ(static_cast<const char*>(b.actors), "die_temp,rf_link,guest");
+    CHECK_EQ(static_cast<int>(b.module_count), 2);
+    CHECK_EQ(static_cast<int>(b.modules[1].id), static_cast<int>(ModuleId::Extender));
+    CHECK_EQ(static_cast<int>(b.modules[1].state), static_cast<int>(ModuleState::Idle));
+    CHECK_EQ(static_cast<int>(b.modules[1].reason), static_cast<int>(ModuleReason::NoCredentials));
     CHECK(n <= 226);  // fits one ESP-NOW v1 frame's payload
 }
 
@@ -65,6 +72,8 @@ TEST(node_status, the_longest_fits_a_v1_frame_and_bad_input_is_refused) {
     NodeStatus a;
     std::memset(a.cluster, 'c', kNodeStatusMaxCluster);
     std::memset(a.actors, 'a', kNodeStatusMaxActors);
+    a.module_count = kNodeStatusMaxModules;
+    for (auto& m : a.modules) m = ModuleStatus{ModuleId::Present, ModuleState::Idle, ModuleReason::Standby};
     uint8_t wire[kNodeStatusMaxLen];
     const size_t n = store_node_status(a, wire, sizeof(wire));
     CHECK_EQ(n, kNodeStatusMaxLen);
@@ -72,9 +81,26 @@ TEST(node_status, the_longest_fits_a_v1_frame_and_bad_input_is_refused) {
     CHECK_EQ(store_node_status(a, wire, n - 1), static_cast<size_t>(0));
     NodeStatus b;
     CHECK(load_node_status(wire, n, b));
-    CHECK(!load_node_status(wire, n - 1, b));  // actors cut short
+    CHECK(!load_node_status(wire, n - 1, b));  // the modules cut short
     wire[0] = 0;  // "unreachable" and unknown versions are not a status
     CHECK(!load_node_status(wire, n, b));
     const uint8_t unreachable[3] = {0, 0x68, 0x73};
     CHECK(!load_node_status(unreachable, sizeof(unreachable), b));
+}
+
+TEST(node_status, a_version_1_reply_still_reads_with_no_modules) {
+    // M12's boards answer version 1: the fields above, the actors last, nothing after them.
+    NodeStatus a;
+    std::strcpy(a.cluster, "lab");
+    std::strcpy(a.actors, "die_temp");
+    a.module_count = 1;
+    a.modules[0] = ModuleStatus{ModuleId::Sandbox, ModuleState::Active, ModuleReason::None};
+    uint8_t wire[kNodeStatusMaxLen];
+    size_t n = store_node_status(a, wire, sizeof(wire));
+    wire[0] = kNodeStatusVersion1;
+    n -= 1 + 3;  // drop the module section
+    NodeStatus b;
+    CHECK(load_node_status(wire, n, b));
+    CHECK_STR_EQ(static_cast<const char*>(b.actors), "die_temp");
+    CHECK_EQ(static_cast<int>(b.module_count), 0);
 }

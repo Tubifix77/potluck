@@ -2954,6 +2954,7 @@ size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {
     };
     st.pinned_running = static_cast<uint8_t>(g_actors.running());
     for (size_t i = 0; i < g_actors.running(); ++i) add(g_actors.name(i));
+    bool guest_here = false;
 #if CONFIG_POT_RECONCILER
     if (g_rec != nullptr) {
         for (size_t i = 0; i < g_rec->actor_count(); ++i) {
@@ -2962,11 +2963,26 @@ size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {
             if (g_rec->view(i).running) {
                 ++st.portable_here;
                 add(g_rec->kind_name(i));
+                if (std::strcmp(g_rec->kind_name(i), "guest") == 0) guest_here = true;
             }
         }
     }
 #endif
     st.actors[at] = 0;
+    // M13: the optional modules this image carries, and what each is doing.
+    auto module = [&](ModuleId id, ModuleState state, ModuleReason reason) {
+        if (st.module_count < kNodeStatusMaxModules) st.modules[st.module_count++] = ModuleStatus{id, state, reason};
+    };
+#if CONFIG_POT_WASM
+    module(ModuleId::Sandbox, guest_here ? ModuleState::Active : ModuleState::Idle,
+           guest_here ? ModuleReason::None : ModuleReason::NothingHere);
+#endif
+    (void)guest_here;
+#if CONFIG_POT_EXTENDER
+    module(ModuleId::Extender, extender::active() ? ModuleState::Active : ModuleState::Idle,
+           extender::active() ? ModuleReason::None : ModuleReason::NoCredentials);
+#endif
+    (void)module;
     return store_node_status(st, out, cap);
 }
 

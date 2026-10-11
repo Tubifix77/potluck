@@ -66,10 +66,36 @@ REPO = Path(__file__).resolve().parents[3]  # host/potluck/potluck/apply.py -> t
 ROLE_NAMES = {0x01: "extender-build", 0x02: "extender", 0x04: "sandbox", 0x08: "reconciler", 0x10: "relay",
               0x20: "enrolled", 0x40: "cabled"}
 FW_STATES = {0: "factory", 1: "confirmed", 2: "on_trial"}
+#: M13: pot/node_status.hpp's ModuleId, ModuleState and ModuleReason -- the words the inventory prints.
+MODULE_NAMES = {1: "sandbox", 2: "extender", 3: "wifi", 4: "present", 5: "pocket"}
+MODULE_STATES = {1: "active", 2: "idle", 3: "failed"}
+MODULE_REASONS = {0: "", 1: "no credentials", 2: "no network", 3: "standby", 4: "nothing here uses it",
+                  5: "out of memory", 6: "refused", 7: "error"}
 
 
 class ApplyError(Exception):
     """A plan that cannot be carried out; raised before any board changes."""
+
+
+# ---- M13: Potluck's optional board modules ---------------------------------------------------------------
+
+@dataclass(frozen=True)
+class BoardModule:
+    """One of Potluck's optional board modules (ARCHITECTURE section 13's table): what a cluster file's
+    `firmware.modules` turns on, what it needs, and which archives its cost is counted from."""
+    kconfig: tuple[str, ...]
+    archives: tuple[str, ...]
+    requires: tuple[str, ...] = ()
+    #: section 13's class: "a security liability" or "filler" -- printed by --plan, never a reason to refuse.
+    why_optional: str = "filler"
+
+
+#: Built so far. The extender is not here: it comes from its own repository (`firmware.extender`), and is
+#: named "extender" in the inventory and in a descriptor's `requires`.
+BOARD_MODULES = {
+    "sandbox": BoardModule(("CONFIG_POT_WASM=y",), ("libpot_wasm.a",), why_optional="filler"),
+}
+EXTENDER_ARCHIVES = ("libpme_hotspot.a",)
 
 
 # ---- the inventory -----------------------------------------------------------------------------------
@@ -97,6 +123,11 @@ class NodeStatus:
     portable_here: int
     cluster: str
     actors: list[str]
+    #: M13 (version 2): (module, state, reason) for each of Potluck's optional modules the image carries.
+    modules: list[tuple[str, str, str]] = field(default_factory=list)
+
+    def module_words(self) -> str:
+        return ",".join(f"{m}:{s}" + (f" ({r})" if r else "") for m, s, r in self.modules) or "-"
 
     def role_names(self) -> list[str]:
         return [n for bit, n in ROLE_NAMES.items() if self.roles & bit]
@@ -112,16 +143,18 @@ class NodeStatus:
                 f"{self.fw_state})  {pkg} (floor {self.pkg_floor})  cluster '{self.cluster}'  "
                 f"up {self.uptime_s} s  live {self.live_applies}  ck writes {self.ck_writes}  "
                 f"roles {','.join(self.role_names()) or '-'}  "
-                f"actors {','.join(self.actors) or '-'} ({self.portable_here}/{self.portable_total} portable here)")
+                f"actors {','.join(self.actors) or '-'} ({self.portable_here}/{self.portable_total} portable here)  "
+                f"modules {self.module_words()}")
 
 
 FIXED_LEN = 87
 
 
 def parse_node_status(raw: bytes) -> NodeStatus | None:
-    """pot/node_status.hpp's reply; None for 'unreachable' ({0, target}) or anything else not a v1 status."""
-    if len(raw) < FIXED_LEN + 2 or raw[0] != 1:
+    """pot/node_status.hpp's reply, version 1 or 2; None for 'unreachable' ({0, target}) or anything else."""
+    if len(raw) < FIXED_LEN + 2 or raw[0] not in (1, 2):
         return None
+    v2 = raw[0] == 2
     node, fw_run, fw_floor, fw_state = struct.unpack_from("<HIIB", raw, 1)
     version = raw[12:44].split(b"\0", 1)[0].decode("ascii", "replace")
     elf = raw[44:52]
@@ -139,11 +172,24 @@ def parse_node_status(raw: bytes) -> NodeStatus | None:
         return None
     al = raw[at]
     actors = raw[at + 1:at + 1 + al].decode("ascii", "replace")
-    if at + 1 + al != len(raw):
+    at += 1 + al
+    modules: list[tuple[str, str, str]] = []
+    if v2:
+        if at >= len(raw):
+            return None
+        mc = raw[at]
+        at += 1
+        if at + 3 * mc != len(raw):
+            return None
+        for i in range(mc):
+            mid, ms, mr = raw[at + 3 * i:at + 3 * i + 3]
+            modules.append((MODULE_NAMES.get(mid, f"module-{mid}"), MODULE_STATES.get(ms, f"state-{ms}"),
+                            MODULE_REASONS.get(mr, f"reason-{mr}")))
+    elif at != len(raw):
         return None
     return NodeStatus(node, fw_run, fw_floor, FW_STATES.get(fw_state, str(fw_state)), version, elf, slot, pending,
                       trial, pkg, pkg_floor, digest, roles, live, ck, up, pinned, ptotal, phere, cluster,
-                      [a for a in actors.split(",") if a])
+                      [a for a in actors.split(",") if a], modules)
 
 
 def node_status(b, target: int, *, timeout: float = 3.0, tries: int = 2) -> NodeStatus | None:
@@ -206,6 +252,9 @@ class Cluster:
     #: M13: what systems outside the cell may do with each resource -- the owner's choice, so it lives here and
     #: not in an app's fragment. Canonical paths (potluck://<system>/...) -> "read" | "read_write".
     outside: dict[str, str] = field(default_factory=dict)
+    #: M13: Potluck's board modules in the image: those `firmware.modules` names, the sandbox when `extra` turns
+    #: it on directly, and the extender when `firmware.extender` is given.
+    board_modules: tuple[str, ...] = ()
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -268,6 +317,29 @@ def load_cluster(path: str) -> Cluster:
     potluck = _source((fwd or {}).get("potluck", {"git": str(REPO)}), "firmware.potluck", base, "potluck")
     extender = _source(fwd["extender"], "firmware.extender", base, "extender") if fwd and fwd.get("extender") else None
     extra_cfg = list((fwd or {}).get("extra", []))
+    named = (fwd or {}).get("modules", [])
+    from . import modules as mods
+    if not isinstance(named, list) or not all(isinstance(m, str) for m in named):
+        raise ApplyError("firmware.modules: a list of module names")
+    for m in named:
+        if m == "extender":
+            if not (fwd or {}).get("extender"):
+                raise ApplyError("firmware.modules: 'extender' comes from its own repository -- give firmware.extender")
+        elif m not in BOARD_MODULES:
+            raise ApplyError(f"firmware.modules: '{m}' is " +
+                             ("not built yet" if m in mods.BOARD_MODULES else
+                              f"not one of Potluck's board modules ({', '.join(mods.BOARD_MODULES)})"))
+    board_modules = []
+    for m, spec in BOARD_MODULES.items():
+        if m in named or all(k in extra_cfg for k in spec.kconfig):
+            board_modules.append(m)
+            extra_cfg += [k for k in spec.kconfig if k not in extra_cfg]
+    if fwd and fwd.get("extender"):
+        board_modules.append("extender")
+    for m in board_modules:
+        for r in BOARD_MODULES[m].requires if m in BOARD_MODULES else ():
+            if r not in board_modules:
+                raise ApplyError(f"firmware.modules: '{m}' needs '{r}' in the image too")
     apps = [_source(a, f"apps[{i}]", base, f"app{i}") for i, a in enumerate(doc.get("apps", []))]
     if len({a.name for a in apps}) != len(apps):
         raise ApplyError("apps: two apps share a name")
@@ -294,7 +366,7 @@ def load_cluster(path: str) -> Cluster:
         outside[full] = mode
     return Cluster(p, system, doc.get("port"), int(doc.get("baud", 921600)), boards, keys, fwd, potluck, extender,
                    apps, extra_cfg, manifests, modules, _rel(base, pkg.get("guests_root", ".")),
-                   float(ver.get("timeout_s", 240)), list(ver.get("read", [])), outside)
+                   float(ver.get("timeout_s", 240)), list(ver.get("read", [])), outside, tuple(board_modules))
 
 
 # ---- sources: git archive into a cache, never a live tree ---------------------------------------------
@@ -365,6 +437,9 @@ class Firmware:
     elf_sha: bytes
     version: str
     built: bool  # False: reused from the cache, or given
+    #: M13: the build's per-archive size report (esp-idf-size json2), and the app components it carries.
+    size_json: Path | None = None
+    components: tuple[str, ...] = ()
 
 
 def elf_sha256(path: Path) -> bytes:
@@ -420,9 +495,11 @@ def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
     bdir = out / f"build-{variant}"
     img, elf = bdir / "potluck_m0.bin", bdir / "potluck_m0.elf"
     version = f"{fw_commit}-{key[:6]}"  # the last commit that changed the firmware, and the build's key
+    size_json = out / "size" / f"esp32s3-{variant}" / "size-components.json"
+    comps = tuple(sorted(p.name for d in app_dirs if d.is_dir() for p in d.iterdir() if (p / "CMakeLists.txt").exists()))
     if img.exists() and elf.exists():
         log(f"firmware: reusing the build of these sources ({version}, {out})")
-        return _fits(Firmware(img, elf, elf_sha256(elf), version, False))
+        return _fits(Firmware(img, elf, elf_sha256(elf), version, False, size_json, comps))
     # PowerShell 7 where it is installed: Windows PowerShell 5.1 turns ESP-IDF's stderr into a terminating
     # error once the output is captured, and the build stops in export.ps1.
     shell = "pwsh" if shutil.which("pwsh") or os.name != "nt" else "powershell"
@@ -448,7 +525,66 @@ def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
         tail = "\n".join((r.stdout + r.stderr).strip().splitlines()[-15:])
         raise ApplyError(f"firmware build failed (log: {out / 'build.log'}):\n{tail}")
     log(f"firmware: built in {time.monotonic() - t0:.0f} s")
-    return _fits(Firmware(img, elf, elf_sha256(elf), version, True))
+    return _fits(Firmware(img, elf, elf_sha256(elf), version, True, size_json, comps))
+
+
+#: Section 6's hard cap on Potluck's static internal RAM, and the archives counted against it
+#: (tools/check_size_budget.py's CORE_ARCHIVES -- the build fails above it).
+CORE_CAP_BYTES = 64 * 1024
+CORE_ARCHIVES = ("libpot_frame.a", "libpot_link.a", "libpot_espnow.a", "libmain.a", "libpot_ns.a", "libpot_deploy.a",
+                 "libpot_trust.a", "libpot_can.a", "libpot_reconcile.a", "libpot_actors.a")
+
+
+def archive_sizes(size_json: Path) -> dict[str, dict[str, int]]:
+    """Per archive: flash (code + read-only data), internal (static internal RAM, DIRAM) and psram (static
+    external RAM), from esp-idf-size's json2 report. Empty if the report is missing."""
+    try:
+        doc = json.loads(size_json.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out: dict[str, dict[str, int]] = {}
+    for key, e in doc.items():
+        if not isinstance(e, dict) or not isinstance(e.get("memory_types"), dict):
+            continue
+        name = e.get("abbrev_name") or key.replace("\\", "/").rsplit("/", 1)[-1]
+        mt = e["memory_types"]
+
+        def size(t: str) -> int:
+            row = mt.get(t)
+            return int(row.get("size", 0)) if isinstance(row, dict) else 0
+        a = out.setdefault(name, {"flash": 0, "internal": 0, "psram": 0, "data": 0})
+        a["flash"] += size("Flash Code") + size("Flash Data")
+        a["internal"] += size("DIRAM") + size("DRAM") + size("IRAM")
+        a["psram"] += size("External RAM")
+        a["data"] += size("DIRAM") + size("DRAM")  # static data only: what the core gate counts
+    return out
+
+
+def module_costs(c: Cluster, fw: Firmware) -> list[str]:
+    """M13: what each optional module costs the image, from the build's own size report -- one line each, then
+    Potluck's core against section 6's cap. Static figures; what a module takes from the heap while it runs is
+    measured on the boards."""
+    if fw.size_json is None:
+        return ["modules: no size report for a firmware given as an image"]
+    sizes = archive_sizes(fw.size_json)
+    if not sizes:
+        return [f"modules: size report missing ({fw.size_json})"]
+    rows: list[tuple[str, tuple[str, ...]]] = []
+    for m in c.board_modules:
+        rows.append((m, EXTENDER_ARCHIVES if m == "extender" else BOARD_MODULES[m].archives))
+    rows += [(f"app component {comp}", (f"lib{comp}.a",)) for comp in fw.components]
+    lines = []
+    for name, archives in rows:
+        tot = {"flash": 0, "internal": 0, "psram": 0, "data": 0}
+        for a in archives:
+            for k, v in sizes.get(a, {}).items():
+                tot[k] += v
+        lines.append(f"module {name}: {tot['flash']:,} B flash, {tot['internal']:,} B internal RAM, "
+                     f"{tot['psram']:,} B PSRAM (static)")
+    core = sum(sizes.get(a, {}).get("data", 0) for a in CORE_ARCHIVES)
+    lines.append(f"Potluck core: {core:,} B of {CORE_CAP_BYTES:,} B static internal RAM "
+                 f"({CORE_CAP_BYTES - core:,} B left)")
+    return lines
 
 
 # ---- the package --------------------------------------------------------------------------------------
@@ -582,6 +718,12 @@ def plan_package(c: Cluster, cache: Path, log) -> Package | None:
             mods.load(str(p))
         except (mods.ModuleError, OSError, ValueError) as exc:
             raise ApplyError(f"{p}: {exc}") from None
+    # M13: a component that needs one of Potluck's board modules gets it only if the cluster file names it.
+    for spec in mods.registered():
+        missing = [r for r in spec.requires if r not in c.board_modules]
+        if missing:
+            raise ApplyError(f"component '{spec.component}' requires {', '.join(missing)} in the firmware: name it in "
+                             f"the cluster file's firmware.modules")
     for mp, root in c.manifests:
         try:
             fragments.append((json.loads(mp.read_text(encoding="utf-8")), root, str(mp)))
@@ -739,6 +881,9 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             log(f"package: none -- firmware only, for {len(boards)} board(s)")
         reads = list(dict.fromkeys(reads + c.verify_reads))
         fwb = build_firmware(c, cache, log)
+        if fwb is not None:
+            for line in module_costs(c, fwb):
+                log(line)
     except ApplyError as exc:
         print(f"REFUSED, nothing changed: {exc}")
         return 2

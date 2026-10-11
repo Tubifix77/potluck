@@ -272,7 +272,7 @@ it (the task watchdog watches the idle task).
 ## 5. The descriptor (`potluck-modules.json`)
 
 ```json
-{"component": "<directory name>", "types": [first, last],
+{"component": "<directory name>", "types": [first, last], "requires": ["sandbox"],
  "modules": [{"module": "ext:<app>/<actor>", "type": <n>, "placement": "pinned|every|portable",
               "outputs": ["{node}/<app>/<output>"],
               "config": [{"name": "...", "kind": "...", "default": ..., "min": ..., "max": ...}]}]}
@@ -282,6 +282,9 @@ it (the task watchdog watches the idle task).
   with `{node}` for `node-<id>` of the node it runs on and `{actor}` for its name -- `"{node}/hello/peers"`,
   `"act/{actor}/out"`. `potluck apply` reads every one back before it says VERIFIED; an output it is not told
   about it cannot check.
+- **`requires`** (optional): Potluck's board modules your component needs in the same image -- `sandbox`,
+  `extender`, and from M13 `wifi`, `present`, `pocket`. `potluck apply` refuses a cluster file that builds your
+  component without them, naming what to add to its `firmware.modules`.
 - **Config kinds:** `u8 u16 u32 i8 i16 i32 f32 bool`; `path` (a namespace path, sent as its 32-bit hash);
   `node` (a node id or a label from the manifest); `system_prefix` (no value: the hash state after
   `potluck://<system>/`). Fields are encoded little-endian in the order listed; `min`/`max` are enforced on
@@ -390,7 +393,7 @@ paths are relative to the file):
 | `port` | the serial port of the PC's adapter, wired to one of the boards (`--port` overrides it) |
 | `boards` | every board: its node id in hex (the last two bytes of its MAC) and a label |
 | `keys` | the owner's CA certificate and deploy key ([GETTING-STARTED.md](GETTING-STARTED.md) makes them) |
-| `firmware` | Potluck at a commit (`potluck`), extra Kconfig lines (`extra`), and `extender` if a board should be a Wi-Fi extender: `{"git": ..., "rev": ..., "components": "firmware/components"}`, like an app. Every board gets the same image; a board becomes an extender only if it holds Wi-Fi credentials, the others are ordinary members. Or `{"image": ..., "elf": ...}` for a build made elsewhere, or `null` to leave the firmware alone |
+| `firmware` | Potluck at a commit (`potluck`), its optional board modules by name (`modules`: `sandbox` so far; each one costs flash and RAM, and some open the cell to the outside, so none is in an image unless named -- `"extra": ["CONFIG_POT_WASM=y"]` still means `sandbox`), extra Kconfig lines (`extra`), and `extender` if a board should be a Wi-Fi extender: `{"git": ..., "rev": ..., "components": "firmware/components"}`, like an app. Every board gets the same image; a board becomes an extender only if it holds Wi-Fi credentials, the others are ordinary members. Or `{"image": ..., "elf": ...}` for a build made elsewhere, or `null` to leave the firmware alone |
 | `apps` | each app: `git` (a local repository or a URL), `rev` (a commit or a tag), `components` (built into the firmware; every `potluck-modules.json` under it is loaded), `manifests` (its fragments) |
 | `package` | more fragments (`"manifests": [path, or {"manifest": path, "root": dir for its relative paths}]`), more descriptors (`"modules"`), and `guests_root` |
 | `verify` | `timeout_s`, and `read`: more paths to read back |
@@ -402,7 +405,9 @@ What `apply` does, in order:
    the descriptors, composes and compiles the package (every actor's config checked, every guest's author
    signature checked under the cluster CA), finds the keys, builds the firmware -- or reuses the cached build of
    the same firmware sources, so a commit that changes only documents or host tools sends nothing to the boards --
-   and reads every board's inventory, then says what it would change: which boards get firmware, what runs now
+   and reads every board's inventory (each board's optional modules with what each is doing: `sandbox:active`,
+   `extender:idle (no credentials)`), prints what each module costs the image -- flash, internal RAM and PSRAM, from
+   the build's own size report -- and how much of Potluck's 64 KB internal budget is left, then says what it would change: which boards get firmware, what runs now
    and what the package replaces it with, and whether the boards must reboot for it. Any problem stops it here,
    saying why: `REFUSED, nothing changed: ...`
    (exit code 2). A firmware image larger than its 2 MB update slot, a package over the node image's limits, a
