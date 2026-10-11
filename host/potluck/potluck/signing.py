@@ -153,7 +153,7 @@ def write_keypair(kp: KeyPair, out_base: str, *, overwrite: bool = False) -> tup
     """Write `<base>.key` and `<base>.pub`. Returns both paths.
 
     Refuses to replace an existing key unless `overwrite`: a CA key written over is every board enrolled
-    under it orphaned, and a re-run step or a mistyped --out is all it takes (found 2026-10-12, while
+    under it orphaned, and a re-run step or a mistyped --out is all it takes (found 2026-10-11, while
     writing GETTING-STARTED.md)."""
     priv_path = out_base + ".key"
     pub_path = out_base + ".pub"

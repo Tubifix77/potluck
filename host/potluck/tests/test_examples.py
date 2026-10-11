@@ -74,6 +74,20 @@ class PlacementReport(unittest.TestCase):
                 self.assertEqual("roam -> potluck://lab/act/roam/out" in out.getvalue(), planned, out.getvalue())
             mods.clear()
 
+    def test_an_every_node_actor_is_reported_as_such_not_as_portable(self):
+        import contextlib
+        import io
+
+        from potluck import reconcile as rc
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(rc.main([os.path.join(APP, "hello.json"), "--modules",
+                                      os.path.join(APP, "pot_hello", "potluck-modules.json")]), 0)
+        mods.clear()
+        self.assertIn("hello: runs on every node", out.getvalue())
+        self.assertNotIn("hello: portable", out.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

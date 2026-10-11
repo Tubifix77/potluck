@@ -594,8 +594,8 @@ also resets `otadata` so the board boots `factory`); after that, updates go over
 `host/potluck/`, with the CP2102 on COM6:
 
 ```
-python -m potluck.fw --port COM6 status
-python -m potluck.fw --port COM6 rollout ../../firmware/build/potluck_m0.bin --counter N --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --image-for 7368=../../firmware/build-extender/potluck_m0.bin
+python -m potluck.fw --port COM6 status --targets 6300,7368,8160
+python -m potluck.fw --port COM6 rollout ../../firmware/build/potluck_m0.bin --counter N --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --targets 7368,8160,6300 --image-for 7368=../../firmware/build-extender/potluck_m0.bin
 ```
 
 - `N` must be above every board's floor (`status` shows it). The default order is B, C, then A (the cable's own
@@ -620,7 +620,7 @@ under `act/<actor>/`. A board without the option refuses an image that carries g
 ```
 tools\build_firmware.ps1 -Clean -Variant m7-node -Extra "CONFIG_POT_WASM=y"
 tools\build_firmware.ps1 -Clean -Variant extender-m7 -Extra "CONFIG_POT_WASM=y" -PmeHotspot D:\Projects\poor-mans-extender\firmware\components
-python -m potluck.fw --port COM6 rollout ../../firmware/build-m7-node/potluck_m0.bin --counter N --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --image-for 7368=../../firmware/build-extender-m7/potluck_m0.bin
+python -m potluck.fw --port COM6 rollout ../../firmware/build-m7-node/potluck_m0.bin --counter N --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --targets 7368,8160,6300 --image-for 7368=../../firmware/build-extender-m7/potluck_m0.bin
 
 # once per author (the owner): a key for the author, certified by the cluster CA as role 3
 python -m potluck.signing keygen --role guest --label acme --out ../../keys/acme

@@ -76,5 +76,26 @@ class TestPayloads(unittest.TestCase):
             fw.parse_reply(raw[:-1])
 
 
+class Targets(unittest.TestCase):
+    """The boards a status or rollout acts on are the user's, never a default list of someone else's."""
+
+    def test_targets_come_from_the_flag_or_the_manifest_and_the_cabled_board_goes_last(self):
+        import json
+        import tempfile
+
+        from potluck import fw
+
+        self.assertEqual(fw.resolve_targets("2a10,3b21", None, None, rollout=False), [0x2A10, 0x3B21])
+        self.assertEqual(fw.resolve_targets("2a10,3b21,4c32", None, 0x2A10, rollout=True), [0x3B21, 0x4C32, 0x2A10])
+        self.assertEqual(fw.resolve_targets("2a10,3b21,4c32", None, 0x2A10, rollout=False), [0x2A10, 0x3B21, 0x4C32])
+        with tempfile.TemporaryDirectory() as d:
+            m = os.path.join(d, "cell.json")
+            with open(m, "w", encoding="ascii") as f:
+                json.dump({"nodes": [{"node_id": 0x2A10}, {"node_id": 0x3B21}, {"node_id": 254, "kind": "host"}]}, f)
+            self.assertEqual(fw.resolve_targets(None, m, 0x2A10, rollout=True), [0x3B21, 0x2A10])
+        with self.assertRaises(fw.TargetsError):
+            fw.resolve_targets(None, None, 0x2A10, rollout=True)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4762,7 +4762,7 @@ known limitation in the README: it followed a *power-on*, and every boot since (
 session) was a reset, so its trigger has not been retried. The README's M7 status cell (it still opened with "gated"),
 its ADR count (nine) and its test-gate figures (381 C++ cases / 105,176 checks, 296 Python cases in 25 suites) fixed.
 
-## Session 38, last -- 2026-10-12: everything on all three boards
+## Session 38, last -- 2026-10-11: everything on all three boards
 
 The owner asked for everything built so far on all three boards. Firmware counter 9 over the cell (`captures/
 room-rollout-c9.txt`, 116-122 s a board): Potluck `437face` with M7's sandbox and passive-sensor's component (from
@@ -4782,7 +4782,7 @@ deploy tool exited; B declared C dead 5.7 s after its boot (its known boot scan)
 passive-sensor run together: no interaction seen. Detection learned its baseline on the desk; placed in a room, the
 boards relearn there.
 
-## Session 38, planning -- 2026-10-12: M12 scheduled
+## Session 38, planning -- 2026-10-11: M12 scheduled
 
 The install above was the owner's eye-opener: everything had been tested, yet combining it took two hand-named
 variants, a `git archive` export, a descriptor named twice, a hand-stitched package, two counters read from notes,
@@ -4794,7 +4794,7 @@ naming a fixed mix is a bundle. M12 is in section 13: one image with roles at ru
 changes and kept state, with step 1 the image-size and partition question (the update slots are 2 MB each and the
 flash 16 MB; the 1 MB `factory` slot is what limits B's 990,642 B image).
 
-## Session 38, M12 part 4 -- 2026-10-12: the developer manual, first version
+## Session 38, M12 part 4 -- 2026-10-11: the developer manual, first version
 
 The owner added a developer manual to M12: what was built for app authors was nowhere in one place.
 `DEVELOPING-APPS.md` now covers the two ways to write an app (native external component, or guest) and how to
@@ -4813,7 +4813,7 @@ cited as "in section 7" never existed. It is now in the manual (0x80-0x8F passiv
 found: an app repository cannot test its actor glue on a PC (passive-sensor tests only its pure cores), which M12
 now owes as a test kit. Left for part 4's acceptance: the blind-reader test.
 
-## Session 38, M12 part 4 -- 2026-10-12: the blind-reader test
+## Session 38, M12 part 4 -- 2026-10-11: the blind-reader test
 
 A fresh agent with only `DEVELOPING-APPS.md` and Potluck's source (no log, no handover notes, no memory, not the
 private app repositories, no serial ports) was asked to build `trend`: a portable actor reading B's die temperature
@@ -4848,4 +4848,47 @@ tooling for getting vanilla Potluck onto your own boards (own CA and keys, first
 adapter); the manual's commands written for the maintainer's bench; type numbers that can collide between
 independent authors; no description of installing someone else's app; no test kit. Rerun the test with the right
 premise once the getting-started part exists.
+
+## Session 38, M12 part 4 -- 2026-10-11: GETTING-STARTED.md, and the blind test rerun with the right premise
+
+**A date correction first:** everything this session stamped "2026-10-12" (the all-boards install, M12's planning,
+the manual, the first blind test) happened on 2026-10-11 -- B's hotspot uptime of 12 h had been read as a night
+passing. Corrected in every document.
+
+`GETTING-STARTED.md` (new): why use Potluck and when not, what to buy and install, own keys, flashing, enrolment,
+the PC link, a first package you can watch fail over, firmware updates, reading a console, troubleshooting, the
+edition's limits -- for any number of boards up to a cell's 20, not three. The README, the manual and the runbook
+stopped framing Potluck as a three-board system; the maintainer's three boards are named as a test cell. Found while
+writing it: **`signing keygen` replaced an existing key without a word** (`O_TRUNC`) -- a re-run step or a mistyped
+`--out` orphaned every board enrolled under a CA; now refused without `--force`, with a test (`697d1aa`).
+
+**The rerun.** A fresh reader as a newcomer with five boards, starting from the README's top, no boards, its own
+keys (never the repository's): in 50 minutes it passed the tests, made keys, built vanilla firmware, signed a
+five-board package, deployed it to an emulated node, wrote its own app (`pot_linkmap`: per-link signal and delivery
+on every board, a "move me" blink -- 11 C++ cases, 4 Python, a firmware build) and the README it would publish. 21
+findings; the platform's, now fixed:
+
+- **`potluck.fw` defaulted its boards to the maintainer's three** (`6300,7368,8160`): on anyone else's cell `status`
+  showed nothing and `rollout` stopped at once. Now there is no default -- `--targets`, or `--manifest` for the
+  cell's own manifest -- and the cabled board is updated last whatever the order (with a test).
+- **The README's no-hardware trial was broken**: under QEMU, PSRAM (on by default since M6) aborted boot in a loop,
+  and with it off the status LED's RMT transfer never completed. `sdkconfig.qemu` now turns both off.
+- **`potluck.reconcile` called an every-node actor "portable"**; it now says "runs on every node" (with a test).
+
+The docs' (fixed in GETTING-STARTED, DEVELOPING-APPS, README, runbook): an unenrolled board accepts any package (the
+guide said "signed from the first boot"); the first package fails on more than 8 boards and "a shorter list" was
+not a feature; the cluster name (keep `lab`; the manual said to change it); the relay offered as a feature though
+it is not kept across a reboot; no way to read a console; a package does not reach a board that is off; no
+`TRIAL_IN_PROGRESS` row; the ticker's value needs decoding; in-place builds dirty the tree; run builds from
+PowerShell 7, not Git Bash; the README's deploy example lacked `--key`/`--bcert`; WHEN-THE-BOARDS-ARRIVE offered as
+"bring-up from nothing" and first in the reading order; maintainer-only extender lines in the manual; "8 outputs" is
+8 per `outputs()` call; how to mark a provisional type block; and, the reader's own better way, building an app's
+tests with `add_subdirectory(<potluck>/tests ... EXCLUDE_FROM_ALL)` against `pot_portable`. Platform gaps that need
+more than a fix are M12's (ARCHITECTURE section 13): a configurable cluster name, a package reaching boards that were
+off, a portable actor placed among the best 8 of a bigger cell, the relay kept across reboots, building without
+dirtying the tree, and collision-free type numbers. Not addressed: the README's milestone table reads as an internal
+log to a newcomer, and the repository's root holds historical PDFs and mood boards beside the guides.
+
+Verdicts: getting started -- yes for a cell of up to 8 boards with the fixes; your own app -- yes; sharing -- yes,
+but a type block still needs the maintainer.
 

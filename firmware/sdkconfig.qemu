@@ -51,3 +51,15 @@ CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 # components are chatty at debug level and an emulated run is slow enough that the console becomes the
 # bottleneck -- which changes the timing of the thing being observed.
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# No PSRAM under emulation (found 2026-10-11 by the newcomer test of GETTING-STARTED.md). The boards'
+# defaults turn PSRAM on (since M6), and the emulated chip has none: with it on, boot aborts in
+# "octal_psram: PSRAM chip is not connected" and loops, and the frame link never answers. Off, the
+# reconciler is compiled out (its buffers live in PSRAM), so portable actors do not run under emulation.
+CONFIG_SPIRAM=n
+
+# No status LED under emulation (same test). The LED is driven through the RMT peripheral, which the
+# emulator does not complete: after the power-up self-test the node waits in rmt_tx_wait_all_done for
+# ever and never answers HELLO.
+CONFIG_POT_STATUS_LED_GPIO=-1
+CONFIG_POT_STATUS_LED_GPIO_ALT=-1

@@ -135,7 +135,7 @@ def main(argv: list[str] | None = None) -> int:
 
     args = list(sys.argv[1:] if argv is None else argv)
     # An app's actors are portable or not by its descriptor; without it they are left out of the plan
-    # (found by the blind reader of DEVELOPING-APPS.md, 2026-10-12).
+    # (found by the blind reader of DEVELOPING-APPS.md, 2026-10-11).
     descriptors = []
     while "--modules" in args:
         i = args.index("--modules")
@@ -159,6 +159,10 @@ def main(argv: list[str] | None = None) -> int:
         print(e.report())
         return 1
     for a in m.actors:
+        spec = mods.get(a.module)
+        if spec is not None and spec.placement == "every":
+            print(f"{a.name}: runs on every node")  # its descriptor says so; nothing to place
+            continue
         ok, why = portability(m, a)
         print(f"{a.name}: {why}")
     for p in plan(m):

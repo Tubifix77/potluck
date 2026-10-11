@@ -63,7 +63,7 @@ Work is organised as **falsifiable milestones, M0–M12** — every "M-number" i
 them; the ".1" and ".2" steps were added when the owner's own applications asked for something the
 platform could not yet do. Each has an acceptance test that can fail and a kill criterion (both spelled
 out in [ARCHITECTURE.md](ARCHITECTURE.md)); a milestone counts as *built* when the code exists, and
-*accepted* only when its test has passed. Where they stand as of **2026-10-12**, after twelve days on real
+*accepted* only when its test has passed. Where they stand as of **2026-10-11**, after eleven days on real
 hardware. The measurements come from the maintainer's own test cell -- three ESP32-S3 boards on a desk, walked
 through a house, and placed around a room -- which is a test bench, not a size: a cell holds up to 20 boards.
 
@@ -86,14 +86,14 @@ through a house, and placed around a room -- which is a test bench, not a size: 
 | **M9** — borrowing an idle core | a board hands self-contained pieces of a job to neighbours with spare cores, and does a piece itself if a neighbour dies; the experiment that decides whether moving work between live boards is worth it | **accepted on three boards (2026-10-10), with no PC attached.** A job on one board -- an estimate of pi from a billion random points, in 960 pieces -- took 3 min 53 s on that board alone and 68 s with the other two lending their idle cores: **3.41x faster**, with the same answer to the last digit wherever each piece ran. Pressing reset on a lending board mid-job lost nothing: its pieces were run again. The lenders kept doing their own jobs as before. The board doing the work decides for itself, from its own measurements, whether lending a piece pays; a lender can say no. This reopened one of the design's closed decisions, as the experiment was set up to do, and only as far as the measurements reach |
 | **M10** — the PC as a placement node | a PC runs cluster workloads while it is on, and the boards take them back when it is not | **accepted on the bench (2026-10-10), with one caveat: the cable was "pulled" by stopping the PC's program without warning, which is all a pulled cable shows the boards; a physical pull is still to do.** The PC joins as a full member, from the boards' own code built for Windows and enrolled like a board, and reaches the boards it is not cabled to through the one it is. A job that prefers the PC moved there each time it joined -- handed over, never running in two places -- and back to a board within 0.63-0.69 s each time it vanished, five times in a row; with the PC on for 30 minutes it stayed put. Every board read the job's values from the PC |
 | **M11** — firmware over the cell | a signed firmware update sent once, through one board, reaches every board over the radio, each trying it and rolling back by itself if it fails | **accepted on three boards (2026-10-10), with one caveat: power was not cut by hand mid-update (the boards were reset instead).** Asked for by `passive-sensor`, whose boards on wall chargers around a room could not take a new command without being carried back to the PC. A signed image of ~0.85 MB reaches each board in about 1.5 minutes and the three-board cell in 5.4; each board tries it and keeps it only once it has rejoined the cell. An image that crashes, or never rejoins, rolls itself back on the first board and stops the update there; unsigned, foreign-signed, altered and older images are refused; no board dropped out of the cell during a transfer |
-| **M12** — one command, any mix | Potluck as a platform: say which boards run which apps in one file, and one command builds, rolls out, deploys and checks it -- no variants, counters or order to know, and adding or removing an app without rebooting the boards, and a developer manual for people making apps | **planned (2026-10-12).** Prompted by putting everything already tested onto the three boards, which took a specialist half an hour of hand steps. Fixed per-product bundles were weighed and come back as presets on top of it |
+| **M12** — one command, any mix | Potluck as a platform: say which boards run which apps in one file, and one command builds, rolls out, deploys and checks it -- no variants, counters or order to know, and adding or removing an app without rebooting the boards, and a developer manual for people making apps | **planned (2026-10-11).** Prompted by putting everything already tested onto the three boards, which took a specialist half an hour of hand steps. Fixed per-product bundles were weighed and come back as presets on top of it |
 
 Beneath the milestones, the standing figures:
 
 | | |
 |---|---|
 | Architecture | decision-closed v1, with nine [Architecture Decision Records](https://adr.github.io/) and the trigger that would reopen each ([ARCHITECTURE.md](ARCHITECTURE.md)) |
-| Test gates | **33 green (2026-10-12):** 385 C++ cases / 105,196 checks, run plain and under [AddressSanitizer](https://github.com/google/sanitizers/wiki/AddressSanitizer); 300 Python cases in 26 suites; three independent wire-format implementations agreeing byte-for-byte over generated corpora; a strict-GCC portability gate; plus the firmware build with its memory-budget check and on-target self-tests |
+| Test gates | **33 green (2026-10-11):** 385 C++ cases / 105,196 checks, run plain and under [AddressSanitizer](https://github.com/google/sanitizers/wiki/AddressSanitizer); 303 Python cases in 26 suites; three independent wire-format implementations agreeing byte-for-byte over generated corpora; a strict-GCC portability gate; plus the firmware build with its memory-budget check and on-target self-tests |
 | Static memory | **56.6 KB** of the 64 KB core cap in the default build and 56.9 KB with M7's sandbox (2026-10-11, measured per build; the M8.2 room-sensor builds measured 49.8 KB, 53.2 KB with the per-frame signal log on). Buffers that only tasks touch live in the boards' 8 MB of extra RAM |
 | Measured on hardware | A **24.5-hour** three-board soak: no reboots, no false deaths, **100 %** packet delivery on all six links, round trip **4–6 ms** typical and 16–22 ms at the 99th percentile, memory flat to the byte. A distance sweep through a two-storey house (up to ~16 m, four walls, a floor, a fridge): every spot held, the worst at 99 %. The Wi-Fi stack costs **31.5 KiB** with [ESP-NOW](https://www.espressif.com/en/solutions/low-power-solutions/esp-now) active. All in a home thick with competing 2.4 GHz traffic, so these are a floor, not a best case |
 
@@ -199,7 +199,7 @@ exercised daily.
 
 ```powershell
 # The gates: C++ suite, AddressSanitizer, three differential corpora,
-# eighteen Python suites, portability, firmware build + memory budget.
+# every Python suite, portability, firmware build + memory budget.
 tools\run_all_tests.ps1 -Asan -Firmware
 
 # Boot the real firmware under QEMU with its frame link exposed as a TCP socket:
@@ -245,7 +245,8 @@ the PC joins the cluster as a peer. That board reaches the others by radio. **To
   wires, drawn as they sit on the bench.
 - **The hardware, in one place:** [bench/esp32-s3-bench-datasheet.md](bench/esp32-s3-bench-datasheet.md) —
   every spec and limit known about these boards and modules, each tagged measured, datasheet or seller.
-- **Bring-up from nothing:** [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).
+- **Your own cell from nothing:** [GETTING-STARTED.md](GETTING-STARTED.md). (The maintainer's own bring-up diary,
+  with every finding along the way, is [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md).)
 - **Soak and measurement procedure:** [M0-RUNBOOK.md](M0-RUNBOOK.md).
 - **Building an application in:** an application keeps its actors in its own repository and names them
   in a `potluck-modules.json`; `tools\build_firmware.ps1 -AppComponents <its components folder>` builds
@@ -258,10 +259,11 @@ Then, from `host/potluck/`, the same tool as above over the adapter's port:
 
 ```
 python -m potluck.ctl --port COM6 --node 7368 watch sys/uptime        # M1: board B, read through board A
-python -m potluck.ctl --port COM6 --node 6300 deploy pkg.json --ca ca.pub   # M3: a signed package, whole cell
+python -m potluck.ctl --port COM6 --node 6300 deploy pkg.json --ca ca.pub --key deploy.key --bcert deploy.bcert
+                                                     # M3: a signed package, whole cell
 python -m potluck.hostnode --port COM6 --package pkg.json --identity host.id
                                                      # M10: the PC joins as a placement node
-python -m potluck.fw --port COM6 rollout potluck_m0.bin --counter 4 --key deploy.key --bcert deploy.bcert
+python -m potluck.fw --port COM6 rollout potluck_m0.bin --counter 4 --key deploy.key --bcert deploy.bcert --manifest my-cell.json
                                                      # M11: new firmware, board by board, over the radio
 python -m potluck.guest sign module.wasm --key author.key --cert author.gcert --out module.guest.json
                                                      # M7: a guest author signs a module; the owner's
@@ -285,11 +287,11 @@ python tools/can_report.py captures/m4-can.log
 
 | file | what it is |
 |---|---|
-| [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md) | The bench guide: unboxing, the board register, first contact, the soak and the distance sweep, written for a reader who remembers nothing |
-| [bench/m1-wiring.html](bench/m1-wiring.html) | The frame-link wiring, as built: the USB-serial adapter to one board, step by step (open in a browser) |
-| [bench/m4-can-wiring.html](bench/m4-can-wiring.html) | The two-board CAN bus for M4, as built (open in a browser) |
 | [GETTING-STARTED.md](GETTING-STARTED.md) | **Start here:** why you would use Potluck, what you need, and your own boards from bare to a working cluster -- keys, flashing, enrolment, the PC link, a first package you can watch fail over |
 | [DEVELOPING-APPS.md](DEVELOPING-APPS.md) | **For people making apps for Potluck:** native actors or sandboxed guests, the actor API, descriptors, manifests, building, deploying and testing, with a worked example and what the first two apps learned |
+| [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-BOARDS-ARRIVE.md) | The maintainer's bench diary: unboxing, the test cell's board register, first contact, the soak and the distance sweep |
+| [bench/m1-wiring.html](bench/m1-wiring.html) | The frame-link wiring, as built: the USB-serial adapter to one board, step by step (open in a browser) |
+| [bench/m4-can-wiring.html](bench/m4-can-wiring.html) | The two-board CAN bus for M4, as built (open in a browser) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the nine decision records, and milestones M0–M12 with accept/kill criteria |
 | [M0-LOG.md](M0-LOG.md) | The decision log, newest session last — including the conclusions that were later **withdrawn**, kept struck-through rather than deleted. The QEMU sessions are a study in how a stale flash image manufactures false evidence |
 | [M0-RUNBOOK.md](M0-RUNBOOK.md) | Bench procedure: build, flash, emulate, soak, and the delay methodology to read *before quoting any number* |

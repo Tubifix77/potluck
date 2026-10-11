@@ -1,8 +1,14 @@
 """M11: firmware over the cell -- sign a firmware image, and roll it out one node at a time.
 
-    python -m potluck.fw --port COM6 status [--targets 6300,7368,8160]
+    python -m potluck.fw --port COM6 status  (--manifest <my-cell.json> | --targets 6300,7368,8160)
     python -m potluck.fw --port COM6 rollout <image.bin> --counter N --key <deploy.key> --bcert <deploy.bcert>
-                         [--targets 7368,8160,6300] [--image-for 7368=<other.bin>] [--confirm-timeout 180]
+                         (--manifest <my-cell.json> | --targets 7368,8160,6300)
+                         [--image-for 7368=<other.bin>] [--confirm-timeout 180]
+
+The boards are yours to name: by `--targets` (hex node ids), or by `--manifest`, whose boards (every node not
+of kind "host") are taken in its order. A rollout updates the board on the cable last, whatever the order
+given, so the PC keeps its link to the cell while the others update. (Until 2026-10-11 the default was the
+maintainer's three boards, which on anyone else's cell reported nothing and stopped at once.)
 
 Every request goes to the board the host is cabled to and names its target; that board answers for
 itself and passes a request for any other node on to it (fw_rt in firmware/main/m0_main.cpp), so the image is
@@ -137,6 +143,29 @@ def _targets(s: str) -> list[int]:
     return [int(x, 16) for x in s.split(",") if x]
 
 
+class TargetsError(Exception):
+    pass
+
+
+def resolve_targets(targets: str | None, manifest: str | None, cabled: int | None, *, rollout: bool) -> list[int]:
+    """The boards to act on: --targets, else the manifest's boards; for a rollout, the cabled board last."""
+    if targets:
+        nodes = _targets(targets)
+    elif manifest:
+        import json
+
+        with open(manifest, encoding="utf-8") as f:
+            doc = json.load(f)
+        nodes = [int(n["node_id"]) for n in doc.get("nodes", []) if n.get("kind", "board") != "host"]
+    else:
+        raise TargetsError("name your boards: --manifest <your cell's manifest>, or --targets <hex ids, comma-separated>")
+    if not nodes:
+        raise TargetsError("no boards to act on")
+    if rollout and cabled in nodes:
+        nodes = [n for n in nodes if n != cabled] + [cabled]
+    return nodes
+
+
 def main(argv: list[str] | None = None) -> int:
     from .bridge import Bridge
 
@@ -145,23 +174,34 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--baud", type=int, default=921600)
     sub = ap.add_subparsers(dest="cmd", required=True)
     st = sub.add_parser("status")
-    st.add_argument("--targets", default="6300,7368,8160")
+    st.add_argument("--targets", default=None, help="hex node ids, comma-separated")
+    st.add_argument("--manifest", default=None, help="take the boards from this manifest's nodes")
     ro = sub.add_parser("rollout")
     ro.add_argument("image")
     ro.add_argument("--counter", type=int, required=True)
     ro.add_argument("--key", required=True)
     ro.add_argument("--bcert", required=True)
-    ro.add_argument("--targets", default="7368,8160,6300")
+    ro.add_argument("--targets", default=None, help="hex node ids, comma-separated, in update order")
+    ro.add_argument("--manifest", default=None, help="take the boards from this manifest's nodes")
     ro.add_argument("--image-for", action="append", default=[], metavar="NODE=IMAGE",
                     help="a different image for one node (a board built as another variant)")
     ro.add_argument("--chunk", type=int, default=CHUNK_DEFAULT)
     ro.add_argument("--confirm-timeout", type=float, default=180.0)
     a = ap.parse_args(argv)
 
+    if not a.targets and not a.manifest:
+        print("potluck.fw: name your boards: --manifest <your cell's manifest>, or --targets <hex ids, comma-separated>",
+              file=sys.stderr)
+        return 2
     with Bridge.open(port=a.port, baud=a.baud) as b:
         b.hello(timeout=3.0)
+        try:
+            targets = resolve_targets(a.targets, a.manifest, b.peer_node_id, rollout=a.cmd == "rollout")
+        except (TargetsError, OSError, ValueError, KeyError) as exc:
+            print(f"potluck.fw: {exc}", file=sys.stderr)
+            return 2
         if a.cmd == "status":
-            for t in _targets(a.targets):
+            for t in targets:
                 try:
                     print(f"0x{t:04x}: {status(b, t)}")
                 except Exception as exc:  # noqa: BLE001 - report and go on to the next node
@@ -171,11 +211,13 @@ def main(argv: list[str] | None = None) -> int:
 
         key = read_key(a.key)
         bcert = bytes.fromhex(open(a.bcert, encoding="ascii").read().strip())
-        paths = {t: a.image for t in _targets(a.targets)}
+        paths = {t: a.image for t in targets}
+        if b.peer_node_id in targets:
+            print(f"0x{b.peer_node_id:04x} is the board on the cable: it is updated last")
         for spec in a.image_for:
             node, _, path = spec.partition("=")
             paths[int(node, 16)] = path
-        for t in _targets(a.targets):
+        for t in targets:
             img = open(paths[t], "rb").read()
             trailer = fw_trailer(img, a.counter, key.secret, bcert)
             print(f"0x{t:04x}: image {paths[t]}, {len(img)} B, counter {a.counter}, "

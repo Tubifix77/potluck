@@ -21,8 +21,9 @@ system:
 - **Deploy and detach.** Change what every board does with one signed package sent through one board on your
   PC's cable; update the firmware itself over the radio, board by board, each rolling itself back if the new
   image does not work. Then unplug the PC: the boards carry on.
-- **Signed, from the first boot.** Boards join only a cluster whose certificate authority enrolled them, and
-  accept only packages and firmware signed by your keys.
+- **Signed, once enrolled.** Boards join only a cluster whose certificate authority enrolled them, and an
+  enrolled board accepts only packages and firmware signed by your keys. (A board not yet enrolled accepts any
+  package -- which is why enrolment, step 4, comes before your first package, step 6.)
 - **Room to grow.** Native apps compiled in, untrusted apps in a sandbox, a PC as a member that takes work
   while it is on, idle cores lent between boards, named services on the PC (speech, a model) that boards call.
 
@@ -40,8 +41,8 @@ under 10 ms stay on one board); and, in this edition, chips other than the ESP32
   PSRAM); a board without PSRAM needs one build option changed (troubleshooting, below).
 - A USB cable per board, for power and console while you set up.
 - **One 3.3 V USB-serial adapter** (a CP2102 module, for example) and three female-female jumper wires: the
-  PC talks to the cluster through it, wired to any one board. (The board's own USB port is its console,
-  not this link.)
+  PC talks to the cluster through it, wired to any one board. (Each board's USB cable, on the socket
+  labelled UART, is its console -- for flashing and logs -- not this link.)
 
 **Software** (Windows; the tools are PowerShell-first)
 
@@ -99,7 +100,7 @@ exists for when you mean it -- replacing the CA means enrolling every board agai
 
 Plug the board in by the USB-C socket labelled **UART** -- the one labelled USB does not work while the radio
 runs, by design (Potluck turns off a USB workaround that costs radio performance). Then, from the repository's
-root:
+root, in a PowerShell 7 prompt (not Git Bash):
 
 ```
 pwsh tools\build_firmware.ps1 -Flash -Port COM7
@@ -108,6 +109,9 @@ pwsh tools\build_firmware.ps1 -Flash -Port COM7
 with the board's port (Device Manager shows it). The first build takes ~5 minutes; repeat with each board's
 port -- the image is built once and flashed again. A freshly booted board blinks red, green, blue (its LED's
 self-test) and then shows **blue: no peer**.
+
+The build also rewrites the size reports Potluck keeps in `firmware\size\`, so `git status` shows them changed and
+later builds are stamped `-dirty`; `git checkout -- firmware/size` puts them back if you care.
 
 Each board's **node id** is the last two bytes of its MAC address: a board with MAC `b8:1f:3f:da:73:68` is node
 `0x7368`. You will need them; step 4 prints them.
@@ -164,8 +168,9 @@ has three boards, list as many as you have:
 
 (Node ids are decimal in JSON: `0x7368` is 29544. Call the cluster `lab` for now -- this edition's boards name
 their built-in resources under `potluck://lab/...`.) `temp_b` publishes board B's chip temperature; `ticker` is
-a counter that runs on one board, chosen by the cluster from the boards listed (up to 8 of them; with more
-boards, give it `"pin"` or a shorter list -- see DEVELOPING-APPS.md, section 6). Sign it and deploy it through the cabled board
+a counter that runs on one board, chosen by the cluster from the boards listed. (The cluster chooses among at
+most 8 boards; with more than 8 in your manifest, give the ticker `"pin": <one board's id>` -- package compiling
+says so if you forget.) Sign it and deploy it through the cabled board
 (its node id goes after `--node`):
 
 ```
@@ -181,8 +186,13 @@ python -m potluck.ctl --port COM6 watch potluck://lab/node-7368/hw/die_temp
 python -m potluck.ctl --port COM6 watch potluck://lab/act/ticker/out
 ```
 
-The ticker's value says which board runs it (the node id is in its upper 16 bits). **Unplug that board**: within
-about a second the ticker runs on another one and counts again. Plug it back in and it rejoins.
+The ticker's value says which board runs it: its upper 16 bits are the node id (`python -c "print(hex(VALUE >> 16))"`
+with the number it shows). **Unplug that board** -- unless it is the cabled one, through which the PC sees
+everything; then unplug another and watch it stay put, or pin the ticker elsewhere. Within about a second the
+ticker runs on another board and counts again. Plug it back in and it rejoins.
+
+The package reaches every board that is on and in radio range of the cabled board at that moment. A board that was
+off keeps its previous package: deploy again (at a higher counter) once it is back.
 
 Each package needs a higher `--counter` than the last (2, 3, ...): boards refuse anything older, so a replayed
 old package cannot roll them back. Keep a note of the last one.
@@ -192,13 +202,26 @@ old package cannot roll them back. Keep a note of the last one.
 Over the radio, one board at a time, each keeping the new image only after it has proved itself:
 
 ```
-python -m potluck.fw --port COM6 status
-python -m potluck.fw --port COM6 rollout ..\..\firmware\build\potluck_m0.bin --counter 1 --key ..\..\keys\deploy.key --bcert ..\..\keys\deploy.bcert
+python -m potluck.fw --port COM6 status --manifest my-cell.json
+python -m potluck.fw --port COM6 rollout ..\..\firmware\build\potluck_m0.bin --counter 1 --key ..\..\keys\deploy.key --bcert ..\..\keys\deploy.bcert --manifest my-cell.json
 ```
 
-`status` shows each board's version and firmware counter; the rollout's counter must be above it. ~2 minutes a
-board. A board that crashes on the new image, or never rejoins the cluster with it, rolls itself back, and the
+`--manifest` takes your boards from your cell's manifest (or name them: `--targets 7368,8160,6300`, hex ids).
+`status` shows each board's version and firmware counter; the rollout's counter must be above it. Boards update one
+at a time, the cabled board last; ~2 minutes a board. A board that crashes on the new image, or never rejoins the cluster with it, rolls itself back, and the
 rollout stops there.
+
+## Reading a board's console
+
+Each board logs to its USB console (the UART socket, 115200 baud). Two tools read it without resetting the board,
+with ESP-IDF's Python, from the repository's root:
+
+```
+python tools\console_tap.py COM7 60 board.log            # every line for 60 s, stamped with the PC's clock
+python tools\console_send.py COM7 "POT! id"              # send one console command, print the JSON it answers
+```
+
+ESP-IDF's own `idf.py -p COM7 monitor` works too, but resets the board when it opens the port.
 
 ## Where next
 
@@ -217,6 +240,7 @@ rollout stops there.
 | `enrol` times out | Another program holds the board's port (a serial monitor): close it. |
 | The build fails at once in `export.ps1` | You ran it from Windows PowerShell 5.1; use `pwsh`. |
 | A board without PSRAM boots into errors | Build with `-Variant nopsram -Extra "CONFIG_SPIRAM=n"` (portable actors are then compiled out). |
+| `deploy` answers `TRIAL_IN_PROGRESS` | A board is still trying out the last package (it keeps one only after it has run cleanly): wait ~15 s and deploy again. |
 | `deploy` answers `DOWNGRADE` | The counter is not above the boards' last one: use a higher one. |
 | `deploy` answers `BAD_SIGNATURE` or `UNSIGNED` | The package was not signed by a deploy key your CA certified, or `--key`/`--bcert` were left out. |
 | A board does not keep a new image | Working as intended: it rolled back because the image did not prove itself; its console log says why. |
@@ -224,7 +248,7 @@ rollout stops there.
 ## Limits of this edition
 
 Stated so they do not surprise you: up to **20 boards in a radio cell**, all within radio range of each other
-(a board can be set to relay for one more hop: `POT! relay 1` on its console); **ESP32-S3** boards, plus PCs as members; **one package per cluster**,
+(a relay that carries one more hop exists, but only as a test instrument: it is not kept across a reboot); **ESP32-S3** boards, plus PCs as members; **one package per cluster**,
 which lists everything the cluster runs; up to 16 actors in a package, a portable actor placed among at most 8 boards, and 128 named resources per
 board; the
 cluster is called `lab`. Every one of these is a number in the source, not a law of nature -- and the next

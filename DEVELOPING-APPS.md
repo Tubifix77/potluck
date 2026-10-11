@@ -12,12 +12,12 @@ experience of the first two apps built on Potluck: **passive-sensor**, which det
 from how their body weakens the boards' own radio links, and **poor-mans-extender**, a Wi-Fi extender that
 shares the radio with Potluck. Both live in their own (private) repositories, the way an app should.
 
-**Status of this manual (2026-10-12).** It describes today's tools, hand steps included. Milestone M12
+**Status of this manual (2026-10-11).** It describes today's tools, hand steps included. Milestone M12
 ([ARCHITECTURE.md](ARCHITECTURE.md), section 13) replaces most of those steps with one `potluck apply`
 command; this manual is rewritten as it lands. Everything shown here is tested: the worked example in
 section 3 is built for the boards and tested on a PC by Potluck's own test suites.
 
-**Blind-reader test, 2026-10-12.** A fresh reader with only this manual and Potluck's source built a portable
+**Blind-reader test, 2026-10-11.** A fresh reader with only this manual and Potluck's source built a portable
 app with a remote input and a checkpoint (9 C++ and 5 Python tests passing, a firmware image within budget) in
 about 20 minutes, and listed 23 places the manual failed it. The ones a manual can fix are fixed in this
 revision (the portable recipe in section 3, `owns` and the built-in modules in section 6, who does what in
@@ -258,7 +258,7 @@ it (the task watchdog watches the idle task).
 | portable actors in a cell | 8 |
 | eligible nodes per portable actor | 8 |
 | config bytes per actor | 48 |
-| outputs per actor | 8 |
+| outputs per actor | 8 per call of the `outputs()` hook -- per node, and per node and peer for per-link outputs, so a per-link actor can own more in all |
 | namespace entries per node | 128 |
 | checkpoint | 128 B |
 | actor slot | 384 B |
@@ -286,7 +286,7 @@ it (the task watchdog watches the idle task).
 | block | holder |
 |---|---|
 | 0x80-0x8F | passive-sensor |
-| 0x90-0xEF | free: ask Potluck's maintainer for a block (an issue on the Potluck repository); it is recorded here. Until then, use one provisionally and say so in your descriptor |
+| 0x90-0xEF | free: ask Potluck's maintainer for a block (an issue on the Potluck repository); it is recorded here. Until then, use one provisionally and say so in your README (JSON has no comments; the descriptor loader ignores keys it does not know) |
 | 0xF0-0xFF | Potluck's own examples and tests (`pot_hello` is 0xF0) |
 
 ---
@@ -344,11 +344,11 @@ commands run from `host/potluck/` with the ESP-IDF Python (it has `pyserial`). K
 # 1. build -- your component from a git archive export, never your working tree (see section 10)
 git -C <your repo> archive <commit> firmware/components | tar -x -C <export dir>
 tools\build_firmware.ps1 -Clean -Variant <name> -AppComponents <export dir>\firmware\components -OutDir <out>
-#    a board that runs the extender needs its own variant: -Variant extender-<name> -PmeHotspot <dir>
+#    a board built as a different variant gets its own image in step 2: --image-for <its id>=<that image>
 
 # 2. firmware over the radio, board by board (each keeps it only after 100 heartbeats with a peer)
-python -m potluck.fw --port COM6 status
-python -m potluck.fw --port COM6 rollout <out>\build-<name>\potluck_m0.bin --counter <floor+1> --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert [--image-for 7368=<extender image>]
+python -m potluck.fw --port COM6 status --manifest <your cell's manifest>
+python -m potluck.fw --port COM6 rollout <out>\build-<name>\potluck_m0.bin --counter <floor+1> --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --manifest <your cell's manifest>
 
 # 3. the package
 python -m potluck.signing sign <manifest> --key ../../keys/deploy.key --cert ../../keys/deploy.cert --counter <n> --out ../../keys/<name>-<n>.pkg.json --modules <descriptor>
@@ -368,15 +368,16 @@ What to know today (each is on M12's list to remove):
 - **See it run:** `python -m potluck.ctl --port COM6 --node 6300 watch potluck://lab/act/<name>/<output>` reads an
   output through the cabled board once a second, with its age and quality; `--count N` stops after N reads.
 - **Verify what you flashed:** the build stamps a version (`deploy-and-detach-<n>-g<commit>`, in
-  `build-<name>/project_description.json`; `-dirty` if Potluck's tree had uncommitted changes), and
+  `build-<name>/project_description.json`; `-dirty` if Potluck's tree had uncommitted changes -- including the size reports an in-place build rewrites in `firmware/size`), and
   `potluck.fw status` shows what each board runs.
 
 ### On your own boards
 
 The commands in this manual use an example cell -- boards `0x6300`, `0x7368` and `0x8160`, the PC's adapter on
 `COM6` wired to `0x6300` -- but nothing in Potluck is about three boards: list as many as you have. Replace `COM6`
-with your USB-serial adapter's port, `6300` with the id of the board that adapter is wired to (a board's id is the last two bytes of its MAC), `lab` with your cluster's
-`system` name, and `../../keys/...` with your own keys. On boards you just flashed, both counters start at 0, so
+with your USB-serial adapter's port, `6300` with the id of the board that adapter is wired to (a board's id is the last two bytes of its MAC), and `../../keys/...` with your own keys.
+Keep the cluster's `system` name `lab`: this edition's boards name their built-in resources under
+`potluck://lab/...`, whatever the manifest says. On boards you just flashed, both counters start at 0, so
 your first firmware and your first package are counter 1; keep a note of each counter you use. Your images contain
 only what you build in: vanilla Potluck plus the components you name with `-AppComponents` (it takes several
 directories) -- an image without one of them removes that app from the boards it lands on.
@@ -398,10 +399,11 @@ image (the build refuses and names both).
   itself, run it on a real `pot::Node` with a fake clock and transport, as `tests/test_hello_app.cpp` does:
   Potluck's portable sources build on Windows and Linux (`tests/CMakeLists.txt` shows which). A reusable test
   kit for apps in their own repositories is part of M12. Until then, in your own repository:
-  - **Sources:** compile Potluck's portable sources into your test -- the `pot_portable` list in
-    `tests/CMakeLists.txt` (frame, link, namespace, deploy, trust, reconciler, actors), with Monocypher, and the
-    include directories listed under it. Write your own `main`: Potluck's `tests/test_main.cpp` also emits Potluck's
-    own fixtures. `tests/test_harness.hpp` is a header-only harness you may reuse.
+  - **Sources:** let Potluck's own test build define its portable core for you, so it cannot drift: in your
+    test `CMakeLists.txt`, `add_subdirectory(<potluck>/tests potluck EXCLUDE_FROM_ALL)` and link your test
+    against `pot_portable` (Monocypher, the sandbox and every include directory come with it). Write your own
+    `main` -- Potluck's `tests/test_main.cpp` also emits Potluck's own fixtures -- and reuse the header-only
+    `tests/test_harness.hpp` if you like (its `TEST`/`CHECK` macros; your `main` runs the registered tests).
   - **A compiler:** `tools/run_host_tests.ps1` shows how Potluck finds one (CMake and Ninja from the ESP-IDF tools
     install, MSVC through `vswhere`, or gcc/clang on PATH); copy its approach or run from a Visual Studio developer
     shell.
