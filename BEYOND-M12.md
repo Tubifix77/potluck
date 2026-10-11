@@ -31,6 +31,11 @@ the project's ledger), not from taste.
 - **The Home Assistant integration is a first-class, open part of Potluck**, built to be excellent, because it is
   likely where people on the internet find Potluck useful: someone who already runs Home Assistant can add a cluster of
   cheap boards to it. Section 6 is written to that standard.
+- **What "integration" means (the owner, 2026-10-11):** *Potluck's resources show up in Home Assistant* -- a board's
+  LED, a sensor, the room sensor's presence -- as ordinary devices of the house's IoT network, whether the cell reaches
+  the house through the PC that runs the hub or through a board that is already on the house Wi-Fi (an extender).
+  Home Assistant does not run on Potluck, and Potluck does not present Home Assistant: the direction that matters is
+  Potluck into Home Assistant, read and written there.
 
 ## 2. What is already there, and what was planned
 
@@ -196,25 +201,30 @@ What the boards can afford decides what the dashboard may ask of them (the owner
   serves them all. The rate is a **[MEASURE]** (section 4).
 - **The boards are not Wi-Fi servers.** They run ESP-NOW, are outbound-only (section 8.4), and only an extender holds a
   Wi-Fi association. So unlike ESPHome, where "each ESP is its own server" for Home Assistant
-  ([ESPHome native API](https://esphome.io/components/api/)), the hub speaks for the whole cell; no board serves a page
-  or an API.
+  ([ESPHome native API](https://esphome.io/components/api/)), no board serves a page or an API: the hub speaks for the
+  cell, or a board on the house Wi-Fi does as an outbound MQTT client (section 6) -- one board for the whole cell,
+  never each board for itself.
 - **No 802.15.4 radio on the S3** (ESP-IDF names the ESP32-H2, C6 and C5 as the chips with one; section 3): Thread,
   Zigbee and Matter-over-Thread are not board protocols in this edition. Section 6 reaches those ecosystems another way.
 
-**On a phone too (decided).** So it is a web page the hub serves -- any browser, nothing to install, Linux and Windows
-alike -- laid out for a phone's width as well as a desk's. Two ways in, one page:
+### On a phone too (decided)
 
-- **Inside Home Assistant**, for its users: the hub packaged as a Home Assistant app (formerly "add-on") shows the
-  dashboard through Ingress, which "allows users to access the app web interface via the Home Assistant UI", with
-  "authentication ... handled by Home Assistant" and no port forwarding
-  ([Ingress](https://developers.home-assistant.io/docs/add-ons/presentation/)) -- so the Home Assistant phone app
-  carries Potluck's dashboard with no login of Potluck's own. Such an app can be given the serial adapter
-  (`uart: true`, or a `devices` path; [app configuration](https://developers.home-assistant.io/docs/add-ons/configuration/)),
-  so the hub can run on the Home Assistant machine itself, the adapter plugged into it.
-- **On its own**, for everyone else: the hub serves the page on the house network behind a login the owner sets
-  (rule 6: never shown, stored only as a hash), with an encrypted connection. Reaching it from outside the house is
-  left to tools made for that (a VPN, Home Assistant's own remote access) -- the hub never opens a port to the
-  internet itself.
+The dashboard is a web page the hub serves -- any browser, nothing to install, Linux and Windows alike -- laid out for a
+phone's width as well as a desk's. A phone reaches the cell three ways:
+
+- **In Home Assistant's own app**, for Home Assistant users -- the commonest case, since 86.2 % of the installations that
+  share their integrations use Home Assistant's phone app (section 6). Once Potluck's resources are Home Assistant devices
+  (section 6), they are on the phone like any other device: their values, their availability, their controls, in the
+  user's own Home Assistant dashboards. That covers layer 1 for most people without a page of Potluck's own.
+- **The hub's page, inside Home Assistant**, for the deeper layers: when the hub runs on the Home Assistant machine
+  itself (the serial adapter plugged into it), it can be packaged as a Home Assistant app and shown through Ingress,
+  which "allows users to access the app web interface via the Home Assistant UI", with "authentication ... handled by
+  Home Assistant" and no port forwarding ([Ingress](https://developers.home-assistant.io/docs/add-ons/presentation/));
+  such an app can be given the serial device (`uart: true`, or a `devices` path;
+  [app configuration](https://developers.home-assistant.io/docs/add-ons/configuration/)).
+- **The hub's page on its own**, for everyone else: served on the house network behind a login the owner sets (rule 6:
+  never shown, stored only as a hash), with an encrypted connection. Reaching it from outside the house is left to tools
+  made for that (a VPN, Home Assistant's own remote access) -- the hub never opens a port to the internet itself.
 
 ## 6. Integrations
 
@@ -225,49 +235,70 @@ writes where the package allows, offers named services (M8's, moved behind the h
 (M10's, moved behind the hub). The hub knows every client by name, so the dashboard can say which program reads what.
 Section 7.1 named gRPC for this API; whether it is gRPC, a local WebSocket with JSON, or both, is open.
 
-### Home Assistant: first-class, open, both ways
+### Home Assistant: Potluck's resources as the house's devices
 
-The bar (owner, 2026-10-11): someone who runs Home Assistant installs Potluck's integration, and their boards appear,
-read and written like any other devices, with nothing about Potluck's internals to learn. Open: the integration's code
+The bar (owner, 2026-10-11): someone who runs Home Assistant adds Potluck, and the cell's resources appear there --
+read and written like any other devices of the house -- with nothing about Potluck's internals to learn. Open: the code
 is in a public repository under Potluck's license, its protocol is documented, and nothing in it is reserved for the
 maintainer's cell.
+
+**How the cell reaches the house -- two ways in, the same devices:**
+
+- **Through the PC (the hub).** The cabled board's PC runs the hub, and the hub presents the whole cell to Home
+  Assistant over the house network: as a full integration, or by MQTT discovery (below). The PC may be any PC on the
+  house network -- including, but not necessarily, the machine Home Assistant itself runs on.
+- **Through a board on the house Wi-Fi (no PC).** An extender board is already a station on the house Wi-Fi (M6.1),
+  and every board's resources reach it over the cell. So that board can present the whole cell to Home Assistant by
+  itself, as an **MQTT client**: it connects out to the house's MQTT broker -- the one half of Home Assistant's users
+  already run -- and publishes each resource's discovery config, its state and its availability, and receives writes
+  on the resources the package declares writable. This keeps section 8.4's rule that a board holds no inbound listener:
+  the connection is the board's own, outbound, to a broker the owner names. With it the house sees the cell with the PC
+  switched off. Its costs are bench questions: the MQTT client is a managed ESP-IDF component in v6.0.2
+  (`espressif/mqtt`), its RAM must fit an extender build whose internal RAM is nearly spent (PSRAM where it can), and
+  the broker's password is the owner's to type, like the Wi-Fi's (rule 6) -- **[MEASURE]** before it is designed further.
+
+Both routes show the **same devices with the same names**, so a cell can move from one to the other (the PC switched
+off, the extender taking over) without Home Assistant's automations noticing more than a moment of "unavailable".
 
 **What a user sees:**
 
 - **Found, not configured:** the hub announces itself on the house network (mDNS/zeroconf), and Home Assistant offers
   to set it up -- an integration's discovery step "is invoked" when it is discovered, and setup happens in Home
   Assistant's UI through a config flow ([config flows](https://developers.home-assistant.io/docs/config_entries_config_flow_handler/)).
+  Through MQTT, the devices simply appear once the broker has their discovery configs.
 - **Devices and entities:** each board is a device (its node id, firmware, role, the board it is cabled through); each
-  resource is an entity of the right kind -- presence a binary sensor, a temperature a sensor with its unit, a
-  writable setpoint a number or a switch -- named from the package's paths and labels, unavailable whenever the reading
-  is not GOOD (stale values are not passed off as current: rule 2). The cell's own health -- boards alive, the cabled
-  link, the last deploy's result -- are entities too, so a Home Assistant automation can say "the room sensor is
-  down".
+  resource is an entity of the right kind -- presence a binary sensor, a temperature a sensor with its unit, the status
+  LED a light, a writable setpoint a number or a switch -- named from the package's paths and labels, unavailable
+  whenever the reading is not GOOD (stale values are not passed off as current: rule 2). The cell's own health --
+  boards alive, the link to the house, the last deploy's result -- are entities too, so a Home Assistant automation can
+  say "the room sensor is down".
 - **Read and write (decided):**
   - *Home Assistant reads Potluck*: every resource the package names, live, with its age as an attribute.
-  - *Home Assistant writes Potluck*: any resource the package declares writable (`access: write`), from an automation,
-    a dashboard card or a voice command; the hub checks the rule (rule 4) and the board checks it again, as every
-    write is checked today.
-  - *Potluck reads Home Assistant*: entities the owner lists become resources the PC owns,
-    `potluck://<system>/node-00fe/ha/<entity>`, read by board actors with an age and a quality -- a door contact, the
-    weather, the electricity price -- and UNAVAILABLE while Home Assistant is gone.
-  - *Potluck writes Home Assistant*: a board actor asks the hub to call a Home Assistant service the owner lists, as
-    M8's named services are listed today; the hub calls it through Home Assistant's WebSocket API (`call_service`,
-    [WebSocket API](https://developers.home-assistant.io/docs/api/websocket/)).
-  - *Never*: deploying to the boards. A package is the owner's, signed with the owner's keys (rule 3); the
-    integration may show `apply`'s plan and result, and the owner may run `apply` from the hub's own page.
+  - *Home Assistant writes Potluck*: any resource the package declares writable (`access: write`) -- the LED's colour,
+    a setpoint -- from an automation, a dashboard card or a voice command; the hub or the gateway board checks the rule
+    (rule 4) and the owning board checks it again, as every write is checked today.
+  - *Never*: deploying to the boards. A package is the owner's, signed with the owner's keys (rule 3); Home Assistant
+    may show `apply`'s plan and result, nothing more.
+  - *And optionally the other way*: a few Home Assistant entities the owner lists (a door contact, the electricity
+    price) can be offered to board actors as resources the PC owns, `potluck://<system>/node-00fe/ha/<entity>`, read
+    with an age and a quality and UNAVAILABLE while Home Assistant is gone; and a board actor may ask the hub to call a
+    Home Assistant service the owner lists, as M8's named services are listed today
+    ([WebSocket API](https://developers.home-assistant.io/docs/api/websocket/)). This is a convenience, not the point
+    of the integration.
 - **Installed the usual ways:** the integration through HACS, "a custom integration that provides a UI to manage
   custom elements" ([HACS](https://hacs.xyz/)), until it is good enough to offer to Home Assistant itself; the hub as a
-  Home Assistant app for Home Assistant OS users, or as a service on any PC.
+  service on any PC, or packaged as a Home Assistant app for people whose PC *is* their Home Assistant machine; or no
+  install at all, through MQTT.
 
-**Two routes, both kept open.** A full integration (the above) is the excellent path. **MQTT discovery** is the
-no-install path for people who already run a broker: the hub publishes each resource's config on
+**Two protocols, both kept open.** A full integration (the above, from the hub) is the excellent path. **MQTT
+discovery** is the no-install path for people who already run a broker, and the only one a board can speak by itself: the hub publishes each resource's config on
 `<discovery_prefix>/<component>/[<node_id>/]<object_id>/config` (default prefix `homeassistant`) and its availability by
 birth and will messages ([Home Assistant MQTT](https://www.home-assistant.io/integrations/mqtt/)), and any MQTT tool,
 not only Home Assistant, can read the cell. Both are hub clients over the same API, so neither knows more than the other.
 
-**What Home Assistant is to the cell.** Not a node: it does not heartbeat or run actors. Its entities are resources the
-PC owns, so they carry the PC's death window (a reader sees UNAVAILABLE while the PC or Home Assistant is gone, for as long as
+**What Home Assistant is to the cell.** Not a node: it does not heartbeat or run actors, and the cell does not need it
+-- Home Assistant is where the house looks at the cell and acts on it. The few Home Assistant entities offered back to
+actors are resources the PC owns, so they carry the PC's death window (a reader sees UNAVAILABLE while the PC or Home Assistant is gone, for as long as
 it is gone). An actor that needs a value in a deadline (latency classes L0-L2) cannot bind a
 Home Assistant entity: the locality contract (section 4) refuses it at build time, as it refuses any binding the
 transport cannot meet. That is the owner's "half-integrated member under the PC's control", stated as a contract.
@@ -335,11 +366,13 @@ PCs, each cabled to its own board) -- each a decision for its own time.
 7. ~~Home Assistant first, or the dashboard first?~~ *In tandem*: the hub first, then the dashboard and the Home
    Assistant integration side by side, both its clients.
 8. **Several PCs.** One hub per PC with one owning the deploys, or one hub per cell?
-9. **Where the integration lives.** In Potluck's repository (one release for both) or its own public repository (the
+9. **The gateway board.** Is the extender the only board that may speak MQTT for the cell, or any board an owner gives
+   Wi-Fi credentials? And when both the hub and a gateway board are up, which one presents the devices?
+10. **Where the integration lives.** In Potluck's repository (one release for both) or its own public repository (the
    way HACS lists integrations), and what Home Assistant versions it supports.
-10. **Entity mapping.** How a resource's kind and unit become a Home Assistant entity type, and what an app's author
+11. **Entity mapping.** How a resource's kind and unit become a Home Assistant entity type, and what an app's author
     adds to their descriptor to make their outputs look right in Home Assistant (a device class, an icon, a name).
-11. **The firmware update entity's "install".** Home Assistant lets a user "install an offered update directly"; for
+12. **The firmware update entity's "install".** Home Assistant lets a user "install an offered update directly"; for
     Potluck that would run `apply`'s firmware step with the owner's keys. Allowed only when the owner switches it on in
     the hub, or never (rule 3)?
 
@@ -357,9 +390,10 @@ Sketches in the roadmap's form, so the discussion has something to falsify:
 - **M15 -- the dashboard.** The tabs of section 5 from the hub's model, live and from a recording.
 - **M16 -- Home Assistant, first-class.** *Accept:* on a fresh Home Assistant installation, the integration installed
   through HACS discovers the hub with nothing typed but a confirmation; every board appears as a device and the room
-  sensor, the die temperature and the alarm guest as entities with the right types and units; an automation writes a
-  writable Potluck resource and a board acts on it; a board actor reads a Home Assistant entity; a board unplugged
-  turns its entities unavailable within the death window and back when it returns; a blind reader -- a Home Assistant
+  sensor, the die temperature, a board's LED and the alarm guest as entities with the right types and units; an
+  automation changes the LED and the board shows it; a board unplugged turns its entities unavailable within the death
+  window and back when it returns; with the PC switched off, the same devices stay live in Home Assistant through the
+  extender's MQTT connection, and come back to the hub's when the PC returns; a blind reader -- a Home Assistant
   user who has never seen Potluck -- gets from the README to their boards in Home Assistant with no other help. *Kill:*
   if a resource cannot be shown in Home Assistant with its quality intact, or writes cannot be confined to what the
   package allows.
