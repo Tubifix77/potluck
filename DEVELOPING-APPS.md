@@ -1,5 +1,9 @@
 # Developing apps for Potluck
 
+**Who this is for:** someone who has vanilla Potluck running on ESP32-S3 boards they own, wants to write an app
+of their own, run it on those boards, and later share it on GitHub for others to run on theirs. You are the
+owner of your cluster: your keys, your boards, your packages.
+
 For anyone who wants to make an app for a Potluck cluster: code that reads the cluster's resources
 (sensors, radio, other apps' outputs), computes, and publishes results the rest of the cluster can read.
 It brings together what was spread across header comments, the [decision log](M0-LOG.md) and the
@@ -16,10 +20,13 @@ section 3 is built for the boards and tested on a PC by Potluck's own test suite
 app with a remote input and a checkpoint (9 C++ and 5 Python tests passing, a firmware image within budget) in
 about 20 minutes, and listed 23 places the manual failed it. The ones a manual can fix are fixed in this
 revision (the portable recipe in section 3, `owns` and the built-in modules in section 6, who does what in
-section 7, the test kit in section 8). Three it cannot fix are Potluck's own gaps, and M12 removes them: an
-author outside the owner's house cannot build the firmware the cell needs (it must carry every other app's
-component, and one of them is private), cannot see what the cell runs, and cannot read the package counter.
-Until then, an outside author hands the app to the cluster's owner (section 7).
+section 7, the test kit in section 8). That test was aimed at the maintainer's own bench, whose cell
+already runs two other apps (one private), so its deploy blockers belonged to that bench, not to you. For your own
+boards running vanilla Potluck, the gaps that remain are these, and M12 closes them: **there is no guide yet for
+getting vanilla Potluck onto your own boards** (your own keys, the first flash, enrolment, the USB-serial adapter
+the PC talks through -- today that lives in the maintainer's bring-up notes); this manual's commands are written
+for the maintainer's bench (`COM6`, node `6300`, system `lab`); **type numbers can collide between authors who
+share apps** (section 5); and installing someone else's app is not yet described (section 7).
 
 Terms used throughout:
 
@@ -365,20 +372,22 @@ What to know today (each is on M12's list to remove):
   `build-<name>/project_description.json`; `-dirty` if Potluck's tree had uncommitted changes), and
   `potluck.fw status` shows what each board runs.
 
-### Who does what, today
+### On your own boards
 
-An app author outside the cluster owner's house cannot deploy to the owner's boards, and should not: the
-firmware the cell needs must carry **every** app component the cell runs (deploying an image without one removes
-that app), some of those components may be private, signing is the owner's, and the package counter can only be
-read by the owner's notes. So today:
+The commands above use the maintainer's bench: replace `COM6` with your USB-serial adapter's port, `6300` with the
+id of the board that adapter is wired to (a board's id is the last two bytes of its MAC), `lab` with your cluster's
+`system` name, and `../../keys/...` with your own keys. On boards you just flashed, both counters start at 0, so
+your first firmware and your first package are counter 1; keep a note of each counter you use. Your images contain
+only what you build in: vanilla Potluck plus the components you name with `-AppComponents` (it takes several
+directories) -- an image without one of them removes that app from the boards it lands on.
 
-- **The author** delivers a commit of the component, its descriptor, a manifest fragment (its actors, the `owns`
-  its `needs` rely on), and its tests -- built and tested as in sections 3 and 8.
-- **The owner** builds the cell's images from every component it runs (`-AppComponents` takes several
-  directories; a board that runs the extender gets its own variant), rolls them out, merges the fragment into the
-  cell's manifest, signs at the next counter, and deploys.
+### Sharing your app
 
-M12's `potluck apply` turns the owner's half into one command.
+Put the component, its descriptor, a manifest fragment (its actors, and the `owns` its `needs` rely on) and its
+tests in a public repository. Someone running it adds your component to their build (`-AppComponents`), passes
+your descriptor (`--modules`) when they sign and deploy, and merges your actors into their manifest. Before you
+publish, get a type block recorded in section 5: two apps that use the same type numbers cannot be built into one
+image (the build refuses and names both).
 
 ---
 

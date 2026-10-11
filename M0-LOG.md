@@ -4838,3 +4838,14 @@ partition check does refuse an oversized image at build time; the manual had not
 The reader's app stays in the session scratchpad: written by an agent to test the manual, not reviewed for the
 bench. Part 4's acceptance waits for a rerun after `potluck apply`.
 
+**Correction, same day (the owner): the test's premise was wrong.** The user DEVELOPING-APPS.md serves runs vanilla
+Potluck on ESP32-S3 boards they own, writes an app for those boards, and later shares it on GitHub. This session
+aimed the blind reader at the maintainer's bench -- a cell already running two other apps, one private -- so its
+"deploy blockers" (other apps' private sources, not seeing what the cell runs, an unknown counter) were artefacts
+of that bench, and the manual's "the author hands the app to the owner" section was written for a user who does
+not exist. Rewritten: "On your own boards" and "Sharing your app". The real gaps, now M12 requirements: no guide or
+tooling for getting vanilla Potluck onto your own boards (own CA and keys, first flash, enrolment, the frame-link
+adapter); the manual's commands written for the maintainer's bench; type numbers that can collide between
+independent authors; no description of installing someone else's app; no test kit. Rerun the test with the right
+premise once the getting-started part exists.
+
