@@ -40,6 +40,31 @@ claim cited and in the project's ledger), not from taste.
 - **The dashboard shows every integration on every board**: on and active, on and idle, or not on the board.
 - **The dashboard is reachable from a phone**, not only on the PC.
 
+### The core: one presentation of the whole cell's resources
+
+It comes down to the original idea -- *Kubernetes for CPU/GPU/RAM and attached hardware* (ARCHITECTURE section 0.1).
+What this step adds is the part of Kubernetes Potluck does not have yet: **one presentation of every resource on all
+the cell's boards and PCs**, the cell seen as one machine, that everything else is built on.
+
+In Kubernetes that presentation is the API server: "The core of Kubernetes' control plane is the API server. The API
+server exposes an HTTP API that lets end users, different parts of your cluster, and external components communicate
+with one another", and kubectl and its other tools "in turn use the API"
+([Kubernetes API](https://kubernetes.io/docs/concepts/overview/kubernetes-api/)). Its dashboard is one client of that
+API, "a web-based Kubernetes user interface" -- and a replaceable one: the page now says "Kubernetes Dashboard is
+deprecated and unmaintained" and points new installations to another UI
+([Dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/)). The API stayed; the UI
+changed.
+
+So, for Potluck (decided by the draft, on that evidence):
+
+- **The presentation is the hub's model and API** (section 3): every node, every resource with its tuple, every actor
+  and app, every module, every program and integration, every event -- one model, one API.
+- **The integration layer sits on that API, beside the dashboard, not inside it.** An integration presents the same
+  resources to another system that the dashboard presents to a person. Built into the dashboard, an integration would
+  stop when the dashboard page closes and would have to be rebuilt with every dashboard; on the API it runs on its own,
+  and the dashboard *shows* it like everything else.
+- **The dashboard is the first client**, and a replaceable one -- the way Kubernetes' was.
+
 ## 2. What is already there, and what was planned
 
 The architecture planned for most of this from the start (all in ARCHITECTURE.md):
@@ -63,7 +88,7 @@ hold the port at a time** (M0-RUNBOOK section 14): today the PC can be a placeme
 watched, but not all at once. That is the strongest reason for this whole step: the planned bridge-and-agent split has
 become necessary, not just tidy.
 
-## 3. The shape: one hub, its clients, and board modules
+## 3. The shape: the presentation, its clients, and board modules
 
 ```
                        ┌────────────────────── potluck-hub (one per PC) ──────────────────────┐
@@ -82,12 +107,13 @@ become necessary, not just tidy.
         presents the cell to another system by itself, with no PC on
 ```
 
-- **The hub** is section 7.1's bridge and agent as one service on the PC: the only program on the serial port, the PC's
-  identity in the cell (enrolled like a board, as `pot_hostnode` is), and the place that *knows*: every board's
+- **The hub** is section 7.1's bridge and agent as one service on the PC -- the only program on the serial port, the PC's
+  identity in the cell (enrolled like a board, as `pot_hostnode` is) -- and it holds **the presentation**: the place
+  that *knows*: every board's
   inventory and modules, every resource and who owns it, every actor and where it runs, every client and every
   integration and what each uses. Every other program on the PC -- the existing tools included -- becomes its client.
-- **The dashboard** is a client like any other, with the most to show. It is a view of the hub's model, so it can be
-  closed, reloaded or opened on several phones at once without anything in the cell noticing.
+- **The dashboard** is a client like any other, with the most to show. It is a view of the presentation, so it can be
+  closed, reloaded or opened on several phones at once without anything in the cell -- or any integration -- noticing.
 - **Integrations** are adapters to other systems. Most live in the hub as **plugins** (where space is not short);
   the part that must be on a board -- a board's own connection to another system, for when no PC is on -- is a **board
   module** chosen per cell (section 6.2). Either way an integration reports its state to the hub, so the dashboard can
@@ -96,6 +122,26 @@ become necessary, not just tidy.
 So "everything goes through it" is true of the **hub**, not of the dashboard window: whatever crosses between the cell
 and the outside crosses the hub -- or, for a board module, is reported to it -- which is how the dashboard can show all
 of it.
+
+### What the presentation holds
+
+Kubernetes presents a cluster as kinds of objects (nodes, pods, services ...); the cell's presentation has its own,
+each already a thing Potluck has -- only now in one model, with one API to read and watch them:
+
+| kind | one of them is | what the presentation says about it |
+|---|---|---|
+| **Node** | a board or a PC | role (cabled, extender, relay, placement host), firmware, uptime, alive or dead, its links |
+| **Resource** | a namespace entry: a sensor, an LED, an actor's output | owner, value with section 4's tuple, writable or not, who reads it |
+| **Capacity** | what a node offers and how much is used | namespace entries, actor slots, RAM, cores, flash -- used and free |
+| **App** | a package's part from one repository | its actors, where each runs, its checkpoints, its version |
+| **Actor** | a running actor | its node, its moves, its faults |
+| **Module** | a component built into a board's image | on and active, on and idle, or not on the board |
+| **Integration** | an adapter to another system | connected or not, what it presents, what it was asked |
+| **Client** | a program using the hub | what it reads and writes |
+| **Event** | a death, a move, a fault, a deploy, a refused write | when, where, on one clock |
+
+The dashboard draws these; an integration translates them into another system's terms; `apply` and the owner's
+programs read and change them through the same API, under section 3's rules.
 
 ### What must not change
 
