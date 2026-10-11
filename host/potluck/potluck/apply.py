@@ -70,7 +70,7 @@ FW_STATES = {0: "factory", 1: "confirmed", 2: "on_trial"}
 MODULE_NAMES = {1: "sandbox", 2: "extender", 3: "wifi", 4: "present", 5: "pocket"}
 MODULE_STATES = {1: "active", 2: "idle", 3: "failed"}
 MODULE_REASONS = {0: "", 1: "no credentials", 2: "no network", 3: "standby", 4: "nothing here uses it",
-                  5: "out of memory", 6: "refused", 7: "error"}
+                  5: "out of memory", 6: "refused", 7: "error", 8: "another module is the connection"}
 
 
 class ApplyError(Exception):
@@ -94,6 +94,8 @@ class BoardModule:
 #: named "extender" in the inventory and in a descriptor's `requires`.
 BOARD_MODULES = {
     "sandbox": BoardModule(("CONFIG_POT_WASM=y",), ("libpot_wasm.a",), why_optional="filler"),
+    # M13: Potluck's own Wi-Fi station -- puts the board on a house network, with its credentials on the board.
+    "wifi": BoardModule(("CONFIG_POT_WIFI=y",), ("libpot_wifi.a",), why_optional="a security liability"),
 }
 EXTENDER_ARCHIVES = ("libpme_hotspot.a",)
 

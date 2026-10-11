@@ -35,6 +35,9 @@ uint8_t take_channel();
 // channel, so the node declares a looser heartbeat window (CONFIG_POT_EXTENDER_HUNT_MISSES).
 bool associated();
 
+// M13: associated and holding an address (the presenter connects out over it).
+bool has_ip();
+
 // The baseline's status line, field for field (poor-mans-extender's `{"t":"hs"}`), so step 2's figures
 // sit next to step 0's without translation. Prints nothing on a non-extender build.
 void print_status();

@@ -307,6 +307,11 @@ class Node {
     void set_channel_fixed(bool fixed) { cfg_.channel_fixed = fixed; }
     void set_channel_known(bool known) { cfg_.channel_known = known; }
     bool channel_known() const { return cfg_.channel_known; }
+    // M13 (the review's one channel authority among stations): the channel a lower-id station declares, when it is
+    // alive and this node's id is higher -- the channel this node's own station should be on; 0 otherwise. A
+    // station that is outranked never announces its router's channel to the cell.
+    uint8_t outranking_channel();
+    uint16_t channel_authority() const { return authority_id_; }
     uint8_t channel() const { return channel_; }
     bool scanning() const { return scanning_; }
     bool sweeping_for_authority() const { return sweeping_; }

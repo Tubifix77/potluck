@@ -1018,15 +1018,23 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         const uint8_t declared = static_cast<uint8_t>((h.caps & kHelloCapChannelMask) >> kHelloCapChannelShift);
         const bool peer_fixed = (h.caps & kHelloCapChannelFixed) != 0;
         if (peer_fixed) {
-            authority_id_ = h.node_id;  // M6.1: this peer's channel is its router's; follow it if it moves
-            authority_declared_ = declared;
+            // M6.1: this peer's channel is its router's; follow it if it moves. M13: with several stations in
+            // the cell, one authority -- the lowest node id among the live ones, as ADR-009 resolves two relays --
+            // so two routers on different channels cannot pull the members back and forth.
+            const PeerLink* cur = authority_id_ != 0 ? peers_.find_by_node_id(authority_id_) : nullptr;
+            const bool cur_alive = cur != nullptr && cur->state == PeerState::Alive;
+            if (authority_id_ == 0 || h.node_id <= authority_id_ || !cur_alive) {
+                authority_id_ = h.node_id;
+                authority_declared_ = declared;
+            }
         } else if (authority_id_ == h.node_id) {
             authority_id_ = 0;
         }
         const bool peer_settling = (h.caps & kHelloCapSettling) != 0;
         const uint32_t hnow = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
         const bool me_settling = settling(hnow);
-        const bool follow = peer_fixed || (me_settling && (!peer_settling || h.node_id < cfg_.node_id));
+        const bool follow = (peer_fixed && h.node_id == authority_id_) ||
+                            (!peer_fixed && me_settling && (!peer_settling || h.node_id < cfg_.node_id));
         if (declared != 0 && declared != channel_ && !cfg_.channel_fixed && declared >= cfg_.channel_lo &&
             declared <= cfg_.channel_hi && follow && hal_.set_channel != nullptr) {
             retune(declared);
@@ -1318,6 +1326,12 @@ uint16_t Node::request_write(uint16_t peer_node_id, uint32_t path_hash, const Va
         return 0;
     }
     return msg_id;
+}
+
+uint8_t Node::outranking_channel() {
+    if (authority_id_ == 0 || authority_id_ >= cfg_.node_id || authority_declared_ == 0) return 0;
+    const PeerLink* a = peers_.find_by_node_id(authority_id_);
+    return (a != nullptr && a->state == PeerState::Alive) ? authority_declared_ : 0;
 }
 
 void Node::handle_read(PeerLink* p, const Frame& f) {

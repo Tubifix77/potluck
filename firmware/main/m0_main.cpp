@@ -27,6 +27,8 @@
 
 #include "actor_table.hpp"
 #include "extender.hpp"
+#include "pot/wifi.hpp"
+#include "uplink.hpp"
 #include "pot/boot_epoch.hpp"
 #if CONFIG_POT_CAN
 #include "pot/can_port.hpp"
@@ -1501,7 +1503,7 @@ void link_task(void*) {
     }
     uint32_t next_button_poll_ms = now_ms_();
     uint32_t next_led_ms = now_ms_() + status_led::kRenderMs;
-#if CONFIG_POT_EXTENDER
+#if CONFIG_POT_EXTENDER || CONFIG_POT_WIFI
     uint32_t next_hunt_poll_ms = now_ms_();
     bool was_associated = false;  // matches the window app_main chose: hunting unless already associated
 #endif
@@ -1615,21 +1617,21 @@ void link_task(void*) {
             xSemaphoreGive(g_mutex);
         }
 
-#if CONFIG_POT_EXTENDER
+#if CONFIG_POT_EXTENDER || CONFIG_POT_WIFI
         // M6.1: while the station hunts for its router, its scans take the radio off the cell's channel
         // for longer than the build's death window (3.7-4.0 s measured, M0-LOG session 30), so declare a
         // window that covers one. Polled outside the lock: the status call goes into the Wi-Fi driver.
-        if (extender::active() && static_cast<int32_t>(nt - next_hunt_poll_ms) >= 0) {
+        if (uplink::active() && static_cast<int32_t>(nt - next_hunt_poll_ms) >= 0) {
             next_hunt_poll_ms = nt + 200;
-            const bool assoc = extender::associated();
+            const bool assoc = uplink::associated();
             const uint8_t radio_ch = espnow_current_channel();
             if (assoc != was_associated) {
                 was_associated = assoc;
-                const uint8_t misses = assoc ? CONFIG_POT_HB_MISS_LIMIT : CONFIG_POT_EXTENDER_HUNT_MISSES;
+                const uint8_t misses = assoc ? CONFIG_POT_HB_MISS_LIMIT : uplink::hunt_misses();
                 xSemaphoreTake(g_mutex, portMAX_DELAY);
                 g_node->set_heartbeat_window(CONFIG_POT_HB_PERIOD_MS, misses);
                 xSemaphoreGive(g_mutex);
-                ESP_LOGI(kTag, "extender: station %s; declaring %u x %u ms", assoc ? "associated" : "hunting",
+                ESP_LOGI(kTag, "%s: station %s; declaring %u x %u ms", uplink::name(), assoc ? "associated" : "hunting",
                          static_cast<unsigned>(misses), static_cast<unsigned>(CONFIG_POT_HB_PERIOD_MS));
             }
             // Declare a channel only while it is the router's: associated, and the node already moved to
@@ -1638,7 +1640,14 @@ void link_task(void*) {
             xSemaphoreTake(g_mutex, portMAX_DELAY);
             const bool known = assoc && radio_ch == g_node->channel();
             if (known != g_node->channel_known()) g_node->set_channel_known(known);
+            // M13: a lower-id station is the cell's channel authority; if it is on another channel than ours,
+            // Potluck's station picks again preferring it (at most every 30 s), and announces nothing meanwhile.
+            const uint8_t auth = g_node->outranking_channel();
             xSemaphoreGive(g_mutex);
+            if (assoc && auth != 0 && auth != radio_ch && uplink::defer_to(auth)) {
+                ESP_LOGI(kTag, "%s: the cell's channel authority is on channel %u, this station on %u; picking again",
+                         uplink::name(), static_cast<unsigned>(auth), static_cast<unsigned>(radio_ch));
+            }
         }
 #endif
 
@@ -1650,9 +1659,15 @@ void link_task(void*) {
         // declare it from now on. The radio is already there: by the time a station knows its new
         // channel it has associated on it, so the announcement goes out on the NEW channel, and members
         // still on the old one find this node by CR-1's scan rather than by hearing it.
-        if (const uint8_t rch = extender::take_channel(); rch != 0 && rch != g_node->channel()) {
-            if (!g_node->move_cell(rch, 0)) {
-                ESP_LOGW(kTag, "extender: router is on channel %u, outside the cell's range; not announced",
+        if (const uint8_t rch = uplink::take_channel(); rch != 0 && rch != g_node->channel()) {
+            const uint8_t auth = g_node->outranking_channel();
+            if (auth != 0 && auth != rch) {
+                // M13: outranked -- the cell follows the lowest-id station, never this one's router.
+                ESP_LOGW(kTag, "%s: router is on channel %u, the cell's authority (0x%04x) on %u; not announced",
+                         uplink::name(), static_cast<unsigned>(rch), static_cast<unsigned>(g_node->channel_authority()),
+                         static_cast<unsigned>(auth));
+            } else if (!g_node->move_cell(rch, 0)) {
+                ESP_LOGW(kTag, "%s: router is on channel %u, outside the cell's range; not announced", uplink::name(),
                          static_cast<unsigned>(rch));
             }
         }
@@ -1817,6 +1832,7 @@ void stats_task(void*) {
         std::printf("{\"t\":\"clk\",\"node\":%u,\"up_ms\":%u}\n", static_cast<unsigned>(node_id),
                     static_cast<unsigned>(now_ms_()));
         extender::print_status();  // M6.1: the baseline's {"t":"hs"} line, on an extender build only
+        wifi::print_status();      // M13: {"t":"wifi"}, when Potluck's own station is up
         // M8.2 (PS-5): what the LED shows, since nobody may be looking at it.
         std::printf("{\"t\":\"led\",\"node\":%u,\"shows\":\"%s\",\"app\":%d}\n", static_cast<unsigned>(node_id),
                     status_led::g_last_shown, status_led::g_last_app ? 1 : 0);
@@ -2525,6 +2541,7 @@ bool handle_test(const char* line, size_t len) {
 
 void handle(const char* line, size_t len) {
     if (extender::handle_console(line, len)) return;  // M6.1: credentials; prints a result, never them
+    if (wifi::handle_console(line, len)) return;      // M13: the same rule
     if (len > 5 && std::strncmp(line, "POT! ", 5) == 0) {
         // M8.1: the actors' own test instruments (e.g. "POT! die_temp fail 1"), offered generically.
         lock_node();
@@ -2982,6 +2999,15 @@ size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {
     module(ModuleId::Extender, extender::active() ? ModuleState::Active : ModuleState::Idle,
            extender::active() ? ModuleReason::None : ModuleReason::NoCredentials);
 #endif
+#if CONFIG_POT_WIFI
+    if (uplink::kind() == uplink::Kind::Wifi) {
+        module(ModuleId::Wifi, wifi::associated() ? ModuleState::Active : ModuleState::Idle,
+               wifi::associated() ? ModuleReason::None : ModuleReason::NoNetwork);
+    } else {
+        module(ModuleId::Wifi, ModuleState::Idle,
+               uplink::active() ? ModuleReason::OtherConnection : ModuleReason::NoCredentials);
+    }
+#endif
     (void)module;
     return store_node_status(st, out, cap);
 }
@@ -3066,11 +3092,11 @@ extern "C" void app_main(void) {
     nvs_init_once();
     ESP_LOGW(kTag, "built with CONFIG_POT_RADIO_DISABLE: serial and namespace only");
 #else
-#if CONFIG_POT_EXTENDER
-    // M6.1: the hotspot owns Wi-Fi when it has credentials, and ESP-NOW only attaches to it. Its
-    // credentials live in NVS, so NVS comes up first.
+#if CONFIG_POT_EXTENDER || CONFIG_POT_WIFI
+    // M6.1: the hotspot owns Wi-Fi when it has credentials, and ESP-NOW only attaches to it; M13: else
+    // Potluck's own station, when it has. Their credentials live in NVS, so NVS comes up first.
     nvs_init_once();
-    ecfg.attach = extender::start(saved_channel);
+    ecfg.attach = uplink::start(saved_channel);
 #endif
     const EspNowInitReport rep = espnow_start(ecfg);
 #endif
@@ -3108,19 +3134,17 @@ extern "C" void app_main(void) {
     cfg.hb_miss_limit = CONFIG_POT_HB_MISS_LIMIT;
     cfg.hello_interval_ms = CONFIG_POT_HELLO_INTERVAL_MS;
     cfg.channel = ecfg.channel;
-    if (extender::active()) {
+    if (uplink::active()) {
         // M6.1: the router owns this radio's channel. Declare what it is on now (0 until the station
         // first associates), never hop, never follow an announcement -- CR-1's station case.
         const uint8_t now_ch = espnow_current_channel();
         if (now_ch >= cfg.channel_lo && now_ch <= cfg.channel_hi) cfg.channel = now_ch;
         cfg.channel_fixed = true;
-#if CONFIG_POT_EXTENDER
         // At boot the station is usually still hunting; the link loop tightens this once it associates.
-        if (!extender::associated()) {
-            cfg.hb_miss_limit = CONFIG_POT_EXTENDER_HUNT_MISSES;
+        if (!uplink::associated()) {
+            cfg.hb_miss_limit = uplink::hunt_misses();
             cfg.channel_known = false;  // and declares its channel once it is the router's (link loop)
         }
-#endif
     }
 #if CONFIG_POT_CAN
     cfg.admit_on_beacon = true;  // a CAN bus carries no HELLO (§5.3.1)
@@ -3185,7 +3209,7 @@ extern "C" void app_main(void) {
     hal.run_heavy = &trust_rt::run_heavy;
 #if !CONFIG_POT_RADIO_DISABLE && !CONFIG_POT_CAN
     hal.set_channel = [](void*, uint8_t ch) { espnow_set_channel(ch); };
-    if (extender::active()) hal.set_channel = nullptr;  // M6.1: nothing here may retune the router's radio
+    if (uplink::active()) hal.set_channel = nullptr;  // M6.1: nothing here may retune the router's radio
 #endif
     hal.persist_safe_state_floors = &trust_rt::persist_floors;
 

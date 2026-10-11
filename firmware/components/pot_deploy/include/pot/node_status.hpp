@@ -66,6 +66,7 @@ enum class ModuleReason : uint8_t {
     NoMemory = 5,
     Refused = 6,        // its peer refused it (a broker's login, say)
     Error = 7,
+    OtherConnection = 8,  // another module is the board's network connection (the extender's station)
 };
 struct ModuleStatus {
     ModuleId id;

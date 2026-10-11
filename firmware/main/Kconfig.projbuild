@@ -329,6 +329,33 @@ config POT_EXTENDER_HUNT_MISSES
         ordinary period instead (60 x 100 ms = 6 s); once associated, the build's window again. The
         cost: a node that really dies while hunting is declared dead after this window, not 600 ms.
 
+config POT_WIFI
+    bool "M13: Potluck's own Wi-Fi station (optional module 'wifi')"
+    default n
+    help
+        A board on the house network without the extender app (components/pot_wifi): the station owns
+        the Wi-Fi driver, ESP-NOW attaches to it, and the node announces the router's channel to the cell,
+        as on an extender build. Credentials: POT! wifi sta / forget on the console, or tools/wifi_set.py.
+        Without saved credentials the node runs as an ordinary member. On an extender build whose hotspot
+        has credentials, the extender's station is the board's connection and this one stays idle.
+
+config POT_WIFI_PREFER_MARGIN_DB
+    int "Prefer an access point on the cell's channel within this many dB of the strongest"
+    depends on POT_WIFI
+    range 0 40
+    default 10
+    help
+        A house mesh serves one network on several channels; a station that joins another channel than
+        the cell's drags or splits the cell (CR-7, M0-LOG session 31). The same rule as the extender's.
+
+config POT_WIFI_HUNT_MISSES
+    int "Heartbeat misses this node declares while its station looks for the network"
+    depends on POT_WIFI
+    range 1 255
+    default 60
+    help
+        As POT_EXTENDER_HUNT_MISSES: each scan takes the radio off the cell's channel for seconds.
+
 config POT_RECONCILER
     bool "Run portable actors: the section 7.7 reconciler (M6)"
     default y if SPIRAM

@@ -681,6 +681,27 @@ TEST(node, when_the_station_moves_with_its_router_the_whole_cell_follows_it) {
     CHECK_EQ(c.nodes[0].node->channel_counters().scan_hops, 0u);
 }
 
+TEST(node, with_two_stations_the_cell_follows_the_lowest_node_id_and_the_other_knows_it_is_outranked) {
+    // M13 (the review's item 3): two boards with Wi-Fi, their routers on different channels -- a house mesh. One
+    // authority, the lowest node id, as ADR-009 resolves two relays; before M13 a member followed whichever
+    // station's HELLO came last, and two routers could pull the cell back and forth.
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);  // 0x100, the authority
+    make_fixed(c, 1);  // 0x101
+    c.leak_adjacent = true;  // so the member still hears 0x101 once its router puts it one channel over
+    c.start_all();
+    c.advance_ms(2000);
+    CHECK_EQ(c.nodes[2].node->channel_authority(), static_cast<uint16_t>(0x100));
+    CHECK_EQ(static_cast<int>(c.nodes[1].node->outranking_channel()), 1);  // where it should be: where it is
+    c.nodes[1].node->set_channel_now(2);  // 0x101's router moves; it declares 2, heard on 1
+    c.advance_ms(3000);
+    CHECK_EQ(static_cast<int>(c.nodes[2].chan), 1);  // the member stays with 0x100
+    CHECK_EQ(c.nodes[2].node->channel_authority(), static_cast<uint16_t>(0x100));
+    CHECK_EQ(static_cast<int>(c.nodes[1].node->outranking_channel()), 1);  // 0x101 knows where it should be
+    CHECK_EQ(static_cast<int>(c.nodes[0].node->outranking_channel()), 0);  // nobody outranks the lowest id
+}
+
 TEST(node, a_station_still_hunting_for_its_router_sends_nobody_to_the_channel_it_booted_on) {
     // Found on the bench (M0-LOG session 33): the extender rebooted on channel 1, the channel it saved
     // the night before; its station's scan carried the radio to channel 9, where the cell was, and its
