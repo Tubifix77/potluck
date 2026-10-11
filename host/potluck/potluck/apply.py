@@ -102,7 +102,12 @@ class NodeStatus:
         return [n for bit, n in ROLE_NAMES.items() if self.roles & bit]
 
     def line(self) -> str:
-        pkg = f"package {self.pkg_counter}" + (" ON TRIAL" if self.pending else "") if self.slot else "no package"
+        if not self.slot:
+            pkg = "no package"
+        elif self.pkg_counter == 0:
+            pkg = "built-in behaviour (its package does not run on this firmware)"
+        else:
+            pkg = f"package {self.pkg_counter}" + (" ON TRIAL" if self.pending else "")
         return (f"0x{self.node:04x}  fw {self.fw_version} (counter {self.fw_running}, floor {self.fw_floor}, "
                 f"{self.fw_state})  {pkg} (floor {self.pkg_floor})  cluster '{self.cluster}'  "
                 f"up {self.uptime_s} s  roles {','.join(self.role_names()) or '-'}  "
@@ -362,7 +367,17 @@ def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
             raise ApplyError(f"firmware: {img} or {elf} does not exist")
         return Firmware(img, elf, elf_sha256(elf), "given", False)
     pot_dir, pot_sha = export(c.potluck, cache)
-    parts = {"potluck": pot_sha, "extra": sorted(c.extra)}
+    # Keyed by what the build reads -- the firmware tree (less its recorded size reports) and the build
+    # script -- not by the commit: a commit that touches only the host tools or the documents must not send
+    # new firmware to every board.
+    repo, _ = resolve(c.potluck, cache)
+    trees = {}
+    for line in _git(["ls-tree", pot_sha, "firmware/", "tools/build_firmware.ps1"], cwd=repo).splitlines():
+        meta, path = line.split("\t", 1)
+        if path != "firmware/size":
+            trees[path] = meta.split()[2]
+    fw_commit = _git(["log", "-1", "--format=%h", "--abbrev=7", pot_sha, "--", *trees], cwd=repo)
+    parts = {"potluck": trees, "extra": sorted(c.extra)}
     ext_dir = None
     if c.extender is not None:
         ext_dir, ext_sha = export(c.extender, cache)
@@ -379,7 +394,7 @@ def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
     out = cache / "fw" / key
     bdir = out / f"build-{variant}"
     img, elf = bdir / "potluck_m0.bin", bdir / "potluck_m0.elf"
-    version = f"{pot_sha[:7]}-{key[:6]}"
+    version = f"{fw_commit}-{key[:6]}"  # the last commit that changed the firmware, and the build's key
     if img.exists() and elf.exists():
         log(f"firmware: reusing the build of these sources ({version}, {out})")
         return Firmware(img, elf, elf_sha256(elf), version, False)
@@ -640,6 +655,7 @@ def cmd_inventory(b, boards: list[int]) -> int:
 def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
     from . import fw as fwm
     from .bridge import Bridge
+    from .value import Quality
 
     t_start = time.monotonic()
     times: dict[str, float] = {}
@@ -795,16 +811,21 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             if here != portable_want:
                 problems.append(f"{here} portable actor(s) running in the cell, the package has {portable_want}")
         for p in reads:
+            # GOOD, not merely a value: the cabled board answers a read of another board's output from its
+            # copy and refreshes the copy as it does, so the first answer can be an older, STALE one.
+            # Until the verify deadline: a freshly started actor may publish nothing at first (one that learns
+            # a baseline, say), and that is the app's behaviour, not a failed apply.
             r = None
-            for _ in range(5):
+            until = max(end, time.monotonic() + 15)
+            while time.monotonic() < until:
                 try:
                     r = b.read(p, timeout=2.0)
-                    if r.usable():
+                    if r.quality == Quality.GOOD:
                         break
                 except Exception:  # noqa: BLE001 - try again; reported below
                     r = None
-                time.sleep(2)
-            if r is None or not r.usable():
+                time.sleep(2.0)
+            if r is None or r.quality != Quality.GOOD:
                 problems.append(f"{p}: " + (r.format() if r is not None else "no answer"))
             else:
                 log(f"verify: {p} = {r.format()}")
