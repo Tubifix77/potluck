@@ -146,6 +146,7 @@ class Reconciler {
     // as at boot. Peers hear the new claim set at once. False (nothing changed) if more than kMaxPortable.
     struct ReloadStats {
         size_t kept = 0, stopped = 0, added = 0, outputs_removed = 0;
+        size_t carried = 0;  // added in place of a changed declaration of the same actor, with its checkpoint
     };
     bool reload(const PortableSpec* actors, size_t n, uint32_t now_ms, ReloadStats* stats = nullptr);
     // Tickers only (kTickerKind), from their configs: what M6's tests and tools hold.

@@ -765,6 +765,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             print("plan only: nothing changed")
             return 0
         uptime0 = {n: (inv[n].uptime_s if inv[n] else None) for n in boards}
+        t_uptime0 = time.monotonic()
         reboots_expected: set[int] = set()
 
         # 2. firmware, where it differs.
@@ -806,6 +807,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                     return 1
                 # What the package step does is measured from here: the firmware's reboots are reported above.
                 uptime0 = {n: inv[n].uptime_s for n in boards}
+                t_uptime0 = time.monotonic()
                 reboots_expected.clear()
             else:
                 log(f"firmware: every board already runs {fwb.version}")
@@ -859,6 +861,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
         t0 = time.monotonic()
         end = time.monotonic() + c.verify_timeout_s
         done: dict[int, NodeStatus] = {}
+        seen_at: dict[int, float] = {}
         while time.monotonic() < end and len(done) < len(boards):
             time.sleep(4)
             for n in boards:
@@ -871,6 +874,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                 if st.pkg_counter == counter and not st.pending and st.pinned_running >= pinned_want[n] \
                         and st.portable_total == portable_want:
                     done[n] = st
+                    seen_at[n] = time.monotonic()
                     log(f"verify: 0x{n:04x} confirmed package {counter}: {','.join(st.actors) or '-'}")
         problems = []
         for n in boards:
@@ -904,8 +908,9 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             else:
                 log(f"verify: {p} = {r.format()}")
         times["verify"] = time.monotonic() - t0
+        # Rebooted: up for less time than has passed since its uptime was read (a few seconds' slack).
         rebooted = [n for n in boards if n in done and uptime0[n] is not None and n not in reboots_expected
-                    and done[n].uptime_s < uptime0[n]]
+                    and done[n].uptime_s + 3 < uptime0[n] + (seen_at[n] - t_uptime0)]
         live = [n for n in boards if n in done and inv[n] is not None and done[n].live_applies > inv[n].live_applies]
     total = time.monotonic() - t_start
     print("")

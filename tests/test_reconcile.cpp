@@ -851,3 +851,37 @@ TEST(reconcile, a_checkpoint_survives_a_reboot_of_every_node_at_once) {
     // And the new activation's saves outrank what was restored: the count keeps moving after the reboot.
     CHECK(g_ck_last_saved[second] > g_ck_loaded[second]);
 }
+
+TEST(reconcile, a_live_change_of_an_actors_declaration_resumes_it_from_its_checkpoint) {
+    // The bench (M0-LOG session 39): a package that changed only a guest's eligible nodes restarted its count
+    // from zero at term 1. Same identity and type, a new declaration: a new instance, from the checkpoint.
+    std::memset(g_ck_had, 0, sizeof(g_ck_had));
+    std::memset(g_ck_last_saved, 0, sizeof(g_ck_last_saved));
+    const uint32_t k = path_hash("potluck://lab/act/moved/out");
+    RCell c;
+    c.specs = {saver_spec(k, 3)};
+    c.build(3, {});
+    c.run(8000);
+    const int first = runner_of(c, 0);
+    CHECK(first >= 0);
+    if (first < 0) return;
+    const uint32_t saved = g_ck_last_saved[first];
+    const uint32_t term_before = c.nodes[static_cast<size_t>(first)].rec->view(0).term;
+    CHECK(saved > 20);
+    std::memset(g_ck_had, 0, sizeof(g_ck_had));
+    const std::vector<PortableSpec> next = {saver_spec(k, 2)};  // eligible: the first two nodes only
+    for (RNode& t : c.nodes) {
+        Reconciler::ReloadStats st;
+        CHECK(t.rec->reload(next.data(), next.size(), c.now_us / 1000, &st));
+        CHECK_EQ(st.stopped, static_cast<size_t>(1));
+        CHECK_EQ(st.added, static_cast<size_t>(1));
+        CHECK_EQ(st.carried, static_cast<size_t>(1));
+    }
+    c.run(6000);
+    const int second = runner_of(c, 0);
+    CHECK(second >= 0 && second < 2);
+    if (second < 0) return;
+    CHECK(g_ck_had[second]);                    // resumed, not started from nothing
+    CHECK(g_ck_loaded[second] + 10 >= saved);   // from where it was
+    CHECK(c.nodes[static_cast<size_t>(second)].rec->view(0).term > term_before);  // and its terms move on
+}

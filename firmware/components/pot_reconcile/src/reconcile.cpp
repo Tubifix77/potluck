@@ -74,8 +74,19 @@ size_t rank_nodes(const TickerConfig& cfg, LiveFn live, void* ctx, uint16_t out[
 Reconciler::Reconciler(Node& node, const ReconcileConfig& cfg) : node_(node), cfg_(cfg) {}
 
 bool Reconciler::same(const Slot& s, const PortableSpec& a) {
-    return s.active && s.kind != nullptr && a.kind != nullptr && s.kind->type == a.kind->type &&
-           s.decl.cfg_len == a.decl.cfg_len && std::memcmp(s.decl_cfg, a.cfg, a.decl.cfg_len) == 0;
+    if (!(s.active && s.kind != nullptr && a.kind != nullptr && s.kind->type == a.kind->type &&
+          s.decl.cfg_len == a.decl.cfg_len && std::memcmp(s.decl_cfg, a.cfg, a.decl.cfg_len) == 0)) {
+        return false;
+    }
+    // And where it may run: for every type the header carries it in the config already, but a placement hook
+    // is the type's own, so the reconciler compares what it ranks by too.
+    const TickerConfig& p = s.cfg;
+    const TickerConfig& q = a.place;
+    if (p.out_hash != q.out_hash || p.period_ms != q.period_ms || p.count != q.count) return false;
+    for (uint8_t i = 0; i < p.count; ++i) {
+        if (p.node[i] != q.node[i] || p.gravity[i] != q.gravity[i]) return false;
+    }
+    return true;
 }
 
 bool Reconciler::init_slot(size_t i, const PortableSpec& a) {
@@ -173,11 +184,38 @@ bool Reconciler::reload(const PortableSpec* actors, size_t n, uint32_t now_ms, R
             }
         }
     }
+    // An actor the new package keeps under its identity (its output key and type) but declares differently --
+    // another period, other eligible nodes -- restarts as a new instance, and resumes from its checkpoint with
+    // its term floor, as it would after a reboot or a failover. Found on the bench (M0-LOG session 39): a live
+    // change of a guest's eligible nodes restarted its count from zero at term 1, and the old checkpoint, kept
+    // in flash, was then overwritten by the new one's.
+    struct Carry {
+        uint32_t key;
+        const ActorKind* kind;
+        uint32_t max_term, ck_term, ck_seq, ck_at_ms;
+        bool ck_have;
+        uint8_t ck_len;
+        uint8_t ck[kMaxCheckpoint];
+    };
+    static Carry carry[kMaxPortable];  // off the link task's stack
+    size_t n_carry = 0;
     for (size_t i = 0; i < count_; ++i) {
         Slot& s = slots_[i];
         if (!s.active || keep[i]) {
             if (keep[i]) ++st.kept;
             continue;
+        }
+        if (n_carry < kMaxPortable) {
+            Carry& c = carry[n_carry++];
+            c.key = s.cfg.out_hash;
+            c.kind = s.kind;
+            c.max_term = s.max_term;
+            c.ck_have = s.ck_have;
+            c.ck_term = s.ck_term;
+            c.ck_seq = s.ck_seq;
+            c.ck_at_ms = s.ck_at_ms;
+            c.ck_len = s.ck_len;
+            std::memcpy(c.ck, s.ck, s.ck_len);
         }
         if (s.running) stop(i, 3);  // 3: removed by a new package
         for (uint8_t j = 0; j < s.n_out; ++j) {
@@ -195,6 +233,23 @@ bool Reconciler::reload(const PortableSpec* actors, size_t n, uint32_t now_ms, R
             continue;  // cannot happen with n <= kMaxPortable; never a half-built slot either way
         }
         for (PeerClaims& c : peers_) c.term[i] = 0;
+        Slot& ns = slots_[i];
+        for (size_t k = 0; k < n_carry; ++k) {
+            const Carry& c = carry[k];
+            if (c.key != ns.cfg.out_hash || c.kind != ns.kind) continue;
+            if (c.max_term > ns.max_term) ns.max_term = c.max_term;
+            if (c.ck_have) {
+                ns.ck_have = true;
+                ns.ck_term = c.ck_term;
+                ns.ck_seq = c.ck_seq;
+                ns.ck_at_ms = c.ck_at_ms;
+                ns.ck_len = c.ck_len;
+                std::memcpy(ns.ck, c.ck, c.ck_len);
+                ns.ck_persisted_ms = now_ == 0 ? 1 : now_;  // it is what flash already holds, or soon will
+                ++st.carried;
+            }
+            break;
+        }
         if (i >= count_) count_ = i + 1;
         ++st.added;
     }
