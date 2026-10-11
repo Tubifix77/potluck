@@ -102,9 +102,14 @@ class GuestLibrary {
     void clear() { n_ = 0; }
     uint8_t count() const { return n_; }
     const GuestSpec* spec(uint8_t i) const { return i < n_ ? &specs_[i] : nullptr; }
+    // M12: whether `img` carries exactly the guests this library holds, byte for byte -- a live package change
+    // is possible only then (a running guest's code lives in the pool; nothing may rewrite it under it).
+    bool same_guests(const DeployImage& img) const;
 
   private:
     GuestSpec specs_[kMaxGuests];
+    const uint8_t* blob_[kMaxGuests] = {};
+    uint32_t blob_len_[kMaxGuests] = {};
     uint8_t n_ = 0;
 };
 GuestLibrary& guest_library();

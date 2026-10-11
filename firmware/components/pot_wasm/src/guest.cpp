@@ -155,9 +155,19 @@ bool GuestLibrary::load(const DeployImage& img, uint8_t* pool, size_t pool_len, 
     for (uint8_t g = 0; g < img.guest_count; ++g) {
         std::memcpy(pool + at, img.guests[g].data, img.guests[g].len);
         if (!parse_guest_blob(pool + at, img.guests[g].len, specs_[g], why)) return false;
+        blob_[g] = pool + at;
+        blob_len_[g] = img.guests[g].len;
         at += img.guests[g].len;
     }
     n_ = img.guest_count;
+    return true;
+}
+
+bool GuestLibrary::same_guests(const DeployImage& img) const {
+    if (img.guest_count != n_) return false;
+    for (uint8_t g = 0; g < n_; ++g) {
+        if (img.guests[g].len != blob_len_[g] || std::memcmp(img.guests[g].data, blob_[g], blob_len_[g]) != 0) return false;
+    }
     return true;
 }
 

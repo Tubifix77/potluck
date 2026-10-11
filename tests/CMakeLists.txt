@@ -74,6 +74,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_actors/src/ticker.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/die_temp.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/mc.cpp"
+  "${POT_FIRMWARE}/components/pot_actors/src/cluster.cpp"
   "${POT_FIRMWARE}/components/pot_wasm/src/wasm_sandbox.cpp"
   "${POT_FIRMWARE}/components/pot_wasm/src/guest.cpp"
 )
@@ -116,6 +117,7 @@ add_executable(pot_tests
   test_actor_runtime.cpp
   test_die_temp.cpp
   test_mc.cpp
+  test_cluster.cpp
   test_fw.cpp
   test_wasm.cpp
   test_guest.cpp

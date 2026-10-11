@@ -72,6 +72,7 @@ enum class ActorType : uint8_t {
     McLender = 6,   // M9: lends this node's idle cores to a pure function other nodes call
     McJob = 7,      // M9: a Monte Carlo job that runs its units here and borrows idle cores elsewhere
     Guest = 8,      // M7: a sandboxed WebAssembly program from the image's guest section (pot_wasm)
+    Cluster = 9,    // M12: the cluster's name, every node; renames the built-in resources (pot/cluster.hpp)
 };
 
 // M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an

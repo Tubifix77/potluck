@@ -9,7 +9,7 @@
 // and a node that invented its own spelling would be unreadable to any tool.
 //
 // The `%s` is the node's own id in lowercase hex, so `potluck://lab/node-1a2b/sys/heap-free`. The
-// cluster segment is fixed at `lab` until M3 introduces manifests that can name one.
+// cluster segment is `lab` unless the package names the cluster (M12: pot/cluster.hpp sets it).
 
 #pragma once
 
@@ -34,6 +34,11 @@ enum class SysResource : uint8_t {
     PeersAlive = 4,    // how many peers this node currently believes are up
     LinkRssi = 5,      // dBm of the most recently received frame, worst across peers
 };
+
+// The cluster segment of every built-in path: "lab" until a package's cluster actor names another
+// (M12). Up to 31 characters; null or empty restores "lab".
+const char* sys_system();
+void set_sys_system(const char* name);
 
 // The path suffix for a resource, e.g. "sys/heap-free". The full path is built by
 // sys_resource_path().

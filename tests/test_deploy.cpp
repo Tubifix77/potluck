@@ -508,7 +508,7 @@ TEST(deploy, every_opcode_in_the_deploy_range_reaches_the_deploy_server) {
         c.advance_ms(20);
     }
     CHECK(seen.ops == want);
-    CHECK_EQ(want.size(), static_cast<size_t>(8));  // DEPLOY_BEGIN..ABORT, FW_BEGIN..STATUS
+    CHECK_EQ(want.size(), static_cast<size_t>(9));  // DEPLOY_BEGIN..ABORT, FW_BEGIN..STATUS, NODE_STATUS (M12)
     CHECK_EQ(c.slots[1].node->counters().rx_unknown_opcode, 0u);
 }
 
@@ -575,7 +575,10 @@ TEST(deploy, a_refused_signature_writes_nothing_and_an_accepted_one_stores_the_i
             CHECK_EQ(static_cast<int>(store.state.pending), 0);
         } else {
             CHECK(st == DeployStatus::Ok);
-            CHECK_EQ(store.slots.begin()->second.size(), img.size());  // the image, not the trailer
+            // M12: the slot keeps the stream as signed, so the package can be passed on later, verifiably;
+            // the image is found in it by its own header.
+            CHECK_EQ(store.slots.begin()->second.size(), stream.size());
+            CHECK_EQ(image_extent(store.slots.begin()->second.data(), store.slots.begin()->second.size()), img.size());
         }
     }
 }
@@ -603,5 +606,6 @@ TEST(deploy, a_version_2_image_ends_after_its_guest_section_not_at_body_len) {
     CHECK_EQ(g_verify_calls, 1);
     CHECK_EQ(g_seen_image, img.size());
     CHECK_EQ(g_seen_trailer, static_cast<size_t>(176));
-    CHECK_EQ(store.slots.begin()->second.size(), img.size());
+    CHECK_EQ(store.slots.begin()->second.size(), stream.size());
+    CHECK_EQ(image_extent(store.slots.begin()->second.data(), store.slots.begin()->second.size()), img.size());
 }

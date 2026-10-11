@@ -174,6 +174,13 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                 }
                 break;
             }
+            case ActorType::Cluster:
+                // M12: every node, a name of 1..31 characters; pot/cluster.hpp judges the characters.
+                if (a.node_id != kEveryNode || a.cfg_len == 0 || a.cfg_len > 31) {
+                    w = "cluster must be on every node, with a name of 1..31 characters";
+                    return false;
+                }
+                break;
             default:
                 if (is_external_type(a.type)) {
                     break;  // M8.2: an external component's; its registration row judges the config
@@ -577,7 +584,9 @@ DeployReply DeployReceiver::commit(uint32_t crc) {
     if (s.pending != 0) {
         return reply(DeployStatus::TrialInProgress);
     }
-    if (!store_.write_slot(target_, buf_, image_len)) {
+    // M12: the slot keeps the stream as signed -- image and trailer -- so this node can pass the package on
+    // later, verifiably, to a peer that was off when it was deployed. image_extent() finds the image in it.
+    if (!store_.write_slot(target_, buf_, received_)) {
         return reply(DeployStatus::StoreFailed);
     }
     s.previous = s.active;  // confirmed, since a pending one was refused above

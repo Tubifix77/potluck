@@ -3,8 +3,21 @@
 #include "pot/sys_resources.hpp"
 
 #include <cstdio>
+#include <cstring>
 
 namespace pot {
+
+namespace {
+char g_system[32] = "lab";
+}  // namespace
+
+const char* sys_system() { return g_system; }
+
+void set_sys_system(const char* name) {
+    if (name == nullptr || name[0] == '\0') name = "lab";
+    std::strncpy(g_system, name, sizeof(g_system) - 1);
+    g_system[sizeof(g_system) - 1] = '\0';
+}
 
 const char* sys_resource_suffix(SysResource r) {
     switch (r) {
@@ -19,7 +32,7 @@ const char* sys_resource_suffix(SysResource r) {
 }
 
 const char* sys_resource_path(char* out, size_t cap, uint16_t node_id, SysResource r) {
-    std::snprintf(out, cap, "potluck://lab/node-%04x/%s", static_cast<unsigned>(node_id),
+    std::snprintf(out, cap, "potluck://%s/node-%04x/%s", g_system, static_cast<unsigned>(node_id),
                   sys_resource_suffix(r));
     return out;
 }

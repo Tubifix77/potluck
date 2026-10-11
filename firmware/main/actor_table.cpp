@@ -10,6 +10,7 @@
 #include "driver/temperature_sensor.h"
 #include "esp_attr.h"
 #include "esp_log.h"
+#include "pot/cluster.hpp"
 #include "pot/die_temp.hpp"
 #if CONFIG_POT_WASM
 #include "pot/guest.hpp"
@@ -126,6 +127,7 @@ const ActorKind kBuiltinRows[] = {
     {ActorType::DieTemp, "die_temp", &die_temp_check, &die_temp_create, nullptr, &die_temp_outputs},
     kMcLenderKind,  // M9
     kMcJobKind,
+    kClusterKind,  // M12: the cluster's name, carried by the package
 #if CONFIG_POT_WASM
     kGuestKind,  // M7: portable, sandboxed; without the sandbox an image naming a guest is refused
 #endif

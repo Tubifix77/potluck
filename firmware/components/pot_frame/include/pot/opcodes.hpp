@@ -57,7 +57,10 @@ constexpr uint8_t kOpFwBegin = 0x34;
 constexpr uint8_t kOpFwChunk = 0x35;
 constexpr uint8_t kOpFwCommit = 0x36;
 constexpr uint8_t kOpFwStatus = 0x37;
-inline bool is_deploy_opcode(uint8_t op) { return op >= kOpDeployBegin && op <= kOpFwStatus; }
+// M12: what a node runs -- firmware, package, role, actors -- for potluck apply's inventory. Routed like a
+// deploy, and passed on by the board on the cable to the node it names, as FW_STATUS is.
+constexpr uint8_t kOpNodeStatus = 0x38;
+inline bool is_deploy_opcode(uint8_t op) { return op >= kOpDeployBegin && op <= kOpNodeStatus; }
 inline bool is_fw_opcode(uint8_t op) { return op >= kOpFwBegin && op <= kOpFwStatus; }
 // constexpr uint8_t kOpMigratePrepare = 0x40;
 // constexpr uint8_t kOpMigrateCommit  = 0x41;

@@ -1892,7 +1892,10 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         case kOpFwBegin:  // M11: routed like a deploy, to the same server
         case kOpFwChunk:
         case kOpFwCommit:
-        case kOpFwStatus: handle_deploy(p, f); break;
+        case kOpFwStatus:
+        case kOpNodeStatus:  // M12: the inventory
+            handle_deploy(p, f);
+            break;
         case kOpSafeState: handle_safe_state(p, f); break;
         default:
             ++counters_.rx_unknown_opcode;
