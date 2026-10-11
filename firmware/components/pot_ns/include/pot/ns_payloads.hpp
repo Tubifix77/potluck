@@ -44,15 +44,23 @@ static_assert(offsetof(ReadPayload, flags) == 4, "READ offset");
 //   0     4   path_hash
 //   4     1   value_type   ValueType
 //   5     1   value_len    bytes used in value_raw
-//   6     2   reserved0    zero
+//   6     2   flags        bit0: from outside the cell (M13); the other bits zero
 //   8     8   value_raw    the payload, little-endian, as Value holds it
+//
+// M13: `flags` was reserved0, always zero, so every WRITE before M13 reads as one from inside the cell. The
+// presenting role sets kWriteFromOutside on every write it passes on from another system, and the owning board
+// then applies the package's outside rules (Namespace::write_outside). The origin travels in the payload of the
+// one opcode that needs it, under the frame's authentication like the rest -- not in the header's reserved bit
+// (section 5.1), which every receiver decodes for every opcode.
 // ---------------------------------------------------------------------------------------------
+
+constexpr uint16_t kWriteFromOutside = 1u << 0;
 
 struct WritePayload {
     uint32_t path_hash;
     uint8_t value_type;
     uint8_t value_len;
-    uint16_t reserved0;
+    uint16_t flags;
     uint8_t value_raw[kValueBytesMax];
 };
 
@@ -60,6 +68,7 @@ static_assert(sizeof(WritePayload) == 16, "WRITE is 16 bytes");
 static_assert(offsetof(WritePayload, path_hash) == 0, "WRITE offset");
 static_assert(offsetof(WritePayload, value_type) == 4, "WRITE offset");
 static_assert(offsetof(WritePayload, value_len) == 5, "WRITE offset");
+static_assert(offsetof(WritePayload, flags) == 6, "WRITE offset");
 static_assert(offsetof(WritePayload, value_raw) == 8, "WRITE offset");
 
 // ---------------------------------------------------------------------------------------------

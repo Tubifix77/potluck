@@ -78,19 +78,26 @@ class Read:
 # ---------------------------------------------------------------------------------------------
 
 
+#: M13: WritePayload::flags bit 0 -- the write comes from outside the cell, passed on by the presenting role.
+WRITE_FROM_OUTSIDE = 0x0001
+
+
 @dataclass
 class Write:
     path_hash: int
     value: Value
+    #: M13: the owning board then applies the package's outside rules (pot::Namespace::write_outside).
+    from_outside: bool = False
 
     def encode(self) -> bytes:
         vtype, vlen, raw = self.value.to_wire()
-        return _WRITE.pack(self.path_hash, vtype, vlen, 0, raw)
+        return _WRITE.pack(self.path_hash, vtype, vlen, WRITE_FROM_OUTSIDE if self.from_outside else 0, raw)
 
     @classmethod
     def parse(cls, payload: bytes) -> Write:
-        path_hash, vtype, vlen, _reserved0, raw = _unpack(_WRITE, payload, "WRITE")
-        return cls(path_hash=path_hash, value=Value.from_wire(vtype, vlen, raw))
+        path_hash, vtype, vlen, flags, raw = _unpack(_WRITE, payload, "WRITE")
+        return cls(path_hash=path_hash, value=Value.from_wire(vtype, vlen, raw),
+                   from_outside=bool(flags & WRITE_FROM_OUTSIDE))
 
     def __str__(self) -> str:
         return f"WRITE hash=0x{self.path_hash:08x} value={self.value.format()}"

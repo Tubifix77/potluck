@@ -328,6 +328,9 @@ others into the owner's one package (below):
   This holds for a pinned actor reading a built-in on its own board too: `builtin:die_temp` on node 0x8160 is
   `potluck://<system>/node-8160/hw/die_temp`, and an actor that reads it lists it in `needs`, with the board's
   `owns` declaring it (as above). A package with no actor reading it needs no `owns` for it.
+- **`safety_relevant`** (in an `owns` entry, default false) -- mark a resource whose wrong value could hurt
+  someone or something. It is then never writable from outside the cell, whatever the owner's cluster file says:
+  `apply` refuses such a package, and the board that owns the resource refuses such a write itself.
 - **`pin`** -- a hand-written override for where it runs.
 - **`config`** -- plain values (numbers, booleans, strings), checked against the descriptor.
 - **Built-in modules** you can put in the same manifest (rules in `host/potluck/potluck/deploy.py`):
@@ -391,6 +394,7 @@ paths are relative to the file):
 | `apps` | each app: `git` (a local repository or a URL), `rev` (a commit or a tag), `components` (built into the firmware; every `potluck-modules.json` under it is loaded), `manifests` (its fragments) |
 | `package` | more fragments (`"manifests": [path, or {"manifest": path, "root": dir for its relative paths}]`), more descriptors (`"modules"`), and `guests_root` |
 | `verify` | `timeout_s`, and `read`: more paths to read back |
+| `outside` | what systems outside the cell (Home Assistant, through the presenting module, M13) may do with each resource: `{"node-7368/hw/die_temp": "read", "node-7368/led/level": "read_write"}`, a path with or without `potluck://<system>/`. Nothing is exposed unless named here. `read_write` needs a resource some node declares in `owns` with write access, and never one marked `safety_relevant`. The owner's choice, so only the cluster file says it: a fragment with `outside` is refused |
 
 What `apply` does, in order:
 

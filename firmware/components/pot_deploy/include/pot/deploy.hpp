@@ -46,11 +46,18 @@ uint32_t crc32(const uint8_t* data, size_t len, uint32_t seed = 0);
 //          1    guest_count
 //          ...  guest_count x (len u32, blob)
 // A version-1 image is a version-2 image with no guest section; both are accepted.
+//
+// Version 3 (M13) adds, after the guest section (which it always has, guest_count possibly 0), the outside
+// section -- what the package lets systems outside the cell do with each resource it names (pot/namespace.hpp):
+//          1    outside_count       0..kMaxOutside
+//          ...  outside_count x (path_hash u32, flags u8)    kOutside* flags; a hash at most once
+// A package with no outside rules is built as version 1 or 2, byte for byte what it was before M13.
 // ---------------------------------------------------------------------------------------------
 
 constexpr uint32_t kImageMagic = 0x44544F50u;  // "POTD"
 constexpr uint8_t kImageVersion = 1;
 constexpr uint8_t kImageVersionGuests = 2;  // M7
+constexpr uint8_t kImageVersionOutside = 3;  // M13
 constexpr size_t kImageHeaderLen = 24;
 constexpr size_t kMaxActors = 16;
 // Without guests an image is at most 24 + 16 x (4 + 255) bytes, and usually under 200. M7's guests
@@ -101,7 +108,19 @@ struct DeployImage {
     ActorDecl actors[kMaxActors];
     uint8_t guest_count = 0;  // M7
     GuestBlob guests[kMaxGuests] = {};
+    // M13: the outside section's rules, 5 bytes each (path_hash u32 LE, flags u8), pointing into the image
+    // buffer; validated by parse_image. outside_rule() reads one.
+    uint8_t outside_count = 0;
+    const uint8_t* outside = nullptr;
 };
+
+// M13: rule `i` of the image's outside section.
+void outside_rule(const DeployImage& img, size_t i, uint32_t& path_hash, uint8_t& flags);
+
+class Namespace;
+// M13: hand the image's outside section to the namespace (Namespace::set_outside) -- every node, whatever
+// actors it runs, since every node may hold a replica the presenter reads. An image without one clears it.
+bool apply_outside(const DeployImage& img, Namespace& ns);
 
 // Parses and validates. `why` names the first problem, for the log. Unknown actor types are
 // rejected: a node that silently skipped an actor it does not have would report a deployment it

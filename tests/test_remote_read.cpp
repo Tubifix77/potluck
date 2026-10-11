@@ -543,3 +543,66 @@ TEST(m1, a_replica_is_as_old_as_the_owners_sample_not_as_its_arrival) {
     // And the staleness rule sees it: older than its bound is not Good.
     CHECK(static_cast<int>(r.quality) != static_cast<int>(Quality::Good));
 }
+
+// ---- M13: a write from outside the cell, checked by the board that owns the resource ----------
+
+TEST(m13, the_owner_refuses_an_outside_write_the_package_does_not_allow) {
+    Cell2 c;
+    c.build(2);
+    c.start();
+    c.advance_ms(300);
+
+    Node& presenter = *c.slots[0].node;
+    Node& owner = *c.slots[1].node;
+    declare_both(c, owner.config().node_id, /*bound_ms=*/5000);  // ReadWrite, no outside rule yet
+
+    // Writable from inside, as before M13; from outside, the package has not said so.
+    CHECK(presenter.request_write(owner.config().node_id, kAdc0, Value::of_f32(1.0f)) != 0);
+    c.advance_ms(50);
+    CHECK_EQ(owner.ns_counters().writes_served, 1u);
+    CHECK(presenter.request_write(owner.config().node_id, kAdc0, Value::of_f32(2.0f), /*from_outside=*/true) != 0);
+    c.advance_ms(50);
+    CHECK_EQ(owner.ns_counters().writes_outside_refused, 1u);
+    CHECK_EQ(owner.ns_counters().writes_served, 1u);
+    CHECK_EQ(presenter.ns_counters().replies_matched, 2u);  // the refusal came back
+
+    // The package makes it writable from outside -- on every node, as every node holds the image.
+    const uint32_t h[] = {kAdc0};
+    const uint8_t writable[] = {kOutsideExposed | kOutsideWritable};
+    for (Slot& s : c.slots) CHECK(s.node->ns().set_outside(h, writable, 1));
+    CHECK(presenter.request_write(owner.config().node_id, kAdc0, Value::of_f32(3.0f), true) != 0);
+    c.advance_ms(50);
+    CHECK_EQ(owner.ns_counters().writes_outside, 1u);
+    Reading r;
+    owner.read(kAdc0, r);
+    float v = 0;
+    Quality q = Quality::NoData;
+    CHECK(r.get_f32(v, q));
+    CHECK(v > 2.99f && v < 3.01f);
+
+    // Safety-relevant: refused even where only the presenter's copy of the package said writable.
+    const uint8_t safety[] = {kOutsideExposed | kOutsideSafety};
+    CHECK(owner.ns().set_outside(h, safety, 1));
+    CHECK(presenter.request_write(owner.config().node_id, kAdc0, Value::of_f32(4.0f), true) != 0);
+    c.advance_ms(50);
+    CHECK_EQ(owner.ns_counters().writes_outside_refused, 2u);
+}
+
+TEST(m13, an_outside_write_aimed_at_a_replica_is_refused) {
+    Cell2 c;
+    c.build(2);
+    c.start();
+    c.advance_ms(300);
+
+    Node& presenter = *c.slots[0].node;
+    Node& holder = *c.slots[1].node;
+    // The presenter owns kAdc0; the other node holds only a replica, and a replica is not the resource.
+    declare_both(c, presenter.config().node_id, /*bound_ms=*/5000);
+    const uint32_t h[] = {kAdc0};
+    const uint8_t writable[] = {kOutsideExposed | kOutsideWritable};
+    for (Slot& s : c.slots) CHECK(s.node->ns().set_outside(h, writable, 1));
+    CHECK(presenter.request_write(holder.config().node_id, kAdc0, Value::of_f32(5.0f), true) != 0);
+    c.advance_ms(50);
+    CHECK_EQ(holder.ns_counters().writes_outside_refused, 1u);
+    CHECK_EQ(holder.ns_counters().writes_served, 0u);
+}

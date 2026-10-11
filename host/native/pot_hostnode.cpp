@@ -251,6 +251,7 @@ int main(int argc, char** argv) {
     hal.now_us = [](void*) { return now_us(); };
     static Node node(cfg, hal);
     node.set_trust(&id, true);
+    apply_outside(img, node.ns());  // M13: as every board does
     static Reconciler rec(node);
     if (!rec.load(specs, n_specs)) {
         std::fprintf(stderr, "reconciler: could not load %u portable actor(s)\n", static_cast<unsigned>(n_specs));

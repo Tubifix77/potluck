@@ -17,6 +17,7 @@ const char* ns_error_str(NsError e) {
         case NsError::NotReadable: return "not_readable";
         case NsError::WrongOwner: return "wrong_owner";
         case NsError::EventNotCached: return "event_not_cached";
+        case NsError::NotOutsideWritable: return "not_outside_writable";
     }
     return "unknown";
 }
@@ -41,6 +42,7 @@ void Namespace::reset() {
         entries_[i] = NsEntry{};
         arrived_ms_[i] = 0;
     }
+    outside_n_ = 0;
 }
 
 size_t Namespace::index_for(uint32_t hash) const {
@@ -73,6 +75,7 @@ NsError Namespace::declare(const NsDecl& d) {
             e.latency_class = d.latency_class;
             e.staleness_policy = static_cast<uint8_t>(d.staleness_policy);
             e.flags = 0;
+            e.outside = outside_of(d.path_hash);
             arrived_ms_[i] = 0;
             return NsError::Ok;
         }
@@ -172,6 +175,55 @@ NsError Namespace::write_local(uint32_t hash, const Value& v, uint32_t now_ms) {
         return NsError::NotWritable;
     }
     return publish(hash, v, now_ms);
+}
+
+NsError Namespace::write_outside(uint32_t hash, const Value& v, uint32_t now_ms) {
+    const NsEntry* e = find(hash);
+    if (e == nullptr) {
+        return NsError::NotFound;
+    }
+    // The package's word, checked by the board that owns the resource -- not only by the presenter that
+    // passed the write on. Safety-relevant wins even over a writable bit (set_outside never stores both).
+    if ((e->outside & kOutsideWritable) == 0 || (e->outside & kOutsideSafety) != 0) {
+        return NsError::NotOutsideWritable;
+    }
+    return write_local(hash, v, now_ms);
+}
+
+bool Namespace::set_outside(const uint32_t* hashes, const uint8_t* flags, size_t n) {
+    if (n > kMaxOutside || (n > 0 && (hashes == nullptr || flags == nullptr))) {
+        return false;
+    }
+    for (size_t i = 0; i < n; ++i) {
+        if (hashes[i] == 0 || !outside_flags_valid(flags[i])) {
+            return false;
+        }
+        for (size_t k = 0; k < i; ++k) {
+            if (hashes[k] == hashes[i]) {
+                return false;
+            }
+        }
+    }
+    for (size_t i = 0; i < n; ++i) {
+        outside_hash_[i] = hashes[i];
+        outside_flags_[i] = flags[i];
+    }
+    outside_n_ = static_cast<uint8_t>(n);
+    for (size_t i = 0; i < kNamespaceEntries; ++i) {
+        if (!entries_[i].free()) {
+            entries_[i].outside = outside_of(entries_[i].path_hash);
+        }
+    }
+    return true;
+}
+
+uint8_t Namespace::outside_of(uint32_t hash) const {
+    for (size_t i = 0; i < outside_n_; ++i) {
+        if (outside_hash_[i] == hash) {
+            return outside_flags_[i];
+        }
+    }
+    return 0;
 }
 
 NsError Namespace::publish(uint32_t hash, const Value& v, uint32_t now_ms) {

@@ -75,6 +75,10 @@ TRANSPORTS = ("uart", "can", "espnow", "host")
 
 RESOURCE_KINDS = ("sampled", "event")
 ACCESS_MODES = ("read", "write", "read_write")
+#: M13: what the package lets a system outside the cell do with a resource (the `outside` map).
+OUTSIDE_MODES = ("read", "read_write")
+#: M13: pot/namespace.hpp's kMaxOutside -- the most resources one package's outside section can name.
+MAX_OUTSIDE = 32
 
 #: M8: what a node is. A `host` (a PC or a Pi running potluck-agent, section 7.1) offers named
 #: services and runs no firmware, so no built-in actor can be placed or pinned on it.
@@ -147,6 +151,9 @@ class ResourceSpec:
     #: is legal for an event but never for a strict resource -- see validate().
     staleness_bound_ms: int = 0
     staleness_policy: str = "informative"
+    #: M13: never writable from outside the cell (section 9.3: its writes need the owner's signature, which no
+    #: broker holds). Carried to every node, which refuses an outside write to it whatever else the package says.
+    safety_relevant: bool = False
 
     @property
     def hash(self) -> int:
@@ -232,6 +239,9 @@ class Manifest:
     links: tuple[LinkSpec, ...] = ()
     #: The frozen resolution: actor name -> node id. Absent until the build tool resolves placement.
     placement: dict[str, int] = field(default_factory=dict)
+    #: M13: path -> "read" | "read_write" -- what a system outside the cell (Home Assistant through the presenting
+    #: role) may do with it. Absent means nothing: exposure is opt-in, one resource at a time.
+    outside: dict[str, str] = field(default_factory=dict)
     schema: int = SCHEMA
 
     # -- lookups ------------------------------------------------------------------------------
@@ -317,6 +327,8 @@ class Manifest:
                             "latency_class": r.latency_class,
                             "staleness_bound_ms": r.staleness_bound_ms,
                             "staleness_policy": r.staleness_policy,
+                            # M13: only when set, so every manifest signed before it keeps its digest.
+                            **({"safety_relevant": True} if r.safety_relevant else {}),
                         }
                         for r in n.owns
                     ],
@@ -342,6 +354,7 @@ class Manifest:
             "bindings": dict(self.bindings),
             "links": [{"a": l.a, "b": l.b, "transport": l.transport} for l in self.links],
             "placement": dict(self.placement),
+            **({"outside": dict(self.outside)} if self.outside else {}),
         }
 
     def canonical_bytes(self) -> bytes:
@@ -443,12 +456,12 @@ def check_path(path: Any, where: str, errors: list[ManifestError]) -> str | None
 
 
 _RESOURCE_KEYS = ("path", "unit", "kind", "access", "latency_class", "staleness_bound_ms",
-                  "staleness_policy")
+                  "staleness_policy", "safety_relevant")
 _NODE_KEYS = ("node_id", "label", "power", "headroom_bytes", "allow_background", "owns", "kind", "placement")
 _ACTOR_KEYS = ("name", "module", "latency_class", "needs", "headroom_bytes", "priority",
                "on_host_loss", "pin", "config")
 _TOP_KEYS = ("schema", "system", "min_core_version", "nodes", "actors", "bindings", "links",
-            "placement")
+            "placement", "outside")
 _LINK_KEYS = ("a", "b", "transport")
 
 
@@ -465,10 +478,14 @@ def _parse_resource(d: Any, where: str, errors: list[ManifestError]) -> Resource
                    f"{where}.staleness_policy", errors)
     cls = _int(d.get("latency_class", 4), f"{where}.latency_class", errors, low=0, high=4)
     bound = _int(d.get("staleness_bound_ms", 0), f"{where}.staleness_bound_ms", errors, low=0)
+    safety = d.get("safety_relevant", False)
+    if not isinstance(safety, bool):
+        errors.append(ManifestError(f"{where}.safety_relevant", "must be true or false"))
+        return None
     if None in (path, unit, kind, access, policy) or cls is None or bound is None:
         return None
     return ResourceSpec(path=path, unit=unit, kind=kind, access=access, latency_class=cls,
-                        staleness_bound_ms=bound, staleness_policy=policy)
+                        staleness_bound_ms=bound, staleness_policy=policy, safety_relevant=safety)
 
 
 def _parse_node(d: Any, where: str, errors: list[ManifestError]) -> NodeSpec | None:
@@ -639,12 +656,23 @@ def parse(doc: Any, *, require_placement: bool = False) -> Manifest:
             if nid is not None:
                 placement[actor_name] = nid
 
+    outside: dict[str, str] = {}
+    outside_raw = doc.get("outside", {})
+    if not isinstance(outside_raw, dict):
+        errors.append(ManifestError("outside", "must be an object of path -> \"read\" or \"read_write\""))
+    else:
+        for path, mode in outside_raw.items():
+            p = check_path(path, f"outside['{path}']", errors)
+            md = _enum(mode, OUTSIDE_MODES, f"outside['{path}']", errors)
+            if p is not None and md is not None:
+                outside[p] = md
+
     if system is None or min_core is None:
         raise ManifestErrors(errors)
 
     m = Manifest(system=system, min_core_version=min_core, nodes=tuple(nodes),
                  actors=tuple(actors), bindings=bindings, links=tuple(links),
-                 placement=placement, schema=SCHEMA)
+                 placement=placement, outside=outside, schema=SCHEMA)
     errors.extend(cross_check(m, require_placement=require_placement))
     if errors:
         raise ManifestErrors(errors)
@@ -788,6 +816,32 @@ def cross_check(m: Manifest, *, require_placement: bool = False) -> list[Manifes
                 f"is background work placed on '{n.label}', a {n.power} node; harvesting idle "
                 f"cycles denies sleep, so set allow_background on that node or place it elsewhere"))
 
+    # M13: what the outside may do. Reads may name any resource of this cell (an actor's output, a guest's, a
+    # board's built-in); a write needs a resource the package declares, writable, and not safety-relevant.
+    prefix = f"potluck://{m.system}/"
+    for path, mode in m.outside.items():
+        where = f"outside['{path}']"
+        target = m.bindings.get(path, path)
+        if not target.startswith(prefix):
+            errors.append(ManifestError(where, f"is not a resource of this cell (paths start '{prefix}')"))
+            continue
+        if mode != "read_write":
+            continue
+        r = m.resource(path)
+        if r is None:
+            errors.append(ManifestError(where, "is writable from outside, so it must be a resource a node of this "
+                                               "manifest declares in 'owns'"))
+        elif r.safety_relevant:
+            errors.append(ManifestError(where, "is safety-relevant, and a safety-relevant resource is never "
+                                               "writable from outside the cell (section 9.3)"))
+        elif r.access not in ("write", "read_write"):
+            errors.append(ManifestError(where, f"is writable from outside, but the resource's access is "
+                                               f"'{r.access}'"))
+    if len(outside_rules(m)) > MAX_OUTSIDE:
+        errors.append(ManifestError("outside", f"{len(outside_rules(m))} resources with outside rules (the "
+                                               f"exposed ones and the safety-relevant ones); a package carries at "
+                                               f"most {MAX_OUTSIDE}"))
+
     if require_placement:
         for i, a in enumerate(m.actors):
             # M6: a portable actor's placement is the reconciler's at run time (section 7.7); what the
@@ -801,6 +855,26 @@ def cross_check(m: Manifest, *, require_placement: bool = False) -> list[Manifes
                     "tool has frozen where every actor runs"))
 
     return errors
+
+
+OUTSIDE_EXPOSED = 0x01
+OUTSIDE_WRITABLE = 0x02
+OUTSIDE_SAFETY = 0x04
+
+
+def outside_rules(m: Manifest) -> list[tuple[str, int]]:
+    """M13: the package's outside section -- (canonical path, flags) for every exposed resource and every
+    safety-relevant one, sorted by path so the image does not depend on the order the manifest wrote them.
+    The flags are pot/namespace.hpp's kOutside*."""
+    rules: dict[str, int] = {}
+    for path, mode in m.outside.items():
+        target = m.bindings.get(path, path)
+        rules[target] = rules.get(target, 0) | OUTSIDE_EXPOSED | (OUTSIDE_WRITABLE if mode == "read_write" else 0)
+    for n in m.nodes:
+        for r in n.owns:
+            if r.safety_relevant:
+                rules[r.path] = rules.get(r.path, 0) | OUTSIDE_SAFETY
+    return sorted(rules.items())
 
 
 def load(path: str, *, require_placement: bool = False) -> Manifest:

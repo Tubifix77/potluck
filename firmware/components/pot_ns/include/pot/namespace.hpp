@@ -84,7 +84,8 @@ struct NsEntry {
     uint8_t latency_class;       // §4 L0..L4
     uint8_t staleness_policy;    // StalenessPolicy
     uint8_t flags;               // bit0 = faulty, as reported by the owner
-    uint8_t reserved0[5];
+    uint8_t outside;             // M13: kOutside* -- what the package lets systems outside the cell do
+    uint8_t reserved0[4];
 
     bool free() const { return path_hash == 0; }
     bool has_data() const { return update_count > 0; }
@@ -96,6 +97,23 @@ static_assert(sizeof(NsEntry) * kNamespaceEntries <= 8192,
               "§6: namespace table is 128 entries in 8.0 KB");
 
 constexpr uint8_t kNsFlagFaulty = 1u << 0;
+
+// M13: what the owner's package lets a system outside the cell do with a resource -- Home Assistant through
+// the presenting role, say. Default: nothing. Carried by the deploy image (its outside section, pot/deploy.hpp),
+// held by every node, stamped into every entry it covers, the replicas included, so the presenter knows what
+// to show and the owning board what to refuse.
+constexpr uint8_t kOutsideExposed = 1u << 0;   // readable from outside
+constexpr uint8_t kOutsideWritable = 1u << 1;  // writable from outside; implies exposed
+constexpr uint8_t kOutsideSafety = 1u << 2;    // safety-relevant: never writable from outside (section 9.3)
+constexpr uint8_t kOutsideMask = kOutsideExposed | kOutsideWritable | kOutsideSafety;
+// The most resources one package can name in its outside section.
+constexpr size_t kMaxOutside = 32;
+
+// A valid set of outside flags: no unknown bit, writable only if exposed, never writable and safety-relevant.
+constexpr bool outside_flags_valid(uint8_t f) {
+    return (f & ~kOutsideMask) == 0 && ((f & kOutsideWritable) == 0 || (f & kOutsideExposed) != 0) &&
+           (f & (kOutsideWritable | kOutsideSafety)) != (kOutsideWritable | kOutsideSafety);
+}
 
 // What a resource declares when it is registered. A separate struct from NsEntry so that
 // registration reads as a declaration rather than as poking fields.
@@ -121,6 +139,7 @@ enum class NsError : uint8_t {
     NotReadable,
     WrongOwner,      // a write aimed at a resource this node does not own
     EventNotCached,  // §7.2: event entries have queue semantics; READ is not how you get them
+    NotOutsideWritable,  // M13: a write from outside the cell, and the package does not allow it here
 };
 
 const char* ns_error_str(NsError e);
@@ -175,6 +194,19 @@ class Namespace {
     // read-only resource refuses. Used by the WRITE handler and by nothing else.
     NsError write_local(uint32_t hash, const Value& v, uint32_t now_ms);
 
+    // M13: a WRITE from the wire that came from outside the cell (the presenter marked it, WritePayload::flags).
+    // write_local(), and before it the package's word: refused as NotOutsideWritable unless the resource is
+    // writable from outside and not safety-relevant. The caller checks it owns the resource.
+    NsError write_outside(uint32_t hash, const Value& v, uint32_t now_ms);
+
+    // M13: the package's outside section -- `n` rules of (path hash, kOutside* flags). Replaces the last set and
+    // re-stamps every entry: covered ones take their flags, the rest go back to 0. False, changing nothing,
+    // for more than kMaxOutside rules, a zero hash, a repeated hash or an invalid flag set.
+    bool set_outside(const uint32_t* hashes, const uint8_t* flags, size_t n);
+    // The flags the package gives `hash`, entry or not; 0 when it names it nowhere.
+    uint8_t outside_of(uint32_t hash) const;
+    size_t outside_count() const { return outside_n_; }
+
     // Fold in a value that arrived from the owning node. `sampled_ms` is the *owner's* timestamp
     // from the wire; `local_now_ms` is ours. `owner_age_ms` is how old the owner said the sample
     // already was when it answered -- a duration on the owner's clock, which survives the two clocks
@@ -222,6 +254,11 @@ class Namespace {
     // property of our copy rather than of the resource, and putting it in the entry would make the
     // 64 B budget line mean something different on the owning node than on a caching one.
     uint32_t arrived_ms_[kNamespaceEntries];
+    // M13: the package's outside section, kept here so an entry declared later (a replica, a re-placed
+    // portable output) takes its flags at declare(). 160 B.
+    uint32_t outside_hash_[kMaxOutside];
+    uint8_t outside_flags_[kMaxOutside];
+    uint8_t outside_n_ = 0;
 };
 
 static_assert(kNamespaceEntries > 0 && (kNamespaceEntries & (kNamespaceEntries - 1)) == 0,

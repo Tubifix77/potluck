@@ -385,7 +385,9 @@ class Node {
     // set. This is deliberately not a blocking call — a blocking read across a link whose p99 is
     // hundreds of milliseconds (§3) is how a control loop acquires a hidden deadline.
     uint16_t request_read(uint16_t peer_node_id, uint32_t path_hash);
-    uint16_t request_write(uint16_t peer_node_id, uint32_t path_hash, const Value& v);
+    // M13: `from_outside` marks a write the presenting role passes on from a system outside the cell; the
+    // owning board then applies the package's outside rules (WritePayload::flags, Namespace::write_outside).
+    uint16_t request_write(uint16_t peer_node_id, uint32_t path_hash, const Value& v, bool from_outside = false);
 
     // ---- section 7.8: work units (CALL / REPLY / CAST) ------------------------------------
     //
@@ -498,6 +500,8 @@ class Node {
         uint32_t calls_refused;    // units this node declined, or had no handler for
         uint32_t calls_lost;       // units dispatched to a peer that died before answering
         uint32_t replies_fenced;   // M6: a value from a node that no longer owns the resource
+        uint32_t writes_outside;          // M13: writes from outside the cell, applied here (in writes_served too)
+        uint32_t writes_outside_refused;  // M13: ... refused here (in writes_rejected too)
     };
     const NsCounters& ns_counters() const { return ns_counters_; }
 

@@ -111,6 +111,19 @@ class ClusterFile(unittest.TestCase):
         self.assertEqual(portable, 0)
         self.assertEqual(reads, ["potluck://home/node-0100/hw/die_temp"])
 
+    def test_what_the_outside_may_do_is_the_cluster_files_and_reaches_the_image(self):
+        # M13: the owner's choice, in the cluster file; a path may leave out potluck://<system>/.
+        c = self.cluster(outside={"node-0100/hw/die_temp": "read"})
+        self.assertEqual(c.outside, {"potluck://home/node-0100/hw/die_temp": "read"})
+        frag = {"schema": 1, "system": "lab", "nodes": [], "actors": []}
+        m = mf.parse(ap.compose(c, [(frag, self.d, "frag")]))
+        self.assertEqual(mf.outside_rules(m), [("potluck://home/node-0100/hw/die_temp", mf.OUTSIDE_EXPOSED)])
+        self.assertEqual(dp.compile_image(m, 5)[4], dp.IMAGE_VERSION_OUTSIDE)
+        with self.assertRaisesRegex(ap.ApplyError, "owner's choice"):
+            ap.compose(c, [({**frag, "outside": {"potluck://lab/node-0100/hw/die_temp": "read"}}, self.d, "app")])
+        with self.assertRaisesRegex(ap.ApplyError, "read_write"):
+            self.cluster(outside={"node-0100/hw/die_temp": "write"})
+
     def test_a_board_the_cluster_does_not_have_and_clashing_actors_are_refused(self):
         c = self.cluster()
         stranger = {"schema": 1, "system": "lab", "nodes": [{"node_id": 0x900, "label": "garage", "owns": [

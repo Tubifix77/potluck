@@ -614,3 +614,97 @@ TEST(deploy, a_version_2_image_ends_after_its_guest_section_not_at_body_len) {
     CHECK_EQ(store.slots.begin()->second.size(), stream.size());
     CHECK_EQ(image_extent(store.slots.begin()->second.data(), store.slots.begin()->second.size()), img.size());
 }
+
+// ---- M13: the outside section ---------------------------------------------------------------
+
+namespace {
+
+std::vector<uint8_t> from_hex(const char* hex) {
+    std::vector<uint8_t> v;
+    auto nib = [](char ch) { return ch <= '9' ? ch - '0' : ch - 'a' + 10; };
+    for (size_t i = 0; hex[i] != 0 && hex[i + 1] != 0; i += 2) {
+        v.push_back(static_cast<uint8_t>(nib(hex[i]) * 16 + nib(hex[i + 1])));
+    }
+    return v;
+}
+
+// host/potluck/tests/test_outside.py's GOLDEN: compile_image() makes exactly these bytes.
+const char* kOutsideGolden =
+    "504f54440301000004000000bf6939c8cbb48a3f0b000000ffff09076d332d74657374"
+    "0003764fb14b058218dbd1038e0ad45701";
+
+// A version-3 image with no actors, no guests and these rules.
+std::vector<uint8_t> outside_image(const std::vector<std::pair<uint32_t, uint8_t>>& rules) {
+    std::vector<uint8_t> img = make_image(5, {});
+    img[4] = kImageVersionOutside;
+    img.push_back(0);  // no guests
+    img.push_back(static_cast<uint8_t>(rules.size()));
+    for (const auto& r : rules) {
+        put32(img, r.first);
+        img.push_back(r.second);
+    }
+    return img;
+}
+
+}  // namespace
+
+TEST(deploy, the_host_compilers_outside_section_parses_here) {
+    const auto img = from_hex(kOutsideGolden);
+    DeployImage d{};
+    const char* why = nullptr;
+    CHECK(parse_image(img.data(), img.size(), d, &why));
+    CHECK_EQ(static_cast<int>(d.outside_count), 3);
+    CHECK_EQ(image_extent(img.data(), img.size()), img.size());
+    uint32_t h = 0;
+    uint8_t f = 0;
+    outside_rule(d, 0, h, f);
+    CHECK_EQ(h, 0x4bb14f76u);  // act/brake: exposed, safety-relevant
+    CHECK_EQ(f, static_cast<uint8_t>(kOutsideExposed | kOutsideSafety));
+    outside_rule(d, 1, h, f);
+    CHECK_EQ(h, 0xd1db1882u);  // led/level: exposed, writable
+    CHECK_EQ(f, static_cast<uint8_t>(kOutsideExposed | kOutsideWritable));
+    Namespace ns;
+    CHECK(apply_outside(d, ns));
+    CHECK_EQ(ns.outside_of(0xd1db1882u), static_cast<uint8_t>(kOutsideExposed | kOutsideWritable));
+    CHECK_EQ(ns.outside_of(0x57d40a8eu), kOutsideExposed);
+}
+
+TEST(deploy, an_outside_section_that_breaks_a_rule_is_refused) {
+    DeployImage d{};
+    const char* why = nullptr;
+    auto good = outside_image({{0x100, kOutsideExposed}});
+    CHECK(parse_image(good.data(), good.size(), d, &why));
+    auto both = outside_image({{0x100, kOutsideExposed | kOutsideWritable | kOutsideSafety}});
+    CHECK(!parse_image(both.data(), both.size(), d, &why));
+    auto twice = outside_image({{0x100, kOutsideExposed}, {0x100, kOutsideExposed}});
+    CHECK(!parse_image(twice.data(), twice.size(), d, &why));
+    auto zero = outside_image({{0, kOutsideExposed}});
+    CHECK(!parse_image(zero.data(), zero.size(), d, &why));
+    auto hidden_write = outside_image({{0x100, kOutsideWritable}});
+    CHECK(!parse_image(hidden_write.data(), hidden_write.size(), d, &why));
+    std::vector<std::pair<uint32_t, uint8_t>> many;
+    for (uint32_t i = 1; i <= kMaxOutside + 1; ++i) many.push_back({i, kOutsideExposed});
+    auto too_many = outside_image(many);
+    CHECK(!parse_image(too_many.data(), too_many.size(), d, &why));
+    auto cut = good;
+    cut.pop_back();
+    CHECK(!parse_image(cut.data(), cut.size(), d, &why));
+    CHECK_EQ(image_extent(cut.data(), cut.size()), static_cast<size_t>(0));
+    auto trailing = good;
+    trailing.push_back(0);
+    CHECK(!parse_image(trailing.data(), trailing.size(), d, &why));
+}
+
+TEST(deploy, an_image_without_an_outside_section_clears_the_last_ones_rules) {
+    Namespace ns;
+    DeployImage d{};
+    const char* why = nullptr;
+    auto with = outside_image({{0x100, kOutsideExposed}});
+    CHECK(parse_image(with.data(), with.size(), d, &why));
+    CHECK(apply_outside(d, ns));
+    CHECK_EQ(ns.outside_count(), static_cast<size_t>(1));
+    auto without = make_image(6, {});
+    CHECK(parse_image(without.data(), without.size(), d, &why));
+    CHECK(apply_outside(d, ns));
+    CHECK_EQ(ns.outside_count(), static_cast<size_t>(0));
+}

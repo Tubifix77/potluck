@@ -4,5 +4,5 @@
 idf_component_register(
   SRCS "src/deploy.cpp" "src/deploy_esp.cpp" "src/fw.cpp" "src/fw_esp.cpp" "src/node_status.cpp"
   INCLUDE_DIRS "include"
-  REQUIRES esp_partition nvs_flash spi_flash monocypher app_update
+  REQUIRES pot_ns esp_partition nvs_flash spi_flash monocypher app_update
 )

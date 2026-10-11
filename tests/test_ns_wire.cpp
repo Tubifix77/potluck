@@ -57,7 +57,7 @@ TEST(ns_wire, write_matches_the_bytes_in_section_5_2) {
     w.path_hash = 0xAABBCCDD;
     w.value_type = static_cast<uint8_t>(ValueType::F32);
     w.value_len = 4;
-    w.reserved0 = 0;
+    w.flags = 0;
     const Value v = Value::of_f32(1.0f);  // 0x3F800000
     std::memcpy(w.value_raw, v.raw, sizeof(w.value_raw));
 

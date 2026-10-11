@@ -916,6 +916,8 @@ bool load_and_apply(const char** why) {
         return false;
     }
     g_portable_n = portable_n;
+    // M13: what the package lets the outside do. parse_image judged every rule, so this cannot refuse.
+    apply_outside(img, g_node->ns());
     g_pkg_counter = img.rollback_counter;
     std::memcpy(g_pkg_digest, img.package_digest, sizeof(g_pkg_digest));
     ESP_LOGI(kTag, "deploy: image counter %u, digest %02x%02x%02x%02x..., %u actor(s) in the image",
@@ -1025,6 +1027,7 @@ bool apply_live(DeployStatus* refused) {
         return false;
     }
     if (as.failed != nullptr) ESP_LOGE(kTag, "actors: %s could not start; dropped", as.failed);
+    apply_outside(img, g_node->ns());  // M13: before the reconciler re-declares, so its entries take the flags
 #if CONFIG_POT_RECONCILER
     std::memcpy(g_portable, g_portable_stage, sizeof(PortableSpec) * portable_n);
     g_portable_n = portable_n;

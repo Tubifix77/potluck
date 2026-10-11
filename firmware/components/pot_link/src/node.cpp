@@ -1288,7 +1288,7 @@ uint16_t Node::request_read(uint16_t peer_node_id, uint32_t path_hash) {
     return msg_id;
 }
 
-uint16_t Node::request_write(uint16_t peer_node_id, uint32_t path_hash, const Value& v) {
+uint16_t Node::request_write(uint16_t peer_node_id, uint32_t path_hash, const Value& v, bool from_outside) {
     PeerLink* p = peers_.find_by_node_id(peer_node_id);
     if (p == nullptr || departed_) {
         return 0;
@@ -1311,6 +1311,7 @@ uint16_t Node::request_write(uint16_t peer_node_id, uint32_t path_hash, const Va
 
     WritePayload w{};
     w.path_hash = path_hash;
+    w.flags = from_outside ? kWriteFromOutside : 0;
     value_to_wire(v, w.value_type, w.value_len, w.value_raw);
     if (!send_frame(p, p->mac, kOpWrite, &w, sizeof(w), true, msg_id, p->node_id, false)) {
         q->msg_id = 0;
@@ -1393,11 +1394,28 @@ void Node::handle_write(PeerLink* p, const Frame& f) {
     }
 
     const Value v = value_from_wire(req.value_type, req.value_len, req.value_raw);
-    const NsError st = write_local(req.path_hash, v);
+    const bool outside = (req.flags & kWriteFromOutside) != 0;
+    NsError st = NsError::Ok;
+    if ((req.flags & ~kWriteFromOutside) != 0) {
+        st = NsError::NotWritable;  // a flag this build does not know: refused, never guessed at
+    } else if (outside) {
+        // M13: from outside the cell. Only the board that owns the resource applies it, by the package's
+        // outside rules -- a replica is not the resource, and the presenter's own check is not the last word.
+        const NsEntry* e = ns_.find(req.path_hash);
+        if (e != nullptr && !e->is_local(cfg_.node_id)) {
+            st = NsError::WrongOwner;
+        } else {
+            st = ns_.write_outside(req.path_hash, v, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
+        }
+    } else {
+        st = write_local(req.path_hash, v);
+    }
     if (st == NsError::Ok) {
         ++ns_counters_.writes_served;
+        if (outside) ++ns_counters_.writes_outside;
     } else {
         ++ns_counters_.writes_rejected;
+        if (outside) ++ns_counters_.writes_outside_refused;
     }
 
     // Answer whatever happened, including the refusal. §5.2 says an error is never silently

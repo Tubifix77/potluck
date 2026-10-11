@@ -466,3 +466,66 @@ TEST(ns, a_removed_resource_reads_not_found_and_can_be_declared_again) {
     CHECK(ns.read(0xABC, 30, true, r) == NsError::Ok);
     CHECK(r.quality == Quality::NoData);  // a fresh resource, not the old value
 }
+
+// ------------------------------------------------------------------------------------------
+// M13: the package's outside rules -- what a system outside the cell may do
+// ------------------------------------------------------------------------------------------
+
+TEST(ns, outside_rules_stamp_every_entry_they_cover_and_the_ones_declared_later) {
+    Namespace ns;
+    CHECK_EQ(static_cast<int>(ns.declare(sampled(0x100, kSelf, 0))), static_cast<int>(NsError::Ok));
+    CHECK_EQ(static_cast<int>(ns.declare(sampled(0x200, kSelf, 0))), static_cast<int>(NsError::Ok));
+    const uint32_t h[] = {0x100, 0x300};
+    const uint8_t f[] = {kOutsideExposed | kOutsideWritable, kOutsideExposed};
+    CHECK(ns.set_outside(h, f, 2));
+    CHECK_EQ(ns.find(0x100)->outside, static_cast<uint8_t>(kOutsideExposed | kOutsideWritable));
+    CHECK_EQ(ns.find(0x200)->outside, static_cast<uint8_t>(0));  // not named: nothing
+    // A replica declared after the package arrived takes its flags at declare().
+    CHECK_EQ(static_cast<int>(ns.declare(sampled(0x300, kOther, 0))), static_cast<int>(NsError::Ok));
+    CHECK_EQ(ns.find(0x300)->outside, kOutsideExposed);
+    // The next package replaces the rules, and an entry it no longer names goes back to nothing.
+    CHECK(ns.set_outside(nullptr, nullptr, 0));
+    CHECK_EQ(ns.find(0x100)->outside, static_cast<uint8_t>(0));
+    CHECK_EQ(ns.find(0x300)->outside, static_cast<uint8_t>(0));
+}
+
+TEST(ns, an_invalid_set_of_outside_rules_changes_nothing) {
+    Namespace ns;
+    CHECK_EQ(static_cast<int>(ns.declare(sampled(0x100, kSelf, 0))), static_cast<int>(NsError::Ok));
+    const uint32_t h1[] = {0x100};
+    const uint8_t ok[] = {kOutsideExposed};
+    CHECK(ns.set_outside(h1, ok, 1));
+    const uint8_t writable_and_safety[] = {kOutsideExposed | kOutsideWritable | kOutsideSafety};
+    const uint8_t writable_not_exposed[] = {kOutsideWritable};
+    const uint8_t unknown_bit[] = {0x80 | kOutsideExposed};
+    CHECK(!ns.set_outside(h1, writable_and_safety, 1));
+    CHECK(!ns.set_outside(h1, writable_not_exposed, 1));
+    CHECK(!ns.set_outside(h1, unknown_bit, 1));
+    const uint32_t twice[] = {0x100, 0x100};
+    const uint8_t f2[] = {kOutsideExposed, kOutsideExposed};
+    CHECK(!ns.set_outside(twice, f2, 2));
+    const uint32_t zero[] = {0};
+    CHECK(!ns.set_outside(zero, ok, 1));
+    CHECK(!ns.set_outside(h1, ok, kMaxOutside + 1));
+    CHECK_EQ(ns.find(0x100)->outside, kOutsideExposed);  // the last good set still holds
+    CHECK_EQ(ns.outside_count(), static_cast<size_t>(1));
+}
+
+TEST(ns, a_write_from_outside_needs_the_packages_word_and_never_touches_a_safety_relevant_resource) {
+    Namespace ns;
+    for (uint32_t h : {0x100u, 0x200u, 0x300u, 0x400u}) {
+        CHECK_EQ(static_cast<int>(ns.declare(sampled(h, kSelf, 0))), static_cast<int>(NsError::Ok));
+    }
+    const uint32_t h[] = {0x100, 0x200, 0x300};
+    const uint8_t f[] = {kOutsideExposed | kOutsideWritable, kOutsideExposed, kOutsideExposed | kOutsideSafety};
+    CHECK(ns.set_outside(h, f, 3));
+    const Value v = Value::of_f32(1.5f);
+    CHECK_EQ(static_cast<int>(ns.write_outside(0x100, v, 10)), static_cast<int>(NsError::Ok));
+    CHECK_EQ(static_cast<int>(ns.write_outside(0x200, v, 10)), static_cast<int>(NsError::NotOutsideWritable));
+    CHECK_EQ(static_cast<int>(ns.write_outside(0x300, v, 10)), static_cast<int>(NsError::NotOutsideWritable));
+    CHECK_EQ(static_cast<int>(ns.write_outside(0x400, v, 10)), static_cast<int>(NsError::NotOutsideWritable));
+    CHECK_EQ(static_cast<int>(ns.write_outside(0x999, v, 10)), static_cast<int>(NsError::NotFound));
+    // From inside the cell, access alone decides, as before M13.
+    CHECK_EQ(static_cast<int>(ns.write_local(0x400, v, 10)), static_cast<int>(NsError::Ok));
+    CHECK(std::string(ns_error_str(NsError::NotOutsideWritable)) == "not_outside_writable");
+}

@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include "pot/namespace.hpp"
+
 namespace pot {
 
 namespace {
@@ -42,7 +44,7 @@ size_t image_extent(const uint8_t* data, size_t len) {
     const uint32_t body = rd32(data + 20);
     if (body > len - kImageHeaderLen) return 0;
     size_t at = kImageHeaderLen + body;
-    if (data[4] != kImageVersionGuests) return at;
+    if (data[4] != kImageVersionGuests && data[4] != kImageVersionOutside) return at;
     if (at >= len) return 0;  // the guest count
     const uint8_t n = data[at++];
     for (uint8_t g = 0; g < n; ++g) {
@@ -52,7 +54,11 @@ size_t image_extent(const uint8_t* data, size_t len) {
         if (gl > len - at) return 0;
         at += gl;
     }
-    return at;
+    if (data[4] != kImageVersionOutside) return at;
+    if (at >= len) return 0;  // the outside count
+    const uint8_t no = data[at++];
+    if (static_cast<size_t>(no) * 5 > len - at) return 0;
+    return at + static_cast<size_t>(no) * 5;
 }
 
 bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why) {
@@ -70,11 +76,12 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
         w = "bad magic";
         return false;
     }
-    if (data[4] != kImageVersion && data[4] != kImageVersionGuests) {
+    if (data[4] != kImageVersion && data[4] != kImageVersionGuests && data[4] != kImageVersionOutside) {
         w = "unknown image version";
         return false;
     }
-    const bool v2 = data[4] == kImageVersionGuests;
+    const bool v3 = data[4] == kImageVersionOutside;
+    const bool v2 = data[4] == kImageVersionGuests || v3;
     const uint8_t count = data[5];
     if (count > kMaxActors) {
         w = "more actors than kMaxActors";
@@ -86,6 +93,8 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
         return false;
     }
     out.guest_count = 0;
+    out.outside_count = 0;
+    out.outside = nullptr;
     out.rollback_counter = rd32(data + 8);
     std::memcpy(out.package_digest, data + 12, sizeof(out.package_digest));
     out.actor_count = count;
@@ -219,8 +228,43 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
             at += gl;
         }
         out.guest_count = n;
+        if (v3) {
+            // M13: the outside section. Every rule judged here, so a node never holds a package that lets the
+            // outside write a safety-relevant resource, or names one resource twice.
+            if (len - at < 1) {
+                w = "outside section missing";
+                return false;
+            }
+            const uint8_t no = data[at++];
+            if (no > kMaxOutside) {
+                w = "more outside rules than kMaxOutside";
+                return false;
+            }
+            if (len - at < static_cast<size_t>(no) * 5) {
+                w = "outside section truncated";
+                return false;
+            }
+            for (uint8_t i = 0; i < no; ++i) {
+                const uint32_t h = rd32(data + at + i * 5);
+                const uint8_t f = data[at + i * 5 + 4];
+                if (h == 0 || !outside_flags_valid(f)) {
+                    w = "outside rule invalid: a zero hash, an unknown flag, writable but not exposed, or writable and "
+                        "safety-relevant";
+                    return false;
+                }
+                for (uint8_t k = 0; k < i; ++k) {
+                    if (rd32(data + at + k * 5) == h) {
+                        w = "outside section names one resource twice";
+                        return false;
+                    }
+                }
+            }
+            out.outside_count = no;
+            out.outside = data + at;
+            at += static_cast<size_t>(no) * 5;
+        }
         if (at != len) {
-            w = "trailing bytes after the last guest";
+            w = v3 ? "trailing bytes after the outside section" : "trailing bytes after the last guest";
             return false;
         }
     }
@@ -232,6 +276,19 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
         }
     }
     return true;
+}
+
+void outside_rule(const DeployImage& img, size_t i, uint32_t& path_hash, uint8_t& flags) {
+    path_hash = rd32(img.outside + i * 5);
+    flags = img.outside[i * 5 + 4];
+}
+
+bool apply_outside(const DeployImage& img, Namespace& ns) {
+    uint32_t hashes[kMaxOutside];
+    uint8_t flags[kMaxOutside];
+    const size_t n = img.outside_count <= kMaxOutside ? img.outside_count : 0;
+    for (size_t i = 0; i < n; ++i) outside_rule(img, i, hashes[i], flags[i]);
+    return ns.set_outside(hashes, flags, n);
 }
 
 bool led_config(const ActorDecl& a, LedConfig& out) {

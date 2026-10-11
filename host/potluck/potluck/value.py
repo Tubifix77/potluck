@@ -188,6 +188,7 @@ class NsError(IntEnum):
     NOT_READABLE = 6
     WRONG_OWNER = 7
     EVENT_NOT_CACHED = 8
+    NOT_OUTSIDE_WRITABLE = 9  # M13: from outside the cell, and the package does not allow it
 
     @classmethod
     def name_of(cls, v: int) -> str:

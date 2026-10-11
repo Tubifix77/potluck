@@ -22,12 +22,13 @@ import zlib
 from dataclasses import dataclass
 from typing import Any
 
-from .manifest import Manifest
+from .manifest import Manifest, outside_rules
 from .paths import path_hash
 
 IMAGE_MAGIC = 0x44544F50  # "POTD"
 IMAGE_VERSION = 1
 IMAGE_VERSION_GUESTS = 2  # M7: version 1 plus a guest section
+IMAGE_VERSION_OUTSIDE = 3  # M13: version 2 plus the outside section
 IMAGE_HEADER_LEN = 24
 MAX_ACTORS = 16
 MAX_IMAGE_LEN = 512
@@ -323,7 +324,9 @@ def _svc_client_config(m: Manifest, a, where: str) -> bytes:
 
 def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> bytes:
     """The node image for a manifest at a rollback counter. Deterministic: same input, same bytes.
-    M7: with guest actors it is a version-2 image, their blobs in its guest section."""
+    M7: with guest actors it is a version-2 image, their blobs in its guest section. M13: with outside rules
+    (an `outside` map, a safety-relevant resource) a version-3 image, the guest section (maybe empty) and then
+    the outside section."""
     body = b""
     count = 0
     guests: list[bytes] = []
@@ -394,13 +397,18 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
     if count > MAX_ACTORS:
         raise DeployError(f"{count} actors; the node image holds at most {MAX_ACTORS}")
     digest = bytes.fromhex(m.digest())[:8]
-    version = IMAGE_VERSION_GUESTS if guests else IMAGE_VERSION
+    rules = outside_rules(m)
+    version = IMAGE_VERSION_OUTSIDE if rules else IMAGE_VERSION_GUESTS if guests else IMAGE_VERSION
     header = struct.pack("<IBBHI8sI", IMAGE_MAGIC, version, count, 0, counter, digest, len(body))
     img = header + body
-    if guests:
+    if guests or rules:
         img += bytes([len(guests)])
         for g in guests:
             img += struct.pack("<I", len(g)) + g
+    if rules:
+        img += bytes([len(rules)])
+        for path, flags in rules:
+            img += struct.pack("<IB", path_hash(path), flags)
     limit = MAX_IMAGE_LEN_GUESTS if guests else MAX_IMAGE_LEN
     if len(img) > limit:
         raise DeployError(f"image is {len(img)} bytes; the node accepts at most {limit}")

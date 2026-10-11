@@ -203,6 +203,9 @@ class Cluster:
     guests_root: Path
     verify_timeout_s: float
     verify_reads: list[str] = field(default_factory=list)
+    #: M13: what systems outside the cell may do with each resource -- the owner's choice, so it lives here and
+    #: not in an app's fragment. Canonical paths (potluck://<system>/...) -> "read" | "read_write".
+    outside: dict[str, str] = field(default_factory=dict)
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -238,7 +241,7 @@ def load_cluster(path: str) -> Cluster:
     if not isinstance(doc, dict) or doc.get("schema") != SCHEMA:
         raise ApplyError(f"{path}: not a cluster file (\"schema\": \"{SCHEMA}\")")
     allowed = {"schema", "system", "port", "baud", "boards", "keys", "firmware", "apps", "package", "verify",
-               "comment"}
+               "comment", "outside"}
     extra = set(doc) - allowed
     if extra:
         raise ApplyError(f"{path}: unknown key(s) {sorted(extra)}")
@@ -279,9 +282,19 @@ def load_cluster(path: str) -> Cluster:
             raise ApplyError(f"package.manifests[{i}]: a path, or {{\"manifest\": ..., \"root\": ...}}")
     modules = [_rel(base, m) for m in pkg.get("modules", [])]
     ver = doc.get("verify", {})
+    outside_raw = doc.get("outside", {})
+    if not isinstance(outside_raw, dict):
+        raise ApplyError("outside: an object of resource path -> \"read\" or \"read_write\"")
+    outside = {}
+    for path, mode in outside_raw.items():
+        # A path may leave out the cluster's prefix: "node-7368/hw/die_temp" is potluck://<system>/node-7368/...
+        full = path if str(path).startswith("potluck://") else f"potluck://{system}/{str(path).lstrip('/')}"
+        if mode not in ("read", "read_write"):
+            raise ApplyError(f"outside['{path}']: \"read\" or \"read_write\", not {mode!r}")
+        outside[full] = mode
     return Cluster(p, system, doc.get("port"), int(doc.get("baud", 921600)), boards, keys, fwd, potluck, extender,
                    apps, extra_cfg, manifests, modules, _rel(base, pkg.get("guests_root", ".")),
-                   float(ver.get("timeout_s", 240)), list(ver.get("read", [])))
+                   float(ver.get("timeout_s", 240)), list(ver.get("read", [])), outside)
 
 
 # ---- sources: git archive into a cache, never a live tree ---------------------------------------------
@@ -469,6 +482,9 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
     for doc, root, where in fragments:
         if not isinstance(doc, dict):
             raise ApplyError(f"{where}: not a manifest")
+        if doc.get("outside"):
+            raise ApplyError(f"{where}: 'outside' -- what other systems may read or write -- is the owner's choice: "
+                             f"it goes in the cluster file, not in a fragment")
         ids: dict[int, int] = {}
         pinned = {a.get("pin") for a in doc.get("actors", [])}
         ignored: set[int] = set()
@@ -527,6 +543,8 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
         out["bindings"] = bindings
     if links:
         out["links"] = links
+    if c.outside:
+        out["outside"] = dict(c.outside)  # M13: the owner's, from the cluster file
     return out
 
 
