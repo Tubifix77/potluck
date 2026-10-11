@@ -31,6 +31,9 @@ the project's ledger), not from taste.
 - **The Home Assistant integration is a first-class, open part of Potluck**, built to be excellent, because it is
   likely where people on the internet find Potluck useful: someone who already runs Home Assistant can add a cluster of
   cheap boards to it. Section 6 is written to that standard.
+- **Integrations are modules you choose (the owner, 2026-10-11):** like passive-sensor and poor-mans-extender, each
+  integration a board would carry is an optional component, built into a cell's firmware only when its cluster file
+  names it, because an ESP32-S3's flash and RAM are limited and not every cell wants every integration (section 6).
 - **What "integration" means (the owner, 2026-10-11):** *Potluck's resources show up in Home Assistant* -- a board's
   LED, a sensor, the room sensor's presence -- as ordinary devices of the house's IoT network, whether the cell reaches
   the house through the PC that runs the hub or through a board that is already on the house Wi-Fi (an extender).
@@ -303,6 +306,34 @@ it is gone). An actor that needs a value in a deadline (latency classes L0-L2) c
 Home Assistant entity: the locality contract (section 4) refuses it at build time, as it refuses any binding the
 transport cannot meet. That is the owner's "half-integrated member under the PC's control", stated as a contract.
 
+### Integrations are modules, chosen per cell (decided)
+
+The same way apps are (M8.2, M12): an integration that runs on a board is an **external component** with its own
+descriptor, in its own repository or in Potluck's, and a cell's cluster file names it under `apps` -- or leaves it out.
+`potluck apply` builds into the cell's one image exactly the components its cluster file names, so a cell that does
+not want MQTT carries none of it. M12's "one image, roles at run time" still holds: one image per *cell*, the image
+being what that cell chose; within it, a module's role runs only where it applies (the MQTT gateway only on a board
+that holds Wi-Fi credentials and a broker address).
+
+| integration | where it runs | how it is chosen |
+|---|---|---|
+| the MQTT gateway (a board presenting the cell to the house's broker) | one board on the house Wi-Fi | a board module, named in the cluster file; it **requires** the extender's Wi-Fi station |
+| the Home Assistant integration | Home Assistant, talking to the hub | installed in Home Assistant (HACS); nothing on the boards |
+| MQTT discovery from the PC | the hub | a hub plugin, switched on in the hub's configuration |
+| the hub's API for PC programs | the hub | always there: Potluck's own tools use it |
+| later ones (exporters, other ecosystems' bridges) | the hub, or Home Assistant | hub plugins; on the boards only if one cannot be done from the PC |
+
+Two rules follow from the S3's limits:
+
+- **A board module only when it must be on the board.** Anything the PC or Home Assistant can do -- most of an
+  integration -- is a hub plugin, where space is not short. The board side is the part that cannot move: the radio,
+  the pins, or (for the MQTT gateway) the house Wi-Fi connection when no PC is on.
+- **Its cost is known before it is chosen.** A module's descriptor says what it needs (`requires`: the extender's
+  Wi-Fi station, a pin, PSRAM), and `potluck apply --plan` shows what the cell's image costs with it -- flash in the 2 MB
+  update slot, static internal RAM against the 64 KB cap (60.1 KB with the sandbox, the room sensor and the extender) --
+  and refuses a choice that does not fit, before any board changes, as it refuses everything else (M12). The build
+  already measures both (`tools/build_firmware.ps1`'s budget check); the plan has to say it per module.
+
 ### Which integrations, settled
 
 The evidence is Home Assistant's own published usage data: 698,769 active installations, 553,881 of which share which
@@ -366,13 +397,15 @@ PCs, each cabled to its own board) -- each a decision for its own time.
 7. ~~Home Assistant first, or the dashboard first?~~ *In tandem*: the hub first, then the dashboard and the Home
    Assistant integration side by side, both its clients.
 8. **Several PCs.** One hub per PC with one owning the deploys, or one hub per cell?
-9. **The gateway board.** Is the extender the only board that may speak MQTT for the cell, or any board an owner gives
+9. **Module dependencies.** How a descriptor says `requires` (another component, a capability such as a Wi-Fi station,
+   PSRAM), and whether `apply` adds a required module itself or only refuses the cluster file that lacks it.
+10. **The gateway board.** Is the extender the only board that may speak MQTT for the cell, or any board an owner gives
    Wi-Fi credentials? And when both the hub and a gateway board are up, which one presents the devices?
-10. **Where the integration lives.** In Potluck's repository (one release for both) or its own public repository (the
+11. **Where the integration lives.** In Potluck's repository (one release for both) or its own public repository (the
    way HACS lists integrations), and what Home Assistant versions it supports.
-11. **Entity mapping.** How a resource's kind and unit become a Home Assistant entity type, and what an app's author
+12. **Entity mapping.** How a resource's kind and unit become a Home Assistant entity type, and what an app's author
     adds to their descriptor to make their outputs look right in Home Assistant (a device class, an icon, a name).
-12. **The firmware update entity's "install".** Home Assistant lets a user "install an offered update directly"; for
+13. **The firmware update entity's "install".** Home Assistant lets a user "install an offered update directly"; for
     Potluck that would run `apply`'s firmware step with the owner's keys. Allowed only when the owner switches it on in
     the hub, or never (rule 3)?
 
