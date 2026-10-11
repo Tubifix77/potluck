@@ -147,8 +147,10 @@ unplug that board and watch it turn `UNAVAILABLE`.
 
 ## 6. Your first package
 
-A package tells the whole cluster what to run. Write `my-cell.json` (anywhere) with your node ids -- this one
-has three boards, list as many as you have:
+A package tells the whole cluster what to run; a **cluster file** tells Potluck's tool what the whole cell should
+be -- its boards, its firmware, its package -- and `potluck apply` makes it so. Two files, anywhere (paths in a
+cluster file are relative to it). The package, `my-package.json`, with your node ids -- this one has three boards,
+list as many as you have:
 
 ```json
 {
@@ -166,20 +168,36 @@ has three boards, list as many as you have:
 }
 ```
 
-(Node ids are decimal in JSON: `0x7368` is 29544. Call the cluster `lab` for now -- this edition's boards name
-their built-in resources under `potluck://lab/...`.) `temp_b` publishes board B's chip temperature; `ticker` is
-a counter that runs on one board, chosen by the cluster from the boards listed. (The cluster chooses among at
-most 8 boards; with more than 8 in your manifest, give the ticker `"pin": <one board's id>` -- package compiling
-says so if you forget.) Sign it and deploy it through the cabled board
-(its node id goes after `--node`):
+(Node ids are decimal in a package: `0x7368` is 29544.) `temp_b` publishes board B's chip temperature; `ticker`
+is a counter that runs on one board, chosen by the cluster -- with more than 8 boards, among the 8 it ranks best.
+And the cluster file, `my-cell.json`, beside it:
+
+```json
+{
+  "schema": "potluck-cluster/1", "system": "lab", "port": "COM6",
+  "boards": [{"node": "6300", "label": "A"}, {"node": "7368", "label": "B"}, {"node": "8160", "label": "C"}],
+  "keys": {"ca": "<repo>/keys/ca.pub", "deploy_key": "<repo>/keys/deploy.key",
+           "deploy_cert": "<repo>/keys/deploy.cert", "deploy_bcert": "<repo>/keys/deploy.bcert"},
+  "firmware": {"potluck": {"git": "<repo>", "rev": "HEAD"}},
+  "package": {"manifests": ["my-package.json"]}
+}
+```
+
+(`<repo>` is your Potluck checkout; node ids are hex here; `port` is your adapter's.) From `host/potluck/`:
 
 ```
-python -m potluck.signing sign my-cell.json --key ..\..\keys\deploy.key --cert ..\..\keys\deploy.cert --counter 1 --out ..\..\keys\my-cell-1.pkg.json
-python -m potluck.ctl --port COM6 --node 6300 deploy ..\..\keys\my-cell-1.pkg.json --ca ..\..\keys\ca.pub --key ..\..\keys\deploy.key --bcert ..\..\keys\deploy.bcert
+python -m potluck.apply <path>\my-cell.json --plan
+python -m potluck.apply <path>\my-cell.json
 ```
 
-The cabled board checks the signature, passes the package to every board, and each reboots into it on trial,
-keeping it once it has run cleanly. Now watch both:
+`--plan` checks everything and changes nothing. The second builds the firmware (a few minutes the first time;
+after that the build is reused until Potluck's firmware changes), updates each board whose firmware differs --
+over the radio, one board at a time, the cabled board last, about two minutes each -- then signs the package,
+sends it to every board and checks that every board runs it and every output reads back. It ends with
+`VERIFIED` and how long each step took, or says what is wrong. The counters, the order and which board needs
+what are the tool's to work out; `python -m potluck.apply my-cell.json inventory` shows what every board runs.
+
+Now watch both:
 
 ```
 python -m potluck.ctl --port COM6 watch potluck://lab/node-7368/hw/die_temp
@@ -191,25 +209,19 @@ with the number it shows). **Unplug that board** -- unless it is the cabled one,
 everything; then unplug another and watch it stay put, or pin the ticker elsewhere. Within about a second the
 ticker runs on another board and counts again. Plug it back in and it rejoins.
 
-The package reaches every board that is on and in radio range of the cabled board at that moment. A board that was
-off keeps its previous package: deploy again (at a higher counter) once it is back.
+Change the package -- add an actor, take one out, change a period -- and run `apply` again: the boards take it
+without rebooting, and actors you did not change keep running. A board that was off when you applied gets the
+package from a neighbour when it comes back. Each board tries a new package before it keeps it, and goes back to
+the old one by itself if the new one fails.
 
-Each package needs a higher `--counter` than the last (2, 3, ...): boards refuse anything older, so a replayed
-old package cannot roll them back. Keep a note of the last one.
+Rename the cluster by changing `system` in both files (say, `home`): the boards then name their resources
+`potluck://home/...`.
 
 ## 7. Updating firmware later
 
-Over the radio, one board at a time, each keeping the new image only after it has proved itself:
-
-```
-python -m potluck.fw --port COM6 status --manifest my-cell.json
-python -m potluck.fw --port COM6 rollout ..\..\firmware\build\potluck_m0.bin --counter 1 --key ..\..\keys\deploy.key --bcert ..\..\keys\deploy.bcert --manifest my-cell.json
-```
-
-`--manifest` takes your boards from your cell's manifest (or name them: `--targets 7368,8160,6300`, hex ids).
-`status` shows each board's version and firmware counter; the rollout's counter must be above it. Boards update one
-at a time, the cabled board last; ~2 minutes a board. A board that crashes on the new image, or never rejoins the cluster with it, rolls itself back, and the
-rollout stops there.
+Update Potluck (`git pull`) and run `apply` again: boards whose firmware differs from the new build are updated,
+the others are left alone. Each keeps the new image only after it has proved itself -- a board that crashes on
+it, or never rejoins the cluster with it, rolls itself back, and the update stops there.
 
 ## Reading a board's console
 
@@ -240,17 +252,16 @@ ESP-IDF's own `idf.py -p COM7 monitor` works too, but resets the board when it o
 | `enrol` times out | Another program holds the board's port (a serial monitor): close it. |
 | The build fails at once in `export.ps1` | You ran it from Windows PowerShell 5.1; use `pwsh`. |
 | A board without PSRAM boots into errors | Build with `-Variant nopsram -Extra "CONFIG_SPIRAM=n"` (portable actors are then compiled out). |
-| `deploy` answers `TRIAL_IN_PROGRESS` | A board is still trying out the last package (it keeps one only after it has run cleanly): wait ~15 s and deploy again. |
-| `deploy` answers `DOWNGRADE` | The counter is not above the boards' last one: use a higher one. |
-| `deploy` answers `BAD_SIGNATURE` or `UNSIGNED` | The package was not signed by a deploy key your CA certified, or `--key`/`--bcert` were left out. |
+| `apply` says `REFUSED, nothing changed: ...` | It found a problem before touching any board, and the rest of the line names it: a board that does not answer (power it, or take it out of the cluster file), a key file missing, a package that does not compile. |
+| `apply` says `NOT VERIFIED` | It changed the cell and something did not check out; it lists what: a board not confirming the package (its console says why), or an output with no GOOD reading by the deadline (an actor that takes long to start: raise `"verify": {"timeout_s": ...}`). Run it again once fixed. |
+| `apply` waits for a trial to end | A board is still trying out the last package (it keeps one only after it has run cleanly); `apply` waits for it, up to five minutes. |
 | A board does not keep a new image | Working as intended: it rolled back because the image did not prove itself; its console log says why. |
 
 ## Limits of this edition
 
-Stated so they do not surprise you: up to **20 boards in a radio cell**, all within radio range of each other
-(a relay that carries one more hop exists, but only as a test instrument: it is not kept across a reboot); **ESP32-S3** boards, plus PCs as members; **one package per cluster**,
-which lists everything the cluster runs; up to 16 actors in a package, a portable actor placed among at most 8 boards, and 128 named resources per
-board; the
-cluster is called `lab`. Every one of these is a number in the source, not a law of nature -- and the next
-milestone, M12, works on the ones that get in the way of building on Potluck
-([ARCHITECTURE.md](ARCHITECTURE.md), section 13).
+Stated so they do not surprise you: up to **20 boards in a radio cell**, all within radio range of each other (a
+board told to relay, `POT! relay 1` on its console, carries one more hop and keeps doing so across reboots);
+**ESP32-S3** boards, plus PCs as members; **one package per cluster**, which lists everything the cluster runs
+(`apply` composes it from every app's part); up to 16 actors in a package, a portable actor placed among at most
+8 boards (the best 8 of a bigger cell), and 128 named resources per board. Every one of these is a number in the
+source, not a law of nature ([ARCHITECTURE.md](ARCHITECTURE.md), section 13).

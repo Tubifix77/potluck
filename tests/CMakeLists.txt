@@ -28,69 +28,9 @@ set(POT_FIRMWARE "${CMAKE_CURRENT_SOURCE_DIR}/../firmware")
 option(POT_ASAN "Build the tests with AddressSanitizer" OFF)
 option(POT_WERROR "Treat warnings as errors" ON)
 
-# Monocypher (vendored, unmodified; firmware/components/monocypher/PROVENANCE.md). Third-party C, so
-# it gets its own library without this project's strict warning set: its code is not ours to edit.
-add_library(monocypher STATIC
-  "${POT_FIRMWARE}/components/monocypher/monocypher.c"
-  "${POT_FIRMWARE}/components/monocypher/monocypher-ed25519.c"
-)
-target_include_directories(monocypher PUBLIC "${POT_FIRMWARE}/components/monocypher")
-
-# M7's experiment: wasm3 (vendored, two patches; firmware/components/pot_wasm/PROVENANCE.md), third-party
-# C like Monocypher above, so its own library and not this project's warning set. The definitions are
-# PUBLIC: the sandbox reads the interpreter's structures, which must be built the same way on both sides.
-file(GLOB POT_WASM3_SRCS "${POT_FIRMWARE}/components/pot_wasm/wasm3/*.c")
-add_library(wasm3 STATIC ${POT_WASM3_SRCS})
-target_include_directories(wasm3 SYSTEM PUBLIC "${POT_FIRMWARE}/components/pot_wasm/wasm3")
-target_compile_definitions(wasm3 PUBLIC d_m3ExternalYield=1 d_m3YieldInLoops=1 d_m3MaxNativeStack=65536
-                                        d_m3HasWASI=0 d_m3HasUVWASI=0 d_m3HasMetaWASI=0)
-if(MSVC)
-  target_compile_options(wasm3 PRIVATE /w)
-else()
-  target_compile_options(wasm3 PRIVATE -w)
-endif()
-
-add_library(pot_portable STATIC
-  "${POT_FIRMWARE}/components/pot_frame/src/frame.cpp"
-  "${POT_FIRMWARE}/components/pot_frame/src/payloads.cpp"
-  "${POT_FIRMWARE}/components/pot_frame/src/serial_framing.cpp"
-  "${POT_FIRMWARE}/components/pot_link/src/link_stats.cpp"
-  "${POT_FIRMWARE}/components/pot_link/src/membership.cpp"
-  "${POT_FIRMWARE}/components/pot_link/src/stats_json.cpp"
-  "${POT_FIRMWARE}/components/pot_link/src/node.cpp"
-  "${POT_FIRMWARE}/components/pot_ns/src/value.cpp"
-  "${POT_FIRMWARE}/components/pot_ns/src/namespace.cpp"
-  "${POT_FIRMWARE}/components/pot_ns/src/ns_payloads.cpp"
-  "${POT_FIRMWARE}/components/pot_ns/src/sys_resources.cpp"
-  "${POT_FIRMWARE}/components/pot_deploy/src/deploy.cpp"
-  "${POT_FIRMWARE}/components/pot_deploy/src/fw.cpp"
-  "${POT_FIRMWARE}/components/pot_deploy/src/node_status.cpp"
-  "${POT_FIRMWARE}/components/pot_can/src/can_profile.cpp"
-  "${POT_FIRMWARE}/components/pot_trust/src/trust.cpp"
-  "${POT_FIRMWARE}/components/pot_trust/src/hello_auth.cpp"
-  "${POT_FIRMWARE}/components/pot_trust/src/frame_auth.cpp"
-  "${POT_FIRMWARE}/components/pot_reconcile/src/reconcile.cpp"
-  "${POT_FIRMWARE}/components/pot_actors/src/svc_client.cpp"
-  "${POT_FIRMWARE}/components/pot_actors/src/actor_runtime.cpp"
-  "${POT_FIRMWARE}/components/pot_actors/src/ticker.cpp"
-  "${POT_FIRMWARE}/components/pot_actors/src/die_temp.cpp"
-  "${POT_FIRMWARE}/components/pot_actors/src/mc.cpp"
-  "${POT_FIRMWARE}/components/pot_actors/src/cluster.cpp"
-  "${POT_FIRMWARE}/components/pot_wasm/src/wasm_sandbox.cpp"
-  "${POT_FIRMWARE}/components/pot_wasm/src/guest.cpp"
-)
-target_link_libraries(pot_portable PUBLIC monocypher wasm3)
-target_include_directories(pot_portable PUBLIC
-  "${POT_FIRMWARE}/components/pot_frame/include"
-  "${POT_FIRMWARE}/components/pot_link/include"
-  "${POT_FIRMWARE}/components/pot_ns/include"
-  "${POT_FIRMWARE}/components/pot_deploy/include"
-  "${POT_FIRMWARE}/components/pot_can/include"
-  "${POT_FIRMWARE}/components/pot_trust/include"
-  "${POT_FIRMWARE}/components/pot_reconcile/include"
-  "${POT_FIRMWARE}/components/pot_actors/include"
-  "${POT_FIRMWARE}/components/pot_wasm/include"
-)
+# The portable core -- the firmware's own sources, compiled for the host -- is shared with the test kit an
+# application's repository uses (tests/testkit, M12), so both build it the same way.
+include("${CMAKE_CURRENT_SOURCE_DIR}/potluck_core.cmake")
 
 add_executable(pot_tests
   test_main.cpp
@@ -190,6 +130,11 @@ endif()
 
 enable_testing()
 add_test(NAME pot_tests COMMAND pot_tests)
+
+# M12: the test kit for an app's own repository, and the worked example's tests built with it -- so the kit
+# is compiled and run here every time, not only in someone else's repository.
+add_subdirectory(testkit)
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../examples/apps/pot_hello/tests" pot_hello_tests)
 
 # The suites are also registered individually so a failure names the area rather than just
 # "pot_tests". The filter is a substring match on suite or case name.

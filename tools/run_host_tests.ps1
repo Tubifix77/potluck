@@ -8,13 +8,17 @@
 #   tools\run_host_tests.ps1 -Asan         # same, with AddressSanitizer
 #   tools\run_host_tests.ps1 -Filter fuzz  # run one suite
 #   tools\run_host_tests.ps1 -Clean        # start from a fresh build directory
+#   tools\run_host_tests.ps1 -Source D:\my-app\tests -BuildDir D:\my-app\build\tests
+#                                          # M12: an app's own tests, built with the test kit (tests/testkit)
 
 [CmdletBinding()]
 param(
     [switch]$Asan,
     [switch]$Clean,
     [string]$Filter = "",
-    [string]$BuildDir = "build/tests"
+    [string]$BuildDir = "build/tests",
+    # M12: another CMake source directory -- an app's tests using tests/testkit -- run with CTest.
+    [string]$Source = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -87,11 +91,19 @@ if ($Clean -and (Test-Path $BuildDir)) {
 $generator = if ($ninjaExe) { @("-G", "Ninja") } else { @() }
 $asanFlag = if ($Asan) { "-DPOT_ASAN=ON" } else { "-DPOT_ASAN=OFF" }
 
-& $cmakeExe -S tests -B $BuildDir @generator -DCMAKE_BUILD_TYPE=Debug $asanFlag
+$srcDir = if ($Source) { $Source } else { "tests" }
+& $cmakeExe -S $srcDir -B $BuildDir @generator -DCMAKE_BUILD_TYPE=Debug $asanFlag
 if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
 
 & $cmakeExe --build $BuildDir --config Debug
 if ($LASTEXITCODE -ne 0) { throw "build failed" }
+
+if ($Source) {
+    $ctestExe = Join-Path (Split-Path $cmakeExe) "ctest.exe"
+    if (-not (Test-Path $ctestExe)) { $ctestExe = "ctest" }
+    & $ctestExe --test-dir $BuildDir --output-on-failure
+    exit $LASTEXITCODE
+}
 
 $exe = Get-ChildItem "$BuildDir" -Filter "pot_tests*" -Recurse -File |
     Where-Object { $_.Extension -in ".exe", "" } | Select-Object -First 1

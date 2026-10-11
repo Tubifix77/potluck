@@ -113,9 +113,14 @@ class ClusterFile(unittest.TestCase):
 
     def test_a_board_the_cluster_does_not_have_and_clashing_actors_are_refused(self):
         c = self.cluster()
-        stranger = {"schema": 1, "system": "lab", "nodes": [{"node_id": 0x900, "label": "garage"}], "actors": []}
+        stranger = {"schema": 1, "system": "lab", "nodes": [{"node_id": 0x900, "label": "garage", "owns": [
+            {"path": "potluck://lab/node-0900/hw/x", "unit": "count"}]}], "actors": []}
         with self.assertRaisesRegex(ap.ApplyError, "garage"):
             ap.compose(c, [(stranger, self.d, "s")])
+        pinned = {"schema": 1, "system": "lab", "nodes": [{"node_id": 0x900, "label": "garage"}], "actors": [
+            {"name": "d", "module": "builtin:die_temp", "latency_class": 4, "pin": 0x900, "config": {"period_ms": 1000}}]}
+        with self.assertRaisesRegex(ap.ApplyError, "garage"):
+            ap.compose(c, [(pinned, self.d, "p")])
         a = {"schema": 1, "system": "lab", "nodes": [], "actors": [
             {"name": "t", "module": "builtin:ticker", "latency_class": 4, "config": {"period_ms": 100}}]}
         with self.assertRaisesRegex(ap.ApplyError, "also in"):
@@ -126,6 +131,32 @@ class ClusterFile(unittest.TestCase):
         img = dp.compile_image(m, 5)
         self.assertNotIn(bytes([dp.ACTOR_CLUSTER]) + b"lab", img)
         self.assertEqual(img[5], len(m.actors))  # actor count: nothing added
+
+
+class Presets(unittest.TestCase):
+    """examples/cells: each preset loads, and its package (if any) composes for the boards it names -- the
+    hello app's fragment lists the maintainer's three boards, which a user's cell does not have."""
+
+    def tearDown(self):
+        mods.clear()
+
+    def test_every_preset_plans_without_a_board(self):
+        cells = sorted((ROOT / "examples" / "cells").glob("*.json"))
+        self.assertGreaterEqual(len(cells), 2)
+        for p in cells:
+            with self.subTest(preset=p.name):
+                c = ap.load_cluster(str(p))
+                frags = [(json.loads(mp.read_text(encoding="utf-8")), root, str(mp)) for mp, root in c.manifests]
+                for a in c.apps:
+                    mods.clear()
+                    if a.components:
+                        for desc in (ROOT / a.components).glob("*/potluck-modules.json"):
+                            mods.load(str(desc))
+                    frags += [(json.loads((ROOT / m).read_text(encoding="utf-8")), ROOT, m) for m in a.manifests]
+                if frags:
+                    m = mf.parse(ap.compose(c, frags))
+                    self.assertEqual(mf.cross_check(m), [])
+                    dp.compile_image(m, 1)
 
 
 class BiggerCell(unittest.TestCase):

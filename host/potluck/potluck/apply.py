@@ -110,7 +110,8 @@ class NodeStatus:
             pkg = f"package {self.pkg_counter}" + (" ON TRIAL" if self.pending else "")
         return (f"0x{self.node:04x}  fw {self.fw_version} (counter {self.fw_running}, floor {self.fw_floor}, "
                 f"{self.fw_state})  {pkg} (floor {self.pkg_floor})  cluster '{self.cluster}'  "
-                f"up {self.uptime_s} s  roles {','.join(self.role_names()) or '-'}  "
+                f"up {self.uptime_s} s  live {self.live_applies}  ck writes {self.ck_writes}  "
+                f"roles {','.join(self.role_names()) or '-'}  "
                 f"actors {','.join(self.actors) or '-'} ({self.portable_here}/{self.portable_total} portable here)")
 
 
@@ -357,6 +358,17 @@ def elf_sha256(path: Path) -> bytes:
     return hashlib.sha256(path.read_bytes()).digest()
 
 
+UPDATE_SLOT_BYTES = 0x200000  # ota_0 / ota_1 in firmware/partitions.csv
+
+
+def _fits(fw: Firmware) -> Firmware:
+    n = fw.image.stat().st_size
+    if n > UPDATE_SLOT_BYTES:
+        raise ApplyError(f"firmware image is {n} B; an update slot holds {UPDATE_SLOT_BYTES} B "
+                         f"(firmware/partitions.csv) -- leave something out of the build")
+    return fw
+
+
 def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
     if c.firmware is None:
         return None
@@ -365,7 +377,7 @@ def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
         elf = _rel(c.path.parent, c.firmware.get("elf", str(img.with_suffix(".elf"))))
         if not img.exists() or not elf.exists():
             raise ApplyError(f"firmware: {img} or {elf} does not exist")
-        return Firmware(img, elf, elf_sha256(elf), "given", False)
+        return _fits(Firmware(img, elf, elf_sha256(elf), "given", False))
     pot_dir, pot_sha = export(c.potluck, cache)
     # Keyed by what the build reads -- the firmware tree (less its recorded size reports) and the build
     # script -- not by the commit: a commit that touches only the host tools or the documents must not send
@@ -397,7 +409,7 @@ def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
     version = f"{fw_commit}-{key[:6]}"  # the last commit that changed the firmware, and the build's key
     if img.exists() and elf.exists():
         log(f"firmware: reusing the build of these sources ({version}, {out})")
-        return Firmware(img, elf, elf_sha256(elf), version, False)
+        return _fits(Firmware(img, elf, elf_sha256(elf), version, False))
     # PowerShell 7 where it is installed: Windows PowerShell 5.1 turns ESP-IDF's stderr into a terminating
     # error once the output is captured, and the build stops in export.ps1.
     shell = "pwsh" if shutil.which("pwsh") or os.name != "nt" else "powershell"
@@ -412,14 +424,18 @@ def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
     log(f"firmware: building {version} ({len(app_dirs)} app component dir(s){', extender' if ext_dir else ''}) "
         f"-- a few minutes the first time")
     t0 = time.monotonic()
-    r = subprocess.run(cmd, cwd=str(pot_dir), capture_output=True, text=True, errors="replace")
+    # Without Git Bash's MSYS variables: ESP-IDF's activation reads them, exports for that shell instead of
+    # PowerShell, and idf.py is then not on PATH (found running apply from Git Bash, 2026-10-11).
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith(("MSYSTEM", "MINGW", "CHERE")) and k not in ("SHELL", "TERM", "SHLVL", "OSTYPE")}
+    r = subprocess.run(cmd, cwd=str(pot_dir), capture_output=True, text=True, errors="replace", env=env)
     (out / "build.log").parent.mkdir(parents=True, exist_ok=True)
     (out / "build.log").write_text(r.stdout + r.stderr, encoding="utf-8")
     if r.returncode != 0 or not img.exists():
         tail = "\n".join((r.stdout + r.stderr).strip().splitlines()[-15:])
         raise ApplyError(f"firmware build failed (log: {out / 'build.log'}):\n{tail}")
     log(f"firmware: built in {time.monotonic() - t0:.0f} s")
-    return Firmware(img, elf, elf_sha256(elf), version, True)
+    return _fits(Firmware(img, elf, elf_sha256(elf), version, True))
 
 
 # ---- the package --------------------------------------------------------------------------------------
@@ -454,6 +470,8 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
         if not isinstance(doc, dict):
             raise ApplyError(f"{where}: not a manifest")
         ids: dict[int, int] = {}
+        pinned = {a.get("pin") for a in doc.get("actors", [])}
+        ignored: set[int] = set()
         for n in doc.get("nodes", []):
             nid, lab = n.get("node_id"), n.get("label")
             if n.get("kind") == "host":
@@ -466,11 +484,15 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
             elif not c.boards:
                 nodes[nid] = {"node_id": nid, "label": lab}
                 ids[nid] = nid
+            elif set(n) <= {"node_id", "label", "kind", "power"} and nid not in pinned and lab not in pinned:
+                ignored.add(nid)  # a board of the author's own cell that nothing here needs: not this cell's
             else:
                 raise ApplyError(f"{where}: board '{lab}' (0x{nid:04x}) is not one of the cluster's boards "
-                                 f"({', '.join(lab for _, lab in c.boards)})")
+                                 f"({', '.join(lab for _, lab in c.boards)}), and the fragment needs it")
         doc = _rehome(doc, doc.get("system", "lab"), c.system, ids)
         for n in doc.get("nodes", []):
+            if n.get("node_id") in ignored:
+                continue
             nid = ids.get(n.get("node_id"), n.get("node_id"))
             tgt = nodes.setdefault(nid, {"node_id": nid, "label": n.get("label")})
             for k, v in n.items():
@@ -515,7 +537,7 @@ class Package:
     image: bytes  # the node image, not yet signed: its counter is chosen once the inventory is in
 
 
-def plan_package(c: Cluster, cache: Path, log) -> Package:
+def plan_package(c: Cluster, cache: Path, log) -> Package | None:
     from . import deploy as dp
     from . import manifest as mf
     from . import modules as mods
@@ -548,7 +570,9 @@ def plan_package(c: Cluster, cache: Path, log) -> Package:
         except (OSError, ValueError) as exc:
             raise ApplyError(f"{mp}: {exc}") from None
     if not fragments:
-        raise ApplyError("package: no manifests (package.manifests, or an app's manifests)")
+        if not c.boards:
+            raise ApplyError("no package and no boards: name the boards (\"boards\"), or give a package")
+        return None  # firmware only (a minimal cell)
     doc = compose(c, fragments)
     try:
         m = mf.parse(doc)
@@ -671,10 +695,14 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                 log(f"note: {w}")
         pkg = plan_package(c, cache, log)
         boards = [n for n, _ in c.boards] or [n.node_id for n in pkg.manifest.nodes if n.kind != "host"]
-        pinned_want, portable_want, reads = expected(pkg.manifest, boards)
+        if pkg is not None:
+            pinned_want, portable_want, reads = expected(pkg.manifest, boards)
+            log(f"package: '{c.system}', {len(pkg.manifest.actors)} actor(s) ({portable_want} portable), "
+                f"image {len(pkg.image)} B, for {len(boards)} board(s)")
+        else:
+            pinned_want, portable_want, reads = {n: 0 for n in boards}, 0, []
+            log(f"package: none -- firmware only, for {len(boards)} board(s)")
         reads = list(dict.fromkeys(reads + c.verify_reads))
-        log(f"package: '{c.system}', {len(pkg.manifest.actors)} actor(s) ({portable_want} portable), "
-            f"image {len(pkg.image)} B, for {len(boards)} board(s)")
         fwb = build_firmware(c, cache, log)
     except ApplyError as exc:
         print(f"REFUSED, nothing changed: {exc}")
@@ -750,6 +778,19 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                 log(f"firmware: every board already runs {fwb.version}")
 
         # 3. the package.
+        if pkg is None:
+            total = time.monotonic() - t_start
+            print("")
+            for k, v in times.items():
+                print(f"  {k:<32} {v:7.1f} s")
+            print(f"  {'command to verified':<32} {total:7.1f} s")
+            want = fwb.version if fwb is not None else None
+            off = [n for n in boards if want is not None and inv[n].fw_version != want]
+            if off:
+                print("NOT VERIFIED: " + ", ".join(f"0x{n:04x} runs {inv[n].fw_version}" for n in off))
+                return 1
+            print(f"VERIFIED: {len(boards)} board(s) run {want or 'their firmware'}; no package")
+            return 0
         busy = [n for n in boards if inv[n] is not None and inv[n].pending]
         if busy:
             log("package: waiting for the trial on " + ", ".join(f"0x{n:04x}" for n in busy) + " to end")

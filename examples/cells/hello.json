@@ -1,0 +1,49 @@
+{
+  "schema": "potluck-cluster/1",
+  "comment": "The worked example of DEVELOPING-APPS.md: the minimal cell plus the hello app (examples/apps/pot_hello), built in and deployed. Every board publishes how many radio peers it sees.",
+  "system": "lab",
+  "port": "COM6",
+  "boards": [
+    {
+      "node": "1a2b",
+      "label": "kitchen"
+    },
+    {
+      "node": "1a2c",
+      "label": "hall"
+    },
+    {
+      "node": "1a2d",
+      "label": "garden"
+    }
+  ],
+  "keys": {
+    "ca": "../../keys/ca.pub",
+    "deploy_key": "../../keys/deploy.key",
+    "deploy_cert": "../../keys/deploy.cert",
+    "deploy_bcert": "../../keys/deploy.bcert"
+  },
+  "firmware": {
+    "potluck": {
+      "git": "../..",
+      "rev": "HEAD"
+    },
+    "extra": [
+      "CONFIG_POT_WASM=y"
+    ]
+  },
+  "apps": [
+    {
+      "name": "hello",
+      "git": "../..",
+      "rev": "HEAD",
+      "components": "examples/apps",
+      "manifests": [
+        "examples/apps/hello.json"
+      ]
+    }
+  ],
+  "verify": {
+    "timeout_s": 120
+  }
+}

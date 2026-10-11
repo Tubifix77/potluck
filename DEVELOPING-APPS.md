@@ -12,20 +12,16 @@ experience of the first two apps built on Potluck: **passive-sensor**, which det
 from how their body weakens the boards' own radio links, and **poor-mans-extender**, a Wi-Fi extender that
 shares the radio with Potluck. Both live in their own (private) repositories, the way an app should.
 
-**Status of this manual (2026-10-11).** It describes today's tools, hand steps included. Milestone M12
-([ARCHITECTURE.md](ARCHITECTURE.md), section 13) replaces most of those steps with one `potluck apply`
-command; this manual is rewritten as it lands. Everything shown here is tested: the worked example in
-section 3 is built for the boards and tested on a PC by Potluck's own test suites.
+**Status of this manual (2026-10-11, rewritten for M12).** One command now takes a cell from a cluster file to
+running and verified: `python -m potluck.apply <cluster.json>` builds the firmware, rolls it out where it differs,
+signs and deploys the package and checks every output -- the counters, the order and the variants are the tool's,
+not yours (section 7). A package changes on the boards without a reboot, and checkpoints survive one. Apps test
+themselves in their own repositories with Potluck's test kit (section 8). Everything shown here is tested: the
+worked example in section 3 is built for the boards and tested on a PC by Potluck's own test suites, and section
+7's commands are the ones that brought a room sensor, a Wi-Fi extender and a guest onto three boards in one run.
 
-**Blind-reader test, 2026-10-11.** A fresh reader with only this manual and Potluck's source built a portable
-app with a remote input and a checkpoint (9 C++ and 5 Python tests passing, a firmware image within budget) in
-about 20 minutes, and listed 23 places the manual failed it. The ones a manual can fix are fixed in this
-revision (the portable recipe in section 3, `owns` and the built-in modules in section 6, who does what in
-section 7, the test kit in section 8). That test was aimed at the maintainer's own bench, whose cell
-already runs two other apps (one private), so its deploy blockers belonged to that bench, not to you. For your own
-boards running vanilla Potluck, getting them there is now [GETTING-STARTED.md](GETTING-STARTED.md); what remains for
-M12 is that **type numbers can collide between authors who share apps** (section 5), that every counter is yours to
-track, and a test kit for your app's own repository (section 8).
+The manual was tested on readers with no other context (2026-10-11, twice); every place they got stuck is fixed
+in it.
 
 Terms used throughout:
 
@@ -57,15 +53,18 @@ native actors until section 9, which covers guests.
 
 ---
 
-## 2. How an app reaches the boards (today)
+## 2. How an app reaches the boards
 
 ```
-your repository                          Potluck
-  firmware/components/<your_component>/   tools/build_firmware.ps1 -AppComponents <dir>   -> firmware image
-     CMakeLists.txt                       python -m potluck.fw ... rollout                 -> every board, over the radio
-     potluck-modules.json  -------------> python -m potluck.signing sign --modules ...     -> signed package
-     src/*.cpp, include/                  python -m potluck.ctl ... deploy --modules ...   -> every board
-  manifests/<app>.json
+your repository                          your cluster file (cluster.json)
+  firmware/components/<your_component>/    "apps": [{"git": <your repo>, "rev": <a commit or tag>,
+     CMakeLists.txt                                   "components": "firmware/components",
+     potluck-modules.json                             "manifests": ["manifests/<app>.json"]}]
+     src/*.cpp, include/
+  manifests/<app>.json                   python -m potluck.apply cluster.json
+  tests/  (Potluck's test kit)             -> firmware with your component, on every board that needs it
+                                           -> one signed package: your actors and everyone else's
+                                           -> verified: every output read back
 ```
 
 1. Your actors are C++ classes in an [ESP-IDF component](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/build-system.html)
@@ -75,8 +74,10 @@ your repository                          Potluck
 2. The descriptor (`potluck-modules.json`) tells Potluck's host tools your actors' names, their type
    numbers, how they are placed and how their configuration is laid out. The tools read it as data and
    never run your code.
-3. A manifest names your actors with their configuration; the host compiles it into the node image, the
-   owner signs it, and one board on the PC's cable passes it to the whole cell.
+3. A manifest fragment in your repository names your actors with their configuration. The owner's cluster file
+   names your repository at a commit; `potluck apply` builds your component in (from a `git archive` export,
+   never a working tree), composes your fragment with every other app's into one package, signs it with the
+   owner's key and deploys it through the board on the PC's cable to the whole cell.
 
 ---
 
@@ -105,18 +106,13 @@ And its manifest, [`examples/apps/hello.json`](examples/apps/hello.json):
 {"name": "hello", "module": "ext:hello/peers", "latency_class": 4, "config": {"period_ms": 5000}}
 ```
 
-Build it into a firmware variant, from the Potluck repository, in PowerShell:
+Put it on your boards with the preset [`examples/cells/hello.json`](examples/cells/hello.json) -- your boards' ids
+and your adapter's port in it, then `python -m potluck.apply ../../examples/cells/hello.json` from `host/potluck/`
+(section 7). The example adds 1,152 bytes to the image.
 
-```
-tools\build_firmware.ps1 -Variant hello -AppComponents D:\path\to\your\repo\firmware\components -OutDir D:\path\to\your\repo\firmware
-```
-
-`-OutDir` keeps the build and its size report in your repository, so Potluck's tree stays clean. The
-example adds 1,152 bytes to the default image. Then roll the firmware out and deploy the package (section 7).
-
-It is tested twice before any board: `tests/test_hello_app.cpp` runs the actor on a real `pot::Node` on the
-PC, and `host/potluck/tests/test_examples.py` checks that the host tools compile `hello.json` to exactly
-the bytes the C++ test parses. Copy that pattern (section 8).
+It is tested twice before any board: [`examples/apps/pot_hello/tests`](examples/apps/pot_hello/tests) runs the
+actor on a real `pot::Node` on the PC with Potluck's test kit, and `host/potluck/tests/test_examples.py` checks
+that the host tools compile `hello.json` to exactly the bytes the C++ test parses. Copy that pattern (section 8).
 
 ### A portable actor: what changes
 
@@ -229,10 +225,12 @@ Poll the minimum: ~70 reads a second pushed the heartbeat's 99th-percentile roun
 
 ### Checkpoints (portable actors)
 
-`ActorEnv::checkpoint` keeps up to 128 bytes for the next activation -- on another node after a failover.
-Only the current owner saves, at most once a second; the newest copy reaches every eligible node, including
-one that comes back. Checkpoints live in RAM: when every board reboots at once (a new package does that),
-they are gone. Store what the state depends on with it: a baseline learned on one radio channel is wrong on
+`ActorEnv::checkpoint` keeps up to 128 bytes for the next activation -- on another node after a failover, or on
+any node after every board has rebooted. Only the current owner saves, at most once a second; the newest copy
+reaches every eligible node, including one that comes back, and each of them writes it to flash at most once a
+minute while it changes (so after a power cut the actor resumes from a state up to a minute old; measured on
+three boards: a guest's counter resumed 44 counts behind, `ck_restored` 1 on every board). Store what the state
+depends on with it: a baseline learned on one radio channel is wrong on
 another, so passive-sensor keeps the channel in its checkpoint. Put a version byte first, and refuse a
 checkpoint you do not recognise.
 
@@ -262,7 +260,8 @@ it (the task watchdog watches the idle task).
 | namespace entries per node | 128 |
 | checkpoint | 128 B |
 | actor slot | 384 B |
-| static internal RAM, whole node | 64 KB cap; 56.6-56.9 KB used today |
+| static internal RAM, whole node | 64 KB cap; 59.9 KB used by Potluck alone, 60.1 KB with the sandbox, the extender and the room sensor |
+| firmware image | 2 MB (an update slot); the image with everything above is 1.0 MB |
 
 ---
 
@@ -280,8 +279,10 @@ it (the task watchdog watches the idle task).
   the host before anything is signed. A portable module takes `period_ms` from the manifest without listing it
   in the descriptor: it goes into the standard header (section 3).
 - **Type numbers.** 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components, given out in
-  blocks of 16. A build with two rows for one type refuses the merge and names both components; an image naming
-  a type the firmware has no row for is refused, never silently skipped.
+  blocks of 16 from the table below, so apps by different authors can be built into one image. Two apps that
+  use one type number cannot be: `potluck apply` refuses the cluster file before anything changes and names both
+  components (and the firmware build would refuse the merge the same way); an image naming a type the firmware
+  has no row for is refused, never silently skipped.
 
 | block | holder |
 |---|---|
@@ -293,7 +294,9 @@ it (the task watchdog watches the idle task).
 
 ## 6. Manifests
 
-A manifest (JSON) names the cluster (`system`), its nodes and what they own, and its actors:
+A manifest (JSON) names the cluster (`system`), its nodes and what they own, and its actors. Your app ships a
+*fragment* -- its actors, and the `owns` their `needs` rely on -- and `potluck apply` composes it with the
+others into the owner's one package (below):
 
 ```json
 {"name": "rf_fusion", "module": "ext:passive_sensor/rf_fusion", "latency_class": 4,
@@ -327,90 +330,157 @@ A manifest (JSON) names the cluster (`system`), its nodes and what they own, and
   | `builtin:fault` | pinned | `panic_after_ms` | nothing: it crashes the node on purpose, to test reverts |
   | `guest:<name>` | portable | section 9 | `act/<actor>/<output>` |
 
-- **One package per cluster.** Deploying a package replaces the previous one, so a manifest lists *every*
-  actor the cluster should run -- yours and everyone else's. To add your app to a running cluster today, merge
-  your actors into its manifest (`manifests/room-and-guests.json` merges passive-sensor's into Potluck's).
+- **One package per cluster, composed from fragments.** Deploying a package replaces the previous one, so the
+  package lists *every* actor the cluster should run. Nobody writes it by hand: `potluck apply` composes it from
+  the fragments the cluster file names. The cluster's boards are its nodes; a fragment's board is matched to one
+  of them by node id or by label, and its paths (`node-<id>`, `potluck://<system>/`) are rewritten to that board
+  and that cluster. A board in a fragment that nothing in it needs (no `owns`, no actor pinned to it) is taken as
+  the author's own cell and ignored, so a fragment written on your three boards runs on someone's five. Two
+  fragments with an actor of the same name, a binding that differs, or a board the cluster lacks but the
+  fragment needs are refused before anything changes.
+- **The cluster's name** is the cluster file's `system` (1-31 characters, no spaces or `/`). The boards name
+  their built-in resources under it (`potluck://<system>/node-<id>/sys/uptime`) once the package says so; a
+  cluster called `lab` carries nothing extra.
 
 ---
 
-## 7. Building, rolling out, deploying
+## 7. Building, rolling out, deploying: `potluck apply`
 
-From the Potluck repository. Builds run in **PowerShell 7** (`pwsh`); Windows PowerShell 5.1 fails inside
-ESP-IDF's `export.ps1`. Run the `git archive | tar` export in Git Bash (a binary pipe is safest there). The host
-commands run from `host/potluck/` with the ESP-IDF Python (it has `pyserial`). Keys live in the git-ignored
-`keys/` and are the owner's.
+A cluster file says what the cell should be; `apply` makes it so. From `host/potluck/`, with the ESP-IDF Python
+(it has `pyserial`):
 
 ```
-# 1. build -- your component from a git archive export, never your working tree (see section 10)
-git -C <your repo> archive <commit> firmware/components | tar -x -C <export dir>
-tools\build_firmware.ps1 -Clean -Variant <name> -AppComponents <export dir>\firmware\components -OutDir <out>
-#    a board built as a different variant gets its own image in step 2: --image-for <its id>=<that image>
-
-# 2. firmware over the radio, board by board (each keeps it only after 100 heartbeats with a peer)
-python -m potluck.fw --port COM6 status --manifest <your cell's manifest>
-python -m potluck.fw --port COM6 rollout <out>\build-<name>\potluck_m0.bin --counter <floor+1> --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --manifest <your cell's manifest>
-
-# 3. the package
-python -m potluck.signing sign <manifest> --key ../../keys/deploy.key --cert ../../keys/deploy.cert --counter <n> --out ../../keys/<name>-<n>.pkg.json --modules <descriptor>
-python -m potluck.ctl --port COM6 --node 6300 deploy ../../keys/<name>-<n>.pkg.json --ca ../../keys/ca.pub --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --modules <descriptor>
+python -m potluck.apply <cluster.json> --plan       # check everything, change nothing
+python -m potluck.apply <cluster.json>              # make the cell what the file says, then verify it
+python -m potluck.apply <cluster.json> inventory    # what every board runs: firmware, package, actors, counters
 ```
 
-What to know today (each is on M12's list to remove):
+A cluster file for the hello app on three boards (the preset [`examples/cells/hello.json`](examples/cells/hello.json);
+paths are relative to the file):
 
-- **Firmware before package.** A package naming an actor type the firmware lacks is refused when the boards
-  boot it, and they revert to the previous package.
-- **Counters only go up.** The firmware counter and the package counter each have a floor on every board;
-  `potluck.fw status` shows the firmware's. Both are numbers you track.
-- **Every package deploy reboots every board** onto the new package on trial; checkpoints do not survive it.
-- **Image size.** A firmware image must fit the 1 MB `factory` slot; ESP-IDF's partition check stops the build
-  if it does not, and prints the space left (`... bytes (6%) free`). The extender build with passive-sensor and
-  the sandbox is 990,642 B. Section 6's RAM check is separate: it prints `within budget` or fails.
-- **See it run:** `python -m potluck.ctl --port COM6 --node 6300 watch potluck://lab/act/<name>/<output>` reads an
-  output through the cabled board once a second, with its age and quality; `--count N` stops after N reads.
-- **Verify what you flashed:** the build stamps a version (`deploy-and-detach-<n>-g<commit>`, in
-  `build-<name>/project_description.json`; `-dirty` if Potluck's tree had uncommitted changes -- including the size reports an in-place build rewrites in `firmware/size`), and
-  `potluck.fw status` shows what each board runs.
+```json
+{"schema": "potluck-cluster/1", "system": "lab", "port": "COM6",
+ "boards": [{"node": "1a2b", "label": "kitchen"}, {"node": "1a2c", "label": "hall"}, {"node": "1a2d", "label": "garden"}],
+ "keys": {"ca": "../../keys/ca.pub", "deploy_key": "../../keys/deploy.key",
+          "deploy_cert": "../../keys/deploy.cert", "deploy_bcert": "../../keys/deploy.bcert"},
+ "firmware": {"potluck": {"git": "../..", "rev": "HEAD"}, "extra": ["CONFIG_POT_WASM=y"]},
+ "apps": [{"name": "hello", "git": "../..", "rev": "HEAD", "components": "examples/apps",
+           "manifests": ["examples/apps/hello.json"]}],
+ "verify": {"timeout_s": 120}}
+```
+
+| key | what it says |
+|---|---|
+| `system` | the cluster's name (section 6) |
+| `port` | the serial port of the PC's adapter, wired to one of the boards (`--port` overrides it) |
+| `boards` | every board: its node id in hex (the last two bytes of its MAC) and a label |
+| `keys` | the owner's CA certificate and deploy key ([GETTING-STARTED.md](GETTING-STARTED.md) makes them) |
+| `firmware` | Potluck at a commit (`potluck`), extra Kconfig lines (`extra`), the extender if a board should be one (`extender`: its repository and commit) -- or `{"image": ..., "elf": ...}` for a build made elsewhere, or `null` to leave the firmware alone |
+| `apps` | each app: `git` (a local repository or a URL), `rev` (a commit or a tag), `components` (built into the firmware; every `potluck-modules.json` under it is loaded), `manifests` (its fragments) |
+| `package` | more fragments (`"manifests": [path, or {"manifest": path, "root": dir for its relative paths}]`), more descriptors (`"modules"`), and `guests_root` |
+| `verify` | `timeout_s`, and `read`: more paths to read back |
+
+What `apply` does, in order:
+
+1. **Plan, changing nothing.** It exports every source with `git archive` into a cache (once per commit), loads
+   the descriptors, composes and compiles the package (every actor's config checked, every guest's author
+   signature checked under the cluster CA), finds the keys, builds the firmware -- or reuses the cached build of
+   the same firmware sources, so a commit that changes only documents or host tools sends nothing to the boards --
+   and reads every board's inventory. Any problem stops it here, saying why: `REFUSED, nothing changed: ...`
+   (exit code 2). A firmware image larger than its 2 MB update slot, a package over the node image's limits, a
+   guest whose signature does not verify, a type number two apps share, a board that does not answer -- all
+   stop here.
+2. **Firmware, only where it differs** (by the image's ELF SHA-256): over the cell, one board at a time, the board
+   on the cable last, at a counter above every board's floor. A board keeps an image only after 100 heartbeats
+   with a radio peer, else rolls back; a rollback stops the rollout there. About two minutes a board.
+3. **The package**, signed at a counter above every board's and sent through the cabled board to the whole cell.
+   Each board takes it in place when it can -- actors whose declaration is unchanged keep running with their
+   state, the rest stop and their outputs leave the namespace, new ones start -- on trial exactly as before: a
+   board that crashes on it reverts by itself. Only a change to a guest's code needs a reboot, and the board does
+   that itself. A board that was off gets the package from a peer when it comes back.
+4. **Verify**: every board confirmed on the package, with the actors the package gives it; every portable actor
+   running once in the cell; every output the package names (and `verify.read`) read back GOOD -- not just with
+   a value: a fresh actor that learns before it publishes gets until `timeout_s`. Then a report: what each step
+   took, which boards took the package live, and which rebooted. `VERIFIED` (exit 0) or `NOT VERIFIED` and why
+   (exit 1).
+
+Measured on three boards (2026-10-11): from minimal Potluck to a room sensor, the extender and a guest, 390 s
+from command to verified, 366 s of it the firmware on three boards; taking the room sensor off again, 23.5 s, no
+board rebooting, the guest's count carrying on; a fresh firmware build adds about 9 minutes the first time.
+
+- **Builds** run in PowerShell 7 (`pwsh`) where it is installed; the build is `tools/build_firmware.ps1` from the
+  exported tree, its output in the cache (`%LOCALAPPDATA%\potluck\cache` on Windows, `~/.cache/potluck` elsewhere;
+  `--cache` moves it). An app built from a working tree it is still editing is how the first apps lost two days
+  to "transient" failures (section 10); `apply` cannot do that, and warns when `HEAD` has uncommitted changes it
+  will not build.
+- **See it run:** `python -m potluck.ctl --port COM6 --node <cabled board> watch potluck://<system>/act/<name>/<output>`
+  reads an output once a second, with its age and quality; `--count N` stops after N reads; `--system` names the
+  cluster for shorthand paths.
+- **The tools underneath** are still there for one step at a time: `potluck.fw` (firmware over the cell),
+  `potluck.signing` and `potluck.ctl deploy` (a package), `potluck.reconcile` (where portable actors would run).
+  M0-RUNBOOK.md shows them.
 
 ### On your own boards
 
-The commands in this manual use an example cell -- boards `0x6300`, `0x7368` and `0x8160`, the PC's adapter on
-`COM6` wired to `0x6300` -- but nothing in Potluck is about three boards: list as many as you have. Replace `COM6`
-with your USB-serial adapter's port, `6300` with the id of the board that adapter is wired to (a board's id is the last two bytes of its MAC), and `../../keys/...` with your own keys.
-Keep the cluster's `system` name `lab`: this edition's boards name their built-in resources under
-`potluck://lab/...`, whatever the manifest says. On boards you just flashed, both counters start at 0, so
-your first firmware and your first package are counter 1; keep a note of each counter you use. Your images contain
-only what you build in: vanilla Potluck plus the components you name with `-AppComponents` (it takes several
-directories) -- an image without one of them removes that app from the boards it lands on.
+The commands in this manual use an example cell; nothing in Potluck is about three boards: list as many as you
+have. A board's id is the last two bytes of its MAC; the board on the cable is the one your USB-serial adapter
+is wired to. On boards you just flashed, both counters start at 0 -- `apply` takes them from there. Your images
+contain only what the cluster file builds in: an image without an app's component removes that app from the
+boards it lands on (the package that names its actors is then refused there, and the board runs on without
+them).
 
 ### Sharing your app
 
-Put the component, its descriptor, a manifest fragment (its actors, and the `owns` its `needs` rely on) and its
-tests in a public repository. Someone running it adds your component to their build (`-AppComponents`), passes
-your descriptor (`--modules`) when they sign and deploy, and merges your actors into their manifest. Before you
-publish, get a type block recorded in section 5: two apps that use the same type numbers cannot be built into one
-image (the build refuses and names both).
+Put the component, its descriptor, a manifest fragment and its tests (section 8) in a public repository, and tag
+a release. Someone running it adds one entry to their cluster file's `apps` -- your repository's URL, the tag,
+`"components": "firmware/components"`, `"manifests": [...]` -- and runs `apply`. Before you publish, get a type
+block recorded in section 5: two apps that use the same type numbers cannot be built into one image, and `apply`
+refuses the pair by name.
 
 ---
 
 ## 8. Testing
 
-- **On a PC first.** Keep your logic in pure functions with no Potluck dependency and test them with any C++
-  test framework -- passive-sensor's detector and link statistics are tested that way. To test the actor
-  itself, run it on a real `pot::Node` with a fake clock and transport, as `tests/test_hello_app.cpp` does:
-  Potluck's portable sources build on Windows and Linux (`tests/CMakeLists.txt` shows which). A reusable test
-  kit for apps in their own repositories is part of M12. Until then, in your own repository:
-  - **Sources:** let Potluck's own test build define its portable core for you, so it cannot drift: in your
-    test `CMakeLists.txt`, `add_subdirectory(<potluck>/tests potluck EXCLUDE_FROM_ALL)` and link your test
-    against `pot_portable` (Monocypher, the sandbox and every include directory come with it). Write your own
-    `main` -- Potluck's `tests/test_main.cpp` also emits Potluck's own fixtures -- and reuse the header-only
-    `tests/test_harness.hpp` if you like (its `TEST`/`CHECK` macros; your `main` runs the registered tests).
-  - **A compiler:** `tools/run_host_tests.ps1` shows how Potluck finds one (CMake and Ninja from the ESP-IDF tools
-    install, MSVC through `vswhere`, or gcc/clang on PATH); copy its approach or run from a Visual Studio developer
-    shell.
-  - **The rig:** `test_hello_app.cpp`'s `Rig` (a `Node` with a fake clock and transport) fits pinned and every-node
-    actors. For a portable actor, either declare its outputs yourself before `start()`, or load the image into a
-    real `Reconciler` with `collect_portable()` and let it place and tick the actor -- as Potluck's
-    `tests/test_reconcile.cpp` does for the guest actor.
+- **On a PC first, with Potluck's test kit.** [`tests/testkit`](tests/testkit) builds Potluck's portable core --
+  the boards' own `Node`, namespace, image parser and actor API, compiled for the PC -- and gives your tests a
+  `main()`, the header-only `TEST`/`CHECK` harness and a rig: one node, a clock you move, the LED captured, a
+  checkpoint store for a portable actor, background work run at once. Your repository's `tests/CMakeLists.txt`:
+
+  ```cmake
+  cmake_minimum_required(VERSION 3.20)
+  project(my_app_tests C CXX)
+  set(POTLUCK_DIR "$ENV{POTLUCK_DIR}" CACHE PATH "a Potluck checkout")
+  add_subdirectory("${POTLUCK_DIR}/tests/testkit" potluck_testkit)
+  enable_testing()
+  potluck_app_test(my_app_tests
+    SOURCES  test_my_actor.cpp ../firmware/components/pot_my/src/my.cpp
+    INCLUDES ../firmware/components/pot_my/include)
+  ```
+
+  and a test:
+
+  ```cpp
+  #include "pot/testkit.hpp"
+  #include "test_harness.hpp"
+  #include "my/my.hpp"
+
+  TEST(my_app, publishes_after_one_period) {
+      pot::testkit::Rig rig;                      // node 0x0100 in cluster "lab", the clock at 0
+      CHECK(rig.declare_bytes(kDecl, sizeof(kDecl)));  // the bytes the host compiles for your actor
+      CHECK(rig.start(my::row()));                // your row's check(), create(), start()
+      rig.advance(1000);                          // 1000 ms, ticking the actor every millisecond
+      CHECK(rig.read("potluck://lab/node-0100/my/out").quality == pot::Quality::Good);
+  }
+  ```
+
+  Run it with `POTLUCK_DIR` set to your Potluck checkout. On Windows Potluck's script finds CMake, Ninja and a
+  compiler for you: `tools\run_host_tests.ps1 -Source <your repo>\tests -BuildDir <your repo>\build\tests`; elsewhere
+  `cmake -S tests -B build && cmake --build build && ctest --test-dir build`. `rig.feed(path, value, type)`
+  publishes an input as another actor would; `rig.start(row, &why, true)` gives a portable actor the checkpoint
+  store, and `rig.restart()` builds a fresh instance from it, as a failover or a reboot does. The complete example
+  is [`examples/apps/pot_hello/tests`](examples/apps/pot_hello/tests), which Potluck's own suite also builds and
+  runs, so the kit cannot drift from the core. Keep your pure logic (detectors, statistics) in functions with no
+  Potluck dependency and test it the same way.
 - **Share the bytes.** Check that the host tools compile your manifest to the declaration your parser accepts
   (`host/potluck/tests/test_examples.py` against `test_hello_app.cpp`). From your own repository, put
   `<potluck>/host/potluck` on `sys.path` and `import potluck`; load your descriptor with
@@ -436,9 +506,11 @@ published to `act/<actor>/<name>`), and sets its fuel per tick and its memory (0
 
 - **Author:** `python -m potluck.guest sign <module.wasm> --key <author.key> --cert <author cert> --out <bundle>`
   (the owner certifies the author once: `python -m potluck.enrol --guest-cert ...`).
-- **Owner:** name it as `"module": "guest:<name>"` with `"bundle"` and its `"sha256"`, then deploy with
-  `--guests <dir>`. Every node checks the author's signature before it accepts the package and before the guest
-  first runs.
+- **Owner:** name it in a fragment as `"module": "guest:<name>"` with `"bundle"` (a path relative to the
+  fragment's root -- the cluster file's directory, or the `root` given with the fragment) and its `"sha256"`, and
+  run `apply`. It checks the author's signature before anything changes, and every node checks it again before
+  it accepts the package and before the guest first runs. A guest's code is the one thing a package cannot change
+  in place: a package that changes it reboots the boards into it (on trial, as always).
 - **What it inherits:** a tick that faults (out of fuel, out of bounds, a publish to an output it was not given)
   publishes nothing and its outputs read FAULTY until a tick succeeds; three in a row quarantine it until it is
   next activated; a guest can never write anything. Guests on one board run one at a time, so a guest can hold
@@ -497,6 +569,9 @@ radio samples for actors, several outputs per actor with replicas on demand, che
 
 Potluck's failure modes -- the 600 ms death window, stale values delivered marked, a portable actor's move,
 at-least-once activation during a partition, firmware updates taking a board out for ~15 s -- are listed in the
-README's [failure contract](README.md#the-failure-contract). Your app inherits every one of them. The safety
+README's [failure contract](README.md#the-failure-contract). A package change adds one: an actor whose
+declaration changed (its config, its placement, its type) is stopped and a new instance started, its outputs
+removed and declared again -- readers see NO_DATA until it publishes; an actor whose declaration did not change
+is not touched. A checkpoint restored after every board rebooted is up to a minute old. Your app inherits every one of them. The safety
 line holds for apps too: Potluck must never be the only thing between a motor and a person
 ([ARCHITECTURE.md](ARCHITECTURE.md), section 12).
