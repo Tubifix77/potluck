@@ -355,7 +355,7 @@ The table below is written against **ESP32 classic, Wi-Fi enabled, Bluetooth dis
 
 On **ESP32 classic**, against the 160 KB static DRAM ceiling, this leaves ~96 KB static for application code plus the ~160 KB runtime heap. Note what that makes obvious: a wasm3 instance measured at ~156 KB ([arXiv 2512.00035](https://arxiv.org/html/2512.00035v1)) does not coexist with the core and an application on a classic ESP32 in any comfortable way. Hence ADR-003.
 
-On **ESP32-S3** the same 59.4 KB sits against a ~512 KB unified pool with no fixed static ceiling, so the headroom argument is much weaker — and on a module with PSRAM it is weaker still. **ADR-003's revisit trigger is therefore live but not fired**: WASM was rejected as a per-node default on a memory argument that the S3 partly dissolves. It is not reopened here, because M7 is gated on M0–M6 shipping (§13) and ADR-001 names scope creep as the standing fatal risk. It is reopened when someone has both a named workload requiring untrusted or hot-swappable code *and* a measured headroom figure from the part they are shipping.
+On **ESP32-S3** the same 59.4 KB sits against a ~512 KB unified pool with no fixed static ceiling, so the headroom argument is much weaker — and on a module with PSRAM it is weaker still. **ADR-003's revisit trigger is therefore live but not fired**: WASM was rejected as a per-node default on a memory argument that the S3 partly dissolves. It is not reopened here, because M7 is gated on M0–M6 shipping (§13) and ADR-001 names scope creep as the standing fatal risk. It is reopened when someone has both a named workload requiring untrusted or hot-swappable code *and* a measured headroom figure from the part they are shipping. *(Both arrived: the headroom was measured on the S3 on 2026-10-10, and the owner asked for a third party's code on 2026-10-10; ADR-003 was amended on 2026-10-11 and M7 accepted.)*
 
 *M6, 2026-10-08:* the S3 build now enables PSRAM, and core buffers that only tasks touch at the host cable's speed live there (serial link ring and reassembler, the stats line, the deploy buffer, the reconciler) — never one an ISR touches, never a task stack. The gate counts internal static RAM, which went from 63.6 KB to 49.4 KB. A build without PSRAM still fits the cap with the reconciler compiled out (M0-LOG session 26).
 
@@ -802,7 +802,7 @@ Portability derivation from the manifest, rendezvous assignment, pre-provisioned
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Scope expansion back toward the full matrix | **High** — it is the natural pull of the original documents | Fatal | ADR-001; M7/M8 explicitly gated; every ADR has a *revisit trigger* rather than an open question |
+| Scope expansion back toward the full matrix | **High** — it is the natural pull of the original documents | Fatal | ADR-001; M7/M8 gated until a named need opened each (M8 2026-10-08, M7 2026-10-11); every ADR has a *revisit trigger* rather than an open question |
 | Partition-induced duplicate portable actors | Medium | wasted compute; conflicting L3/L4 outputs | epoch fencing (§7.7); actuator ownership never portable (ADR-006); duplication window bounded by gossip convergence |
 | Wireless does not meet even L3 at your geometry | Medium | Reopens transport | M0 is the gate and has an explicit kill criterion |
 | Namespace lookup cost dominates on-node | Medium | Reduces node count | 128-entry cap and perfect-hash the paths at build time from the manifest |

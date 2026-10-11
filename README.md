@@ -89,7 +89,7 @@ Beneath the milestones, the standing figures:
 |---|---|
 | Architecture | decision-closed v1, with nine [Architecture Decision Records](https://adr.github.io/) and the trigger that would reopen each ([ARCHITECTURE.md](ARCHITECTURE.md)) |
 | Test gates | **32 green (2026-10-11):** 381 C++ cases / 105,176 checks, run plain and under [AddressSanitizer](https://github.com/google/sanitizers/wiki/AddressSanitizer); 296 Python cases in 25 suites; three independent wire-format implementations agreeing byte-for-byte over generated corpora; a strict-GCC portability gate; plus the firmware build with its memory-budget check and on-target self-tests |
-| Static memory | **49.8 KB** of the 64 KB core cap in the room-sensor builds, measured per build; 53.2 KB with the per-frame signal log on. Buffers that only tasks touch live in the boards' 8 MB of extra RAM |
+| Static memory | **56.6 KB** of the 64 KB core cap in the default build and 56.9 KB with M7's sandbox (2026-10-11, measured per build; the M8.2 room-sensor builds measured 49.8 KB, 53.2 KB with the per-frame signal log on). Buffers that only tasks touch live in the boards' 8 MB of extra RAM |
 | Measured on hardware | A **24.5-hour** three-board soak: no reboots, no false deaths, **100 %** packet delivery on all six links, round trip **4–6 ms** typical and 16–22 ms at the 99th percentile, memory flat to the byte. A distance sweep through a two-storey house (up to ~16 m, four walls, a floor, a fridge): every spot held, the worst at 99 %. The Wi-Fi stack costs **31.5 KiB** with [ESP-NOW](https://www.espressif.com/en/solutions/low-power-solutions/esp-now) active. All in a home thick with competing 2.4 GHz traffic, so these are a floor, not a best case |
 
 **Known limitation, unresolved:** B's transmit stall after a power-on (2026-10-09, M0-LOG session 33): once, on the extender build with dynamic TX buffers, board B refused every ESP-NOW send as NO_MEM ("out of memory", `esp_now.h`) for ~40 minutes -- 6,131 refused, 1,133 failed, 354 completed -- while it kept receiving, until a reset ended it. It was session 28's symptom on the build that fixed session 28's cause. Not seen again in 13 resets that day, nor in B's seven boots in session 38 (three firmware updates, three deploys, one reset); but every one of those was a reset, not a power-on, so the condition that showed it has not been retried. Recorded as a known limitation, not chased: it reopens if it happens again.
@@ -257,6 +257,9 @@ python -m potluck.hostnode --port COM6 --package pkg.json --identity host.id
                                                      # M10: the PC joins as a placement node
 python -m potluck.fw --port COM6 rollout potluck_m0.bin --counter 4 --key deploy.key --bcert deploy.bcert
                                                      # M11: new firmware, board by board, over the radio
+python -m potluck.guest sign module.wasm --key author.key --cert author.gcert --out module.guest.json
+                                                     # M7: a guest author signs a module; the owner's
+                                                     # manifest names it, ctl deploy --guests sends it
 ```
 
 M9's job runs on board A and borrows B's and C's idle cores; its bench drives it from A's console:

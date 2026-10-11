@@ -29,6 +29,12 @@ it). Also open is evidence -- the 24-hour soaks (M5.1 streaming, the relay, CR-6
 combined node; a 2-hour combined run is clean, session 30) and the extender's hunting window mid-run (needs the
 owner to take the router away). The step-0 rerun and B's low inbound PDR are closed (session 30; the PDR was an
 accounting bug, fixed in `c70756f`). One owner, one application package per cluster is a recorded scope choice (ARCHITECTURE section 0.1).
+**What is left (audit, 2026-10-11, session 38):** every roadmap milestone is built and 13 of 16 accepted; left are
+M5.1's two 24 h soaks, M8.1's "value moves when B is warmed", M8.2's 30 min empty room and 24 h with no PC, a
+physical cable pull (M10) and a hand power cut (M11) -- all the owner's to run; section 15's questions 1 (needs a
+control-loop application; radio apps counted all-L4) and 2 (namespace cap) untested; B's power-on transmit stall a
+known limitation (its trigger, a power-on, never retried). A second MCU family -- the proof of "hardware-agnostic"
+beyond the PC node -- is the next edition's.
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
 AliExpress order with the sibling Powersuit project (DKK 408), covering Potluck's M0/M4 and
@@ -385,7 +391,8 @@ Naming now in force, all ASCII:
    `.claude/zero-assumption/memory.md`: live lookup → cite → register. No numbers from model
    memory. Items tagged **[MEASURE]** are bench work — do not resolve them from search.
 4. **Scope discipline is the standing risk** (ADR-001, §14). ESP32 family only; ESP-NOW + UART
-   before CAN; M7/M8 are gated. If a session drifts toward new MCU families, transports, or
+   before CAN; M7 and M8 stayed gated until a named need opened each (M8 on 2026-10-08, M7 on 2026-10-11). If a
+   session drifts toward new MCU families, transports, or
    runtimes, stop and point at ADR-001.
 5. **M0 outranks further spec work.** Two boards exchanging measured heartbeats beats any amount
    of additional documentation.
