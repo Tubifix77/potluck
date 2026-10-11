@@ -19,6 +19,11 @@ dashboard as a *middleman* between two worlds:
 It will show a lot -- more than a few tabs -- and *everything that crosses between the PC world and Potluck should go
 through it*, so that it knows.
 
+**The owner's three needs (2026-10-11), and nothing more is the owner's:** *monitor everything that happens in
+Potluck*; *from more than a PC*; and *Home Assistant*, the integration most in demand now. What to show, what matters
+most and which other integrations to build are settled below from evidence (sections 5 and 6, each claim cited and in
+the project's ledger), not from taste.
+
 **Decided by the owner (2026-10-11):**
 
 - **The dashboard is reachable from a phone**, not only on the PC.
@@ -120,20 +125,81 @@ has a cost the radio must be able to carry: today's console output is up to ~3 K
 pull model (the hub asks, at a rate it is given, for the sections it shows) fits better than a push of everything;
 its budget is a **[MEASURE]**: what telemetry rate leaves heartbeat round trips and delivery where M0 measured them.
 
-## 5. The dashboard
+## 5. The dashboard: what to show, settled
 
-A first cut of its tabs -- each is a view of the hub's model, and none needs anything a later tab adds:
+Two field methods decide the order, both chosen because they are the standard ones for exactly this question:
 
-| tab | shows |
-|---|---|
-| **Cell** | every board and PC: role (cabled, extender, relay, placement host), firmware, uptime, alive or dead; the radio topology -- who hears whom, how well; the channel |
-| **Resources** | per node and in total: namespace entries used and free, actor slots used and free (16 per package, 8 pinned per node, 8 portable per cell), RAM and PSRAM headroom, cores lent and borrowed (M9), checkpoint storage, flash wear |
-| **Apps** | the package: each app, its repository and commit, its actors, where each runs, its moves over time, its checkpoints' age; guests with their author, fuel and faults |
-| **Data** | the namespace as a browser: every resource with its owner, value, unit, age and quality; a resource's history as a chart; who reads it |
-| **Clients and integrations** | every program connected to the hub -- dashboard sessions, `potctl`, PC apps, the Home Assistant adapter -- what each reads and writes, and how often |
-| **Deploys** | `apply` runs: plan, firmware per board, package counter, live or rebooted, verify result, timings; trials and reverts |
-| **Logs and events** | deaths and revivals, actor moves, faults, refused frames, trial outcomes -- from every board, on one clock -- and where each app's logs go |
-| **Replay** | a recorded session (section 7.6) shown through the same tabs, so a fault can be looked at after the fact |
+- **Symptoms first.** Google's SRE book: "Your monitoring system should address two questions: what's broken, and
+  why?", and "it's better to spend much more effort on catching symptoms than causes"; "Dashboards should answer basic
+  questions about your service, and normally include some form of the four golden signals" -- latency, traffic,
+  errors, saturation ([SRE book, Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)).
+- **Every resource, three questions.** The USE method: "For every resource, check utilization, saturation, and
+  errors" ([USE method](https://www.brendangregg.com/usemethod.html)).
+
+So the dashboard is three layers, each a click deeper than the last.
+
+### Layer 1: the first screen -- is anything broken? (symptoms)
+
+One screen, readable on a phone, that answers "is my cell all right?" before anything else:
+
+- **Every app: working or not**, judged the way `potluck apply` verifies (M12): its actors running where the package
+  says, each output GOOD. An output STALE, FAULTY or UNAVAILABLE is the headline, with how long it has been so.
+- **Boards and PCs: alive N of M**, and which is dead, since when.
+- **The last change**: the last deploy or firmware update, its result, and any board still on trial or reverted.
+- **The PC's own link**: the hub's connection to its cabled board.
+
+These are the failure contract's events, which is the point: the README lists what can go wrong in Potluck, so that is
+what the first screen watches.
+
+### Layer 2: the cell's four golden signals
+
+| signal | in Potluck | today's source |
+|---|---|---|
+| latency | heartbeat round trips per link (p50, p99); a read from the hub to each board; deploy and failover times | `link` stats; the hub's own timing; events |
+| traffic | frames per second per board and per link; reads and writes per client; actor publications | `link` stats; the hub |
+| errors | delivery loss per link; deaths and revivals; refused frames (authentication, downgrade); actor and guest faults; refused or reverted deploys; NVS write errors | `link`, `auth`, `rec` stats; events; `apply` |
+| saturation | radio queue and refused sends (B's NO_MEM stall was this); namespace entries; actor slots; internal RAM; cores lent (M9) | stats lines |
+
+### Layer 3: every resource -- utilization, saturation, errors
+
+| resource | utilization | saturation | errors |
+|---|---|---|---|
+| the radio link (each pair) | frames per second | send queue, refused sends | delivery loss, deaths |
+| the peer table | peers used of 20 (ESP-NOW's ceiling) | a refused peer | admission refusals |
+| the namespace (each board) | entries used of 128 | a refused declare | `declare_err` |
+| actor slots | of 16 per package, 8 pinned per board, 8 portable per cell | a refused package | actors dropped at start |
+| internal RAM (each board) | static use of the 64 KB cap (60.1 KB on the full image) and free heap | largest free block | allocation failures |
+| PSRAM | free | -- | -- |
+| cores (M9) | units run here and lent | lenders refusing (busy) | units lost and rerun |
+| flash (NVS) | entries used of 630 (M12: 107-113 on the bench) | -- | write errors |
+| the serial link to the PC | frames per second | the hub's queue | CRC and framing errors |
+| the hub's PC | CPU, memory | -- | client errors |
+
+### Layer 4: the drill-down tabs
+
+The tabs of the first draft remain the drill-downs -- **Cell** (topology, roles, channel), **Resources** (layer 3
+in full), **Apps** (packages, actors, where each runs, moves, checkpoints, guests), **Data** (the namespace browser with
+the tuple and history), **Clients and integrations**, **Deploys**, **Logs and events** (on one clock, from every
+board), **Replay** -- and every number on layers 1-3 links to the tab that explains it ("what's broken" first, then
+"why").
+
+### The ESP32-S3 as a filter
+
+What the boards can afford decides what the dashboard may ask of them (the owner's filter, 2026-10-11):
+
+- **Internal RAM is nearly spent:** 60.1 KB of the 64 KB cap on the full image (STATUS.md). Telemetry on a board may
+  add almost nothing in internal RAM: it reuses the counters the stats lines already keep, and buffers it needs go to
+  PSRAM.
+- **The radio is shared with the heartbeat**, on one channel, in a 2.4 GHz-crowded house; a v1 ESP-NOW frame carries
+  226 B of payload (section 5.3). So telemetry is **pulled by the hub, in small pieces, at a rate it is given** -- and
+  viewers never multiply it: ten phones on the dashboard cost the cell what one hub costs, because the hub caches and
+  serves them all. The rate is a **[MEASURE]** (section 4).
+- **The boards are not Wi-Fi servers.** They run ESP-NOW, are outbound-only (section 8.4), and only an extender holds a
+  Wi-Fi association. So unlike ESPHome, where "each ESP is its own server" for Home Assistant
+  ([ESPHome native API](https://esphome.io/components/api/)), the hub speaks for the whole cell; no board serves a page
+  or an API.
+- **No 802.15.4 radio on the S3** (ESP-IDF names the ESP32-H2, C6 and C5 as the chips with one; section 3): Thread,
+  Zigbee and Matter-over-Thread are not board protocols in this edition. Section 6 reaches those ecosystems another way.
 
 **On a phone too (decided).** So it is a web page the hub serves -- any browser, nothing to install, Linux and Windows
 alike -- laid out for a phone's width as well as a desk's. Two ways in, one page:
@@ -206,6 +272,47 @@ it is gone). An actor that needs a value in a deadline (latency classes L0-L2) c
 Home Assistant entity: the locality contract (section 4) refuses it at build time, as it refuses any binding the
 transport cannot meet. That is the owner's "half-integrated member under the PC's control", stated as a contract.
 
+### Which integrations, settled
+
+The evidence is Home Assistant's own published usage data: 698,769 active installations, 553,881 of which share which
+integrations they use (opt-in, and by the site's own note likely under a quarter of all users;
+[analytics.home-assistant.io](https://analytics.home-assistant.io/), data of 2026-10-11). Among those sharing:
+
+| integration | share of installations | what it says for Potluck |
+|---|---|---|
+| Home Assistant's phone app (`mobile_app`) | 86.2 % | the phone is where Home Assistant users already look: through Home Assistant, "from more than a PC" comes almost for free |
+| MQTT | 48.6 % | half already run the message protocol MQTT discovery needs |
+| Matter / Thread | 40.9 % / 37.7 % | large, but not board protocols on the S3 (section 5's filter) |
+| ESPHome | 27.3 % | the closest neighbour: ESP boards in Home Assistant are common, and its users are Potluck's likeliest audience |
+| HomeKit bridge (Home Assistant to Apple) | 16.9 % | Home Assistant already re-exports its entities to other ecosystems |
+| InfluxDB / Prometheus (time-series export) | 5.1 % / 0.7 % | few export metrics; Home Assistant's own history covers most |
+| Google Assistant / Alexa (direct) | 3.5 % / 1.9 % | reached through Home Assistant, not by Potluck |
+
+And the custom integrations they install: HACS on 395,983 installations, the Node-RED companion on 18,025
+([custom integration data](https://analytics.home-assistant.io/custom_integrations.json)). 80 % of installations run
+Home Assistant OS (556,831 of 698,769), the edition that hosts apps (formerly add-ons), so the hub-as-an-app route
+reaches most of them.
+
+**So, in order:**
+
+1. **Home Assistant, the full integration** (section 6 above), distributed through HACS -- most of its users have
+   HACS -- with the hub as a Home Assistant app for Home Assistant OS users. Its entities follow Home Assistant's own
+   conventions: board health (signal, uptime, free memory, firmware) as **diagnostic** entities, which "expose ...
+   diagnostics of a device but [do] not allow changing it"; **availability** from the reading's quality; the firmware as
+   an **update** entity, with `installed_version` and `latest_version`
+   ([entities](https://developers.home-assistant.io/docs/core/entity/),
+   [update entities](https://developers.home-assistant.io/docs/core/entity/update/)).
+2. **MQTT discovery**, the no-install route: half of Home Assistant's users already run MQTT, and MQTT reaches every
+   other tool that speaks it.
+3. **The hub's own API for PC programs** (`pot-app`), which Potluck's own tools need anyway (section 2).
+4. **Everything else through Home Assistant, not beside it**: Apple Home, Google, Alexa and Matter controllers reach
+   Potluck's entities through Home Assistant's own bridges (its HomeKit bridge alone is on 16.9 %), and a user who
+   wants long-term charts exports from Home Assistant. Potluck builds none of these itself until a named need asks.
+
+**What this evidence cannot say.** It counts Home Assistant users only. People who would use Potluck without Home
+Assistant -- a workshop, a car, a lab -- have no comparable published data, and for them the hub's own dashboard
+(reachable from a phone, section 5) and MQTT are the integrations; nothing here ranks them further.
+
 ### Later
 
 Exporters for other people's charts and stores; section 8.4's direct reports from a board; more than one hub (two
@@ -232,6 +339,9 @@ PCs, each cabled to its own board) -- each a decision for its own time.
    way HACS lists integrations), and what Home Assistant versions it supports.
 10. **Entity mapping.** How a resource's kind and unit become a Home Assistant entity type, and what an app's author
     adds to their descriptor to make their outputs look right in Home Assistant (a device class, an icon, a name).
+11. **The firmware update entity's "install".** Home Assistant lets a user "install an offered update directly"; for
+    Potluck that would run `apply`'s firmware step with the owner's keys. Allowed only when the owner switches it on in
+    the hub, or never (rule 3)?
 
 ## 8. Candidate milestones (to be argued, not yet scheduled)
 
