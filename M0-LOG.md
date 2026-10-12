@@ -5078,6 +5078,6 @@ old cold-boot stall, now on a board whose extender is not active. One reset clea
 whose every radio send has failed for `CONFIG_POT_TX_DEAD_RESTART_S` (60 s) prints `{"t":"tx_dead"}` and restarts.
 Evidence `captures/m13-c-txstall-*.jsonl`, `m13-a-sees-c-dead.jsonl`; ledger.
 
-Measured: enforcement 184 B; presenting module 18.9 KB flash, 0 B static internal RAM, 2.5 KB PSRAM; image +105 KB;
+Measured: enforcement 184 B; the presenting module, as the difference between builds with and without it, 134 KB flash, 661 B static internal RAM, 23.8 KB PSRAM -- `apply --plan` had shown 18.9 KB, its own archives only; the rest is lwIP, the TCP transport and about 55 KB of TLS code the client links even unused (now said on the plan's line);
 core 63,047 of 65,536 B. **Owed for M13's acceptance:** Home Assistant itself; a second board on the Wi-Fi for
 presenter failover (the owner's credentials on A or C with `tools/wifi_set.py`); a heap soak over hours; TLS's cost.

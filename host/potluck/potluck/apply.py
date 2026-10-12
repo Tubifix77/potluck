@@ -604,7 +604,8 @@ def module_costs(c: Cluster, fw: Firmware) -> list[str]:
             for k, v in sizes.get(a, {}).items():
                 tot[k] += v
         lines.append(f"module {name}: {tot['flash']:,} B flash, {tot['internal']:,} B internal RAM, "
-                     f"{tot['psram']:,} B PSRAM (static)")
+                     f"{tot['psram']:,} B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not "
+                     f"counted here)")
     core = sum(sizes.get(a, {}).get("data", 0) for a in CORE_ARCHIVES)
     lines.append(f"Potluck core: {core:,} B of {CORE_CAP_BYTES:,} B static internal RAM "
                  f"({CORE_CAP_BYTES - core:,} B left)")

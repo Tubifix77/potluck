@@ -277,8 +277,8 @@ class BoardModules(unittest.TestCase):
         c = self.cluster({"modules": ["sandbox"]})
         fw = ap.Firmware(sj, sj, b"", "v", False, sj, ("pot_room",))
         lines = ap.module_costs(c, fw)
-        self.assertEqual(lines[0], "module sandbox: 80,000 B flash, 2,673 B internal RAM, 0 B PSRAM (static)")
-        self.assertEqual(lines[1], "module app component pot_room: 7,000 B flash, 82 B internal RAM, 1,390 B PSRAM (static)")
+        self.assertEqual(lines[0], "module sandbox: 80,000 B flash, 2,673 B internal RAM, 0 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)")
+        self.assertEqual(lines[1], "module app component pot_room: 7,000 B flash, 82 B internal RAM, 1,390 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)")
         self.assertEqual(lines[2], "Potluck core: 61,520 B of 65,536 B static internal RAM (4,016 B left)")
 
 
