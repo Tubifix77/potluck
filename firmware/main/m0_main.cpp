@@ -3483,6 +3483,9 @@ extern "C" void app_main(void) {
         const ActorKind* kinds = app::actor_table(&n_kinds);  // M8.2: built-ins plus external components
         g_actors.set_table(kinds, n_kinds);
     }
+    // Before the package is loaded: actors are created there, and one created without the board's services never
+    // lights the LED (found by Home Assistant on the bench, M0-LOG session 41: B's led_switch on, its light still green).
+    g_actor_env.board = &g_board_services;
     deploy_rt::boot(cfg.node_id);
     fw_rt::boot();  // M11
 #if CONFIG_POT_FW_TEST_PANIC
