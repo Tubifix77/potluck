@@ -5170,3 +5170,14 @@ every resource with value, quality and age, the presenter on C; `potluck.apply i
 through the hub while it held the port and polled; the dashboard's first screen said "All is well -- 3 of 3 boards
 alive, all 7 apps working". Found by the model: NODE_STATUS never listed the `present` module, so the integrations list
 was empty -- fixed for the next rollout (active where held and connected, else standby or no network).
+
+**A rollout through the hub (firmware 24 `9c27e76`, package 51).** With the hub holding COM6 and polling, `potluck apply`
+went through its relay: firmware to B and C confirmed (144 s each), then A -- the board on the cable -- "did not
+confirm": after its reboot A had forgotten the PC, and the tool's HELLO, answered from the hub's cache, never reached it.
+Fixed in the hub (`2fd971b`): it says HELLO for the PC whenever a tool does and when the cabled board's epoch changes.
+A had kept the image by its own rule (100 heartbeats with a radio peer); the rerun through the restarted hub found all
+three on firmware 24 and deployed package 51 live in 23 s, VERIFIED. The hub's events recorded B and C dead while they
+were reflashed and alive again after. With the present module now in NODE_STATUS, the model's integrations are right:
+C presenting and connected, B standby, A idle with no network. Still owed for M14: the fix shown on a cabled board's
+reboot in a live rollout, M8's service and M10's placement host through the hub, a second resident hub refused, and the
+deploy lock (review item 9).
