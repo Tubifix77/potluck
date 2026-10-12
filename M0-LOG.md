@@ -5153,3 +5153,9 @@ C released: back on the network and connected 8 s later, B handed the role back 
 next rollout: C's first publication after taking the role back marked all four resources down for one period (it held
 replicas nobody had read yet); a new presenter now reads every exposed resource first and publishes one period later.
 Evidence `captures/m13-broker-failover.jsonl.gz`.
+
+**The priming fix on the bench (firmware `929f3f0`, package 50).** C held in reset again: B took the role with no
+blank (C's topic still online until its will, 15 s later); C back -> its first publication marked nothing down, the
+glitch gone. The price: B's first state came 4.3 s after C's last message (0.68 s before), because a new presenter now
+waited a whole period before publishing; nothing was unavailable in between. Shortened to 500 ms after its first READs,
+for the next rollout. Evidence `captures/m13-broker-failover2.jsonl.gz`.

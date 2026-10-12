@@ -322,7 +322,7 @@ class PresentActor : public Actor {
         // The first states one period from now, after one READ of everything this board does not own: a presenter
         // that has just taken the role holds replicas nobody read yet, and announcing them as down blanked every
         // entity for a period on the bench (C taking the role back from B, M0-LOG session 41).
-        next_ms_ = now_ms + cfg_.place.period_ms;
+        next_ms_ = now_ms + 500;  // and prime() pushes it to 500 ms after the first READs (bench: a full period cost the failover 2 s)
         primed_ = false;
         rediscover_ms_ = now_ms + kRediscoverMs;
         ESP_LOGI(kTag, "presenting the cell to %s%s", b.uri, login ? " (with a login)" : "");
