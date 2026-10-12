@@ -168,6 +168,90 @@ class Api(HubFixture):
         self.assertTrue(data.startswith("data: {"))
 
 
+class PlacementHost(HubFixture):
+    """M14: M10's placement host as the hub's node client -- its frames unchanged, msg_ids split, the hub standing back."""
+
+    def node_client(self, epoch: int = 1234):
+        from potluck.payloads import Hello
+        from potluck.serial_framing import SerialReassembler, write_serial_frame
+
+        host, _, port = self.relay_addr.rpartition(":")
+        s = socket.create_connection((host, int(port)), timeout=2.0)
+        h = Hello(boot_epoch=epoch, caps=0, node_id=0x00FE, espnow_version=2, hb_period_ms=100, hb_miss_limit=6,
+                  flags=0x01, pubkey_fp=b"")  # want an ACK
+        hello = fr.encode(src=0x00FE, dst=fr.NODE_BROADCAST, opcode=fr.Op.HELLO, seq=77, payload=h.encode())
+        s.sendall(write_serial_frame(hello))
+        return s, SerialReassembler(), write_serial_frame
+
+    def frames_until(self, s, ra, want, timeout: float = 2.0):
+        # Every chunk is decoded whole (feed() is a generator: leaving it mid-chunk loses the rest of the stream's
+        # bytes and corrupts the next frame), and frames not yet wanted wait in a queue for the next call.
+        q = self.__dict__.setdefault("_pending", {}).setdefault(id(s), [])
+        end = time.time() + timeout
+        while True:
+            while q:
+                f = q.pop(0)
+                if want(f):
+                    return f
+            if time.time() >= end:
+                return None
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                continue
+            if not data:
+                return None
+            q.extend(fr.parse(raw) for raw in list(ra.feed(data)))
+
+    def test_the_host_node_is_the_pcs_node_and_tools_still_work_beside_it(self) -> None:
+        from potluck.ns_payloads import Read
+
+        hellos = self.node.hellos_seen
+        s, ra, wsf = self.node_client()
+        try:
+            ack = self.frames_until(s, ra, lambda f: f.opcode == fr.Op.HELLO_ACK)
+            self.assertIsNotNone(ack, "the cell's HELLO_ACK reaches the host node")
+            self.assertEqual(self.node.hellos_seen, hellos + 1)
+            self.assertIs(self.hub.node_client is not None, True)
+            # Its own request, numbered below 0x8000, comes back to it with its own msg_id.
+            uptime = next(p for p in sys_paths_for(0x1001) if p.endswith("sys/uptime"))
+            from potluck.paths import path_hash
+            req = fr.encode(src=0x00FE, dst=0x1001, opcode=fr.Op.READ, seq=78, msg_id=5,
+                            payload=Read(path_hash=path_hash(uptime)).encode())
+            s.sendall(wsf(req))
+            rep = self.frames_until(s, ra, lambda f: f.opcode == fr.Op.REPLY)
+            self.assertIsNotNone(rep)
+            self.assertEqual(rep.msg_id, 5)
+            # A tool and the hub read beside it; their numbers are the hub's (from 0x8000), never the host node's.
+            t = self.tool()
+            try:
+                hellos = self.node.hellos_seen
+                self.assertIsNotNone(t.hello(timeout=2.0))
+                self.assertEqual(self.node.hellos_seen, hellos, "no HELLO of the hub's while the host node is attached")
+                self.assertTrue(t.read(uptime, timeout=2.0).usable())
+                self.assertTrue(self.hub.read(uptime, timeout=2.0).usable())
+            finally:
+                t.close()
+            # A second node is refused: the hub closes it.
+            s2, ra2, _ = self.node_client(epoch=99)
+            try:
+                self.assertIsNone(self.frames_until(s2, ra2, lambda f: True, timeout=1.5))
+            finally:
+                s2.close()
+            self.assertTrue(any(e["kind"] == "host_node_refused" for e in self.model.events))
+        finally:
+            s.close()
+        deadline = time.time() + 2
+        while time.time() < deadline and self.hub.node_client is not None:
+            time.sleep(0.05)
+        self.assertIsNone(self.hub.node_client)
+
+    def test_the_hubs_msg_ids_stay_above_the_host_nodes(self) -> None:
+        ids = [self.hub._next_msg_id() for _ in range(5)]
+        self.assertTrue(all(i >= hb.Hub.HUB_MSG_ID_BASE for i in ids))
+        self.hub._msg_id = 0xFFFF
+        self.assertEqual(self.hub._next_msg_id(), hb.Hub.HUB_MSG_ID_BASE)
+
 class SecondHub(unittest.TestCase):
     def test_a_second_hub_on_this_pc_is_refused_naming_the_first_before_it_opens_the_port(self) -> None:
         import contextlib

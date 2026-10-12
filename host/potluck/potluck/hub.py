@@ -13,6 +13,14 @@ PC), and passes every request on with a msg_id of its own, so two tools' request
 back to the tool that asked. Requests the cell sends the PC (an agent's services, M8) go to every tool; the one that
 offers the service answers.
 
+THE PLACEMENT HOST (M10) is one client of a different kind: pot_hostnode is an enrolled node, so the PC's node in the
+cell while it is attached (`python -m potluck.hostnode --hub`). It is told apart by its HELLO, which carries a boot
+epoch (a tool's carries 0). Its frames go to the cable byte for byte -- its frames to other boards carry auth tags
+over the header, so nothing in them may change -- and the hub stands back: no HELLO and no probe answers of its own,
+which would read to the cabled board as another incarnation of the same node. msg_ids are split instead of
+re-numbered: the host node numbers its requests 1..0x7FFF (NodeConfig::msg_id_max), the hub its own and its tools'
+from 0x8000. Everything the cell sends the PC goes to the host node except the agent's CALLs and CASTs.
+
 THE MODEL AND ITS API (`--api`, default 127.0.0.1:8470; host/potluck/HUB-API.md). Every pull period the hub asks each
 board for its NODE_STATUS and reads the package's resources, and keeps one model: boards, apps, resources,
 integrations, deploys, events, the four golden signals. Every viewer -- the dashboard (M16), Home Assistant's
@@ -114,13 +122,38 @@ class Hub(Bridge):
 
     RELAY_TTL_S = 30.0  # a relayed request with no REPLY after this is forgotten (deploy steps wait up to ~10 s)
 
+    HUB_MSG_ID_BASE = 0x8000  # the hub's requests (its own and its tools'); a host node behind it keeps below
+
     def __init__(self, transport, **kw) -> None:
         super().__init__(transport, **kw)
         self.record = lambda kind, board, detail: None  # the model replaces it
         self._relayed: dict[int, _Relayed] = {}
         self._clients: list[_Client] = []
         self._clients_lock = threading.Lock()
-        self.relay_counts = {"clients": 0, "requests": 0, "replies": 0, "unmatched": 0, "fanned_out": 0}
+        self.node_client: _Client | None = None  # M10's placement host, while attached
+        self.relay_counts = {"clients": 0, "requests": 0, "replies": 0, "unmatched": 0, "fanned_out": 0,
+                             "node_frames_out": 0, "node_frames_in": 0}
+
+    def _next_msg_id(self) -> int:
+        with self._lock:
+            self._msg_id = self._msg_id + 1 if self.HUB_MSG_ID_BASE <= self._msg_id < 0xFFFF else self.HUB_MSG_ID_BASE
+            return self._msg_id
+
+    def send_raw(self, raw: bytes) -> None:
+        """A frame onto the cable exactly as it is (the host node's: its auth tag covers the header)."""
+        wire = write_serial_frame(raw)
+        with self._tx_lock:
+            try:
+                self.transport.write(wire)
+            except Exception as exc:
+                raise BridgeError(f"write to {self.transport.description} failed: {exc}") from exc
+            self.stats.tx_frames += 1
+            self.stats.tx_bytes += len(wire)
+        self._tee(raw, "tx")
+
+    def _reply_probe(self, f: fr.Frame, recv: float) -> None:
+        if self.node_client is None:  # with a host node attached, it is the PC's node and answers its own probes
+            super()._reply_probe(f, recv)
 
     # -- frames from the cell ------------------------------------------------------------------------
     def _on_raw_frame(self, raw: bytes) -> None:
@@ -137,9 +170,20 @@ class Hub(Bridge):
                 self.relay_counts["replies"] += 1
                 r.client.send_raw(_renumber(raw, f, r.msg_id))
                 return
-        if f.opcode in (fr.Op.CALL, fr.Op.CAST, fr.Op.READ) and f.dst == HOST_NODE_ID:
-            # The cell asks the PC (an agent's service, M8): every tool hears it; the one offering the service answers.
-            self._fan_out(raw)
+        node = self.node_client
+        if node is not None and f.opcode not in (fr.Op.CALL, fr.Op.CAST):
+            if f.opcode == fr.Op.REPLY and f.msg_id < self.HUB_MSG_ID_BASE:
+                self.stats.rx_frames += 1
+                self.relay_counts["node_frames_in"] += 1
+                node.send_raw(raw)  # the host node's own request answered
+                return
+            if f.opcode != fr.Op.REPLY:
+                self.relay_counts["node_frames_in"] += 1
+                node.send_raw(raw)  # HELLO, heartbeats, the cell's READs and WRITEs of the PC's resources, ...
+        if f.opcode in (fr.Op.CALL, fr.Op.CAST) or (node is None and f.opcode == fr.Op.READ):
+            if f.dst == HOST_NODE_ID:
+                # The cell asks the PC (an agent's service, M8): every tool hears it; the one offering it answers.
+                self._fan_out(raw)
         super()._on_raw_frame(raw)
 
     def _fan_out(self, raw: bytes) -> None:
@@ -155,12 +199,38 @@ class Hub(Bridge):
             f = fr.parse(raw)
         except fr.FrameError:
             return
+        if c is self.node_client:
+            self.relay_counts["node_frames_out"] += 1
+            try:
+                self.send_raw(raw)
+            except BridgeError:
+                pass
+            return
+        if f.opcode == fr.Op.HELLO and _hello_epoch(f) != 0:
+            # An enrolled node's HELLO: the placement host (M10). One at a time -- it is the PC's one node.
+            if self.node_client is not None:
+                self.record("host_node_refused", None, {"client": c.name, "holder": self.node_client.name})
+                c.alive = False
+                try:
+                    c.sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                return
+            self.node_client = c
+            self.record("host_node", None, {"client": c.name, "attached": True, "epoch": _hello_epoch(f)})
+            self.relay_counts["node_frames_out"] += 1
+            try:
+                self.send_raw(raw)
+            except BridgeError:
+                pass
+            return
         if f.opcode == fr.Op.HELLO:
             # A tool says HELLO when it starts and after the cabled board rebooted ("a board that rebooted forgets the
             # host"): so the hub says its own HELLO to the cell too -- the board re-admits the PC, which stays one host
             # to it -- and answers the tool from what the cell told the hub (found on the bench: a firmware rollout
             # through the hub stalled on the cabled board, which never re-admitted the PC after its reboot).
-            self.say_hello()
+            if self.node_client is None:
+                self.say_hello()
             if self.peer_node_id is not None:
                 ack = struct.pack("<IHBBBBH", self.peer_boot_epoch or 0, self.peer_node_id, 2, 0,
                                   (self.peer_hb_period_ms or 100) // 10, self.peer_hb_miss_limit or 6, 0)
@@ -186,6 +256,8 @@ class Hub(Bridge):
                         lclass=f.lclass, priority=f.priority)
 
     def say_hello(self) -> None:
+        if self.node_client is not None:
+            return  # the host node is the PC's node now; a second HELLO for 0x00fe would read as another incarnation
         h = Hello(boot_epoch=0, caps=0, node_id=self.node_id, espnow_version=0, hb_period_ms=self.hb_period_ms,
                   hb_miss_limit=self.hb_miss_limit, flags=HELLO_FLAG_WANT_ACK, pubkey_fp=b"")
         try:
@@ -211,9 +283,21 @@ class Hub(Bridge):
             if c in self._clients:
                 self._clients.remove(c)
             self.relay_counts["clients"] = len(self._clients)
+        if c is self.node_client:
+            # The placement host went (killed, or stopped): the cell finds it dead by its missed heartbeats, exactly as
+            # when M10's process was killed on the cable -- the hub says nothing for 0x00fe until a tool's HELLO.
+            self.node_client = None
+            self.record("host_node", None, {"client": c.name, "attached": False})
         with self._lock:
             for k in [k for k, v in self._relayed.items() if v.client is c]:
                 del self._relayed[k]
+
+
+def _hello_epoch(f: fr.Frame) -> int:
+    try:
+        return Hello.parse(bytes(f.payload)).boot_epoch
+    except (ValueError, struct.error):
+        return 0
 
 
 def _renumber(raw: bytes, f: fr.Frame, msg_id: int) -> bytes:

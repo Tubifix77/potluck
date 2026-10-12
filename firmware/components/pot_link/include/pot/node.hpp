@@ -133,6 +133,9 @@ struct NodeConfig {
     uint32_t boot_epoch = 0;
     uint8_t mac[kMacLen] = {};
     uint8_t espnow_version = 2;
+    // The largest msg_id this node puts on its requests (they run 1..msg_id_max per peer). M14: pot_hostnode behind
+    // potluck-hub uses 0x7FFF, leaving 0x8000.. to the hub; a board keeps the whole range.
+    uint16_t msg_id_max = 0xFFFF;
 
     // §8.2, wireless row.
     uint32_t hb_period_ms = kHbPeriodWirelessMs;
@@ -643,6 +646,7 @@ class Node {
                                    const HelloPayload& h, PeerAuth& out);
     void refuse(uint16_t claimed_id, HelloAuthError e, CertError ce);
     bool is_trusted_link(const uint8_t mac[kMacLen]) const;
+    uint16_t next_msg_id(PeerLink& p);  // 1..cfg_.msg_id_max, per peer
     void heavy(void (*fn)(void*), void* arg);
     bool check_frame_auth(PeerLink& p, const uint8_t* data, const Frame& f);
     void reject_frame(const PeerLink& p, uint32_t reason, uint32_t ext_seq);

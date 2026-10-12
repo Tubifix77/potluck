@@ -595,6 +595,13 @@ uint32_t Node::peer_caps(const PeerLink* p) const {
     return (i < kMaxPeers) ? peer_caps_[i] : 0;
 }
 
+uint16_t Node::next_msg_id(PeerLink& p) {
+    // 0 means "no correlation" in the payloads, so ids run 1..msg_id_max. M14: a host node behind the hub keeps below
+    // 0x8000; the hub numbers its own and its tools' requests above, so the two never answer each other's.
+    if (p.msg_id_next == 0 || p.msg_id_next > cfg_.msg_id_max) p.msg_id_next = 1;
+    return p.msg_id_next++;
+}
+
 bool Node::is_trusted_link(const uint8_t mac[kMacLen]) const {
     return cfg_.has_trusted_mac && std::memcmp(mac, cfg_.trusted_mac, kMacLen) == 0;
 }
@@ -859,10 +866,7 @@ void Node::send_probe(PeerLink& p) {
     hb.hb_seq = ++p.hb_seq_last_tx;
     hb.hb_flags = 0;
 
-    uint16_t msg_id = p.msg_id_next++;
-    if (msg_id == 0) {  // 0 means "no correlation"
-        msg_id = p.msg_id_next++;
-    }
+    const uint16_t msg_id = next_msg_id(p);
 
     // Record the submit instant *before* sending: on a fast link the completion callback can fire
     // before send() returns, and a probe whose start time was written afterwards yields a negative
@@ -1281,10 +1285,7 @@ uint16_t Node::request_read(uint16_t peer_node_id, uint32_t path_hash) {
         return 0;  // four already outstanding; the caller retries rather than us queueing forever
     }
 
-    uint16_t msg_id = p->msg_id_next++;
-    if (msg_id == 0) {
-        msg_id = p->msg_id_next++;
-    }
+    const uint16_t msg_id = next_msg_id(*p);
 
     // Register the request *before* sending. A transport can deliver the reply inside send() --
     // a loopback, a host bridge, or simply a peer on the same core -- and a pending slot filled
@@ -1316,10 +1317,7 @@ uint16_t Node::request_write(uint16_t peer_node_id, uint32_t path_hash, const Va
         return 0;
     }
 
-    uint16_t msg_id = p->msg_id_next++;
-    if (msg_id == 0) {
-        msg_id = p->msg_id_next++;
-    }
+    const uint16_t msg_id = next_msg_id(*p);
 
     q->msg_id = msg_id;  // before sending; see request_read()
     q->peer_node = peer_node_id;
@@ -1621,10 +1619,7 @@ uint16_t Node::request_call(uint16_t peer_node_id, uint32_t path_hash, const uin
         return 0;  // every slot outstanding; the caller still owns the work and retries
     }
 
-    uint16_t msg_id = p->msg_id_next++;
-    if (msg_id == 0) {
-        msg_id = p->msg_id_next++;
-    }
+    const uint16_t msg_id = next_msg_id(*p);
 
     // Registered before sending, for the reason request_read() gives at length: a transport can
     // deliver the reply inside send().
@@ -1661,10 +1656,7 @@ bool Node::cast(uint16_t peer_node_id, uint32_t path_hash, const uint8_t* args, 
     if (p == nullptr || departed_ || p->state != PeerState::Alive) {
         return false;  // see request_call: a unit sent to a dead peer vanishes silently
     }
-    uint16_t msg_id = p->msg_id_next++;
-    if (msg_id == 0) {
-        msg_id = p->msg_id_next++;
-    }
+    const uint16_t msg_id = next_msg_id(*p);
 
     uint8_t buf[sizeof(CallPayload) + kCallArgLimit];
     CallPayload hdr{};
@@ -2181,10 +2173,7 @@ uint16_t Node::send_deploy(uint16_t peer_node_id, uint8_t opcode, const uint8_t*
     if (q == nullptr) {
         return 0;
     }
-    uint16_t msg_id = p->msg_id_next++;
-    if (msg_id == 0) {
-        msg_id = p->msg_id_next++;
-    }
+    const uint16_t msg_id = next_msg_id(*p);
     // Registered before sending, for the reason request_read() gives: a transport can deliver the
     // reply before send() returns.
     q->msg_id = msg_id;

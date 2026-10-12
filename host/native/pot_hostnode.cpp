@@ -236,6 +236,7 @@ int main(int argc, char** argv) {
     // ---- the node ----
     NodeConfig cfg;
     cfg.node_id = node_id;
+    cfg.msg_id_max = 0x7FFF;  // M14: behind potluck-hub, whose own requests are numbered from 0x8000
     std::memcpy(cfg.mac, kSelfMac, kMacLen);
     // A restart must be a new incarnation to the cell, and the trust fence is (certificate issue
     // time, epoch): seconds since the Unix epoch only ever grow.
