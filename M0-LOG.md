@@ -5181,3 +5181,19 @@ were reflashed and alive again after. With the present module now in NODE_STATUS
 C presenting and connected, B standby, A idle with no network. Still owed for M14: the fix shown on a cabled board's
 reboot in a live rollout, M8's service and M10's placement host through the hub, a second resident hub refused, and the
 deploy lock (review item 9).
+
+**Home Assistant, for real (evening, at the owner's request).** Home Assistant (`home-assistant:stable`) and Mosquitto
+(`eclipse-mosquitto:2`, anonymous on the LAN for now) run as containers on the homelab
+(`/home/boas/homeassistant/docker-compose.yml`); the bench broker retired, the presenter's address unchanged. The owner
+created the account. First snag: Home Assistant could resolve no name and adding MQTT hung -- the homelab's OpenSnitch
+had a "deny always" rule from 11 June for `/usr/local/bin/python3.14`, which is Home Assistant's Python inside the
+container (nothing on the host has that path). The owner set it to allow. Then MQTT was added (broker localhost:1883)
+and, on Home Assistant's birth message, the presenter (C) sent its four configs: **3 devices and 4 entities in Home
+Assistant** -- `binary_sensor.lab_cell_act_rf_fusion_out` (the room's presence, on the cell's device),
+`sensor.lab_node_6300_sys_uptime` (duration), `sensor.lab_node_7368_hw_die_temp` (temperature),
+`switch.lab_node_7368_led_on` -- and nothing the package does not expose. **The owner flipped B's LED switch in Home
+Assistant 17 times:** every command reached the broker, C passed each to B marked from outside, B applied it, the
+LED's state followed about 1 s later each time, and each write was announced on the event topic
+(`captures/m13-ha-led.jsonl.gz`). But the light on B stayed green: `led_switch` on 1, the status LED `app` 0. Found:
+at boot a board created its actors from the package before it had handed them the board's services, so an actor made
+at boot held no LED service -- fixed (`8e7fce4`), rolling out.
