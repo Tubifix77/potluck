@@ -133,5 +133,30 @@ class OutsideWrite(unittest.TestCase):
         self.assertEqual(NsError.name_of(9), "NOT_OUTSIDE_WRITABLE")
 
 
+#: compile_image() of a present actor (broker 192.168.0.77:1883, keep-alive 10 s, every 2 s, A and B eligible) and
+#: led_b on B (255, 140, 0, steady) at counter 3. tests/test_led_switch.cpp parses these bytes.
+PRESENT_GOLDEN = ("504f54440102000003000000cd8c12d9a4f8758a25000000feff0a159e35af6ed00702006301687301c0a8004d5b070a00"
+                  "68730b08a41b2e6bff8c0000")
+
+
+def present_manifest(**cfg) -> dict:
+    return {"schema": 1, "system": "lab", "min_core_version": 1,
+            "nodes": [{"node_id": 0x6300, "label": "A"}, {"node_id": 0x7368, "label": "B"}],
+            "actors": [{"name": "present", "module": "builtin:present", "latency_class": 4,
+                        "config": {"broker": "192.168.0.77:1883", "keepalive_s": 10, "period_ms": 2000, **cfg}},
+                       {"name": "led_b", "module": "builtin:led_switch", "latency_class": 3, "pin": 0x7368,
+                        "config": {"r": 255, "g": 140, "b": 0}}]}
+
+
+class PresentActor(unittest.TestCase):
+    def test_the_present_and_led_switch_declarations_compile_to_the_node_format(self) -> None:
+        self.assertEqual(dp.compile_image(parse(present_manifest()), 3).hex(), PRESENT_GOLDEN)
+
+    def test_a_broker_that_is_not_an_address_and_a_keepalive_out_of_range_are_refused(self) -> None:
+        for bad in ({"broker": "broker.local"}, {"broker": "192.168.0.300"}, {"keepalive_s": 2}, {"colour": 1}):
+            with self.assertRaises(dp.DeployError):
+                dp.compile_image(parse(present_manifest(**bad)), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

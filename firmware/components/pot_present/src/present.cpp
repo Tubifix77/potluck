@@ -13,6 +13,7 @@
 #include "esp_log.h"
 #include "esp_netif_sntp.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/message_buffer.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "mqtt_client.h"
@@ -32,6 +33,8 @@ constexpr size_t kBufLen = 1536;
 constexpr size_t kCmdDepth = 8;
 constexpr uint32_t kRediscoverMs = 300000;  // configs again every 5 min: a resource that was missing gets one
 constexpr size_t kConfigsPerTick = 2;       // keep each pass of the link task short
+constexpr size_t kOutLen = 16384;           // what the link task has handed the sender and it has not sent yet
+constexpr size_t kRecLen = kBufLen + 128;   // one record: a kind byte, a topic, a NUL, a payload
 
 struct Cmd {
     uint32_t hash;
@@ -41,7 +44,15 @@ struct Cmd {
 
 // One presenter per board, so its state is one block, in PSRAM where there is any: only tasks touch it.
 struct State {
+    // The sender task's alone: created, used and destroyed there (sender_task), never by the link task.
     esp_mqtt_client_handle_t client;
+    esp_mqtt_client_config_t mc;
+    MessageBufferHandle_t out;
+    StaticMessageBuffer_t out_ctl;
+    uint8_t out_store[kOutLen + 1];
+    TaskHandle_t sender;
+    char rec_in[kRecLen];   // the sender's
+    char rec_out[kRecLen];  // the link task's
     std::atomic<bool> connected;
     std::atomic<bool> need_discovery;
     std::atomic<bool> holding;
@@ -64,6 +75,7 @@ struct State {
     char topic[112];
     std::atomic<uint32_t> connects, errors, cmds_dropped;
     uint32_t configs, states, writes_sent, writes_applied, writes_refused, enqueue_fail;
+    std::atomic<uint32_t> published, publish_fail;
     bool sntp_started;
 };
 EXT_RAM_BSS_ATTR State g;
@@ -78,12 +90,28 @@ Cell cell() {
     return c;
 }
 
-void send(const char* topic, const char* data, size_t len) {
-    // QoS 0, never retained (section 13: no retained state), queued for the client's task: never blocks on the network.
-    if (g.client == nullptr || esp_mqtt_client_enqueue(g.client, topic, data, static_cast<int>(len), 0, 0, true) < 0) {
+// Hand the sender task one record, never waiting: a full buffer drops it, counted (enqueue_fail). The link task
+// builds records; only the sender touches the network.
+bool post(char kind, const char* topic, const char* data, size_t len) {
+    if (g.out == nullptr) return false;
+    const size_t tl = topic != nullptr ? std::strlen(topic) : 0;
+    if (2 + tl + len > kRecLen) {
         ++g.enqueue_fail;
+        return false;
     }
+    g.rec_out[0] = kind;
+    if (tl) std::memcpy(g.rec_out + 1, topic, tl);
+    g.rec_out[1 + tl] = '\0';
+    if (len) std::memcpy(g.rec_out + 2 + tl, data, len);
+    if (xMessageBufferSend(g.out, g.rec_out, 2 + tl + len, 0) == 0) {
+        ++g.enqueue_fail;
+        return false;
+    }
+    return true;
 }
+
+// QoS 0, never retained (section 13: no retained state).
+void send(const char* topic, const char* data, size_t len) { post('P', topic, data, len); }
 
 void on_mqtt(void*, esp_event_base_t, int32_t id, void* data) {
     auto* ev = static_cast<esp_mqtt_event_handle_t>(data);
@@ -127,15 +155,56 @@ void on_mqtt(void*, esp_event_base_t, int32_t id, void* data) {
     }
 }
 
-// A role handed on: say so on our availability topic, then close and free the client -- on a task of its own, so a
-// broker that does not answer cannot stall the link task.
-void teardown_task(void* arg) {
-    auto client = static_cast<esp_mqtt_client_handle_t>(arg);
-    esp_mqtt_client_publish(client, g.will_topic, g.will_msg, 0, 0, 0);
-    vTaskDelay(pdMS_TO_TICKS(200));
-    esp_mqtt_client_disconnect(client);
-    esp_mqtt_client_destroy(client);
-    vTaskDelete(nullptr);
+// The sender: the one task that talks to the broker. It takes records in order -- 'S' start a client from g.mc, 'X'
+// say goodbye on our availability topic and destroy it, 'P' publish -- so a broker that does not answer blocks
+// this task, never the link task, and esp-mqtt's own outbox (one queued message per pass of its loop, a pass
+// lasting up to its 1 s read poll: found on the bench, outbox at 9.7 KB and states 40 s old) is not used.
+void stop_client() {
+    if (g.client == nullptr) return;
+    if (g.connected.load()) esp_mqtt_client_publish(g.client, g.will_topic, g.will_msg, 0, 0, 0);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    esp_mqtt_client_disconnect(g.client);
+    esp_mqtt_client_destroy(g.client);
+    g.client = nullptr;
+    g.connected.store(false);
+}
+
+void on_mqtt(void*, esp_event_base_t, int32_t id, void* data);
+
+void sender_task(void*) {
+    for (;;) {
+        const size_t n = xMessageBufferReceive(g.out, g.rec_in, sizeof(g.rec_in) - 1, portMAX_DELAY);
+        if (n < 2) continue;
+        g.rec_in[n] = '\0';
+        const char kind = g.rec_in[0];
+        if (kind == 'S') {
+            stop_client();
+            g.client = esp_mqtt_client_init(&g.mc);
+            if (g.client == nullptr) {
+                ESP_LOGE(kTag, "MQTT client not created (out of memory?)");
+                g.errors.fetch_add(1);
+                continue;
+            }
+            esp_mqtt_client_register_event(g.client, MQTT_EVENT_ANY, &on_mqtt, nullptr);
+            if (esp_mqtt_client_start(g.client) != ESP_OK) {
+                esp_mqtt_client_destroy(g.client);
+                g.client = nullptr;
+                g.errors.fetch_add(1);
+            }
+        } else if (kind == 'X') {
+            stop_client();
+        } else if (kind == 'P' && g.client != nullptr && g.connected.load()) {
+            const char* topic = g.rec_in + 1;
+            const size_t tl = std::strlen(topic);
+            const char* payload = topic + tl + 1;
+            const int pl = static_cast<int>(n - 2 - tl);
+            if (esp_mqtt_client_publish(g.client, topic, payload, pl, 0, 0) < 0) {
+                g.publish_fail.fetch_add(1);
+            } else {
+                g.published.fetch_add(1);
+            }
+        }
+    }
 }
 
 bool load_login() {
@@ -182,7 +251,16 @@ class PresentActor : public Actor {
             esp_sntp_config_t sc = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
             g.sntp_started = esp_netif_sntp_init(&sc) == ESP_OK;
         }
-        esp_mqtt_client_config_t mc{};
+        if (g.out == nullptr) {
+            g.out = xMessageBufferCreateStatic(sizeof(g.out_store), g.out_store, &g.out_ctl);
+            if (xTaskCreatePinnedToCore(&sender_task, "pot_present", 4096, nullptr, 4, &g.sender, tskNO_AFFINITY) !=
+                pdPASS) {
+                ESP_LOGE(kTag, "no memory for the sender task");
+                return false;
+            }
+        }
+        esp_mqtt_client_config_t& mc = g.mc;
+        mc = esp_mqtt_client_config_t{};
         mc.broker.address.uri = g.uri;
         mc.credentials.client_id = g.client_id;
         if (login) {
@@ -199,17 +277,8 @@ class PresentActor : public Actor {
         mc.buffer.size = 2048;
         g.connected.store(false);
         g.need_discovery.store(false);
-        g.client = esp_mqtt_client_init(&mc);
-        if (g.client == nullptr) {
-            ESP_LOGE(kTag, "MQTT client not created (out of memory?)");
-            return false;
-        }
-        esp_mqtt_client_register_event(g.client, MQTT_EVENT_ANY, &on_mqtt, nullptr);
-        if (esp_mqtt_client_start(g.client) != ESP_OK) {
-            esp_mqtt_client_destroy(g.client);
-            g.client = nullptr;
-            return false;
-        }
+        xMessageBufferReset(g.out);  // anything left from an earlier holding is not this one's to send
+        if (!post('S', nullptr, nullptr, 0)) return false;
         g.holding.store(true);
         next_ms_ = now_ms;
         rediscover_ms_ = now_ms + kRediscoverMs;
@@ -219,11 +288,10 @@ class PresentActor : public Actor {
 
     ~PresentActor() override {
         g.holding.store(false);
-        g.connected.store(false);
-        esp_mqtt_client_handle_t c = g.client;
-        g.client = nullptr;
-        if (c != nullptr && xTaskCreate(&teardown_task, "pot_pres_end", 4096, c, 3, nullptr) != pdPASS) {
-            esp_mqtt_client_destroy(c);  // no task to spare: pay the wait here rather than leak the client
+        // The sender says goodbye and destroys the client; states still queued go first, which is harmless.
+        if (!post('X', nullptr, nullptr, 0)) {
+            xMessageBufferReset(g.out);
+            post('X', nullptr, nullptr, 0);
         }
         ESP_LOGI(kTag, "role handed on");
     }
@@ -447,14 +515,16 @@ const ActorKind kPresentKind = {ActorType::Present, "present", &present_check, &
 void print_status() {
     std::printf("{\"t\":\"present\",\"holding\":%d,\"connected\":%d,\"connects\":%lu,\"configs\":%lu,\"states\":%lu,"
                 "\"writes_sent\":%lu,\"writes_applied\":%lu,\"writes_refused\":%lu,\"cmds_dropped\":%lu,"
-                "\"enqueue_fail\":%lu,\"errors\":%lu,\"outbox\":%d,\"int_free\":%u,\"int_largest\":%u,"
+                "\"enqueue_fail\":%lu,\"errors\":%lu,\"published\":%lu,\"publish_fail\":%lu,\"pending\":%u,"
+                "\"int_free\":%u,\"int_largest\":%u,"
                 "\"int_min_free\":%u}\n",
                 g.holding.load() ? 1 : 0, g.connected.load() ? 1 : 0, static_cast<unsigned long>(g.connects.load()),
                 static_cast<unsigned long>(g.configs), static_cast<unsigned long>(g.states),
                 static_cast<unsigned long>(g.writes_sent), static_cast<unsigned long>(g.writes_applied),
                 static_cast<unsigned long>(g.writes_refused), static_cast<unsigned long>(g.cmds_dropped.load()),
                 static_cast<unsigned long>(g.enqueue_fail), static_cast<unsigned long>(g.errors.load()),
-                g.client != nullptr ? esp_mqtt_client_get_outbox_size(g.client) : 0,
+                static_cast<unsigned long>(g.published.load()), static_cast<unsigned long>(g.publish_fail.load()),
+                g.out != nullptr ? static_cast<unsigned>(kOutLen - xMessageBufferSpacesAvailable(g.out)) : 0u,
                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                 static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                 static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));

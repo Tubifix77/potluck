@@ -266,6 +266,26 @@ std::atomic<uint32_t> g_host_heard_ms{0};
 constexpr uint32_t kHostQuietMs = 2000;
 #endif
 
+// M13 (found on the bench, M0-LOG session 41): a radio that refuses every send while it still receives. C ran so
+// for minutes after 5.6 h up -- every esp_now_send NO_MEM, 201 KB of heap free -- and kept its portable actors, which
+// the others, hearing nothing, ran as well: a double run nobody can fence, since fencing needs to be heard. So
+// the radio's sends are watched, and a board whose every send has failed for CONFIG_POT_TX_DEAD_RESTART_S stops:
+// a restart is a death the cell knows how to handle (M6), a mute member is not.
+std::atomic<uint32_t> g_radio_ok_ms{0};
+std::atomic<uint32_t> g_radio_fail_since_ms{0};
+
+int32_t radio_send(const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
+    const int32_t err = espnow_send(mac, data, len);
+    const uint32_t now = now_ms_();
+    if (err == 0) {
+        g_radio_ok_ms.store(now);
+        g_radio_fail_since_ms.store(0);
+    } else if (g_radio_fail_since_ms.load() == 0) {
+        g_radio_fail_since_ms.store(now == 0 ? 1 : now);
+    }
+    return err;
+}
+
 int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
     tee_frame("tx", mac, 0, data, len);
     if (len <= sizeof(g_rec_write) && len > kHeaderSize && data[6] == kOpWrite &&
@@ -299,7 +319,7 @@ int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t 
         if (heard != 0 && now_ms_() - heard < kHostQuietMs) serial_port_send(data, len);
     }
 #endif
-    return espnow_send(mac, data, len);
+    return radio_send(mac, data, len);
 }
 
 bool hal_add_peer(void*, const uint8_t mac[kMacLen]) {
@@ -1696,6 +1716,17 @@ void link_task(void*) {
         }
 #endif
 
+#if CONFIG_POT_TX_DEAD_RESTART_S > 0
+        if (const uint32_t since = g_radio_fail_since_ms.load();
+            since != 0 && nt - since > static_cast<uint32_t>(CONFIG_POT_TX_DEAD_RESTART_S) * 1000u) {
+            std::printf("{\"t\":\"tx_dead\",\"node\":%u,\"failing_ms\":%lu,\"last_ok_ms\":%lu,\"action\":\"restart\"}\n",
+                        static_cast<unsigned>(g_node->config().node_id), static_cast<unsigned long>(nt - since),
+                        static_cast<unsigned long>(g_radio_ok_ms.load()));
+            std::fflush(stdout);
+            vTaskDelay(pdMS_TO_TICKS(100));
+            esp_restart();
+        }
+#endif
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         g_node->tick(nt);
         if (g_rec != nullptr) g_rec->tick(nt);
@@ -3469,3 +3500,4 @@ extern "C" void app_main(void) {
                                   sizeof(g_stats_stack) / sizeof(StackType_t), nullptr, 3,
                                   g_stats_stack, &g_stats_tcb, kStatsCore);
 }
+

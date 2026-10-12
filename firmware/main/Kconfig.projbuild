@@ -371,6 +371,15 @@ config POT_PRESENT_PREFIX
     depends on POT_PRESENT
     default "homeassistant"
 
+config POT_TX_DEAD_RESTART_S
+    int "Restart a board whose every radio send has failed for this many seconds (0 = never)"
+    range 0 3600
+    default 60
+    help
+        M13, found on the bench: a radio that refuses every send (ESP-NOW NO_MEM) while it still receives
+        keeps its portable actors, and the members that cannot hear it run them too. A restart is a death
+        the cell handles; a mute member is not. Longer than any station's hunting scan.
+
 config POT_RECONCILER
     bool "Run portable actors: the section 7.7 reconciler (M6)"
     default y if SPIRAM
