@@ -5098,3 +5098,11 @@ presenter:** from A's console `POT! write 8160 5 outside` and then `POT! write 8
 `writes_served` 1, `writes_outside_refused` 1. C's `act/setpoint` is writable from inside the cell and not from
 outside, and C said so itself (`captures/m13-c-owner-refuses.jsonl`). A 3-hour soak of all three boards with B
 presenting started at 04:20 (`captures/m13-soak-*.jsonl`).
+
+**M13.1 built during the soak (not on the bench).** `pot_pocket`: a host-tested core that renders the page and its
+JSON from a snapshot, and a board half that makes the board's own access point beside the station (APSTA, the cell's
+channel, WPA2, two phones at most) only when the owner has set a name and password, serves `/` and `/status.json` from
+a copy of the snapshot the link task fills once a second, and answers every other method 405. With the Wi-Fi station:
+about 64 KB flash, 1.9 KB static internal RAM (the station's 1.6 KB of scan records since moved to PSRAM), 22 KB PSRAM;
+core unchanged at 63,047 B; the image with every module 1.16 MB of the 2 MB slot. Its bench test is the owner's: the
+password is theirs, and the test is a phone.

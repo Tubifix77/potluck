@@ -101,6 +101,8 @@ BOARD_MODULES = {
     # M13: the presenting role -- the cell's exposed resources to an MQTT broker; ESP-IDF's managed MQTT client.
     "present": BoardModule(("CONFIG_POT_PRESENT=y",), ("libpot_present.a", "libespressif__mqtt.a"),
                            requires_any=("wifi", "extender"), why_optional="a security liability"),
+    # M13.1: the pocket page -- the board's own access point and a read-only page for a phone in reach.
+    "pocket": BoardModule(("CONFIG_POT_POCKET=y",), ("libpot_pocket.a",), why_optional="a security liability"),
 }
 EXTENDER_ARCHIVES = ("libpme_hotspot.a",)
 

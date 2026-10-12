@@ -9,6 +9,7 @@
 #include "sdkconfig.h"
 
 #if CONFIG_POT_WIFI
+#include "esp_attr.h"
 #include "esp_event.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -97,7 +98,7 @@ void on_retry(void*) { scan_now(); }
 // The access point to join: on the preferred channel if one there is within the margin of the strongest,
 // else the strongest. Returns false if the network was not heard.
 bool pick(wifi_ap_record_t& out) {
-    static wifi_ap_record_t recs[kMaxRecords];
+    EXT_RAM_BSS_ATTR static wifi_ap_record_t recs[kMaxRecords];  // only the event task: PSRAM where there is any
     uint16_t n = kMaxRecords;
     if (esp_wifi_scan_get_ap_records(&n, recs) != ESP_OK || n == 0) return false;
     const uint8_t prefer = g_prefer.load();

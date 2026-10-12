@@ -57,6 +57,7 @@
 #include "pot/trust.hpp"
 #include "pot/trust_store.hpp"
 #include "pot/present.hpp"
+#include "pot/pocket.hpp"
 #include "nvs.h"
 #include <sys/time.h>
 #include "driver/gpio.h"
@@ -92,6 +93,9 @@ constexpr uint32_t kStatsIntervalMs = CONFIG_POT_STATS_INTERVAL_MS;
 
 alignas(Node) uint8_t g_node_storage[sizeof(Node)];
 Node* g_node = nullptr;
+// M13.1, defined with the board services below: the pocket page's snapshot, and the cell id it shows.
+const pocket::Snapshot& pocket_snapshot(uint32_t now);
+const char* cell_id(void*);
 
 #if CONFIG_POT_RECONCILER
 // M6: section 7.7's reconciler, created only when the running image has portable actors. Touched by
@@ -1558,6 +1562,9 @@ void link_task(void*) {
     uint32_t ip_since_ms = now_ms_();
 #endif
     uint32_t next_assess_ms = now_ms_() + status_led::kUpdateMs;
+#if CONFIG_POT_POCKET
+    uint32_t next_pocket_ms = now_ms_();
+#endif
     status_led::Colour colour = status_led::Colour::Blue;
 
     for (;;) {
@@ -1749,6 +1756,15 @@ void link_task(void*) {
         }
         xSemaphoreGive(g_mutex);
 
+#if CONFIG_POT_POCKET
+        if (pocket::active() && static_cast<int32_t>(nt - next_pocket_ms) >= 0) {
+            next_pocket_ms = nt + 1000;
+            xSemaphoreTake(g_mutex, portMAX_DELAY);
+            const pocket::Snapshot& snap = pocket_snapshot(nt);
+            xSemaphoreGive(g_mutex);
+            pocket::publish(snap);  // only this task writes it
+        }
+#endif
         if (static_cast<int32_t>(nt - next_assess_ms) >= 0) {
             next_assess_ms = nt + status_led::kUpdateMs;
             xSemaphoreTake(g_mutex, portMAX_DELAY);
@@ -1912,6 +1928,7 @@ void stats_task(void*) {
 #if CONFIG_POT_PRESENT
         present::print_status();   // M13: {"t":"present"}, the presenting module's figures
 #endif
+        pocket::print_status();    // M13.1: {"t":"pocket"}, when the pocket page is up
         // M8.2 (PS-5): what the LED shows, since nobody may be looking at it.
         std::printf("{\"t\":\"led\",\"node\":%u,\"shows\":\"%s\",\"app\":%d}\n", static_cast<unsigned>(node_id),
                     status_led::g_last_shown, status_led::g_last_app ? 1 : 0);
@@ -2631,6 +2648,7 @@ void handle(const char* line, size_t len) {
 #if CONFIG_POT_PRESENT
     if (present::handle_console(line, len)) return;   // M13: the broker's login, the same rule
 #endif
+    if (pocket::handle_console(line, len)) return;    // M13.1: the access point's name and password, the same rule
     if (len > 5 && std::strncmp(line, "POT! ", 5) == 0) {
         // M8.1: the actors' own test instruments (e.g. "POT! die_temp fail 1"), offered generically.
         lock_node();
@@ -3015,6 +3033,62 @@ void start() {
 }
 }  // namespace bg
 
+// M13.1: what the pocket page shows, built on the link task with the node's lock held, once a second.
+EXT_RAM_BSS_ATTR pocket::Snapshot g_pocket;
+const pocket::Snapshot& pocket_snapshot(uint32_t now) {
+    pocket::Snapshot& s = g_pocket;
+    std::snprintf(s.system, sizeof(s.system), "%s", sys_system());
+    std::snprintf(s.cell_id, sizeof(s.cell_id), "%s", cell_id(nullptr));
+    s.self = g_node->config().node_id;
+    s.uptime_s = now / 1000;
+    s.channel = g_node->channel();
+    s.package = deploy_rt::g_state.active != kSlotNone ? deploy_rt::g_pkg_counter : 0;
+    s.other_cell_frames = g_node->auth_counters().refused;
+    size_t at = 0;
+    s.actors[0] = '\0';
+    auto add = [&](const char* name) {
+        const size_t n = std::strlen(name);
+        if (n == 0 || at + (at ? 1 : 0) + n >= sizeof(s.actors)) return;
+        if (at) s.actors[at++] = ',';
+        std::memcpy(s.actors + at, name, n);
+        at += n;
+        s.actors[at] = '\0';
+    };
+    for (size_t i = 0; i < g_actors.running(); ++i) add(g_actors.name(i));
+#if CONFIG_POT_RECONCILER
+    if (g_rec != nullptr) {
+        for (size_t i = 0; i < g_rec->actor_count(); ++i) {
+            if (g_rec->kind_name(i)[0] != 0 && g_rec->view(i).running) add(g_rec->kind_name(i));
+        }
+    }
+#endif
+    s.n_boards = 0;
+    s.boards[s.n_boards++] = pocket::Board{s.self, true, true, 0, 0};
+    for (size_t i = 0; i < PeerTable::capacity() && s.n_boards < pocket::kMaxBoards; ++i) {
+        const PeerLink& p = g_node->peers().slot(i);
+        if (p.state == PeerState::Free || p.node_id == 0 || std::memcmp(p.mac, kHostMac, kMacLen) == 0) continue;
+        const bool alive = p.state == PeerState::Alive;
+        s.boards[s.n_boards++] =
+            pocket::Board{p.node_id, false, alive, alive ? 0u : (now - p.last_rx_ms) / 1000u, p.last_rssi};
+    }
+    s.n_items = 0;
+    for (size_t i = 0; i < deploy_rt::g_outside_n && s.n_items < pocket::kMaxValues; ++i) {
+        const deploy_rt::OutsideName& o = deploy_rt::g_outside[i];
+        if ((o.flags & kOutsideExposed) == 0) continue;  // what the package shows outside, and nothing else
+        Reading r;
+        if (g_node->read(o.hash, r) != NsError::Ok) continue;
+        pocket::Item& it = s.items[s.n_items++];
+        std::snprintf(it.name, sizeof(it.name), "%s", o.name);
+        it.value[0] = '\0';
+        if (r.usable()) r.value.format(it.value, sizeof(it.value));
+        std::snprintf(it.quality, sizeof(it.quality), "%s", quality_str(r.quality));
+        const char* u = unit_str(r.unit);
+        std::snprintf(it.unit, sizeof(it.unit), "%s", u != nullptr ? u : "");
+        it.age_ms = r.age_ms;
+    }
+    return s;
+}
+
 // M13: what the presenting role asks the board (pot/actor.hpp).
 bool outside_at(void*, size_t i, uint32_t* hash, uint8_t* flags, const char** name, size_t* len) {
     if (i >= deploy_rt::g_outside_n) return false;
@@ -3116,6 +3190,16 @@ size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {
 #if CONFIG_POT_EXTENDER
     module(ModuleId::Extender, extender::active() ? ModuleState::Active : ModuleState::Idle,
            extender::active() ? ModuleReason::None : ModuleReason::NoCredentials);
+#endif
+#if CONFIG_POT_POCKET
+    {
+        const int why = pocket::idle_reason();
+        module(ModuleId::Pocket, why == 0 ? ModuleState::Active : why == 3 ? ModuleState::Failed : ModuleState::Idle,
+               why == 0   ? ModuleReason::None
+               : why == 1 ? ModuleReason::NoCredentials
+               : why == 2 ? ModuleReason::OtherConnection
+                          : ModuleReason::Error);
+    }
 #endif
 #if CONFIG_POT_WIFI
     if (uplink::kind() == uplink::Kind::Wifi) {
@@ -3487,6 +3571,10 @@ extern "C" void app_main(void) {
             ESP_LOGE(kTag, "could not add the broadcast peer");
         }
     }
+#if CONFIG_POT_POCKET
+    // M13.1: the pocket page, after the radio: it adds an access point beside the station ESP-NOW rides on.
+    if (espnow_up()) pocket::start(extender::active());
+#endif
 
     ESP_LOGI(kTag, "Potluck M0 node 0x%04x epoch %u, heartbeat %u ms x %u misses = %u ms",
              cfg.node_id, static_cast<unsigned>(cfg.boot_epoch),

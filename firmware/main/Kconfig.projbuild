@@ -380,6 +380,15 @@ config POT_TX_DEAD_RESTART_S
         keeps its portable actors, and the members that cannot hear it run them too. A restart is a death
         the cell handles; a mute member is not. Longer than any station's hunting scan.
 
+config POT_POCKET
+    bool "M13.1: the pocket page -- a board's own access point and a read-only page for a phone (optional module 'pocket')"
+    default n
+    help
+        The board makes an access point (name and WPA2 password set by the owner: POT! pocket ap / forget) and
+        serves one read-only page on it: every board alive or dead and since when, what runs, the exposed
+        resources with value, quality and age. The one place a board listens (section 8.4's exception). Not on an
+        extender whose hotspot is up.
+
 config POT_RECONCILER
     bool "Run portable actors: the section 7.7 reconciler (M6)"
     default y if SPIRAM

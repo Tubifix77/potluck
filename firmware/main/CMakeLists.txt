@@ -48,5 +48,5 @@ idf_component_register(
   INCLUDE_DIRS "."
   # esp_driver_gpio, not the old monolithic `driver`: ESP-IDF v6.0 split the drivers into
   # per-peripheral components and `driver` no longer re-exports driver/gpio.h.
-  REQUIRES pot_frame pot_link pot_espnow pot_deploy pot_can esp_timer esp_driver_gpio esp_driver_rmt esp_app_format monocypher mbedtls pot_trust pot_reconcile pot_actors esp_driver_uart esp_driver_tsens pot_wasm pot_wifi pot_present ${pot_extra_requires}
+  REQUIRES pot_frame pot_link pot_espnow pot_deploy pot_can esp_timer esp_driver_gpio esp_driver_rmt esp_app_format monocypher mbedtls pot_trust pot_reconcile pot_actors esp_driver_uart esp_driver_tsens pot_wasm pot_wifi pot_present pot_pocket ${pot_extra_requires}
 )
