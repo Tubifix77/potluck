@@ -42,7 +42,7 @@ developer manual rewritten for it (blind reader: a new app written, tested and d
 whole-cell power cycle was a reset of every chip, not a hand power cut. Every milestone through M12 is built and
 14 of 17 accepted; what is left there is the list above, all the owner's to run. **NEXT: M13-M18 (planned 2026-10-11,
 ARCHITECTURE section 13, from BEYOND-M12.md and its picture beyond-m12-overview.html)** -- the cell presenting its
-resources to other systems: M13 the cell presents itself (presenting role, no PC; start here), M13.1 a phone reaches the nearest board with no network, M14 the hub, M15 telemetry, M16 the dashboard,
+resources to other systems: M13 the cell presents itself (presenting role, no PC; BUILT and shown on the bench 2026-10-12), M13.1 a phone reaches the nearest board with no network (BUILT), M14 the hub, M15 telemetry, M16 the dashboard,
 M17 Home Assistant first-class, M18 the integration layer. The owner is the idea-giver; the evidence for what to show and
 which integrations came from primary sources (ledger).
 
@@ -60,6 +60,26 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-12 (morning): **M13 built and shown on the bench; M13.1 built** (M0-LOG session 41). Not accepted.
+>
+> **For the owner, what only you can do** (each unblocks an acceptance line): (1) a real Home Assistant with an MQTT
+> broker -- or say which to install on the homelab; (2) house Wi-Fi on A or C for a second presenter:
+> `<IDF python> tools/wifi_set.py COM5 <your file>` (two lines: name, password; it prints neither); (3) M13.1: a pocket
+> password on a board (`POT! pocket ap <name> <password>` in its console, then reset) and your phone on it; (4) say
+> whether to push to GitHub -- tonight's commits are local.
+>
+> **The bench now:** all three on firmware counter 20 (`78c5305`), package 47 from `keys/desk-m13.json` (desk-cell plus
+> `present`, `modules: [sandbox, present]`, four resources in `outside`); B presents over the extender's station to
+> **the bench broker on the homelab laptop** (`/tmp/potluck-broker/`, a stdlib script, nothing installed; restart per
+> M0-RUNBOOK section 16 if the laptop rebooted). A PC-side subscriber may still be writing `captures/m13-broker-sub.jsonl`.
+> `keys/desk-m13-off.json` is the same without the presenter (firmware null). A 3-hour soak (`captures/m13-soak-*.jsonl`)
+> ran 04:22-07:22. **New fail-stop:** a board whose every radio send fails for 60 s restarts (`{"t":"tx_dead"}`) --
+> C's radio stalled after 5.6 h tonight and B's boot stall recurred once; both recovered.
+>
+> **Next session:** read M0-LOG session 41; analyse the soak (`tools/soak_report.py`, the `present` lines' heap);
+> deploy a build with `pocket` and `wifi` (both idle without credentials) and check NODE_STATUS shows them idle; then
+> whatever the owner unblocked above. M14 (the hub) is next in section 13 once M13's owner-gated lines are in.
+>
 > ## HANDOVER, 2026-10-12: **M13-M18 and M13.1 PLANNED and externally reviewed** (M0-LOG session 40). Nothing built.
 >
 > **Start the next session like this:** read ARCHITECTURE section 13 from "*After M12, from the owner*" -- the preamble,
