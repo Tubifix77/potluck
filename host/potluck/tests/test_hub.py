@@ -69,9 +69,19 @@ class Relay(HubFixture):
             self.assertIsNotNone(ack)
             self.assertEqual(ack.node_id, 0x1001)
             time.sleep(0.5)  # the tool heartbeats every 100 ms
-            self.assertEqual(self.node.hellos_seen, hellos_before)  # the cell saw no new host
+            # The cell saw one HELLO -- the hub's own, so a board that rebooted re-admits the PC -- and still one host.
+            self.assertEqual(self.node.hellos_seen, hellos_before + 1)
+            self.assertEqual(set(self.node.peers), {0x00FE})
         finally:
             t.close()
+
+    def test_the_hub_says_hello_again_when_the_cabled_board_reboots(self) -> None:
+        before = self.node.hellos_seen
+        self.node.boot_epoch += 1  # the board on the cable rebooted: its heartbeats carry a new epoch
+        deadline = time.time() + 3
+        while time.time() < deadline and self.node.hellos_seen == before:
+            time.sleep(0.05)
+        self.assertGreater(self.node.hellos_seen, before)
 
     def test_two_tools_read_at_once_and_each_gets_its_own_replies(self) -> None:
         paths = sys_paths_for(0x1001)

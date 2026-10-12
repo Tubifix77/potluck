@@ -42,6 +42,7 @@ from typing import Any
 
 from . import frame as fr
 from .bridge import HOST_NODE_ID, Bridge, BridgeError, RequestTimeout
+from .payloads import HELLO_FLAG_WANT_ACK, Hello
 from .ns_payloads import Write
 from .paths import path_hash
 from .serial_framing import SerialReassembler, write_serial_frame
@@ -155,7 +156,11 @@ class Hub(Bridge):
         except fr.FrameError:
             return
         if f.opcode == fr.Op.HELLO:
-            # Answer from what the cell told the hub: the tool learns its peer, the cell sees no new host.
+            # A tool says HELLO when it starts and after the cabled board rebooted ("a board that rebooted forgets the
+            # host"): so the hub says its own HELLO to the cell too -- the board re-admits the PC, which stays one host
+            # to it -- and answers the tool from what the cell told the hub (found on the bench: a firmware rollout
+            # through the hub stalled on the cabled board, which never re-admitted the PC after its reboot).
+            self.say_hello()
             if self.peer_node_id is not None:
                 ack = struct.pack("<IHBBBBH", self.peer_boot_epoch or 0, self.peer_node_id, 2, 0,
                                   (self.peer_hb_period_ms or 100) // 10, self.peer_hb_miss_limit or 6, 0)
@@ -179,6 +184,22 @@ class Hub(Bridge):
         # Anything else -- a tool answering the cell's request (REPLY), a CAST -- goes on as it is.
         self.send_frame(f.opcode, bytes(f.payload), dst=f.dst, msg_id=f.msg_id, ack_req=f.wants_ack,
                         lclass=f.lclass, priority=f.priority)
+
+    def say_hello(self) -> None:
+        h = Hello(boot_epoch=0, caps=0, node_id=self.node_id, espnow_version=0, hb_period_ms=self.hb_period_ms,
+                  hb_miss_limit=self.hb_miss_limit, flags=HELLO_FLAG_WANT_ACK, pubkey_fp=b"")
+        try:
+            self.send_frame(fr.Op.HELLO, h.encode(), dst=fr.NODE_BROADCAST)
+        except BridgeError:
+            pass
+
+    def _on_heartbeat(self, f: fr.Frame) -> None:
+        before = self.peer_boot_epoch
+        super()._on_heartbeat(f)
+        # The cabled board rebooted: it forgot the PC. Say HELLO again rather than wait for a tool to.
+        if before is not None and self.peer_boot_epoch is not None and self.peer_boot_epoch > before:
+            self.say_hello()
+            self.record("cabled_board_rebooted", f.src, {"epoch": self.peer_boot_epoch})
 
     def add_client(self, c: _Client) -> None:
         with self._clients_lock:
