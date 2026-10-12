@@ -1,0 +1,20 @@
+{"node": 25344, "up_ms": 20277997, "rec": "clk", "host_ts": 1791765655.7530353}
+{"up_s": 20277, "running": 0, "sta": 0, "has_ip": 0, "ch": 0, "rssi": 0, "clients": 0, "reconnects": 0, "int_free": 208775, "psram_free": 8266332, "boot_pick": 0, "rec": "hs", "host_ts": 1791765655.769494}
+{"node": 25344, "shows": "red", "app": 0, "rec": "led", "host_ts": 1791765655.769586}
+{"window_ms": 2000, "links": 2, "windows": 20276, "relayed": 0, "table_full": 0, "declare_err": 0, "publish_err": 0, "thin": 306, "settling": 4, "off_home": 0, "rec": "rf_link", "host_ts": 1791765655.7861269}
+{"lit": 202, "no_verdict": 37, "req_full": 0, "no_board": 0, "rec": "rf_indicator", "host_ts": 1791765655.7916608}
+{"at_ms": 20268108, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 1, "a": 0, "b": 0, "rec": "event", "host_ts": 1791765655.7972047}
+{"at_ms": 20268798, "node": 25344, "kind": "probe_timeout", "peer": 254, "slot": 2, "a": 6860, "b": 0, "rec": "event", "host_ts": 1791765655.8083994}
+{"at_ms": 20269798, "node": 25344, "kind": "probe_timeout", "peer": 33120, "slot": 0, "a": 491, "b": 0, "rec": "event", "host_ts": 1791765655.8194103}
+{"at_ms": 20270108, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 1, "a": 0, "b": 0, "rec": "event", "host_ts": 1791765655.8249462}
+{"at_ms": 20271798, "node": 25344, "kind": "probe_timeout", "peer": 254, "slot": 2, "a": 6861, "b": 0, "rec": "event", "host_ts": 1791765655.8361797}
+{"at_ms": 20272108, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 1, "a": 0, "b": 0, "rec": "event", "host_ts": 1791765655.847049}
+{"at_ms": 20272798, "node": 25344, "kind": "probe_timeout", "peer": 33120, "slot": 0, "a": 492, "b": 0, "rec": "event", "host_ts": 1791765655.8527324}
+{"at_ms": 20274108, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 1, "a": 0, "b": 0, "rec": "event", "host_ts": 1791765655.863928}
+{"at_ms": 20274798, "node": 25344, "kind": "probe_timeout", "peer": 254, "slot": 2, "a": 6862, "b": 0, "rec": "event", "host_ts": 1791765655.8693755}
+{"at_ms": 20275798, "node": 25344, "kind": "probe_timeout", "peer": 33120, "slot": 0, "a": 493, "b": 0, "rec": "event", "host_ts": 1791765655.8805196}
+{"at_ms": 20276108, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 1, "a": 0, "b": 0, "rec": "event", "host_ts": 1791765655.8918397}
+{"at_ms": 20277798, "node": 25344, "kind": "probe_timeout", "peer": 254, "slot": 2, "a": 6863, "b": 0, "rec": "event", "host_ts": 1791765655.8971827}
+{"at_ms": 20278108, "node": 25344, "kind": "peer_admitted", "peer": 29544, "slot": 1, "a": 0, "b": 0, "rec": "event", "host_ts": 1791765655.9083061}
+{"up_ms": 20278152, "node": 25344, "peer": 33120, "mac": "b8:1f:3f:da:81:60", "state": "dead", "epoch": 320, "espnow_ver": 2, "mtu": 1446, "misses": 6, "rssi": -17, "tx": {"frames": 129685, "cb_ok": 129685, "cb_fail": 0, "enqueue_err": 0, "pdr_ppm": 1000000}, "rx": {"frames": 336113, "lost_seqgap": 0, "reorder_dup": 0, "dropped_bad": 0, "hb_lost": 521, "bcast_frames": 196162, "pdr_ppm": 1000000}, "rtt": {"samples": 6557, "min_us": 5119, "max_us": 55798, "timeouts": 202, "txq_last_us": 2718, "txq_max_us": 51800, "remote_turnaround_us": 869, "remote_turnaround_max_us": 5144, "p50_us": [4000, 6000], "p99_us": [8000, 11000], "hist": [0, 0, 0, 0, 4584, 1635, 283, 36, 10, 2, 3, 4, 0, 0, 0, 0]}, "rec": "link", "host_ts": 1791765655.9638689}
+{"up_ms": 20278203, "node": 25344, "peer": 29544, "mac": "b8:1f:3f:da:73:68", "state": "alive", "epoch": 195, "espnow_ver": 2, "mtu": 1446, "misses": 0, "rssi": -34, "tx": {"frames": 70998, "cb_ok": 70990, "cb_fail": 7, "enqueue_err": 0, "pdr_ppm": 999901}, "rx": {"frames": 303453, "lost_seqgap": 0, "reorder_dup": 0, "dropped_bad": 0, "hb_lost": 572, "bcast_frames": 202187, "pdr_ppm": 1000000}, "rtt": {"samples": 6756, "min_us": 5201, "max_us": 54749, "timeouts": 3, "txq_last_us": 727, "txq_max_us": 45652, "remote_turnaround_us": 884, "remote_turnaround_max_us": 3358, "p50_us": [4000, 6000], "p99_us": [11000, 16000], "hist": [0, 0, 0, 0, 4711, 1596, 356, 41, 17, 15, 12, 8, 0, 0, 0, 0]}, "rec": "link", "host_ts": 1791765656.0138826}

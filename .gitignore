@@ -77,3 +77,9 @@ firmware/build-*/
 !/captures/m12-ck-rec-lines.log
 !/captures/m12-reset2.log
 !/captures/m12-relay-reset*.log
+# M13 (session 41): the bench's evidence -- apply logs, reports, the transmit stall, and the A/B and broker captures gzipped.
+!/captures/m13-*.log
+!/captures/m13-*-report.txt
+!/captures/m13-c-txstall-*.jsonl
+!/captures/m13-a-sees-c-dead.jsonl
+!/captures/m13-*.jsonl.gz

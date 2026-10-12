@@ -1,0 +1,25 @@
+[    0.1 s] package: modules from app 'passive-sensor' (pot_passive_sensor)
+[    0.1 s] package: guest 'alarm' by 7, signature verified under the cluster CA
+[    0.1 s] package: 'lab', 6 actor(s) (2 portable), image 1175 B, for 3 board(s)
+[    0.5 s] inventory: 0x6300  fw e0273c6-5ee5c9 (counter 18, floor 18, confirmed)  package 44 (floor 44)  cluster 'lab'  up 1090 s  live 0  ck writes 36  roles extender-build,sandbox,reconciler,enrolled,cabled  actors rf_link,rf_indicator (0/3 portable here)  modules sandbox:idle (nothing here uses it),extender:idle (no credentials)
+[    0.5 s] inventory: 0x7368  fw e0273c6-5ee5c9 (counter 18, floor 18, confirmed)  package 44 (floor 44)  cluster 'lab'  up 1028 s  live 0  ck writes 32  roles extender-build,extender,sandbox,reconciler,relay,enrolled  actors rf_link,rf_indicator,die_temp,led_switch,guest,present (2/3 portable here)  modules sandbox:active,extender:active
+[    0.5 s] inventory: 0x8160  fw e0273c6-5ee5c9 (counter 18, floor 18, confirmed)  package 44 (floor 44)  cluster 'lab'  up 1338 s  live 1  ck writes 44  roles extender-build,sandbox,reconciler,enrolled  actors rf_link,rf_indicator,rf_fusion (1/3 portable here)  modules sandbox:idle (nothing here uses it),extender:idle (no credentials)
+[    0.5 s] plan: package 'lab' replaces what runs now (die_temp, guest, led_switch, present, rf_fusion, rf_indicator, rf_link) with rf_link (ext:passive_sensor/rf_link), rf_fusion (ext:passive_sensor/rf_fusion), rf_indicator (ext:passive_sensor/rf_indicator), die_b (builtin:die_temp), alarm (guest:overheat_alarm), led_b (builtin:led_switch)
+[    1.6 s] package: counter 45 committed on 0x6300, passed on to 2 board(s)
+[   14.3 s] verify: 0x6300 confirmed package 45: rf_link,rf_indicator
+[   14.4 s] verify: 0x7368 confirmed package 45: rf_link,rf_indicator,die_temp,led_switch,guest
+[   14.5 s] verify: 0x8160 confirmed package 45: rf_link,rf_indicator,rf_fusion
+[   14.6 s] verify: potluck://lab/act/rf_fusion/out = false  [GOOD, age 2314 ms, ts 1350341, class L4]
+[   16.8 s] verify: potluck://lab/node-7368/hw/die_temp = 50.5 C  [GOOD, age 2386 ms, ts 1042404, class L4]
+[   18.9 s] verify: potluck://lab/act/alarm/out = 50.6008  [GOOD, age 2157 ms, ts 1044759, class L3]
+[   21.1 s] verify: potluck://lab/act/alarm/alarm = 1  [GOOD, age 2354 ms, ts 1046756, class L3]
+[   23.3 s] verify: potluck://lab/act/alarm/count = 23176  [GOOD, age 2486 ms, ts 1048760, class L3]
+[   25.4 s] verify: potluck://lab/node-7368/led/on = false  [GOOD, age 1051610 ms, ts 1801, class L3]
+
+  plan (package, firmware build)       0.1 s
+  inventory                            0.3 s
+  package                              1.1 s
+  verify                              23.8 s
+  command to verified                 25.5 s
+  package 45: live on 3 board(s); rebooted for it: none
+VERIFIED: cluster 'lab' runs package 45 on 3 board(s)
