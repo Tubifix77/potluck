@@ -5013,3 +5013,71 @@ ADR-006 and one channel authority by lowest id; kills measure runtime heap and N
 A/B runs; section 8.4 restated without self-contradiction; ADR-002's staleness toggle kept at the edge; five threat rows
 added to section 9.4; ADR-004 amended (its trigger fired: MQTT discovery is a typed schema below the hub); the deploy
 lock owned by the lowest-id board; M16 given a kill of its own. Nothing was built this session.
+
+
+## Session 41 -- 2026-10-12 (night, owner asleep): M13 built and shown on the bench, not yet accepted
+
+The owner handed over the boards for the night ("push on, get the most out of the night") and gave permission to
+fetch `espressif/mqtt`. M13 built in the order the handover set, each step committed with its tests and gates:
+
+1. **The enforcement the review found missing** (`55b3d06`). The cluster file's `outside` map (path -> `read` |
+   `read_write`) and `safety_relevant` on a resource compile into the signed image's outside section (image version 3;
+   a package without rules is byte for byte what it was). Every node stamps the flags into its namespace entries (the
+   entry's spare byte, replicas included); the WRITE payload's former reserved field carries an origin bit, and the
+   owning board refuses an outside write unless the resource is writable from outside and not safety-relevant, and
+   refuses one aimed at a replica. Placed in the payload, not the header's `ver_flags[0]` the review named: the header
+   bit is decoded by every receiver for every opcode and refused today as `ReservedFlagSet`. 184 B of internal RAM.
+   `apply` refuses `outside` in an app fragment (the owner's choice) and `read_write` on anything undeclared, read-only
+   or safety-relevant. Names joined the section later (step 4a): a board keeps only hashes.
+2. **Module plumbing** (`f93a7cd`): `firmware.modules` names Potluck's optional board modules; a descriptor's `requires`
+   names those its component needs; `apply --plan` prints each module's flash, internal RAM and PSRAM from the build's
+   own size report, and the core against the cap; NODE_STATUS version 2 lists each module with its state and reason
+   (actor names cut to 64 B to stay inside one 226 B frame).
+3. **Potluck's own Wi-Fi station** (`74f2e71`): `pot_wifi`, behind a new `uplink` seam the extender's station shares,
+   so the cell follows its router's channel the same way. One channel authority among stations, the lowest live node
+   id (review item 3); an outranked station announces nothing and, if it is Potluck's, picks again preferring the
+   authority's channel. Credentials: `tools/wifi_set.py`, run by the owner. **Not on the bench**: no board holds
+   credentials for it (B's are the extender's own, in its own namespace).
+4. **The presenting role** (`19690dc`, `896149e`, `e0273c6`, `6001415`): a portable actor needing HELLO's new
+   `connected` bit, which the reconciler now honours per actor (`TickerConfig::need_caps`), set with hysteresis by the
+   board; a portable core (`present_core`, host-tested) and the board half over espressif/mqtt 1.1.0. Discovery carries
+   the cell's CA fingerprint in every id; availability is one topic per possible presenter, `availability_mode: any`,
+   and each presenter's payload lists the boards alive and the resources with nothing to show, which every entity's
+   value_template reads -- so a board's death turns its entities unavailable at once (switches have no `expire_after`;
+   Home Assistant's docs, fetched) and a strict resource that is not GOOD goes unavailable while an informative one
+   stays, marked. `builtin:led_switch` is B's LED as `node-7368/led/on`.
+
+**The bench.** No broker or Home Assistant exists on the house network (the homelab runs only Pi-hole), and installing
+either is the owner's call. So `tools/mqtt_bench_broker.py` -- a standard-library MQTT 3.1.1 broker that logs every
+message on its own clock, wills on 1.5 keep-alives -- runs from `/tmp` on the homelab laptop, nothing installed, and
+`tools/mqtt_tool.py` does on the wire what Home Assistant would. `tools/m13_report.py` reads the broker's log.
+Cluster file `keys/desk-m13.json`: desk-cell plus `present` (broker 192.168.0.77, keep-alive 10 s, every 2 s),
+`modules: [sandbox, present]`, four resources exposed (B's die temperature and LED, the room's presence, A's uptime).
+
+- **Run 1** (firmware 17, package 43, VERIFIED): B presented over the extender's station, four configs right. But
+  esp-mqtt sends one queued message per pass of its loop and a pass lasts up to its 1 s read poll: the outbox reached
+  9.7 KB and states arrived 40 s old. Fixed by a sender task of the presenter's own that owns the client.
+- **Run 2** (firmware 18, package 44, VERIFIED in 872 s): states every 2.00 s (max gap 2.04 s); outside writes
+  announced within 30 ms; the LED's state true at the next publication (1.26 s); a read-only resource, an unknown hash
+  and "maybe" refused with reasons. Two bugs, fixed for run 3: the unknown-hash refusal named the last rule iterated,
+  and a write applied on the presenter's own board was stamped with the log clock (age 2^32 - 18 ms). A reset -> its
+  entities down and its board out of the live list within about a second (the PC-to-broker clock mapping is good to
+  +-1 s), back in about 4 s. B (the presenter) reset -> it rebooted and reconnected in 11 s, before the broker's 15 s
+  keep-alive timeout; the takeover fired its will and `online 1` followed 32 ms later. Until then its entities showed
+  their last values: a lone presenter's death is noticed only at 1.5 keep-alives or a sensor's expiry.
+- **Same-session radio A/B** (review item 5; 15 min each, package 44 then 45 taken live, firmware unchanged): heartbeat
+  loss 0.47 % with presenting, 0.28 % without, most on B's own link to C (0.91 % / 0.44 %); RTT p50/p99 4-6/11-16 ms
+  both; B's free internal heap 154.4 KB with (lowest 151.2 KB), 162.2 KB without -- 7.8 KB of runtime heap.
+- **`pot_sim --scenario present`** (new): node 0 polls 32 resources every 2 s; at 20 nodes airtime floor 26.0% -> 28.0%,
+  0 deaths.
+
+**Found, unrelated to M13 and serious: C's radio refused every send for minutes** after 5.6 h up (every esp_now_send
+NO_MEM, +64/64 to A and +88/88 to B in 11 s, 201 KB heap free) while still receiving: A declared C dead, C counted A
+alive and kept its portable actors, which the others ran too -- a double run nobody can fence. The signature of B's
+old cold-boot stall, now on a board whose extender is not active. One reset cleared it. Mitigation, not cure: a board
+whose every radio send has failed for `CONFIG_POT_TX_DEAD_RESTART_S` (60 s) prints `{"t":"tx_dead"}` and restarts.
+Evidence `captures/m13-c-txstall-*.jsonl`, `m13-a-sees-c-dead.jsonl`; ledger.
+
+Measured: enforcement 184 B; presenting module 18.9 KB flash, 0 B static internal RAM, 2.5 KB PSRAM; image +105 KB;
+core 63,047 of 65,536 B. **Owed for M13's acceptance:** Home Assistant itself; a second board on the Wi-Fi for
+presenter failover (the owner's credentials on A or C with `tools/wifi_set.py`); a heap soak over hours; TLS's cost.

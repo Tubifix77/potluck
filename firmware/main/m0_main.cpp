@@ -2034,12 +2034,16 @@ void stats_task(void*) {
             xSemaphoreTake(g_mutex, portMAX_DELAY);
             g_node->read(path_hash("act/setpoint"), sp);
             served = g_node->ns_counters().writes_served;
+            const uint32_t w_out = g_node->ns_counters().writes_outside;
+            const uint32_t w_out_refused = g_node->ns_counters().writes_outside_refused;
             xSemaphoreGive(g_mutex);
             int32_t spv = 0;
             Quality spq;
             const bool has = sp.get_i32(spv, spq);
-            std::printf("{\"t\":\"act\",\"node\":%u,\"setpoint\":%d,\"has_value\":%d,\"writes_served\":%u}\n",
-                        static_cast<unsigned>(node_id), static_cast<int>(spv), has ? 1 : 0, served);
+            std::printf("{\"t\":\"act\",\"node\":%u,\"setpoint\":%d,\"has_value\":%d,\"writes_served\":%u,"
+                        "\"writes_outside\":%u,\"writes_outside_refused\":%u}\n",
+                        static_cast<unsigned>(node_id), static_cast<int>(spv), has ? 1 : 0, served,
+                        static_cast<unsigned>(w_out), static_cast<unsigned>(w_out_refused));
             // M5.1: each peer's declared window (CR-3) and caps (CR-4), as this node holds them.
             const Node::ChannelCounters chc = g_node->channel_counters();
             std::printf("{\"t\":\"peers\",\"node\":%u,\"own_period_ms\":%u,\"own_busy\":%d,\"channel\":%u,"
@@ -2449,6 +2453,8 @@ void boot(uint16_t node_id, bool radio_running) {
 
 // M5 test instruments, on the console only (physical access already owns the board):
 //   POT! write <node hex> <int>   this node sends a WRITE of act/setpoint to that node
+//   POT! write <node hex> <int> outside   ... marked as from outside the cell (M13): the owner applies the package's
+//                                 outside rules, whatever this node thinks -- the presenter's check bypassed
 //   POT! replay [flip]            re-send the last recorded WRITE unchanged (or with one payload bit flipped)
 bool handle_test(const char* line, size_t len) {
     char buf[64];
@@ -2459,12 +2465,13 @@ bool handle_test(const char* line, size_t len) {
     unsigned node = 0;
     int value = 0;
     if (std::sscanf(buf, "POT! write %x %d", &node, &value) == 2) {
+        const bool outside = std::strstr(buf, " outside") != nullptr;
         lock_node();
         const uint16_t id = g_node->request_write(static_cast<uint16_t>(node), path_hash("act/setpoint"),
-                                                  Value::of_i32(value));
+                                                  Value::of_i32(value), outside);
         xSemaphoreGive(g_mutex);
-        std::printf("{\"t\":\"test\",\"cmd\":\"write\",\"to\":%u,\"value\":%d,\"msg_id\":%u}\n", node, value,
-                    static_cast<unsigned>(id));
+        std::printf("{\"t\":\"test\",\"cmd\":\"write\",\"to\":%u,\"value\":%d,\"outside\":%d,\"msg_id\":%u}\n", node,
+                    value, outside ? 1 : 0, static_cast<unsigned>(id));
         return true;
     }
     // M10 test instrument: "POT! read <path hash>" -- what this board holds for a path (its owner, quality,
