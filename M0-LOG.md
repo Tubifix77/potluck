@@ -5081,3 +5081,20 @@ Evidence `captures/m13-c-txstall-*.jsonl`, `m13-a-sees-c-dead.jsonl`; ledger.
 Measured: enforcement 184 B; the presenting module, as the difference between builds with and without it, 134 KB flash, 661 B static internal RAM, 23.8 KB PSRAM -- `apply --plan` had shown 18.9 KB, its own archives only; the rest is lwIP, the TCP transport and about 55 KB of TLS code the client links even unused (now said on the plan's line);
 core 63,047 of 65,536 B. **Owed for M13's acceptance:** Home Assistant itself; a second board on the Wi-Fi for
 presenter failover (the owner's credentials on A or C with `tools/wifi_set.py`); a heap soak over hours; TLS's cost.
+
+**Later the same night: the fail-stop met B's own stall.** Run 4's rollout (firmware 20) confirmed B, then found C
+unreachable and stopped before touching it, as designed. Cause: B, about 105 s into its first boot on the new image,
+stopped transmitting -- every radio send refused, the signature of its known boot-time NO_MEM stall (README's known
+limitation; session 33) -- and C declared it dead. Sixty seconds later B printed `{"t":"tx_dead","failing_ms":60019,
+"last_ok_ms":104624,"action":"restart"}` and restarted; after that boot it stayed up (watched 253 s, no second
+`tx_dead`), presenting (614 messages published, none dropped), both peers alive, internal heap 154 KB free (lowest
+146 KB). So a stall that once lasted about 40 minutes now costs about two; its cause is still unknown, and whether
+presenting makes it likelier is not shown -- B presented for hours tonight on firmware 18 and 19 without it.
+Evidence `captures/m13-b-txdead-watch.jsonl`, `m13-apply-4.log`.
+
+**Run 5 (firmware 20 on all three, package 47, VERIFIED).** The two fixes hold: a write to a hash the package does not
+name is refused naming no resource; the LED's ages stay honest. **The owner's own refusal, shown without the
+presenter:** from A's console `POT! write 8160 5 outside` and then `POT! write 8160 6` -- C's `act` line: setpoint 6,
+`writes_served` 1, `writes_outside_refused` 1. C's `act/setpoint` is writable from inside the cell and not from
+outside, and C said so itself (`captures/m13-c-owner-refuses.jsonl`). A 3-hour soak of all three boards with B
+presenting started at 04:20 (`captures/m13-soak-*.jsonl`).
