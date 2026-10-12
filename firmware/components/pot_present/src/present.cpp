@@ -298,7 +298,7 @@ class PresentActor : public Actor {
 
     void tick(uint32_t now) override {
         Cmd c;
-        while (g.cmds != nullptr && xQueueReceive(g.cmds, &c, 0) == pdTRUE) handle(c);
+        while (g.cmds != nullptr && xQueueReceive(g.cmds, &c, 0) == pdTRUE) handle(c, now);
         if (!g.connected.load()) return;
         if (g.need_discovery.exchange(false)) {
             disc_cursor_ = 0;
@@ -335,6 +335,9 @@ class PresentActor : public Actor {
         for (size_t i = 0; rule(i, h, flags, name, len); ++i) {
             if (h == hash) return true;
         }
+        name = "";  // not named by the package: say nothing about another resource
+        len = 0;
+        flags = 0;
         return false;
     }
 
@@ -418,7 +421,7 @@ class PresentActor : public Actor {
     }
 
     // An outside write: the presenter's check first (the package's word), then the owner's, which checks again.
-    void handle(const Cmd& c) {
+    void handle(const Cmd& c, uint32_t now) {
         uint8_t flags = 0;
         const char* name = "";
         size_t len = 0;
@@ -427,16 +430,14 @@ class PresentActor : public Actor {
         const NsEntry* e = node_.ns().find(c.hash);
         if (!find_rule(c.hash, flags, name, len) || (flags & kOutsideWritable) == 0 || (flags & kOutsideSafety) != 0) {
             result = "refused: not writable from outside";
-            if (name == nullptr || len == 0) {
-                name = "";
-                len = 0;
-            }
         } else if (e == nullptr) {
             result = "refused: not known on the presenting board";
         } else if (c.len == 0 || !parse_command_value(e->value.type, c.payload, c.len, v)) {
             result = "refused: not a value of its type";
         } else if (e->owner_node == node_.config().node_id) {
-            const NsError st = node_.ns().write_outside(c.hash, v, now_ms());
+            // The node's clock, the one every age in this namespace is measured on (found on the bench: the log's
+            // clock ran a few ms ahead and the next state carried an age of 2^32 - 18 ms).
+            const NsError st = node_.ns().write_outside(c.hash, v, now);
             result = st == NsError::Ok ? "applied" : "refused by the owner";
         } else if (e->owner_node == 0 || node_.request_write(e->owner_node, c.hash, v, true) == 0) {
             result = "refused: its owner is not reachable";
@@ -453,8 +454,6 @@ class PresentActor : public Actor {
         const size_t n = write_event(name, len, c.hash, c.payload, c.len, result, g.buf, kBufLen);
         if (n != 0 && g.connected.load() && event_topic(cl, g.topic, sizeof(g.topic)) != 0) send(g.topic, g.buf, n);
     }
-
-    uint32_t now_ms() const { return static_cast<uint32_t>(esp_log_timestamp()); }
 
     Node& node_;
     PresentConfig cfg_;
