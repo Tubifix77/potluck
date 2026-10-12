@@ -5131,3 +5131,13 @@ deaths and two reboots, nothing else. With C's stall at 5.6 h earlier tonight (n
 presenter's alone; whether presenting makes it likelier is the question that decides M13's kill line ("presenting the
 cell costs the radio its M0 figures"). So the same 3 hours on the same firmware **without** the presenter (package 48,
 taken live) started at 07:27: `captures/m13-soak-off-*.jsonl`. This is the first thing for the next session to read.
+
+**The comparison soak, without the presenter (07:27-10:27, same firmware 20, package 48)** --
+`captures/m13-soak-off-*.jsonl.gz`, `m13-soak-off-report.txt`. B's radio: **no stall** in 3 hours (two with presenting);
+heartbeat loss over the six links 0.29 % (0.85 % with presenting); B's lowest internal heap 155.7 KB (141.4 KB with);
+RTT unchanged. Two stalls against none is about one chance in eight by luck alone, but with the 15-minute A/B pointing
+the same way it meets M13's kill line on the tightest board -- presenting on the extender costs its radio -- and the
+kill line says what follows: presenting moves to a board with nothing else on it. So the presenter now ranks a BUSY
+board (the extender declares BUSY) last: `TickerConfig::avoid_caps`, a preference and never an exclusion -- with no
+other connected board alive, the extender still presents (tested). It needs a second board on the Wi-Fi, which is the
+owner's `tools/wifi_set.py` on C.

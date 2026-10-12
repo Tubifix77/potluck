@@ -51,6 +51,7 @@ struct RCell {
     std::vector<TickerConfig> actors;
     std::vector<PortableSpec> specs;  // M8.2: when set, loaded instead of `actors` (any portable kind)
     uint32_t need_caps = 0;  // M13: build()'s actor needs these HELLO capabilities
+    uint32_t avoid_caps = 0;  // M13: ... and ranks nodes declaring these last
     std::vector<std::pair<size_t, size_t>> deaf;
     uint32_t now_us = 0;
     // Frames land kLatencyMs after they are sent. Not decoration: with instant delivery a rebooted
@@ -146,6 +147,7 @@ struct RCell {
         tc.period_ms = 100;
         tc.count = static_cast<uint8_t>(n);
         tc.need_caps = need_caps;
+        tc.avoid_caps = avoid_caps;
         for (size_t i = 0; i < n; ++i) {
             RNode& t = nodes[i];
             t.cell = this;
@@ -907,4 +909,21 @@ TEST(reconcile, an_actor_that_needs_a_connection_runs_only_where_one_is_declared
     CHECK_EQ(c.running_count(), 1u);
     CHECK(c.runner() == 0 || c.runner() == 1);
     CHECK(c.nodes[static_cast<size_t>(c.runner())].node->connected());
+}
+
+TEST(reconcile, a_busy_node_is_ranked_last_but_still_takes_the_actor_when_it_is_the_only_one) {
+    // M13: the presenter avoids the extender (BUSY) when another connected board is alive, and falls back to it.
+    RCell c;
+    c.need_caps = kHelloCapConnected;
+    c.avoid_caps = kHelloCapBusy;
+    c.build(3, {1, 1, 3});  // gravity alone would choose node 2
+    c.nodes[2].node->set_connected(true);
+    c.nodes[2].node->set_busy(true);  // the extender
+    c.nodes[1].node->set_connected(true);
+    c.run(5000);
+    CHECK_EQ(c.runner(), 1);  // the board with nothing else on it, despite gravity
+    c.kill(1);
+    c.run(4000);
+    CHECK_EQ(c.runner(), 2);  // the only connected board left: the extender presents
+    CHECK_EQ(c.running_count(), 1u);
 }

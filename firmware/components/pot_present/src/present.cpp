@@ -524,6 +524,10 @@ bool present_placement(const ActorDecl& d, TickerConfig& out) {
     if (!present_config(d, c)) return false;
     out = c.place;
     out.need_caps = kHelloCapConnected;  // only a board on a network can hold the role (the review's item 3)
+    // M13's kill line, met on the bench: presenting on the extender (BUSY) cost its radio -- two transmit stalls in 3 h
+    // against none without, heartbeat loss 0.85 % against 0.29 % (M0-LOG session 41). So a board with nothing else on
+    // it presents when there is one; the extender only when no other connected board is alive.
+    out.avoid_caps = kHelloCapBusy;
     return true;
 }
 

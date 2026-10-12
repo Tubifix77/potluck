@@ -255,6 +255,7 @@ class Reconciler {
         uint32_t need;
     };
     static bool live_caps_cb(void* ctx, uint16_t node);  // M13: live and declaring need_caps
+    size_t rank_for(const TickerConfig& cfg, uint16_t out[kMaxEligible]) const;  // M13: need_caps, avoid_caps
     bool peer_live(uint16_t node, uint32_t* epoch = nullptr) const;
     const PeerClaims* claims_of(uint16_t node) const;
     PeerClaims* claims_slot(uint16_t node, bool create);

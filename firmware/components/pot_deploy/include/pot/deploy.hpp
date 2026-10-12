@@ -179,6 +179,9 @@ struct TickerConfig {
     // M13: HELLO capability bits an eligible node must declare to be placed on (kHelloCapConnected for the
     // presenter). Not on the wire: the actor's registration row sets it in its placement hook.
     uint32_t need_caps = 0;
+    // M13: capability bits that rank an eligible node last -- a preference, never an exclusion (BUSY, section 0.1).
+    // The presenter avoids kHelloCapBusy: presenting on the extender cost its radio (M0-LOG session 41's two soaks).
+    uint32_t avoid_caps = 0;
 };
 constexpr uint8_t kTickerCfgFixed = 7;
 bool ticker_config(const ActorDecl& a, TickerConfig& out);

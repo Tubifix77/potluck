@@ -350,6 +350,25 @@ bool Reconciler::live_cb(void* ctx, uint16_t node) {
     return node == r->node_.config().node_id || r->peer_live(node);
 }
 
+// M13: rank_nodes() over the nodes declaring need_caps, then those declaring avoid_caps moved to the end, in order.
+// Every node holds every peer's caps from its HELLO, so every node ranks alike.
+size_t Reconciler::rank_for(const TickerConfig& cfg, uint16_t out[kMaxEligible]) const {
+    CapsCtx cc{this, cfg.need_caps};
+    const size_t n = rank_nodes(cfg, &Reconciler::live_caps_cb, &cc, out);
+    if (cfg.avoid_caps == 0 || n < 2) return n;
+    uint16_t pref[kMaxEligible], last[kMaxEligible];
+    size_t np = 0, nl = 0;
+    for (size_t i = 0; i < n; ++i) {
+        Node& nd = node_;
+        const uint32_t caps = out[i] == nd.config().node_id ? nd.caps() : nd.peer_caps(nd.peers().find_by_node_id(out[i]));
+        if ((caps & cfg.avoid_caps) != 0) last[nl++] = out[i];
+        else pref[np++] = out[i];
+    }
+    for (size_t i = 0; i < np; ++i) out[i] = pref[i];
+    for (size_t i = 0; i < nl; ++i) out[np + i] = last[i];
+    return n;
+}
+
 // M13: live, and declaring the capabilities the actor needs (TickerConfig::need_caps).
 bool Reconciler::live_caps_cb(void* ctx, uint16_t node) {
     const auto* c = static_cast<const CapsCtx*>(ctx);
@@ -610,8 +629,7 @@ void Reconciler::decide(size_t i, uint32_t now) {
     Slot& s = slots_[i];
     const uint16_t self = node_.config().node_id;
     uint16_t ranked[kMaxEligible];
-    CapsCtx cc{this, s.cfg.need_caps};
-    const size_t n = rank_nodes(s.cfg, &Reconciler::live_caps_cb, &cc, ranked);
+    const size_t n = rank_for(s.cfg, ranked);
 
     // The best live claim other than ours.
     uint16_t other = 0;
@@ -760,8 +778,7 @@ Reconciler::ActorView Reconciler::view(size_t i) const {
     v.owner_term = s.owner_term;
     v.max_term = s.max_term;
     uint16_t ranked[kMaxEligible];
-    CapsCtx cc{this, s.cfg.need_caps};
-    const size_t n = rank_nodes(s.cfg, &Reconciler::live_caps_cb, &cc, ranked);
+    const size_t n = rank_for(s.cfg, ranked);
     v.assigned = n > 0 ? ranked[0] : 0;
     v.activations = s.activations;
     v.fenced = s.fenced;
