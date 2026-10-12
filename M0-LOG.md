@@ -5141,3 +5141,15 @@ kill line says what follows: presenting moves to a board with nothing else on it
 board (the extender declares BUSY) last: `TickerConfig::avoid_caps`, a preference and never an exclusion -- with no
 other connected board alive, the extender still presents (tested). It needs a second board on the Wi-Fi, which is the
 owner's `tools/wifi_set.py` on C.
+
+**Two presenters, and failover measured at the broker (11:40, firmware `41a848a`, package 49).** The owner ran
+`tools/wifi_set.py COM5` with the file from the extender's setup; C joined the house Wi-Fi (channel 1, -48 dBm: a house
+access point, not B's hotspot -- the broker sees both boards behind 192.168.0.88, the mesh's address) and, ranked above
+B (BUSY), took the role at once: C connected, B closed its session cleanly 79 ms later. C presents with 191.6 KB of
+internal heap free (B had 154 KB). **C held in reset for 30 s:** B's first state 0.68 s after C's last message; C's
+portable `rf_fusion` moved and its output was back within 2.7 s; C's will reached the broker 14.4 s after (1.5
+keep-alives), and changed nothing -- B's own availability topic was online (`availability_mode: any`, review item 2).
+C released: back on the network and connected 8 s later, B handed the role back 1 ms after. One glitch, fixed for the
+next rollout: C's first publication after taking the role back marked all four resources down for one period (it held
+replicas nobody had read yet); a new presenter now reads every exposed resource first and publishes one period later.
+Evidence `captures/m13-broker-failover.jsonl.gz`.

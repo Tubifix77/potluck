@@ -319,7 +319,11 @@ class PresentActor : public Actor {
         if (!post('S', nullptr, reinterpret_cast<const char*>(&b), sizeof(b))) return false;
         std::memset(b.pass, 0, sizeof(b.pass));
         g.holding.store(true);
-        next_ms_ = now_ms;
+        // The first states one period from now, after one READ of everything this board does not own: a presenter
+        // that has just taken the role holds replicas nobody read yet, and announcing them as down blanked every
+        // entity for a period on the bench (C taking the role back from B, M0-LOG session 41).
+        next_ms_ = now_ms + cfg_.place.period_ms;
+        primed_ = false;
         rediscover_ms_ = now_ms + kRediscoverMs;
         ESP_LOGI(kTag, "presenting the cell to %s%s", b.uri, login ? " (with a login)" : "");
         return true;
@@ -347,6 +351,11 @@ class PresentActor : public Actor {
             discovering_ = true;
         }
         if (discovering_) discover_some(now);
+        if (!primed_) {
+            primed_ = true;
+            prime();
+            if (static_cast<int32_t>(next_ms_ - (now + 500)) < 0) next_ms_ = now + 500;  // time for the replies
+        }
         if (static_cast<int32_t>(now - next_ms_) < 0) return;
         next_ms_ = now + cfg_.place.period_ms;
         publish_all();
@@ -500,6 +509,22 @@ class PresentActor : public Actor {
     size_t disc_cursor_ = 0;
     bool discovering_ = false;
     bool missed_ = false;
+    bool primed_ = false;
+
+    void prime() {
+        const uint16_t self = node_.config().node_id;
+        uint32_t hash = 0;
+        uint8_t flags = 0;
+        const char* name = nullptr;
+        size_t len = 0;
+        for (size_t i = 0; rule(i, hash, flags, name, len); ++i) {
+            if ((flags & kOutsideExposed) == 0) continue;
+            Reading r;
+            node_.read(hash, r);  // adopts the replica
+            const NsEntry* e = node_.ns().find(hash);
+            if (e != nullptr && e->owner_node != 0 && e->owner_node != self) node_.request_read(e->owner_node, hash);
+        }
+    }
     size_t entities_ = 0;
 };
 
