@@ -30,6 +30,7 @@ CLOCKS
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -163,6 +164,13 @@ class Bridge:
     @classmethod
     def open(cls, *, port: str | None = None, tcp: str | None = None, baud: int = 921600,
              **kwargs) -> Bridge:
+        # M14: while a hub holds this port, go through its relay -- the tool shares the link instead of failing to
+        # open a port someone else has. POTLUCK_NO_HUB=1 opens the port itself regardless.
+        if port and not tcp and not os.environ.get("POTLUCK_NO_HUB"):
+            from .hub import hub_endpoint
+            relay = hub_endpoint(port)
+            if relay is not None:
+                return cls(open_transport(tcp=relay), **kwargs)
         return cls(open_transport(port=port, tcp=tcp, baud=baud), **kwargs)
 
     def __enter__(self) -> Bridge:
