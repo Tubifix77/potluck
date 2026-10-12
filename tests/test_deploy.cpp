@@ -7,6 +7,7 @@
 
 #include <cstring>
 #include <map>
+#include <string>
 #include <vector>
 
 #include "guest_fixture.hpp"
@@ -631,7 +632,9 @@ std::vector<uint8_t> from_hex(const char* hex) {
 // host/potluck/tests/test_outside.py's GOLDEN: compile_image() makes exactly these bytes.
 const char* kOutsideGolden =
     "504f54440301000004000000bf6939c8cbb48a3f0b000000ffff09076d332d74657374"
-    "0003764fb14b058218dbd1038e0ad45701";
+    "0003764fb14b05136e6f64652d363330302f6163742f6272616b65"
+    "8218dbd103136e6f64652d363330302f6c65642f6c6576656c"
+    "8e0ad45701156e6f64652d373336382f68772f6469655f74656d70";
 
 // A version-3 image with no actors, no guests and these rules.
 std::vector<uint8_t> outside_image(const std::vector<std::pair<uint32_t, uint8_t>>& rules) {
@@ -642,6 +645,10 @@ std::vector<uint8_t> outside_image(const std::vector<std::pair<uint32_t, uint8_t
     for (const auto& r : rules) {
         put32(img, r.first);
         img.push_back(r.second);
+        img.push_back(3);  // the name: "x/y"
+        img.push_back('x');
+        img.push_back('/');
+        img.push_back('y');
     }
     return img;
 }
@@ -660,9 +667,12 @@ TEST(deploy, the_host_compilers_outside_section_parses_here) {
     outside_rule(d, 0, h, f);
     CHECK_EQ(h, 0x4bb14f76u);  // act/brake: exposed, safety-relevant
     CHECK_EQ(f, static_cast<uint8_t>(kOutsideExposed | kOutsideSafety));
-    outside_rule(d, 1, h, f);
+    const char* name = nullptr;
+    size_t nl = 0;
+    outside_rule(d, 1, h, f, &name, &nl);
     CHECK_EQ(h, 0xd1db1882u);  // led/level: exposed, writable
     CHECK_EQ(f, static_cast<uint8_t>(kOutsideExposed | kOutsideWritable));
+    CHECK(std::string(name, nl) == "node-6300/led/level");
     Namespace ns;
     CHECK(apply_outside(d, ns));
     CHECK_EQ(ns.outside_of(0xd1db1882u), static_cast<uint8_t>(kOutsideExposed | kOutsideWritable));

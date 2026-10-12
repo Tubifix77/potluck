@@ -52,6 +52,10 @@ constexpr uint32_t kHelloCapChannelFixed = 1u << 1;
 constexpr uint32_t kHelloCapSettling = 1u << 2;
 // CR-2 / ADR-009: the sender is the cell's relay. Frames it forwards keep their original src.
 constexpr uint32_t kHelloCapRelay = 1u << 3;
+// M13: the sender is on a network outside the cell and holds an address there (its Wi-Fi station, with
+// hysteresis), so it can hold a role that connects out -- the presenter. A placement input like BUSY: the
+// reconciler places an actor that needs it only on nodes that declare it (TickerConfig::need_caps).
+constexpr uint32_t kHelloCapConnected = 1u << 4;
 // ADR-009: a relayed HELLO carries the original sender's MAC after the payload, because the HELLO
 // signature covers it. 200 + 6 signed, 24 + 6 unsigned -- both inside v1's 226.
 constexpr size_t kRelayMacTrailer = 6;

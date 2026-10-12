@@ -54,6 +54,7 @@ ACTOR_MC_JOB = 7  # M9: a Monte Carlo job that borrows idle cores; publishes nod
 ACTOR_GUEST = 8  # M7: a sandboxed WebAssembly module from a guest author (potluck.guest); portable
 ACTOR_CLUSTER = 9  # M12: the cluster's name, every node; added by compile_image when `system` is not "lab"
 CLUSTER_NAME_MAX = 31
+OUTSIDE_NAME_MAX = 40  # M13: deploy.hpp's kMaxOutsideName
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
 MAX_ACTOR_CFG = 48
 BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER,
@@ -407,8 +408,14 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
             img += struct.pack("<I", len(g)) + g
     if rules:
         img += bytes([len(rules)])
+        prefix = f"potluck://{m.system}/"
         for path, flags in rules:
-            img += struct.pack("<IB", path_hash(path), flags)
+            name = path[len(prefix):] if path.startswith(prefix) else path
+            raw = name.encode("ascii", "replace")
+            if not 1 <= len(raw) <= OUTSIDE_NAME_MAX or any(c < 0x21 or c > 0x7E or c in b'"\\' for c in raw):
+                raise DeployError(f"outside: '{name}' -- the name a board calls a resource outside the cell is the path "
+                                  f"after {prefix}, 1..{OUTSIDE_NAME_MAX} printable ASCII characters, no quotes")
+            img += struct.pack("<IBB", path_hash(path), flags, len(raw)) + raw
     limit = MAX_IMAGE_LEN_GUESTS if guests else MAX_IMAGE_LEN
     if len(img) > limit:
         raise DeployError(f"image is {len(img)} bytes; the node accepts at most {limit}")

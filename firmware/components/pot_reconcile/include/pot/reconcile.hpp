@@ -250,6 +250,11 @@ class Reconciler {
     static bool same(const Slot& s, const PortableSpec& a);
     void persist_tick(uint32_t now);
     static bool live_cb(void* ctx, uint16_t node);
+    struct CapsCtx {
+        const Reconciler* r;
+        uint32_t need;
+    };
+    static bool live_caps_cb(void* ctx, uint16_t node);  // M13: live and declaring need_caps
     bool peer_live(uint16_t node, uint32_t* epoch = nullptr) const;
     const PeerClaims* claims_of(uint16_t node) const;
     PeerClaims* claims_slot(uint16_t node, bool create);

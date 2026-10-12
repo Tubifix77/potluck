@@ -350,6 +350,16 @@ bool Reconciler::live_cb(void* ctx, uint16_t node) {
     return node == r->node_.config().node_id || r->peer_live(node);
 }
 
+// M13: live, and declaring the capabilities the actor needs (TickerConfig::need_caps).
+bool Reconciler::live_caps_cb(void* ctx, uint16_t node) {
+    const auto* c = static_cast<const CapsCtx*>(ctx);
+    if (!live_cb(const_cast<Reconciler*>(c->r), node)) return false;
+    if (c->need == 0) return true;
+    Node& n = c->r->node_;
+    const uint32_t caps = node == n.config().node_id ? n.caps() : n.peer_caps(n.peers().find_by_node_id(node));
+    return (caps & c->need) == c->need;
+}
+
 bool Reconciler::peer_live(uint16_t node, uint32_t* epoch) const {
     const PeerLink* p = node_.peers().find_by_node_id(node);
     if (p == nullptr || p->state != PeerState::Alive) {
@@ -600,7 +610,8 @@ void Reconciler::decide(size_t i, uint32_t now) {
     Slot& s = slots_[i];
     const uint16_t self = node_.config().node_id;
     uint16_t ranked[kMaxEligible];
-    const size_t n = rank_nodes(s.cfg, &Reconciler::live_cb, this, ranked);
+    CapsCtx cc{this, s.cfg.need_caps};
+    const size_t n = rank_nodes(s.cfg, &Reconciler::live_caps_cb, &cc, ranked);
 
     // The best live claim other than ours.
     uint16_t other = 0;
@@ -749,7 +760,8 @@ Reconciler::ActorView Reconciler::view(size_t i) const {
     v.owner_term = s.owner_term;
     v.max_term = s.max_term;
     uint16_t ranked[kMaxEligible];
-    const size_t n = rank_nodes(s.cfg, &Reconciler::live_cb, const_cast<Reconciler*>(this), ranked);
+    CapsCtx cc{this, s.cfg.need_caps};
+    const size_t n = rank_nodes(s.cfg, &Reconciler::live_caps_cb, &cc, ranked);
     v.assigned = n > 0 ? ranked[0] : 0;
     v.activations = s.activations;
     v.fenced = s.fenced;

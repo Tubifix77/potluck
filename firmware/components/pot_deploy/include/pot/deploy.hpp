@@ -50,7 +50,10 @@ uint32_t crc32(const uint8_t* data, size_t len, uint32_t seed = 0);
 // Version 3 (M13) adds, after the guest section (which it always has, guest_count possibly 0), the outside
 // section -- what the package lets systems outside the cell do with each resource it names (pot/namespace.hpp):
 //          1    outside_count       0..kMaxOutside
-//          ...  outside_count x (path_hash u32, flags u8)    kOutside* flags; a hash at most once
+//          ...  outside_count x (path_hash u32, flags u8, name_len u8, name)
+//               kOutside* flags; a hash at most once; the name is the path after potluck://<system>/, 1..40
+//               printable ASCII characters -- what the presenter calls the resource outside (a board keeps only
+//               hashes, section 7.2)
 // A package with no outside rules is built as version 1 or 2, byte for byte what it was before M13.
 // ---------------------------------------------------------------------------------------------
 
@@ -108,14 +111,16 @@ struct DeployImage {
     ActorDecl actors[kMaxActors];
     uint8_t guest_count = 0;  // M7
     GuestBlob guests[kMaxGuests] = {};
-    // M13: the outside section's rules, 5 bytes each (path_hash u32 LE, flags u8), pointing into the image
-    // buffer; validated by parse_image. outside_rule() reads one.
+    // M13: the outside section's rules, pointing into the image buffer; validated by parse_image. outside_rule()
+    // reads one.
     uint8_t outside_count = 0;
     const uint8_t* outside = nullptr;
 };
 
 // M13: rule `i` of the image's outside section.
-void outside_rule(const DeployImage& img, size_t i, uint32_t& path_hash, uint8_t& flags);
+constexpr size_t kMaxOutsideName = 40;
+void outside_rule(const DeployImage& img, size_t i, uint32_t& path_hash, uint8_t& flags, const char** name = nullptr,
+                  size_t* name_len = nullptr);
 
 class Namespace;
 // M13: hand the image's outside section to the namespace (Namespace::set_outside) -- every node, whatever
@@ -169,6 +174,9 @@ struct TickerConfig {
     uint8_t count;       // 1..kMaxEligible
     uint16_t node[kMaxEligible];
     uint8_t gravity[kMaxEligible];  // higher wins; equal scores fall to the rendezvous hash
+    // M13: HELLO capability bits an eligible node must declare to be placed on (kHelloCapConnected for the
+    // presenter). Not on the wire: the actor's registration row sets it in its placement hook.
+    uint32_t need_caps = 0;
 };
 constexpr uint8_t kTickerCfgFixed = 7;
 bool ticker_config(const ActorDecl& a, TickerConfig& out);

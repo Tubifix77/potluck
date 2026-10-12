@@ -50,6 +50,7 @@ struct RCell {
     std::vector<RNode> nodes;
     std::vector<TickerConfig> actors;
     std::vector<PortableSpec> specs;  // M8.2: when set, loaded instead of `actors` (any portable kind)
+    uint32_t need_caps = 0;  // M13: build()'s actor needs these HELLO capabilities
     std::vector<std::pair<size_t, size_t>> deaf;
     uint32_t now_us = 0;
     // Frames land kLatencyMs after they are sent. Not decoration: with instant delivery a rebooted
@@ -144,6 +145,7 @@ struct RCell {
         tc.out_hash = kKey;
         tc.period_ms = 100;
         tc.count = static_cast<uint8_t>(n);
+        tc.need_caps = need_caps;
         for (size_t i = 0; i < n; ++i) {
             RNode& t = nodes[i];
             t.cell = this;
@@ -884,4 +886,25 @@ TEST(reconcile, a_live_change_of_an_actors_declaration_resumes_it_from_its_check
     CHECK(g_ck_had[second]);                    // resumed, not started from nothing
     CHECK(g_ck_loaded[second] + 10 >= saved);   // from where it was
     CHECK(c.nodes[static_cast<size_t>(second)].rec->view(0).term > term_before);  // and its terms move on
+}
+
+TEST(reconcile, an_actor_that_needs_a_connection_runs_only_where_one_is_declared_and_moves_with_it) {
+    // M13: the presenter's placement -- the review's item 3. Gravity says node 2; only connected nodes qualify.
+    RCell c;
+    c.need_caps = kHelloCapConnected;
+    c.build(3, {1, 1, 2});
+    c.run(4000);
+    CHECK_EQ(c.running_count(), 0u);  // nobody connected: nobody presents
+    c.nodes[0].node->set_connected(true);
+    c.run(3000);
+    CHECK_EQ(c.runner(), 0);
+    CHECK_EQ(c.running_count(), 1u);
+    c.nodes[1].node->set_connected(true);
+    c.run(3000);
+    CHECK_EQ(c.running_count(), 1u);  // two qualify: still exactly one runs (the rendezvous hash picks)
+    c.nodes[c.runner() == 0 ? 0 : 1].node->set_connected(false);  // the holder's Wi-Fi goes
+    c.run(3000);
+    CHECK_EQ(c.running_count(), 1u);
+    CHECK(c.runner() == 0 || c.runner() == 1);
+    CHECK(c.nodes[static_cast<size_t>(c.runner())].node->connected());
 }

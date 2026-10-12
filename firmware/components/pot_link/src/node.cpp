@@ -582,6 +582,13 @@ void Node::set_busy(bool b) {
     announce_change();
 }
 
+void Node::set_connected(bool c) {
+    const uint32_t next = c ? (caps_ | kHelloCapConnected) : (caps_ & ~kHelloCapConnected);
+    if (next == caps_) return;
+    caps_ = next;
+    announce_change();
+}
+
 uint32_t Node::peer_caps(const PeerLink* p) const {
     if (p == nullptr) return 0;
     const size_t i = peers_.index_of(p);

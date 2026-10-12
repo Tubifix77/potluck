@@ -57,8 +57,13 @@ size_t image_extent(const uint8_t* data, size_t len) {
     if (data[4] != kImageVersionOutside) return at;
     if (at >= len) return 0;  // the outside count
     const uint8_t no = data[at++];
-    if (static_cast<size_t>(no) * 5 > len - at) return 0;
-    return at + static_cast<size_t>(no) * 5;
+    for (uint8_t i = 0; i < no; ++i) {
+        if (len - at < 6) return 0;
+        const size_t nl = data[at + 5];
+        if (len - at - 6 < nl) return 0;
+        at += 6 + nl;
+    }
+    return at;
 }
 
 bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why) {
@@ -240,28 +245,43 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                 w = "more outside rules than kMaxOutside";
                 return false;
             }
-            if (len - at < static_cast<size_t>(no) * 5) {
-                w = "outside section truncated";
-                return false;
-            }
+            const size_t start = at;
+            uint32_t seen[kMaxOutside];
             for (uint8_t i = 0; i < no; ++i) {
-                const uint32_t h = rd32(data + at + i * 5);
-                const uint8_t f = data[at + i * 5 + 4];
+                if (len - at < 6 || len - at - 6 < data[at + 5]) {
+                    w = "outside section truncated";
+                    return false;
+                }
+                const uint32_t h = rd32(data + at);
+                const uint8_t f = data[at + 4];
+                const size_t nl = data[at + 5];
                 if (h == 0 || !outside_flags_valid(f)) {
                     w = "outside rule invalid: a zero hash, an unknown flag, writable but not exposed, or writable and "
                         "safety-relevant";
                     return false;
                 }
+                if (nl == 0 || nl > kMaxOutsideName) {
+                    w = "outside rule's name is not 1..40 characters";
+                    return false;
+                }
+                for (size_t k = 0; k < nl; ++k) {
+                    const uint8_t ch = data[at + 6 + k];
+                    if (ch < 0x21 || ch > 0x7E || ch == '"' || ch == '\\') {
+                        w = "outside rule's name has a character outside printable ASCII (or a quote or backslash)";
+                        return false;
+                    }
+                }
                 for (uint8_t k = 0; k < i; ++k) {
-                    if (rd32(data + at + k * 5) == h) {
+                    if (seen[k] == h) {
                         w = "outside section names one resource twice";
                         return false;
                     }
                 }
+                seen[i] = h;
+                at += 6 + nl;
             }
             out.outside_count = no;
-            out.outside = data + at;
-            at += static_cast<size_t>(no) * 5;
+            out.outside = data + start;
         }
         if (at != len) {
             w = v3 ? "trailing bytes after the outside section" : "trailing bytes after the last guest";
@@ -278,9 +298,14 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
     return true;
 }
 
-void outside_rule(const DeployImage& img, size_t i, uint32_t& path_hash, uint8_t& flags) {
-    path_hash = rd32(img.outside + i * 5);
-    flags = img.outside[i * 5 + 4];
+void outside_rule(const DeployImage& img, size_t i, uint32_t& path_hash, uint8_t& flags, const char** name,
+                  size_t* name_len) {
+    const uint8_t* p = img.outside;
+    for (size_t k = 0; k < i; ++k) p += 6 + p[5];
+    path_hash = rd32(p);
+    flags = p[4];
+    if (name != nullptr) *name = reinterpret_cast<const char*>(p + 6);
+    if (name_len != nullptr) *name_len = p[5];
 }
 
 bool apply_outside(const DeployImage& img, Namespace& ns) {

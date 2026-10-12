@@ -45,9 +45,11 @@ def manifest() -> dict:
 #: compile_image(parse(manifest()), 4), decoded by hand on 2026-10-12: magic POTD, version 3, 1 actor (the
 #: cluster name, "m3-test"), counter 4, digest, body 11 B; guest count 0; outside count 3, sorted by path:
 #: act/brake 0x4bb14f76 flags 05 (exposed, safety-relevant), led/level 0xd1db1882 flags 03 (exposed, writable),
-#: node-7368 hw/die_temp 0x57d40a8e flags 01 (exposed).
+#: node-7368 hw/die_temp 0x57d40a8e flags 01 (exposed) -- each followed by its name, the path after potluck://m3-test/.
 GOLDEN = ("504f54440301000004000000bf6939c8cbb48a3f0b000000ffff09076d332d74657374"
-          "0003764fb14b058218dbd1038e0ad45701")
+          "0003764fb14b05136e6f64652d363330302f6163742f6272616b65"
+          "8218dbd103136e6f64652d363330302f6c65642f6c6576656c"
+          "8e0ad45701156e6f64652d373336382f68772f6469655f74656d70")
 
 
 def errors_of(doc: dict) -> str:

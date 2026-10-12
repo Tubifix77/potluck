@@ -354,6 +354,10 @@ class Node {
     // ---- M5.1 (CR-4): the BUSY capability ------------------------------------------------------
     void set_busy(bool busy);
     bool busy() const { return (caps_ & kHelloCapBusy) != 0; }
+    // M13: on a network outside the cell (kHelloCapConnected); announced at once, like BUSY.
+    void set_connected(bool connected);
+    bool connected() const { return (caps_ & kHelloCapConnected) != 0; }
+    uint32_t caps() const { return caps_; }
     // The caps a peer's last admitted HELLO declared.
     uint32_t peer_caps(const PeerLink* p) const;
 
