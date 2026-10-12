@@ -280,6 +280,9 @@ std::atomic<uint32_t> g_radio_fail_since_ms{0};
 
 int32_t radio_send(const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
     const int32_t err = espnow_send(mac, data, len);
+    // A radio that never came up (a failed bring-up, a radio-less build) is not a radio refusing: such a node is meant
+    // to keep running, diagnosable over its serial link (found by review, M0-LOG session 41).
+    if (!espnow_up()) return err;
     const uint32_t now = now_ms_();
     if (err == 0) {
         g_radio_ok_ms.store(now);
@@ -1715,7 +1718,11 @@ void link_task(void*) {
             // M13: a lower-id station is the cell's channel authority; if it is on another channel than ours,
             // Potluck's station picks again preferring it (at most every 30 s), and announces nothing meanwhile.
             const uint8_t auth = g_node->outranking_channel();
+            const uint8_t cell_ch = g_node->channel();
             xSemaphoreGive(g_mutex);
+            // The channel the station prefers at its next pick: the authority's if one outranks it, else the cell's
+            // (found by review: it was set only at boot, so after a move every reconnect preferred a stale channel).
+            uplink::prefer(auth != 0 ? auth : cell_ch);
             if (assoc && auth != 0 && auth != radio_ch && uplink::defer_to(auth)) {
                 ESP_LOGI(kTag, "%s: the cell's channel authority is on channel %u, this station on %u; picking again",
                          uplink::name(), static_cast<unsigned>(auth), static_cast<unsigned>(radio_ch));
@@ -3076,7 +3083,14 @@ const pocket::Snapshot& pocket_snapshot(uint32_t now) {
         const deploy_rt::OutsideName& o = deploy_rt::g_outside[i];
         if ((o.flags & kOutsideExposed) == 0) continue;  // what the package shows outside, and nothing else
         Reading r;
-        if (g_node->read(o.hash, r) != NsError::Ok) continue;
+        bool local = true;
+        if (g_node->read(o.hash, r, &local) != NsError::Ok) continue;
+        // Nobody else may be polling it (on the boat no presenter can be placed): refresh the replica from its owner
+        // every other pass, for the next snapshot (found by review, M0-LOG session 41).
+        if (!local && (now / 1000) % 2 == 0) {
+            const NsEntry* e = g_node->ns().find(o.hash);
+            if (e != nullptr && e->owner_node != 0 && e->owner_node != s.self) g_node->request_read(e->owner_node, o.hash);
+        }
         pocket::Item& it = s.items[s.n_items++];
         std::snprintf(it.name, sizeof(it.name), "%s", o.name);
         it.value[0] = '\0';

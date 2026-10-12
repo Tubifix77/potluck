@@ -71,6 +71,10 @@ uint8_t hunt_misses() {
     return CONFIG_POT_HB_MISS_LIMIT;
 }
 
+void prefer(uint8_t channel) {
+    if (g_kind == Kind::Wifi && channel != 0) wifi::prefer_channel(channel);
+}
+
 bool defer_to(uint8_t channel) {
     if (g_kind != Kind::Wifi || channel == 0) return false;
     wifi::prefer_channel(channel);

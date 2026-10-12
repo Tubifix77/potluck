@@ -32,4 +32,7 @@ uint8_t hunt_misses();    // the heartbeat misses to declare while the station l
 // is -- a partition the failure contract states. False if nothing was done.
 bool defer_to(uint8_t channel);
 
+// The channel Potluck's station prefers at its next pick (no-op for the extender, which keeps its own CR-7 rule).
+void prefer(uint8_t channel);
+
 }  // namespace pot::uplink

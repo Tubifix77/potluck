@@ -93,7 +93,9 @@ void retry_later() {
     g_retry_ms.store(ms * 2 > kRetryMaxMs ? kRetryMaxMs : ms * 2);
 }
 
-void on_retry(void*) { scan_now(); }
+void on_retry(void*) {
+    if (!g_assoc.load()) scan_now();  // an association that came in meanwhile stands
+}
 
 // The access point to join: on the preferred channel if one there is within the margin of the strongest,
 // else the strongest. Returns false if the network was not heard.
@@ -122,6 +124,7 @@ void on_wifi(void*, esp_event_base_t base, int32_t id, void* data) {
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
         scan_now();
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_SCAN_DONE) {
+        if (g_assoc.load()) return;  // a scan that finished after an association: nothing to join
         wifi_ap_record_t ap{};
         if (!pick(ap)) {
             ESP_LOGW(kTag, "network not heard; retrying in %u ms", static_cast<unsigned>(g_retry_ms.load()));
@@ -163,6 +166,8 @@ void on_wifi(void*, esp_event_base_t base, int32_t id, void* data) {
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         g_ip.store(true);
         g_retry_ms.store(kRetryFirstMs);
+    } else if (base == IP_EVENT && id == IP_EVENT_STA_LOST_IP) {
+        g_ip.store(false);  // associated, no address: not connected for a role that connects out
     }
 }
 
@@ -221,6 +226,7 @@ bool start(uint8_t cell_channel) {
     if (err == ESP_OK) err = esp_timer_create(&targs, &g_retry_timer);
     if (err == ESP_OK) err = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &on_wifi, nullptr);
     if (err == ESP_OK) err = esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &on_wifi, nullptr);
+    if (err == ESP_OK) err = esp_event_handler_register(IP_EVENT, IP_EVENT_STA_LOST_IP, &on_wifi, nullptr);
     if (err == ESP_OK) err = esp_wifi_start();
     // No power save: ESP-NOW measures delay, and modem sleep adds a wake latency (espnow_port.cpp's rule).
     if (err == ESP_OK) err = esp_wifi_set_ps(WIFI_PS_NONE);

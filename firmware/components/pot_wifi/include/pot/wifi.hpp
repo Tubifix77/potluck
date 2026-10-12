@@ -39,7 +39,8 @@ bool has_ip();
 // The channel of the latest association, once: 0 if none arrived since the last call.
 uint8_t take_channel();
 
-// The channel to prefer at the next pick (0: none). The node's link loop keeps it at the cell's channel.
+// The channel to prefer at the next pick (0: none). The node's link loop keeps it at the cell's channel, or the
+// channel authority's when a lower-id station outranks this one (uplink::prefer).
 void prefer_channel(uint8_t channel);
 
 // Drop the association and pick again, preferring prefer_channel()'s -- what a station does when the cell's

@@ -42,11 +42,34 @@ struct Cmd {
     char payload[24];
 };
 
+// What one holding of the role connects with. The link task builds it in start() and hands it over inside the 'S'
+// record; the sender keeps its own copy (State::active), which the client and its event handler read -- so nothing
+// the link task writes is ever read by another task (found by review, M0-LOG session 41: a role that left and came
+// back quickly rewrote strings the old client's handler and the sender were still reading).
+struct StartCfg {
+    char uri[40];
+    char client_id[40];
+    char will_topic[64];
+    char will_msg[64];
+    char cmd_filter[48];
+    char status_topic[48];
+    char cell_id[9];
+    char system[32];
+    char user[65];
+    char pass[65];
+    uint16_t presenters[kMaxEligible];
+    uint8_t n_presenters;
+    uint8_t keepalive_s;
+    bool login;
+};
+
 // One presenter per board, so its state is one block, in PSRAM where there is any: only tasks touch it.
 struct State {
     // The sender task's alone: created, used and destroyed there (sender_task), never by the link task.
     esp_mqtt_client_handle_t client;
     esp_mqtt_client_config_t mc;
+    StartCfg active;  // the sender's; also read by on_mqtt, on the current client's task
+    StartCfg build;   // the link task's, posted with 'S' 
     MessageBufferHandle_t out;
     StaticMessageBuffer_t out_ctl;
     uint8_t out_store[kOutLen + 1];
@@ -59,14 +82,7 @@ struct State {
     QueueHandle_t cmds;
     StaticQueue_t q_ctl;
     uint8_t q_store[kCmdDepth * sizeof(Cmd)];
-    char uri[40];
-    char client_id[40];
-    char will_topic[64];
-    char will_msg[64];
-    char cmd_filter[48];
-    char status_topic[48];
-    char user[65];
-    char pass[65];
+    // The link task's: the actor's view of the cell (topics it builds in tick()).
     char cell_id[9];
     char system[32];
     uint16_t presenters[kMaxEligible];
@@ -80,6 +96,7 @@ struct State {
 };
 EXT_RAM_BSS_ATTR State g;
 
+// The link task's view.
 Cell cell() {
     Cell c;
     c.id = g.cell_id;
@@ -87,6 +104,17 @@ Cell cell() {
     c.prefix = CONFIG_POT_PRESENT_PREFIX;
     c.presenters = g.presenters;
     c.n_presenters = g.n_presenters;
+    return c;
+}
+
+// The sender's (and the client's event handler's) view: the holding the current client was started for.
+Cell cell_active() {
+    Cell c;
+    c.id = g.active.cell_id;
+    c.system = g.active.system;
+    c.prefix = CONFIG_POT_PRESENT_PREFIX;
+    c.presenters = g.active.presenters;
+    c.n_presenters = g.active.n_presenters;
     return c;
 }
 
@@ -120,8 +148,8 @@ void on_mqtt(void*, esp_event_base_t, int32_t id, void* data) {
             g.connected.store(true);
             g.need_discovery.store(true);
             g.connects.fetch_add(1);
-            esp_mqtt_client_subscribe_single(ev->client, g.cmd_filter, 0);
-            esp_mqtt_client_subscribe_single(ev->client, g.status_topic, 0);
+            esp_mqtt_client_subscribe_single(ev->client, g.active.cmd_filter, 0);
+            esp_mqtt_client_subscribe_single(ev->client, g.active.status_topic, 0);
             ESP_LOGI(kTag, "connected to the broker");
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -130,13 +158,13 @@ void on_mqtt(void*, esp_event_base_t, int32_t id, void* data) {
         case MQTT_EVENT_DATA: {
             if (ev->current_data_offset != 0 || ev->data_len != ev->total_data_len) break;  // fragments: not ours
             const size_t tl = static_cast<size_t>(ev->topic_len);
-            if (tl == std::strlen(g.status_topic) && std::strncmp(ev->topic, g.status_topic, tl) == 0) {
+            if (tl == std::strlen(g.active.status_topic) && std::strncmp(ev->topic, g.active.status_topic, tl) == 0) {
                 // Home Assistant's birth message: it (re)started and forgot every entity -- send the configs again.
                 if (ev->data_len == 6 && std::strncmp(ev->data, "online", 6) == 0) g.need_discovery.store(true);
                 break;
             }
             Cmd c{};
-            const Cell cl = cell();
+            const Cell cl = cell_active();
             if (!parse_command_topic(cl, ev->topic, tl, c.hash)) break;
             if (ev->data_len <= 0 || static_cast<size_t>(ev->data_len) >= sizeof(c.payload)) {
                 c.len = 0;  // refused when handled: too long to be a value
@@ -161,7 +189,7 @@ void on_mqtt(void*, esp_event_base_t, int32_t id, void* data) {
 // lasting up to its 1 s read poll: found on the bench, outbox at 9.7 KB and states 40 s old) is not used.
 void stop_client() {
     if (g.client == nullptr) return;
-    if (g.connected.load()) esp_mqtt_client_publish(g.client, g.will_topic, g.will_msg, 0, 0, 0);
+    if (g.connected.load()) esp_mqtt_client_publish(g.client, g.active.will_topic, g.active.will_msg, 0, 0, 0);
     vTaskDelay(pdMS_TO_TICKS(100));
     esp_mqtt_client_disconnect(g.client);
     esp_mqtt_client_destroy(g.client);
@@ -178,8 +206,26 @@ void sender_task(void*) {
         g.rec_in[n] = '\0';
         const char kind = g.rec_in[0];
         if (kind == 'S') {
-            stop_client();
-            g.client = esp_mqtt_client_init(&g.mc);
+            stop_client();  // the old client's task is gone before its handler's strings change
+            if (n - 2 != sizeof(StartCfg)) continue;
+            std::memcpy(&g.active, g.rec_in + 2, sizeof(StartCfg));
+            esp_mqtt_client_config_t& mc = g.mc;
+            mc = esp_mqtt_client_config_t{};
+            mc.broker.address.uri = g.active.uri;
+            mc.credentials.client_id = g.active.client_id;
+            if (g.active.login) {
+                mc.credentials.username = g.active.user;
+                mc.credentials.authentication.password = g.active.pass;
+            }
+            mc.session.keepalive = g.active.keepalive_s;
+            mc.session.last_will.topic = g.active.will_topic;
+            mc.session.last_will.msg = g.active.will_msg;
+            mc.session.last_will.msg_len = static_cast<int>(std::strlen(g.active.will_msg));
+            mc.session.last_will.qos = 1;
+            mc.session.last_will.retain = 0;
+            mc.network.reconnect_timeout_ms = 3000;
+            mc.buffer.size = 2048;
+            g.client = esp_mqtt_client_init(&mc);
             if (g.client == nullptr) {
                 ESP_LOGE(kTag, "MQTT client not created (out of memory?)");
                 g.errors.fetch_add(1);
@@ -207,14 +253,14 @@ void sender_task(void*) {
     }
 }
 
-bool load_login() {
+bool load_login(StartCfg& c) {
     nvs_handle_t h;
-    g.user[0] = g.pass[0] = '\0';
+    c.user[0] = c.pass[0] = '\0';
     if (nvs_open(kNvsNs, NVS_READONLY, &h) != ESP_OK) return false;
-    size_t ul = sizeof(g.user), pl = sizeof(g.pass);
-    const bool ok = nvs_get_str(h, "user", g.user, &ul) == ESP_OK && nvs_get_str(h, "pass", g.pass, &pl) == ESP_OK;
+    size_t ul = sizeof(c.user), pl = sizeof(c.pass);
+    const bool ok = nvs_get_str(h, "user", c.user, &ul) == ESP_OK && nvs_get_str(h, "pass", c.pass, &pl) == ESP_OK;
     nvs_close(h);
-    if (!ok) g.user[0] = g.pass[0] = '\0';
+    if (!ok) c.user[0] = c.pass[0] = '\0';
     return ok;
 }
 
@@ -232,14 +278,22 @@ class PresentActor : public Actor {
         g.n_presenters = cfg_.place.count;
         for (size_t i = 0; i < g.n_presenters; ++i) g.presenters[i] = cfg_.place.node[i];
         const Cell cl = cell();
-        command_filter(cl, g.cmd_filter, sizeof(g.cmd_filter));
-        std::snprintf(g.status_topic, sizeof(g.status_topic), "%s/status", CONFIG_POT_PRESENT_PREFIX);
-        presenter_topic(cl, self, g.will_topic, sizeof(g.will_topic));
-        will_payload(self, g.will_msg, sizeof(g.will_msg));
-        std::snprintf(g.uri, sizeof(g.uri), "mqtt://%u.%u.%u.%u:%u", cfg_.ip[0], cfg_.ip[1], cfg_.ip[2], cfg_.ip[3],
+        StartCfg& b = g.build;
+        b = StartCfg{};
+        command_filter(cl, b.cmd_filter, sizeof(b.cmd_filter));
+        std::snprintf(b.status_topic, sizeof(b.status_topic), "%s/status", CONFIG_POT_PRESENT_PREFIX);
+        presenter_topic(cl, self, b.will_topic, sizeof(b.will_topic));
+        will_payload(self, b.will_msg, sizeof(b.will_msg));
+        std::snprintf(b.uri, sizeof(b.uri), "mqtt://%u.%u.%u.%u:%u", cfg_.ip[0], cfg_.ip[1], cfg_.ip[2], cfg_.ip[3],
                       static_cast<unsigned>(cfg_.port));
-        std::snprintf(g.client_id, sizeof(g.client_id), "potluck-%s-%04x", g.cell_id, static_cast<unsigned>(self));
-        const bool login = load_login();
+        std::snprintf(b.client_id, sizeof(b.client_id), "potluck-%s-%04x", g.cell_id, static_cast<unsigned>(self));
+        std::memcpy(b.cell_id, g.cell_id, sizeof(b.cell_id));
+        std::memcpy(b.system, g.system, sizeof(b.system));
+        b.n_presenters = static_cast<uint8_t>(g.n_presenters);
+        for (size_t i = 0; i < g.n_presenters; ++i) b.presenters[i] = g.presenters[i];
+        b.keepalive_s = cfg_.keepalive_s;
+        b.login = load_login(b);
+        const bool login = b.login;
         if (g.cmds == nullptr) {
             g.cmds = xQueueCreateStatic(kCmdDepth, sizeof(Cmd), g.q_store, &g.q_ctl);
         } else {
@@ -251,48 +305,31 @@ class PresentActor : public Actor {
             esp_sntp_config_t sc = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
             g.sntp_started = esp_netif_sntp_init(&sc) == ESP_OK;
         }
-        if (g.out == nullptr) {
-            g.out = xMessageBufferCreateStatic(sizeof(g.out_store), g.out_store, &g.out_ctl);
-            if (xTaskCreatePinnedToCore(&sender_task, "pot_present", 4096, nullptr, 4, &g.sender, tskNO_AFFINITY) !=
-                pdPASS) {
-                ESP_LOGE(kTag, "no memory for the sender task");
-                return false;
-            }
+        if (g.out == nullptr) g.out = xMessageBufferCreateStatic(sizeof(g.out_store), g.out_store, &g.out_ctl);
+        if (g.sender == nullptr &&
+            xTaskCreatePinnedToCore(&sender_task, "pot_present", 4096, nullptr, 4, &g.sender, tskNO_AFFINITY) != pdPASS) {
+            g.sender = nullptr;  // tried again at the next holding
+            ESP_LOGE(kTag, "no memory for the sender task");
+            return false;
         }
-        esp_mqtt_client_config_t& mc = g.mc;
-        mc = esp_mqtt_client_config_t{};
-        mc.broker.address.uri = g.uri;
-        mc.credentials.client_id = g.client_id;
-        if (login) {
-            mc.credentials.username = g.user;
-            mc.credentials.authentication.password = g.pass;
-        }
-        mc.session.keepalive = cfg_.keepalive_s;
-        mc.session.last_will.topic = g.will_topic;
-        mc.session.last_will.msg = g.will_msg;
-        mc.session.last_will.msg_len = static_cast<int>(std::strlen(g.will_msg));
-        mc.session.last_will.qos = 1;
-        mc.session.last_will.retain = 0;
-        mc.network.reconnect_timeout_ms = 3000;
-        mc.buffer.size = 2048;
         g.connected.store(false);
         g.need_discovery.store(false);
-        xMessageBufferReset(g.out);  // anything left from an earlier holding is not this one's to send
-        if (!post('S', nullptr, nullptr, 0)) return false;
+        // Records left from an earlier holding go first and are harmless: the sender drops a publish with no client,
+        // and this 'S' replaces any client still there. Only the sender reads the buffer, so only the link task writes.
+        if (!post('S', nullptr, reinterpret_cast<const char*>(&b), sizeof(b))) return false;
+        std::memset(b.pass, 0, sizeof(b.pass));
         g.holding.store(true);
         next_ms_ = now_ms;
         rediscover_ms_ = now_ms + kRediscoverMs;
-        ESP_LOGI(kTag, "presenting the cell to %s%s", g.uri, login ? " (with a login)" : "");
+        ESP_LOGI(kTag, "presenting the cell to %s%s", b.uri, login ? " (with a login)" : "");
         return true;
     }
 
     ~PresentActor() override {
         g.holding.store(false);
-        // The sender says goodbye and destroys the client; states still queued go first, which is harmless.
-        if (!post('X', nullptr, nullptr, 0)) {
-            xMessageBufferReset(g.out);
-            post('X', nullptr, nullptr, 0);
-        }
+        // The sender says goodbye and destroys the client; states still queued go first, which is harmless. A full
+        // buffer (a sender stuck on a broker that does not answer) drops the 'X': the next 'S' replaces the client.
+        if (g.out != nullptr && !post('X', nullptr, nullptr, 0)) ESP_LOGW(kTag, "goodbye not queued (buffer full)");
         ESP_LOGI(kTag, "role handed on");
     }
 

@@ -5106,3 +5106,18 @@ a copy of the snapshot the link task fills once a second, and answers every othe
 about 64 KB flash, 1.9 KB static internal RAM (the station's 1.6 KB of scan records since moved to PSRAM), 22 KB PSRAM;
 core unchanged at 63,047 B; the image with every module 1.16 MB of the 2 MB slot. Its bench test is the owner's: the
 password is theirs, and the test is a phone.
+
+**An independent review of tonight's firmware** (a read-only subagent, during the soak) found six defects, all fixed
+before any reached a board again: (1) the transmit fail-stop would have restarted every 60 s a board whose radio
+never came up, or a radio-less build -- it now counts only a radio that is up, and defaults to 0 under
+`CONFIG_POT_RADIO_DISABLE` (checked: that build carries 0); (2) the pocket page never refreshed values owned by other
+boards, exactly the boat's case where no presenter polls -- it now READs them from their owners every other second;
+(3) the presenter's destructor could assert on a missing message buffer, and a failed sender-task creation left the
+role held and dead -- guarded, and the task is created on its own condition; (4) a role that left and came back
+quickly had the link task rewrite strings the old client's handler and the sender were still reading -- each
+holding's whole configuration now travels inside the 'S' record and the sender keeps its own copy, and the writer
+never resets the buffer; (5) the Wi-Fi station's preferred channel was set only at boot, a late scan could re-join an
+associated station, and a lost DHCP lease left `connected` true -- the link loop now keeps the preference current,
+both scan paths stand down when associated, and `IP_EVENT_STA_LOST_IP` clears the address; (6) the pocket page
+registered ten handlers into eight slots -- ten now, results checked (the server refused the two extra methods by
+itself either way).

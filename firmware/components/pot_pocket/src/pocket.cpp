@@ -119,7 +119,7 @@ bool start(bool other_ap) {
         return false;
     }
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
-    cfg.max_uri_handlers = 8;
+    cfg.max_uri_handlers = 10;  // 2 paths x (GET + 4 refused methods)
     cfg.max_open_sockets = 3;
     cfg.lru_purge_enable = true;
     cfg.stack_size = 4096;
@@ -134,14 +134,15 @@ bool start(bool other_ap) {
         u.uri = path;
         u.method = HTTP_GET;
         u.handler = (std::strcmp(path, "/") == 0) ? &get_html : &get_json;
-        httpd_register_uri_handler(g_server, &u);
+        bool ok = httpd_register_uri_handler(g_server, &u) == ESP_OK;
         for (httpd_method_t m : others) {
             httpd_uri_t r{};
             r.uri = path;
             r.method = m;
             r.handler = &refuse;
-            httpd_register_uri_handler(g_server, &r);
+            ok = httpd_register_uri_handler(g_server, &r) == ESP_OK && ok;
         }
+        if (!ok) ESP_LOGW(kTag, "a handler for %s was not registered (the server still refuses other methods)", path);
     }
     g_active = true;
     g_reason = 0;
