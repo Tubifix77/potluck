@@ -772,3 +772,29 @@ every other path 404. Without a name and password there is no access point; on a
 module stays idle (the extender owns the access point). The board prints `{"t":"pocket",...}`: phones on it, pages
 served, requests refused, its internal heap.
 
+## 17. M16: the dashboard (first cut, on the mock)
+
+The dashboard is three static files in `host/potluck/potluck/dashboard/` (`index.html`, `app.js`, `style.css`; no
+framework, nothing fetched from the internet) that the hub (M14) will serve at `/`. It reads only the hub's API
+version 1 (`host/potluck/HUB-API.md`): `/api/stream`, falling back to `/api/model` and `/api/events` every 2 s when
+the stream fails. Until the hub exists it is built against `tools/hub_mock.py`, which serves the same files and the
+same API from a simulated cell of three boards (A 6300 cabled, B 7368 extender and presenter, C 8160). The mock opens
+no serial port and touches no board; any Python 3.10+ runs it, from the repository root:
+
+```
+python tools/hub_mock.py                       # then open http://127.0.0.1:8470/ (desk or phone browser on this PC)
+python tools/hub_mock.py --kill 8160@20        # C goes silent after 20 s, dead one death window (3 s) later
+python tools/hub_mock.py --stale --reverted --other-cell --link-down --asleep 6300
+```
+
+Faults can also be set while it runs: `http://127.0.0.1:8470/mock/fault?kill=8160&after=5`, `?revive=8160`,
+`?stale=1`, `?reverted=1`, `?other_cell=1`, `?link_down=1`, `?asleep=6300`, `?wake=6300` (`=0` clears a switch).
+`/mock/...` is the mock's own and not part of the API. Only `potluck://lab/node-7368/led/on` is writable from outside
+(the Data tab shows it as a switch); any other write gets 403, as the contract says. There is no deploy control.
+
+The page: the first screen answers "is anything broken?" (problems first, then tiles for boards, apps,
+integrations, the last deploy, the hub's link and the channel, each linking to the tab that explains it), then the
+four golden signals, then utilisation and saturation per resource (cell-wide saturation, heap per board, every
+radio link), then the tabs Cell, Apps, Data, Integrations, Deploys, Events. Links are `#<tab>/<item>`, e.g.
+`#cell/8160` or `#data/potluck://lab/node-7368/hw/die_temp`. Tests: `python -m pytest -q
+host/potluck/tests/test_dashboard.py` (the mock against the contract, the page's landmarks; no browser needed).

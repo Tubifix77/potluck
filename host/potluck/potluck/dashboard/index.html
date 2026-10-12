@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Potluck cell</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<!--
+  Potluck's dashboard (M16), first cut. Reads the hub's API version 1 (host/potluck/HUB-API.md): /api/stream, falling
+  back to /api/model and /api/events. Look and write rights only: there is no deploy control on this page, by design.
+
+  Landmarks (tests/test_dashboard.py checks them; keep them):
+    #conn         the page's own link to the hub (live / polling / lost) and the model's age
+    #status       layer 1, "is anything broken?":  #verdict, #problems, #summary with the tiles
+                  #sum-boards #sum-apps #sum-integrations #sum-deploy #sum-hub #sum-channel
+    #signals      layer 2, the four golden signals
+    #use          layer 3, utilisation and saturation per resource
+    #tabs         layer 4: #tab-cell #tab-apps #tab-data #tab-integrations #tab-deploys #tab-events
+-->
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true"></span><span>Potluck</span>
+    <span id="cell-name" class="muted"></span></div>
+  <div id="conn" class="conn" role="status" aria-live="polite"><span class="dot"></span><span id="conn-text">connecting</span></div>
+</header>
+
+<main>
+  <div id="stale-banner" class="banner bad" hidden></div>
+
+  <section id="status" aria-labelledby="status-h">
+    <h2 id="status-h" class="sr-only">Is anything broken?</h2>
+    <div id="verdict" class="verdict unknown"><span class="verdict-mark" aria-hidden="true"></span>
+      <div><div id="verdict-title" class="verdict-title">Waiting for the hub</div>
+        <div id="verdict-text" class="verdict-text">No model yet.</div></div></div>
+    <ul id="problems" class="problems"></ul>
+    <div id="summary" class="tiles">
+      <a id="sum-boards" class="tile" href="#cell"><span class="tile-k">Boards alive</span><span class="tile-v">-</span><span class="tile-s"></span></a>
+      <a id="sum-apps" class="tile" href="#apps"><span class="tile-k">Apps working</span><span class="tile-v">-</span><span class="tile-s"></span></a>
+      <a id="sum-integrations" class="tile" href="#integrations"><span class="tile-k">Integrations</span><span class="tile-v">-</span><span class="tile-s"></span></a>
+      <a id="sum-deploy" class="tile" href="#deploys"><span class="tile-k">Last deploy</span><span class="tile-v">-</span><span class="tile-s"></span></a>
+      <a id="sum-hub" class="tile" href="#cell/hub"><span class="tile-k">Hub's link</span><span class="tile-v">-</span><span class="tile-s"></span></a>
+      <a id="sum-channel" class="tile" href="#cell/channel"><span class="tile-k">Channel</span><span class="tile-v">-</span><span class="tile-s"></span></a>
+    </div>
+  </section>
+
+  <section id="signals" aria-labelledby="signals-h">
+    <h2 id="signals-h">Golden signals</h2>
+    <div id="signals-tiles" class="tiles"></div>
+  </section>
+
+  <section id="use" aria-labelledby="use-h">
+    <h2 id="use-h">Resources <span class="muted small">utilisation and saturation</span></h2>
+    <div id="use-sat" class="bars"></div>
+    <h3>Heap per board</h3>
+    <div id="use-heap"></div>
+    <h3>Radio links</h3>
+    <div id="use-links"></div>
+  </section>
+
+  <nav id="tabs" class="tabs" role="tablist" aria-label="Details">
+    <a role="tab" href="#cell" data-tab="cell">Cell</a>
+    <a role="tab" href="#apps" data-tab="apps">Apps</a>
+    <a role="tab" href="#data" data-tab="data">Data</a>
+    <a role="tab" href="#integrations" data-tab="integrations">Integrations</a>
+    <a role="tab" href="#deploys" data-tab="deploys">Deploys</a>
+    <a role="tab" href="#events" data-tab="events">Events</a>
+  </nav>
+
+  <section id="tab-cell" class="tabpanel" role="tabpanel" aria-label="Cell"></section>
+  <section id="tab-apps" class="tabpanel" role="tabpanel" aria-label="Apps" hidden></section>
+  <section id="tab-data" class="tabpanel" role="tabpanel" aria-label="Data" hidden>
+    <div class="toolbar"><label>Filter <input id="data-filter" type="search" placeholder="path, board, quality" autocomplete="off"></label></div>
+    <div id="data-body"></div>
+  </section>
+  <section id="tab-integrations" class="tabpanel" role="tabpanel" aria-label="Integrations" hidden></section>
+  <section id="tab-deploys" class="tabpanel" role="tabpanel" aria-label="Deploys" hidden>
+    <p class="muted small">Deploys are made only with <code>potluck apply</code> on the PC that holds the owner's keys -- never from this page.</p>
+    <div id="deploys-body"></div>
+  </section>
+  <section id="tab-events" class="tabpanel" role="tabpanel" aria-label="Events" hidden>
+    <div class="toolbar">
+      <label>Board <select id="ev-board"><option value="">all</option></select></label>
+      <label>Kind <select id="ev-kind"><option value="">all</option></select></label>
+      <span id="ev-count" class="muted small"></span>
+    </div>
+    <ol id="events-body" class="events"></ol>
+  </section>
+</main>
+
+<footer class="foot muted small">Times are the hub's clock, shown in this browser's time zone. <span id="hub-meta"></span></footer>
+</body>
+</html>
