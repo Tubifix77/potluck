@@ -5197,3 +5197,17 @@ LED's state followed about 1 s later each time, and each write was announced on 
 (`captures/m13-ha-led.jsonl.gz`). But the light on B stayed green: `led_switch` on 1, the status LED `app` 0. Found:
 at boot a board created its actors from the package before it had handed them the board's services, so an actor made
 at boot held no LED service -- fixed (`8e7fce4`), rolling out.
+
+**The light, after the fix (firmware `8e7fce4`, package 52, rolled out through the hub -- A, the cabled board,
+confirmed this time, so the hub's HELLO fix is shown live).** The owner flipped B's LED in Home Assistant: B's light
+turned amber while on (alternating with green), steady green when off. The alternation is two apps sharing one light:
+`led_switch` sets amber every 2 s and passive-sensor's `rf_indicator`, also on B, keeps clearing its own presence
+colour while the room is empty -- BoardServices::led_app is last-caller-wins, as PS-5 documents. Not a fault in the
+path; a reason for a later per-app LED arbitration if two apps on one board ever both need the light. **M13's
+acceptance, where it stands:** Home Assistant with a broker shows the boards as devices and the exposed resources as
+entities with the right types and units, and nothing else (3 devices, 4 entities); a switch in Home Assistant changes
+B's LED and the board shows it, each write on the event topic (by the owner's hand rather than an automation -- the same
+MQTT command); refused writes and the owning board's own refusal shown; a dead board's entities unavailable; two
+presenters, failover at the broker 0.68-4.3 s with no visible outage; a cell without the module builds without it and
+`apply --plan` shows its cost; the radio's cost measured same-session and the kill line met and answered on the
+extender; 20 boards in pot_sim. **Owed:** a long soak with C presenting, and TLS's runtime cost.
