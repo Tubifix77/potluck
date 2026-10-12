@@ -37,6 +37,10 @@ extern const ActorKind kPresentKind;
 // the internal heap's free and largest block (the review's item 4). Nothing when the module is not built.
 void print_status();
 
+// For NODE_STATUS (the module's state): this board holds the role, and its client is connected to the broker.
+bool holding();
+bool connected();
+
 // Console, for the owner only:
 //   POT! present login <user> <password>   the broker's login (saved in NVS; used at the next connection)
 //   POT! present forget                    erase it

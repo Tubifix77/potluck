@@ -5159,3 +5159,14 @@ blank (C's topic still online until its will, 15 s later); C back -> its first p
 glitch gone. The price: B's first state came 4.3 s after C's last message (0.68 s before), because a new presenter now
 waited a whole period before publishing; nothing was unavailable in between. Shortened to 500 ms after its first READs,
 for the next rollout. Evidence `captures/m13-broker-failover2.jsonl.gz`.
+
+**M14 and M16, first cuts, on the real cell (afternoon).** Built in parallel during the comparison soak, to one written
+contract (`host/potluck/HUB-API.md`): the hub (`potluck.hub`, by this session) and the dashboard
+(`host/potluck/potluck/dashboard/`, with `tools/hub_mock.py`, by a subagent in its own worktree, merged). The hub holds
+COM6, relays tools' frames (renumbered msg_ids, their HELLO answered by the hub, their heartbeats kept off the cell),
+keeps one model from NODE_STATUS pulls and reads, and serves the contract and the page. On the bench with
+`--cluster keys/desk-m13.json`: three boards alive with their modules, all seven apps working where the package says,
+every resource with value, quality and age, the presenter on C; `potluck.apply inventory` and `potluck.ctl read` ran
+through the hub while it held the port and polled; the dashboard's first screen said "All is well -- 3 of 3 boards
+alive, all 7 apps working". Found by the model: NODE_STATUS never listed the `present` module, so the integrations list
+was empty -- fixed for the next rollout (active where held and connected, else standby or no network).

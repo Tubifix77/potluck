@@ -163,7 +163,7 @@
       apps.length + " apps working.") :
       esc(alive + " of " + boards.length + " boards alive" + (asleep.length ? ", " + asleep.length + " asleep" : "") +
         ", all " + apps.length + " apps working, every integration in use connected, the last deploy " +
-        (d ? d.result : "none") + ", the hub's link up, no other cell on channel " + cell.channel + ".");
+        (d ? d.result : "none") + ", the hub's link up" + (cell.channel != null ? ", no other cell on channel " + cell.channel : "") + ".");
     $("problems").innerHTML = P.map(function (p) {
       return '<li class="' + p.sev + '"><a href="' + esc(p.href) + '"><span class="pmark" aria-hidden="true"></span><span>' +
         p.html + "</span></a></li>";
@@ -201,7 +201,7 @@
         '</span><span class="tile-s">' + s + "</span></a>";
     };
     $("signals-tiles").innerHTML =
-      t("#use-links", "ok", "Latency", num(g.latency_p50_ms) + "<small> / " + num(g.latency_p99_ms, "ms") + "</small>", "heartbeat RTT p50 / p99") +
+      t("#use-links", "ok", "Latency", num(g.latency_p50_ms) + "<small> / " + num(g.latency_p99_ms, "ms") + "</small>", "round trip of the hub's reads, p50 / p99") +
       t("#use-links", "ok", "Traffic", num(g.traffic_frames_s) + "<small> frames/s</small>", "the whole cell") +
       t("#events", g.errors_min > 5 ? "bad" : g.errors_min > 1 ? "warn" : "ok", "Errors", num(g.errors_min) + "<small> /min</small>",
         "losses, deaths, refusals") +

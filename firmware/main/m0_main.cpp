@@ -3205,6 +3205,17 @@ size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {
     module(ModuleId::Extender, extender::active() ? ModuleState::Active : ModuleState::Idle,
            extender::active() ? ModuleReason::None : ModuleReason::NoCredentials);
 #endif
+#if CONFIG_POT_PRESENT
+    // M13: the presenting role -- active where held and connected to the broker; elsewhere standby (another board holds
+    // it, or nobody can: no network here).
+    if (present::holding()) {
+        module(ModuleId::Present, present::connected() ? ModuleState::Active : ModuleState::Idle,
+               present::connected() ? ModuleReason::None : ModuleReason::NoNetwork);
+    } else {
+        module(ModuleId::Present, ModuleState::Idle,
+               g_node->connected() ? ModuleReason::Standby : ModuleReason::NoNetwork);
+    }
+#endif
 #if CONFIG_POT_POCKET
     {
         const int why = pocket::idle_reason();

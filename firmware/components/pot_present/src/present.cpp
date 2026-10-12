@@ -577,6 +577,9 @@ size_t present_outputs(const ActorDecl& d, uint16_t, uint16_t peer, NsDecl* out,
 const ActorKind kPresentKind = {ActorType::Present, "present", &present_check, &present_create, &present_placement,
                                 &present_outputs};
 
+bool holding() { return g.holding.load(); }
+bool connected() { return g.connected.load(); }
+
 void print_status() {
     std::printf("{\"t\":\"present\",\"holding\":%d,\"connected\":%d,\"connects\":%lu,\"configs\":%lu,\"states\":%lu,"
                 "\"writes_sent\":%lu,\"writes_applied\":%lu,\"writes_refused\":%lu,\"cmds_dropped\":%lu,"
