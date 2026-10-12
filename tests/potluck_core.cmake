@@ -39,6 +39,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_link/src/membership.cpp"
   "${POT_FIRMWARE}/components/pot_link/src/stats_json.cpp"
   "${POT_FIRMWARE}/components/pot_link/src/node.cpp"
+  "${POT_FIRMWARE}/components/pot_link/src/telemetry.cpp"
   "${POT_FIRMWARE}/components/pot_ns/src/value.cpp"
   "${POT_FIRMWARE}/components/pot_ns/src/namespace.cpp"
   "${POT_FIRMWARE}/components/pot_ns/src/ns_payloads.cpp"

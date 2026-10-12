@@ -1929,6 +1929,7 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         case kOpFwStatus:
         case kOpNodeStatus:  // M12: the inventory
         case kOpLease:       // M14: the cell's leases
+        case kOpTelemetry:   // M15: telemetry for the hub
             handle_deploy(p, f);
             break;
         case kOpSafeState: handle_safe_state(p, f); break;

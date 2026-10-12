@@ -66,6 +66,17 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
 ```
 
 - `board.state`: `alive` | `dead` | `asleep` (a declared long window, M5.1) | `unknown` (never heard since the hub started).
+- `board.heap`, `board.links`, `board.rssi` and `board.telemetry` come from M15's telemetry, pulled over the radio every
+  `hub.telemetry_period_ms` (`--telemetry-ms`, default 10000; 0 never): `heap` adds `psram_min`; each link adds `lost`
+  (sequence gaps), `misses`, `cable` (the PC on that board's cable) and `window_ms` (the peer's declared death window);
+  `delivery` is `null` on the cable, where nothing is acknowledged. `telemetry` holds the board's counters --
+  `{at, channel, flags, up_ms, epoch, peers_alive, peers_dead, deaths, revivals, reboots_seen, rx_total, rx_rejected,
+  rx_queue_dropped, tx_total, tx_enqueue_err, events_dropped, writes_served, writes_rejected, actors_pinned,
+  actors_portable_here, link_stack_free, actors: [{key, running_here, owner, assigned, activations, fenced, released}]}`;
+  `flags` names `no_radio`, `busy`, `connected`, `long_window`, `enrolled`. A board that never answers telemetry (firmware
+  before M15) has `heap: null`, `links: []` and no `telemetry`, and an event `telemetry_unsupported`.
+  `hub.telemetry` counts `{pulls, replies, failures, events}`.
+- A board is `asleep`, not `dead`, when it stops answering after its telemetry said `long_window`.
 - `module.state`: `active` | `idle` | `failed` (NODE_STATUS version 2), or absent from the list when the image does not carry it.
 - `app.working`: as `potluck apply` verifies -- running where the package says (portable: exactly once in the cell),
   and every output GOOD. `detail` says why not.
@@ -84,9 +95,11 @@ Events in order, on the hub's clock, with a sequence number for paging. `since` 
 ]}
 ```
 
-Kinds include every node event the boards print (`peer_dead`, `peer_alive`, `peer_rebooted`, `actor_started`,
-`actor_owner`, `channel_changed`, `tx_dead`, ...), the hub's own (`hub_started`, `link_down`, `link_up`), deploys
-(`deploy`), and outside writes (`outside_write`, with resource, value and result).
+Kinds include every node event the boards keep, pulled by M15's telemetry and prefixed `board_` (`board_peer_dead`,
+`board_peer_rebooted`, `board_actor_started`, `board_channel_changed`, ...; detail `{peer, a, b, board_ms, board_seq}`,
+`at` the hub's clock when pulled), the hub's own (`hub_started`, `board_alive`, `board_dead`, `board_asleep`,
+`board_rebooted`, `relay_client`, `host_node`, `hub_lease_lost`, `telemetry_unsupported`), deploys (`deploy`), and
+outside writes (`outside_write`, with resource, value and result).
 
 ## GET /api/stream
 

@@ -231,15 +231,15 @@
         var snap = b.state !== "alive" ? ' <span class="muted small">(as last heard)</span>' : "";
         rows.push("<tr>" + td("Link", blink(m, b.node) + " &rarr; " + blink(m, l.peer) + snap) + td("State", sbadge(l.state)) +
           td("Delivery", l.delivery == null ? "-" : pct(l.delivery, 2)) +
-          td("RTT p50 / p99", num(l.rtt_p50_ms) + " / " + num(l.rtt_p99_ms, "ms")) + td("Deaths", num(l.deaths)) +
+          td("RTT p50 / p99", num(l.rtt_p50_ms) + " / " + num(l.rtt_p99_ms, "ms")) + td("Lost", num(l.lost)) +
           td("RSSI", num(l.rssi, "dBm")) + "</tr>");
       });
     });
     var hub = m.hub || {};
     rows.push("<tr>" + td("Link", '<a href="#cell/hub">hub</a> &rarr; ' + esc(hub.port || "cable") + ' <span class="muted small">(serial: ' +
       esc(num(hub.frames_rx)) + " rx, " + esc(num(hub.frames_tx)) + " tx frames)</span>") + td("State", sbadge(hub.link || "unknown")) +
-      td("Delivery", "-") + td("RTT p50 / p99", "-") + td("Deaths", "-") + td("RSSI", "-") + "</tr>");
-    $("use-links").innerHTML = table(["Link", "State", "Delivery", "RTT p50 / p99", "Deaths", "RSSI"], rows);
+      td("Delivery", "-") + td("RTT p50 / p99", "-") + td("Lost", "-") + td("RSSI", "-") + "</tr>");
+    $("use-links").innerHTML = table(["Link", "State", "Delivery", "RTT p50 / p99", "Lost", "RSSI"], rows);
   }
 
   // ---- layer 4: tabs ------------------------------------------------------------------------------------------
@@ -282,7 +282,7 @@
         "<dt>Up</dt><dd>" + dur(b.up_ms) + "</dd><dt>RSSI</dt><dd>" + num(b.rssi, "dBm") + "</dd>" +
         "<dt>Links</dt><dd>" + ((b.links || []).map(function (l) {
           return blink(m, l.peer) + " " + sbadge(l.state) + " " + (l.delivery == null ? "-" : pct(l.delivery, 2)) + ", " +
-            num(l.rtt_p50_ms) + "/" + num(l.rtt_p99_ms, "ms") + (l.deaths ? ", " + l.deaths + " death(s)" : "");
+            num(l.rtt_p50_ms) + "/" + num(l.rtt_p99_ms, "ms") + (l.lost ? ", " + l.lost + " lost" : "");
         }).join("<br>") || "none") + "</dd></dl></div>";
     });
     $("tab-cell").innerHTML = h + "</div>";

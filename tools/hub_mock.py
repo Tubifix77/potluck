@@ -327,7 +327,7 @@ class SimCell:
                 lk = {"peer": b, "state": pst,
                       "delivery": round(min(1.0, dl + 0.002 * math.sin(hs / 11.0 + i)), 4),
                       "rtt_p50_ms": p50, "rtt_p99_ms": p99 + int(3 * (1 + math.sin(hs / 13.0 + i))),
-                      "deaths": self.deaths.get((a, b), 0), "rssi": rssi}
+                      "deaths": self.deaths.get((a, b), 0), "lost": 0, "rssi": rssi}
                 if pst == "dead":
                     lk.update(delivery=0.0, rtt_p50_ms=None, rtt_p99_ms=None)
                 links.append(lk)

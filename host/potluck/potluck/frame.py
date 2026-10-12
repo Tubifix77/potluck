@@ -75,6 +75,7 @@ class Op(IntEnum):
     FW_STATUS = 0x37
     NODE_STATUS = 0x38  # M12: potluck apply's inventory
     LEASE = 0x39  # M14: the cell's leases -- one resident hub, one deploy at a time (potluck.lease)
+    TELEMETRY = 0x3A  # M15: what a board knows about itself, for the hub (potluck.telemetry)
     SAFE_STATE = 0x50
     ERR = 0x7F
 

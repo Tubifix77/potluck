@@ -252,6 +252,42 @@ class PlacementHost(HubFixture):
         self.hub._msg_id = 0xFFFF
         self.assertEqual(self.hub._next_msg_id(), hb.Hub.HUB_MSG_ID_BASE)
 
+class Telemetry(HubFixture):
+    """M15: what a board's telemetry puts in the model -- heap, links, actors -- and an asleep board shown as asleep."""
+
+    def board_with_tel(self, flags: int):
+        import test_telemetry as tt
+        from potluck import telemetry as tm
+
+        h = tm.parse_health(bytes.fromhex(tt.HEALTH_GOLDEN))
+        h.flags = flags
+        _, _, links = tm.parse_links(bytes.fromhex(tt.LINKS_GOLDEN))
+        with self.model.lock:
+            self.model.boards[0x1001] = {"state": "alive", "since_at": 0, "last_ok": time.monotonic(),
+                                         "tel": {"health": h, "links": links, "actors": [], "events_next": 1,
+                                                 "at": 1}}
+
+    def test_the_model_shows_a_boards_heap_and_links(self) -> None:
+        self.board_with_tel(0x14)
+        b = self.model.snapshot()["boards"][0]
+        self.assertEqual(b["heap"]["internal_free"], 191603)
+        self.assertEqual(b["links"][0]["peer"], "7368")
+        self.assertEqual(b["links"][0]["rtt_p99_ms"], 16.0)
+        self.assertEqual(b["links"][0]["window_ms"], 6000)
+        self.assertEqual(b["rssi"], -45)
+        self.assertEqual(b["telemetry"]["flags"], ["connected", "enrolled"])
+
+    def test_a_board_that_declared_a_long_window_and_goes_quiet_is_asleep_not_dead(self) -> None:
+        from potluck import telemetry as tm
+
+        self.model.telemetry_period_ms = 0
+        self.board_with_tel(tm.HEALTH_LONG_WINDOW)
+        self.model.pull()  # FakeNode answers no NODE_STATUS: the board is quiet
+        self.assertEqual(self.model.boards[0x1001]["state"], "asleep")
+        self.board_with_tel(0)
+        self.model.pull()
+        self.assertEqual(self.model.boards[0x1001]["state"], "dead")
+
 class SecondHub(unittest.TestCase):
     def test_a_second_hub_on_this_pc_is_refused_naming_the_first_before_it_opens_the_port(self) -> None:
         import contextlib

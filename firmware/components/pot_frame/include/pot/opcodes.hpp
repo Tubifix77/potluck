@@ -63,7 +63,10 @@ constexpr uint8_t kOpNodeStatus = 0x38;
 // M14: the cell's leases (pot/lease.hpp) -- one resident hub, one deploy at a time. Routed like a deploy; the board
 // on the cable passes it on to the arbiter, as NODE_STATUS is passed on.
 constexpr uint8_t kOpLease = 0x39;
-inline bool is_deploy_opcode(uint8_t op) { return op >= kOpDeployBegin && op <= kOpLease; }
+// M15: telemetry over the cell (pot/telemetry.hpp) -- what a board knows about itself, for the hub. Routed like a
+// deploy, passed on by the board on the cable like NODE_STATUS.
+constexpr uint8_t kOpTelemetry = 0x3A;
+inline bool is_deploy_opcode(uint8_t op) { return op >= kOpDeployBegin && op <= kOpTelemetry; }
 inline bool is_fw_opcode(uint8_t op) { return op >= kOpFwBegin && op <= kOpFwStatus; }
 // constexpr uint8_t kOpMigratePrepare = 0x40;
 // constexpr uint8_t kOpMigrateCommit  = 0x41;

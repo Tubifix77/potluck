@@ -61,6 +61,7 @@ add_executable(pot_tests
   test_cluster.cpp
   test_node_status.cpp
   test_lease.cpp
+  test_telemetry.cpp
   test_fw.cpp
   test_wasm.cpp
   test_guest.cpp

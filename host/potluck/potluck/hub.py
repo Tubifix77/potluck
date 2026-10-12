@@ -65,7 +65,7 @@ DASHBOARD_DIR = Path(__file__).resolve().parent / "dashboard"
 #: Requests a tool sends that the cell answers with a REPLY correlated by msg_id: the hub re-numbers these.
 _REQUEST_OPS = frozenset({fr.Op.READ, fr.Op.WRITE, fr.Op.CALL, fr.Op.DEPLOY_BEGIN, fr.Op.DEPLOY_CHUNK,
                           fr.Op.DEPLOY_COMMIT, fr.Op.DEPLOY_ABORT, fr.Op.FW_BEGIN, fr.Op.FW_CHUNK, fr.Op.FW_COMMIT,
-                          fr.Op.FW_STATUS, fr.Op.NODE_STATUS, fr.Op.LEASE})
+                          fr.Op.FW_STATUS, fr.Op.NODE_STATUS, fr.Op.LEASE, fr.Op.TELEMETRY})
 
 
 # ---- where a running hub can be found ---------------------------------------------------------------
@@ -344,11 +344,18 @@ def _hub_ms() -> int:
 class Model:
     """What the hub knows, kept by the poller and read by the API. One lock; snapshots are plain JSON values."""
 
-    def __init__(self, hub: Hub, *, cluster=None, package=None, pull_period_ms: int = 2000) -> None:
+    def __init__(self, hub: Hub, *, cluster=None, package=None, pull_period_ms: int = 2000,
+                 telemetry_period_ms: int = 10000) -> None:
         self.hub = hub
         self.cluster = cluster
         self.package = package
         self.pull_period_ms = pull_period_ms
+        # M15: how often each board's telemetry is pulled over the radio (0: never). Its own rate, longer than the
+        # inventory's: it is the larger load, and M15's [MEASURE] is the rate that leaves M0's figures intact.
+        self.telemetry_period_ms = telemetry_period_ms
+        self._telemetry_due = 0.0
+        self.telemetry_counts = {"pulls": 0, "replies": 0, "failures": 0, "events": 0}
+        self.link_deaths: dict[tuple[int, int], int] = {}  # (board, peer) -> peer_dead events pulled since the hub started
         self.lock = threading.Lock()
         self.started = time.monotonic()
         self.boards: dict[int, dict] = {}
@@ -404,7 +411,12 @@ class Model:
                 b = self.boards.setdefault(n, {"state": "unknown", "since_at": _hub_ms(), "last_ok": None})
                 prev = b["state"]
                 if st is None:
-                    if prev == "alive":
+                    tel = b.get("tel") or {}
+                    if prev in ("alive", "asleep") and tel.get("health") is not None and tel["health"].long_window:
+                        # It declared a long window (M5.1): not answering is what an asleep board does.
+                        if prev != "asleep":
+                            b["state"], b["since_at"] = "asleep", _hub_ms()
+                    elif prev in ("alive", "asleep"):
                         b["state"], b["since_at"] = "dead", _hub_ms()
                     elif prev == "unknown":
                         b["state"] = "unknown"
@@ -435,8 +447,55 @@ class Model:
                 self.resources[path] = {"reading": r, "quality": q, "at": _hub_ms()}
                 if old is not None and old["quality"] != q:
                     self._event_locked("quality_changed", None, {"path": path, "from": old["quality"], "to": q})
+        if self.telemetry_period_ms and time.monotonic() >= self._telemetry_due:
+            self._telemetry_due = time.monotonic() + self.telemetry_period_ms / 1000
+            self.pull_telemetry()
         with self.lock:
             self.frames_at.append((time.monotonic(), self.hub.stats.rx_frames + self.hub.stats.tx_frames))
+
+    def pull_telemetry(self) -> None:
+        """M15: every answering board's health, links, actors and new events, over the radio, one pull for every
+        viewer. A board that does not answer TELEMETRY (firmware before M15) keeps what NODE_STATUS says."""
+        from . import telemetry as tm
+
+        for n in self.board_ids():
+            with self.lock:
+                b = self.boards.get(n)
+                if b is None or b["state"] != "alive" or b.get("tel_unsupported"):
+                    continue
+                since = b.get("tel", {}).get("events_next", 1) - 1
+            self.telemetry_counts["pulls"] += 1
+            try:
+                h = tm.health(self.hub, n)
+                ls = tm.links(self.hub, n)
+                acts = tm.actors(self.hub, n)
+                evs, nxt = tm.events(self.hub, n, since)
+                if nxt <= since:  # the board's log started again: it rebooted since the last pull
+                    evs, nxt = tm.events(self.hub, n, 0)
+            except (BridgeError, tm.TelemetryError) as exc:
+                self.telemetry_counts["failures"] += 1
+                with self.lock:
+                    b = self.boards.get(n)
+                    if b is not None:
+                        b["tel_failures"] = b.get("tel_failures", 0) + 1
+                        if b["tel_failures"] >= 3 and not b.get("tel"):
+                            b["tel_unsupported"] = True  # never answered: firmware before M15
+                            self._event_locked("telemetry_unsupported", n, {"why": str(exc)[:120]})
+                continue
+            self.telemetry_counts["replies"] += 1
+            self.telemetry_counts["events"] += len(evs)
+            with self.lock:
+                b = self.boards.get(n)
+                if b is None:
+                    continue
+                b["tel_failures"] = 0
+                b["tel"] = {"health": h, "links": ls, "actors": acts, "events_next": nxt, "at": _hub_ms()}
+                for e in evs:
+                    if e.kind_name == "peer_dead":
+                        self.link_deaths[(n, e.node)] = self.link_deaths.get((n, e.node), 0) + 1
+                    self._event_locked("board_" + e.kind_name, n,
+                                       {"peer": f"{e.node:04x}", "a": e.a, "b": e.b, "board_ms": e.at_ms,
+                                        "board_seq": e.seq})
 
     def _event_locked(self, kind: str, board: int | None, detail: dict) -> None:
         self.seq += 1
@@ -458,6 +517,7 @@ class Model:
                     "link": "up" if self.hub.peer_node_id is not None else "down", "link_detail": "",
                     "frames_rx": self.hub.stats.rx_frames, "frames_tx": self.hub.stats.tx_frames,
                     "pull_period_ms": self.pull_period_ms, "clock_error_ms": self._clock_error_ms(),
+                    "telemetry_period_ms": self.telemetry_period_ms, "telemetry": dict(self.telemetry_counts),
                     "relay": dict(self.hub.relay_counts)},
             "cell": self._cell_json(boards),
             "boards": boards,
@@ -490,9 +550,33 @@ class Model:
                 "actors": list(st.actors),
                 "up_ms": st.uptime_s * 1000,
                 "cluster": st.cluster,
-                "heap": None,   # M15 telemetry: not carried by NODE_STATUS
-                "links": [],    # M15 telemetry
+                "heap": None,   # M15 telemetry, below, when the board answers it
+                "links": [],
             })
+        tel = b.get("tel")
+        if tel is not None:
+            h = tel["health"]
+            out["heap"] = {"internal_free": h.int_free, "internal_min": h.int_min, "internal_largest": h.int_largest,
+                           "psram_free": h.ext_free, "psram_min": h.ext_min}
+            out["links"] = [{"peer": f"{k.node:04x}", "state": k.state_name, "delivery": k.delivery,
+                             "rtt_p50_ms": k.rtt_p50_ms, "rtt_p99_ms": k.rtt_p99_ms, "rssi": k.rssi if k.rssi else None,
+                             "deaths": self.link_deaths.get((n, k.node), 0),
+                             "lost": k.rx_lost, "misses": k.misses, "cable": bool(k.flags & 1),
+                             "window_ms": k.hb_period_ms * k.miss_limit} for k in tel["links"]]
+            out["telemetry"] = {
+                "at": tel["at"], "channel": h.channel, "flags": h.flag_names(), "up_ms": h.uptime_s * 1000,
+                "epoch": h.boot_epoch, "peers_alive": h.peers_alive, "peers_dead": h.peers_dead,
+                "deaths": h.deaths, "revivals": h.revivals, "reboots_seen": h.reboots_seen,
+                "rx_total": h.rx_total, "rx_rejected": h.rx_rejected, "rx_queue_dropped": h.rx_queue_dropped,
+                "tx_total": h.tx_total, "tx_enqueue_err": h.tx_enqueue_err, "events_dropped": h.events_dropped,
+                "writes_served": h.writes_served, "writes_rejected": h.writes_rejected,
+                "actors_pinned": h.actors_pinned, "actors_portable_here": h.actors_portable_here,
+                "link_stack_free": h.link_stack_free,
+                "actors": [{"key": f"{a.key:08x}", "running_here": bool(a.flags & 1), "owner": f"{a.owner:04x}",
+                            "assigned": f"{a.assigned:04x}", "activations": a.activations, "fenced": a.fenced,
+                            "released": a.released} for a in tel["actors"]]}
+            radio = [k.rssi for k in tel["links"] if k.rssi and not (k.flags & 1)]
+            out["rssi"] = max(radio) if radio else None
         return out
 
     def _resource_json(self, path: str, r: dict) -> dict:
@@ -751,6 +835,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--api", default=DEFAULT_API)
     ap.add_argument("--relay", default=DEFAULT_RELAY)
     ap.add_argument("--pull-ms", type=int, default=2000)
+    ap.add_argument("--telemetry-ms", type=int, default=10000,
+                    help="M15: how often each board's telemetry is pulled over the radio (0: never)")
     a = ap.parse_args(argv)
     cluster = package = None
     if a.cluster:
@@ -775,7 +861,8 @@ def main(argv: list[str] | None = None) -> int:
 
     hub = Hub(open_transport(port=a.port, tcp=a.tcp, baud=a.baud))
     hub.start()
-    model = Model(hub, cluster=cluster, package=package, pull_period_ms=a.pull_ms)
+    model = Model(hub, cluster=cluster, package=package, pull_period_ms=a.pull_ms,
+                  telemetry_period_ms=a.telemetry_ms)
     lease = None
     if hub.hello(timeout=3.0) is None:
         print(f"hub: no board answers on {a.port or a.tcp}; serving anyway, and retrying")

@@ -48,6 +48,7 @@
 #include "pot/espnow_port.hpp"
 #include "pot/node.hpp"
 #include "pot/lease.hpp"
+#include "pot/telemetry.hpp"
 #include "pot/node_status.hpp"
 #include "pot/opcodes.hpp"
 #include "pot/reconcile.hpp"
@@ -1396,8 +1397,147 @@ void on_lease(uint16_t from, uint16_t msg_id, const uint8_t* p, uint16_t len) {
     g_node->send_reply_raw(from, msg_id, wire, static_cast<uint16_t>(store_lease_reply(r, wire, sizeof(wire))));
 }
 
+// ---- M15: telemetry (TELEMETRY) -----------------------------------------------------------------------
+// What the console's stats lines say, in pot/telemetry.hpp's binary sections, for the hub; another board's is passed
+// on over the radio, one at a time, the way NODE_STATUS is. Answered under g_mutex (the deploy server's caller).
+EXT_RAM_BSS_ATTR TelemetryEventLog g_tel_events;  // under g_mutex; filled where the stats task drains the event ring
+
+struct TelemetryProxy {
+    uint16_t awaiting = 0, target = 0, requester = 0, requester_msg = 0;
+};
+TelemetryProxy g_tel_proxy;
+
+void telemetry_unreachable(uint16_t to, uint16_t msg, uint16_t target) {
+    // A reply with no section: version, 0, the node that could not be reached.
+    const uint8_t wire[4] = {kTelemetryVersion, 0, static_cast<uint8_t>(target), static_cast<uint8_t>(target >> 8)};
+    g_node->send_reply_raw(to, msg, wire, sizeof(wire));
+}
+
+size_t build_telemetry(const TelemetryRequest& rq, uint8_t* out, size_t cap) {
+    if (rq.section == kTelemetryHealth) {
+        const NodeCounters& c = g_node->counters();
+        const auto& ns = g_node->ns_counters();
+        const EspNowQueueStats q = espnow_queue_stats();
+        TelemetryHealth h;
+        h.uptime_s = now_ms_() / 1000;
+        h.boot_epoch = g_node->config().boot_epoch;
+        h.channel = g_node->channel();
+        const uint32_t caps = g_node->caps();
+        h.flags = static_cast<uint8_t>((g_no_radio ? kTelHealthNoRadio : 0) | ((caps & kHelloCapBusy) ? kTelHealthBusy : 0) |
+                                       ((caps & kHelloCapConnected) ? kTelHealthConnected : 0) |
+                                       (g_node->trust_enrolled() ? kTelHealthEnrolled : 0) |
+                                       (g_node->heartbeat_period_ms() * g_node->config().hb_miss_limit >
+                                                kHbPeriodWirelessMs * kHbMissLimitWireless
+                                            ? kTelHealthLongWindow
+                                            : 0));
+        h.hb_period_ms = static_cast<uint16_t>(g_node->heartbeat_period_ms());
+        h.int_free = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+        h.int_min = static_cast<uint32_t>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+        h.int_largest = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+        h.ext_free = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+        h.ext_min = static_cast<uint32_t>(heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM));
+        h.peers_alive = static_cast<uint8_t>(g_node->peers().count_in_state(PeerState::Alive));
+        h.peers_dead = static_cast<uint8_t>(g_node->peers().count_in_state(PeerState::Dead));
+        h.actors_pinned = static_cast<uint8_t>(g_actors.running());
+#if CONFIG_POT_RECONCILER
+        for (size_t i = 0; g_rec != nullptr && i < g_rec->actor_count(); ++i) {
+            if (g_rec->view(i).running) ++h.actors_portable_here;
+        }
+#endif
+        h.deaths = c.deaths_declared;
+        h.revivals = c.revivals;
+        h.reboots_seen = c.reboots_seen;
+        h.rx_total = c.rx_total;
+        h.rx_rejected = c.rx_bad_frame + c.rx_short_payload + c.rx_unknown_opcode;
+        h.rx_queue_dropped = q.rx_dropped_queue_full + q.rx_dropped_oversize;
+        h.tx_total = c.tx_total;
+        h.tx_enqueue_err = c.tx_enqueue_err;
+        h.tx_done_dropped = q.tx_done_dropped;
+        h.events_dropped = g_node->events().dropped();
+        h.writes_served = ns.writes_served;
+        h.writes_rejected = ns.writes_rejected;
+        h.link_stack_free = g_link_handle ? static_cast<uint16_t>(uxTaskGetStackHighWaterMark(g_link_handle)) : 0;
+        return store_telemetry_health(g_node_id, h, out, cap);
+    }
+    if (rq.section == kTelemetryLinks) {
+        TelemetryLink links[kTelemetryLinksPerReply];
+        size_t total = 0, n = 0;
+        for (size_t i = 0; i < kMaxPeers; ++i) {
+            const PeerLink& pl = g_node->peers().slot(i);
+            if (pl.state == PeerState::Free) continue;
+            if (total++ < rq.start || n >= kTelemetryLinksPerReply) continue;
+            const Node::PeerAuth* pa = g_node->peer_auth(&pl);
+            const uint8_t flags = static_cast<uint8_t>((std::memcmp(pl.mac, kHostMac, kMacLen) == 0 ? kTelLinkCable : 0) |
+                                                       (pa != nullptr && pa->verified ? kTelLinkVerified : 0));
+            links[n++] = telemetry_link(pl, g_node->peers().histogram(i), flags);
+        }
+        return store_telemetry_links(g_node_id, static_cast<uint8_t>(total), rq.start, links, n, out, cap);
+    }
+    if (rq.section == kTelemetryActors) {
+        TelemetryActor acts[kTelemetryActorsPerReply];
+        size_t total = 0, n = 0;
+#if CONFIG_POT_RECONCILER
+        total = g_rec != nullptr ? g_rec->actor_count() : 0;
+        for (size_t i = rq.start; i < total && n < kTelemetryActorsPerReply; ++i) {
+            const Reconciler::ActorView v = g_rec->view(i);
+            TelemetryActor& a = acts[n++];
+            a.key = v.key;
+            a.flags = v.running ? kTelActorRunningHere : 0;
+            a.owner = v.owner;
+            a.assigned = v.assigned;
+            a.activations = v.activations;
+            a.fenced = static_cast<uint16_t>(v.fenced > 0xFFFF ? 0xFFFF : v.fenced);
+            a.released = static_cast<uint16_t>(v.released > 0xFFFF ? 0xFFFF : v.released);
+        }
+#endif
+        return store_telemetry_actors(g_node_id, static_cast<uint8_t>(total), rq.start, acts, n, out, cap);
+    }
+    if (rq.section == kTelemetryEvents) {
+        TelemetryEvent ev[kTelemetryEventsPerReply];
+        const size_t n = g_tel_events.since(rq.since, ev, kTelemetryEventsPerReply);
+        return store_telemetry_events(g_node_id, g_tel_events.next(), ev, n, out, cap);
+    }
+    return 0;
+}
+
+void on_telemetry(uint16_t from, uint16_t msg_id, const uint8_t* p, uint16_t len) {
+    TelemetryRequest rq;
+    if (!load_telemetry_request(p, len, rq)) {
+        telemetry_unreachable(from, msg_id, g_node_id);
+        return;
+    }
+    if (rq.target != 0 && rq.target != g_node_id) {
+        const uint16_t m = g_node->send_deploy(rq.target, kOpTelemetry, p, len);
+        if (m == 0) {
+            telemetry_unreachable(from, msg_id, rq.target);
+            return;
+        }
+        if (g_tel_proxy.awaiting != 0) telemetry_unreachable(g_tel_proxy.requester, g_tel_proxy.requester_msg, g_tel_proxy.target);
+        g_tel_proxy = TelemetryProxy{m, rq.target, from, msg_id};
+        return;
+    }
+    static uint8_t wire[kTelemetryReplyMax];  // off the link task's stack; under g_mutex
+    const size_t n = build_telemetry(rq, wire, sizeof(wire));
+    if (n > 0) {
+        g_node->send_reply_raw(from, msg_id, wire, static_cast<uint16_t>(n));
+    } else {
+        telemetry_unreachable(from, msg_id, g_node_id);  // a section this build does not know
+    }
+}
+
 void on_result(void*, uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, const uint8_t* p,
                uint16_t len) {
+    if (op == kOpTelemetry) {  // M15: another board's telemetry, passed back
+        if (g_tel_proxy.awaiting == 0 || msg != g_tel_proxy.awaiting || peer != g_tel_proxy.target) return;
+        const TelemetryProxy tp = g_tel_proxy;
+        g_tel_proxy = TelemetryProxy{};
+        if (timed_out || p == nullptr || len == 0) {
+            telemetry_unreachable(tp.requester, tp.requester_msg, tp.target);
+        } else {
+            g_node->send_reply_raw(tp.requester, tp.requester_msg, p, len);
+        }
+        return;
+    }
     if (op == kOpLease) {  // M14: the arbiter's answer to a request passed on
         if (g_lease_proxy.awaiting == 0 || msg != g_lease_proxy.awaiting || peer != g_lease_proxy.target) return;
         const LeaseProxy lp = g_lease_proxy;
@@ -1461,6 +1601,10 @@ size_t on_deploy(void*, uint16_t from, uint16_t msg_id, uint8_t op, const uint8_
     }
     if (op == kOpLease) {  // M14: likewise -- a lease is asked for while a deploy runs
         on_lease(from, msg_id, p, len);
+        return 0;
+    }
+    if (op == kOpTelemetry) {  // M15: and telemetry
+        on_telemetry(from, msg_id, p, len);
         return 0;
     }
     DeployReply r{};
@@ -2071,6 +2215,7 @@ void stats_task(void*) {
             Event e{};
             xSemaphoreTake(g_mutex, portMAX_DELAY);
             const bool got = g_node->events().pop(e);
+            if (got) deploy_rt::g_tel_events.push(e.at_ms, static_cast<uint8_t>(e.kind), e.node_id, e.detail_a, e.detail_b);  // M15
             xSemaphoreGive(g_mutex);
             if (!got) break;
             if (write_event_json(g_json, sizeof(g_json), node_id, e) > 0) {
