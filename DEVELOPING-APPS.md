@@ -344,6 +344,7 @@ others into the owner's one package (below):
   | `builtin:ticker` | portable | `period_ms` 50-60000 (100) | `act/<name>/out`, a counter (the reconciler's test actor) |
   | `builtin:svc_client` | pinned | `period_ms` 100-60000; one `needs` of `potluck://<system>/svc/<name>`; `on_host_loss` continue or hold | the PC service's answer |
   | `builtin:led` | pinned | `r` `g` `b` 0-255, `blink`, `period_ms` 200-10000 | the status LED's healthy colour |
+  | `builtin:led_switch` | pinned | `r` `g` `b` 0-255, `blink_ms` 0 or 200-25500 | `node-<id>/led/on`, a writable bool: the status LED shows the colour while it is true (M13; blue, yellow and red still win) |
   | `builtin:mc_lender` / `builtin:mc_job` | pinned | M9's borrowed-core job (`slots`; `units`, `samples`, `seed`, `lend`, `start_after_ms`) | `node-<id>/job/mc/pi` |
   | `builtin:fault` | pinned | `panic_after_ms` | nothing: it crashes the node on purpose, to test reverts |
   | `guest:<name>` | portable | section 9 | `act/<actor>/<output>` |
@@ -397,6 +398,7 @@ paths are relative to the file):
 | `apps` | each app: `git` (a local repository or a URL), `rev` (a commit or a tag), `components` (built into the firmware; every `potluck-modules.json` under it is loaded), `manifests` (its fragments) |
 | `package` | more fragments (`"manifests": [path, or {"manifest": path, "root": dir for its relative paths}]`), more descriptors (`"modules"`), and `guests_root` |
 | `verify` | `timeout_s`, and `read`: more paths to read back |
+| `present` | the cell presents itself to an MQTT broker, by Home Assistant's discovery (M13): `{"broker": "a.b.c.d[:port]", "keepalive_s": 10, "period_ms": 2000}`. Needs `present` in `firmware.modules`, and a board on the network (the extender, or the `wifi` module). It shows only what `outside` names (M0-RUNBOOK section 16) |
 | `outside` | what systems outside the cell (Home Assistant, through the presenting module, M13) may do with each resource: `{"node-7368/hw/die_temp": "read", "node-7368/led/level": "read_write"}`, a path with or without `potluck://<system>/`. Nothing is exposed unless named here. `read_write` needs a resource some node declares in `owns` with write access, and never one marked `safety_relevant`. The owner's choice, so only the cluster file says it: a fragment with `outside` is refused |
 
 What `apply` does, in order:

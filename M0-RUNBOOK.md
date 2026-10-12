@@ -728,3 +728,39 @@ for the catch-up test), `desk-home.json` (cluster "home"), `fail-*.cluster.json`
   `ck_nvs_last_err`, `nvs_used` and `nvs_available`; each restored copy prints `{"t":"ck_restored",...}` at boot.
 - **Live changes:** a board prints `{"t":"package_live",...}` with what it kept, stopped and started.
 
+## 16. M13: the cell presents itself
+
+What the owner adds to a cluster file (section 15), and what each line does:
+
+```json
+"firmware": {"potluck": {...}, "modules": ["sandbox", "present"], "extender": {...}},
+"present": {"broker": "192.168.0.77:1883", "keepalive_s": 10, "period_ms": 2000},
+"outside": {"node-7368/hw/die_temp": "read", "node-7368/led/on": "read_write", "act/rf_fusion/out": "read"}
+```
+
+- `present` needs a network connection in the same image: the extender (a board whose hotspot has credentials)
+  or Potluck's own station (`"wifi"`; give a board the network with `tools/wifi_set.py <port> <file>`, run by the
+  owner). The role goes to one board that is on the network (HELLO's `connected` bit) and moves when it dies.
+- `outside` is everything another system may see; `read_write` needs a resource declared writable in some
+  node's `owns` and never one marked `safety_relevant`. The owning board checks again.
+- A broker with a login: `POT! present login <user> <password>` on each board that may present (the owner types
+  it; it prints only the result).
+- `builtin:led_switch` (pinned, `r` `g` `b`, `blink_ms`) is B's status LED as `node-<id>/led/on`, the bench's
+  stand-in for a lightbulb (`manifests/m13-present.json`).
+
+**The bench broker.** No broker or Home Assistant is installed on the house network, so the bench uses a small
+MQTT 3.1.1 broker that logs every message with its own clock, run from `/tmp` on the homelab laptop (nothing
+installed):
+
+```
+scp tools/mqtt_bench_broker.py homelab:/tmp/potluck-broker/
+ssh homelab 'cd /tmp/potluck-broker && setsid nohup python3 mqtt_bench_broker.py --port 1883 --log broker.jsonl > broker.out 2>&1 < /dev/null &'
+python tools/mqtt_tool.py --host 192.168.0.77 sub '#' --out captures/<name>.jsonl     # what Home Assistant would receive
+python tools/mqtt_tool.py --host 192.168.0.77 pub potluck/<cell>/<hash>/set ON        # what an automation sends
+```
+
+`<cell>` is the CA fingerprint's 8 hex digits (in every topic); `<hash>` the resource's path hash
+(`python -c "from potluck.paths import path_hash; print('%08x' % path_hash('potluck://lab/node-7368/led/on'))"`
+from `host/potluck/`). The presenting board prints `{"t":"present",...}` every stats period: holding, connected,
+messages published, outside writes applied, sent and refused, and its internal heap (free, largest block, lowest).
+

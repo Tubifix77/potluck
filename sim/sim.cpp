@@ -138,6 +138,36 @@ void scenario_sleepy(Cell& c, uint32_t sec) {
     c.set_asleep(c.size() - 1, (sec % 10) >= 2);
 }
 
+// M13: the presenting role's read load. Node 0 presents: it polls kMaxOutside (32) exposed resources, spread over
+// its peers, one READ each every 2 s (16 a second) -- the package maximum, by polling since SUBSCRIBE is not
+// built. Each owner publishes its resource every second. Compare the cell's airtime, deaths and PDR with
+// --scenario none on the same seed.
+void scenario_present(Cell& c, uint32_t sec) {
+    constexpr uint32_t kExposed = 32;
+    const size_t peers = c.size() - 1;
+    if (peers == 0) return;
+    auto hash_of = [](uint32_t k) { return 0x50000000u + k; };
+    auto owner_of = [&](uint32_t k) { return static_cast<size_t>(1 + k % peers); };
+    if (sec == 1) {
+        for (uint32_t k = 0; k < kExposed; ++k) {
+            NsDecl d;
+            d.path_hash = hash_of(k);
+            d.owner_node = c.node(owner_of(k)).node->config().node_id;
+            d.type = ValueType::I32;
+            d.staleness_bound_ms = 5000;
+            for (size_t i = 0; i < c.size(); ++i) c.node(i).node->ns().declare(d);
+        }
+    }
+    if (sec < 2) return;
+    for (uint32_t k = 0; k < kExposed; ++k) {
+        c.node(owner_of(k)).node->publish(hash_of(k), Value::of_i32(static_cast<int32_t>(sec)));
+    }
+    // Half of them each second: every resource once per 2 s.
+    for (uint32_t k = sec % 2; k < kExposed; k += 2) {
+        c.node(0).node->request_read(c.node(owner_of(k)).node->config().node_id, hash_of(k));
+    }
+}
+
 void usage() {
     std::printf(
         "pot_sim - run N real pot::Node objects over a modelled ESP-NOW cell\n"
@@ -149,7 +179,7 @@ void usage() {
         "  --hb-ms N          heartbeat period, default 100 (section 8.2)\n"
         "  --probe-ms N       round-robin probe interval, default 1000\n"
         "  --seed N           RNG seed, default 1\n"
-        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff (default none)\n"
+        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present (default none)\n"
         "  --start-days D     start the virtual clock D days in, to straddle a counter wrap\n"
         "  --json             emit one link/node record per node, in the firmware's format\n"
         "  --sweep            print the airtime table and exit\n"
@@ -218,7 +248,9 @@ int main(int argc, char** argv) {
         cell.set_clock_us(static_cast<uint64_t>(start_days * 86400.0 * 1e6));
         std::printf("clock starts at %.4f days (uint32 ms wraps at 49.7103)\n", start_days);
     }
-    if (scenario == "reboot") {
+    if (scenario == "present") {
+        cell.set_on_second(&scenario_present);
+    } else if (scenario == "reboot") {
         cell.set_on_second(&scenario_reboot);
     } else if (scenario == "partition") {
         cell.set_on_second(&scenario_partition);
@@ -300,7 +332,7 @@ int main(int argc, char** argv) {
     }
     std::printf("\nmembership: %u death declarations, %u revivals across the cell\n", deaths,
                 revivals);
-    if (scenario == "none") {
+    if (scenario == "none" || scenario == "present") {  // M13: polling must not cost a death
         std::printf("  %s\n", deaths ? "<-- unperturbed cell lost peers; the heartbeat did not hold"
                                      : "no deaths on an unperturbed cell, as required");
     } else {
