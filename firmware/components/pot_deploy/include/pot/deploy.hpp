@@ -55,12 +55,21 @@ uint32_t crc32(const uint8_t* data, size_t len, uint32_t seed = 0);
 //               printable ASCII characters -- what the presenter calls the resource outside (a board keeps only
 //               hashes, section 7.2)
 // A package with no outside rules is built as version 1 or 2, byte for byte what it was before M13.
+//
+// Version 4 (M13, TLS) adds, after the outside section (which it always has, outside_count possibly 0), the broker's
+// certificate authority -- the one trust anchor a presenter with kPresentTls verifies the broker against:
+//          2    ca_len              1..kMaxBrokerCa
+//          ...  the CA certificate, DER
+// Public, and pinned by the owner's signature on the package like everything else in it. A package whose presenter
+// does not use TLS is built as version 1-3.
 // ---------------------------------------------------------------------------------------------
 
 constexpr uint32_t kImageMagic = 0x44544F50u;  // "POTD"
 constexpr uint8_t kImageVersion = 1;
 constexpr uint8_t kImageVersionGuests = 2;  // M7
 constexpr uint8_t kImageVersionOutside = 3;  // M13
+constexpr uint8_t kImageVersionBrokerCa = 4;  // M13: TLS to the broker
+constexpr size_t kMaxBrokerCa = 1024;  // DER: a P-256 CA is ~400 B, an RSA-2048 one ~900 B
 constexpr size_t kImageHeaderLen = 24;
 constexpr size_t kMaxActors = 16;
 // Without guests an image is at most 24 + 16 x (4 + 255) bytes, and usually under 200. M7's guests
@@ -117,6 +126,9 @@ struct DeployImage {
     // reads one.
     uint8_t outside_count = 0;
     const uint8_t* outside = nullptr;
+    // M13: the broker's CA (version 4), DER, pointing into the image buffer; null and 0 without one.
+    const uint8_t* broker_ca = nullptr;
+    uint16_t broker_ca_len = 0;
 };
 
 // M13: rule `i` of the image's outside section.
@@ -197,9 +209,11 @@ size_t encode_ticker_config(const TickerConfig& c, uint8_t* out, size_t cap);
 
 // M13: the presenting role. Portable -- the reconciler gives it to one connected board among those its header
 // lists, and moves it -- and after the standard portable header:
-//   broker_ip u8[4] (a.b.c.d), broker_port u16, keepalive_s u8 (5..120), flags u8 (0; bit 0 reserved for TLS)
-// The broker's login, if it has one, is typed by the owner on each board (`POT! present login`), never carried
-// by the package.
+//   broker_ip u8[4] (a.b.c.d), broker_port u16, keepalive_s u8 (5..120), flags u8 (kPresent*)
+// kPresentTls: connect with TLS, verifying the broker against the image's CA (version 4; an image with the flag and
+// no CA is refused). The broker's login, if it has one, is typed by the owner on each board (`POT! present login`),
+// never carried by the package.
+constexpr uint8_t kPresentTls = 1;
 struct PresentConfig {
     TickerConfig place;
     uint8_t ip[4];

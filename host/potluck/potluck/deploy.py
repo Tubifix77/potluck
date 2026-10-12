@@ -29,6 +29,8 @@ IMAGE_MAGIC = 0x44544F50  # "POTD"
 IMAGE_VERSION = 1
 IMAGE_VERSION_GUESTS = 2  # M7: version 1 plus a guest section
 IMAGE_VERSION_OUTSIDE = 3  # M13: version 2 plus the outside section
+IMAGE_VERSION_BROKER_CA = 4  # M13: version 3 plus the broker's CA, for a presenter with TLS
+MAX_BROKER_CA = 1024  # deploy.hpp's kMaxBrokerCa (DER)
 IMAGE_HEADER_LEN = 24
 MAX_ACTORS = 16
 MAX_IMAGE_LEN = 512
@@ -36,6 +38,9 @@ MAX_IMAGE_LEN = 512
 #: image this large; any other refuses it as TOO_LARGE, before writing anything.
 MAX_IMAGE_LEN_GUESTS = 32 * 1024
 MAX_GUESTS = 4
+#: M13: a firmware with the presenting module receives a signed stream of up to 2048 B (m0_main.cpp's kImageBufLen),
+#: room for the outside section's names and a broker CA; the image is that less its signature trailer.
+MAX_IMAGE_LEN_PRESENT = 2048 - 176
 EVERY_NODE = 0xFFFF
 # 220, not the node's 512: a CHUNK frame is 6 + data bytes, and the node caps a peer it has not pinned
 # to ESP-NOW v2 -- the host, on the serial link -- at the 226-byte v1 payload (section 5.3). Images
@@ -54,6 +59,7 @@ ACTOR_MC_JOB = 7  # M9: a Monte Carlo job that borrows idle cores; publishes nod
 ACTOR_GUEST = 8  # M7: a sandboxed WebAssembly module from a guest author (potluck.guest); portable
 ACTOR_CLUSTER = 9  # M12: the cluster's name, every node; added by compile_image when `system` is not "lab"
 ACTOR_PRESENT = 10  # M13: the presenting role -- portable, needs a connected board (pot/present.hpp)
+PRESENT_TLS = 0x01  # M13: deploy.hpp's kPresentTls -- the presenter connects with TLS, against the image's CA
 ACTOR_LED_SWITCH = 11  # M13: the status LED as a writable resource, node-<id>/led/on (pot/led_switch.hpp)
 CLUSTER_NAME_MAX = 31
 OUTSIDE_NAME_MAX = 40  # M13: deploy.hpp's kMaxOutsideName
@@ -220,10 +226,37 @@ def _led_switch_config(m: Manifest, a, where: str) -> bytes:
     return struct.pack("<IBBBB", path_hash(led_switch_path(m.system, a.pin)), *rgb, blink // 100)
 
 
+def broker_ca_der(value: str, where: str) -> bytes:
+    """M13: the broker's CA certificate as DER, from a PEM certificate or its base64 body (what `potluck apply`
+    puts in the manifest from the cluster file's `tls_ca` file). Checked for shape only; the board's TLS library
+    judges the certificate itself."""
+    import base64
+    import binascii
+
+    text = str(value)
+    if "-----BEGIN" in text:
+        lines = text.strip().splitlines()
+        try:
+            a = next(i for i, ln in enumerate(lines) if ln.startswith("-----BEGIN CERTIFICATE-----"))
+            b = next(i for i, ln in enumerate(lines) if i > a and ln.startswith("-----END CERTIFICATE-----"))
+        except StopIteration:
+            raise DeployError(f"{where}: tls_ca is PEM but holds no CERTIFICATE block") from None
+        text = "".join(lines[a + 1:b])
+    try:
+        der = base64.b64decode("".join(text.split()), validate=True)
+    except (binascii.Error, ValueError):
+        raise DeployError(f"{where}: tls_ca is neither a PEM certificate nor base64 DER") from None
+    if not der or der[0] != 0x30 or len(der) > MAX_BROKER_CA:
+        raise DeployError(f"{where}: tls_ca must be one DER certificate of 1..{MAX_BROKER_CA} bytes "
+                          f"(got {len(der)} bytes{'' if der[:1] == b'0' else ', not a DER SEQUENCE'})")
+    return der
+
+
 def _present_config(m: Manifest, a, where: str) -> bytes:
     """M13: the portable header (every board eligible; the reconciler places it only on a connected one), then
-    broker a.b.c.d, port, keep-alive, flags."""
-    extra = set(a.config) - {"broker", "keepalive_s", "period_ms"}
+    broker a.b.c.d, port, keep-alive, flags. With `tls_ca` (base64 DER, or PEM) the presenter connects with TLS and
+    verifies the broker against that CA, which the image carries (version 4)."""
+    extra = set(a.config) - {"broker", "keepalive_s", "period_ms", "tls_ca"}
     if extra:
         raise DeployError(f"{where}: unknown present config key(s) {sorted(extra)}")
     broker = str(a.config.get("broker", ""))
@@ -241,7 +274,10 @@ def _present_config(m: Manifest, a, where: str) -> bytes:
     if not 5 <= keepalive <= 120:
         raise DeployError(f"{where}: keepalive_s={keepalive} is outside 5..120")
     hdr = _portable_header(m, a, int(a.config.get("period_ms", 2000)), where)
-    return hdr + struct.pack("<4BHBB", *ip, port_n, keepalive, 0)
+    flags = PRESENT_TLS if a.config.get("tls_ca") else 0
+    if flags:
+        broker_ca_der(a.config["tls_ca"], where)
+    return hdr + struct.pack("<4BHBB", *ip, port_n, keepalive, flags)
 
 
 def _ticker_config(m: Manifest, a, where: str) -> bytes:
@@ -449,14 +485,20 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
         raise DeployError(f"{count} actors; the node image holds at most {MAX_ACTORS}")
     digest = bytes.fromhex(m.digest())[:8]
     rules = outside_rules(m)
-    version = IMAGE_VERSION_OUTSIDE if rules else IMAGE_VERSION_GUESTS if guests else IMAGE_VERSION
+    cas = {broker_ca_der(a.config["tls_ca"], f"actors[{a.name}]") for a in m.actors
+           if a.module == "builtin:present" and a.config.get("tls_ca")}
+    if len(cas) > 1:
+        raise DeployError("two presenters pin different broker CAs; an image carries one")
+    ca = cas.pop() if cas else b""
+    version = (IMAGE_VERSION_BROKER_CA if ca else IMAGE_VERSION_OUTSIDE if rules else
+               IMAGE_VERSION_GUESTS if guests else IMAGE_VERSION)
     header = struct.pack("<IBBHI8sI", IMAGE_MAGIC, version, count, 0, counter, digest, len(body))
     img = header + body
-    if guests or rules:
+    if guests or rules or ca:
         img += bytes([len(guests)])
         for g in guests:
             img += struct.pack("<I", len(g)) + g
-    if rules:
+    if rules or ca:
         img += bytes([len(rules)])
         prefix = f"potluck://{m.system}/"
         for path, flags in rules:
@@ -466,7 +508,9 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
                 raise DeployError(f"outside: '{name}' -- the name a board calls a resource outside the cell is the path "
                                   f"after {prefix}, 1..{OUTSIDE_NAME_MAX} printable ASCII characters, no quotes")
             img += struct.pack("<IBB", path_hash(path), flags, len(raw)) + raw
-    limit = MAX_IMAGE_LEN_GUESTS if guests else MAX_IMAGE_LEN
+    if ca:
+        img += struct.pack("<H", len(ca)) + ca
+    limit = MAX_IMAGE_LEN_GUESTS if guests else MAX_IMAGE_LEN_PRESENT if ca else MAX_IMAGE_LEN
     if len(img) > limit:
         raise DeployError(f"image is {len(img)} bytes; the node accepts at most {limit}")
     return img

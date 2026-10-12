@@ -134,6 +134,27 @@ class ClusterFile(unittest.TestCase):
         with self.assertRaisesRegex(ap.ApplyError, "read_write"):
             self.cluster(outside={"node-0100/hw/die_temp": "write"})
 
+    def test_the_brokers_ca_file_goes_into_the_signed_manifest_as_der(self):
+        # M13: TLS to the broker. The cluster file names the CA's file; its DER rides in the manifest (the owner
+        # signs it) and the image carries it (version 4).
+        (self.d / "ca.pem").write_text("-----BEGIN CERTIFICATE-----\nMAMCAQE=\n-----END CERTIFICATE-----\n")
+        fw = {"modules": ["present", "wifi"]}
+        c = self.cluster(firmware=fw, present={"broker": "192.168.0.77:8883", "tls_ca": "ca.pem"})
+        self.assertEqual(c.present["tls_ca"], "MAMCAQE=")
+        (self.d / "ca.der").write_bytes(bytes.fromhex("3003020101"))
+        self.assertEqual(self.cluster(firmware=fw, present={"broker": "192.168.0.77:8883", "tls_ca": "ca.der"})
+                         .present["tls_ca"], "MAMCAQE=")
+        frag = {"schema": 1, "system": "lab", "nodes": [], "actors": []}
+        m = mf.parse(ap.compose(c, [(frag, self.d, "frag")]))
+        img = dp.compile_image(m, 5)
+        self.assertEqual(img[4], dp.IMAGE_VERSION_BROKER_CA)
+        self.assertTrue(img.endswith(bytes.fromhex("05003003020101")))
+        with self.assertRaisesRegex(ap.ApplyError, "cannot read"):
+            self.cluster(firmware=fw, present={"broker": "192.168.0.77:8883", "tls_ca": "missing.pem"})
+        (self.d / "key.pem").write_text("-----BEGIN PRIVATE KEY-----\nMAMCAQE=\n-----END PRIVATE KEY-----\n")
+        with self.assertRaisesRegex(ap.ApplyError, "CERTIFICATE"):
+            self.cluster(firmware=fw, present={"broker": "192.168.0.77:8883", "tls_ca": "key.pem"})
+
     def test_a_board_the_cluster_does_not_have_and_clashing_actors_are_refused(self):
         c = self.cluster()
         stranger = {"schema": 1, "system": "lab", "nodes": [{"node_id": 0x900, "label": "garage", "owns": [

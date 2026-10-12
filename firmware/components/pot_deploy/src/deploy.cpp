@@ -44,7 +44,8 @@ size_t image_extent(const uint8_t* data, size_t len) {
     const uint32_t body = rd32(data + 20);
     if (body > len - kImageHeaderLen) return 0;
     size_t at = kImageHeaderLen + body;
-    if (data[4] != kImageVersionGuests && data[4] != kImageVersionOutside) return at;
+    const uint8_t v = data[4];
+    if (v != kImageVersionGuests && v != kImageVersionOutside && v != kImageVersionBrokerCa) return at;
     if (at >= len) return 0;  // the guest count
     const uint8_t n = data[at++];
     for (uint8_t g = 0; g < n; ++g) {
@@ -54,7 +55,7 @@ size_t image_extent(const uint8_t* data, size_t len) {
         if (gl > len - at) return 0;
         at += gl;
     }
-    if (data[4] != kImageVersionOutside) return at;
+    if (v == kImageVersionGuests) return at;
     if (at >= len) return 0;  // the outside count
     const uint8_t no = data[at++];
     for (uint8_t i = 0; i < no; ++i) {
@@ -63,7 +64,12 @@ size_t image_extent(const uint8_t* data, size_t len) {
         if (len - at - 6 < nl) return 0;
         at += 6 + nl;
     }
-    return at;
+    if (v != kImageVersionBrokerCa) return at;
+    if (len - at < 2) return 0;  // the CA's length
+    const uint16_t cl = rd16(data + at);
+    at += 2;
+    if (cl > len - at) return 0;
+    return at + cl;
 }
 
 bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why) {
@@ -81,11 +87,13 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
         w = "bad magic";
         return false;
     }
-    if (data[4] != kImageVersion && data[4] != kImageVersionGuests && data[4] != kImageVersionOutside) {
+    if (data[4] != kImageVersion && data[4] != kImageVersionGuests && data[4] != kImageVersionOutside &&
+        data[4] != kImageVersionBrokerCa) {
         w = "unknown image version";
         return false;
     }
-    const bool v3 = data[4] == kImageVersionOutside;
+    const bool v4 = data[4] == kImageVersionBrokerCa;
+    const bool v3 = data[4] == kImageVersionOutside || v4;
     const bool v2 = data[4] == kImageVersionGuests || v3;
     const uint8_t count = data[5];
     if (count > kMaxActors) {
@@ -100,6 +108,8 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
     out.guest_count = 0;
     out.outside_count = 0;
     out.outside = nullptr;
+    out.broker_ca = nullptr;
+    out.broker_ca_len = 0;
     out.rollback_counter = rd32(data + 8);
     std::memcpy(out.package_digest, data + 12, sizeof(out.package_digest));
     out.actor_count = count;
@@ -298,8 +308,27 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
             out.outside_count = no;
             out.outside = data + start;
         }
+        if (v4) {
+            // M13: the broker's CA. Its contents are judged where it is used, by the TLS library: a board that cannot
+            // parse it fails to connect and says so, it does not refuse the package.
+            if (len - at < 2) {
+                w = "broker CA section missing";
+                return false;
+            }
+            const uint16_t cl = rd16(data + at);
+            at += 2;
+            if (cl == 0 || cl > kMaxBrokerCa || len - at < cl) {
+                w = "broker CA is not 1..1024 bytes, or truncated";
+                return false;
+            }
+            out.broker_ca = data + at;
+            out.broker_ca_len = cl;
+            at += cl;
+        }
         if (at != len) {
-            w = v3 ? "trailing bytes after the outside section" : "trailing bytes after the last guest";
+            w = v4   ? "trailing bytes after the broker CA"
+                : v3 ? "trailing bytes after the outside section"
+                     : "trailing bytes after the last guest";
             return false;
         }
     }
@@ -307,6 +336,12 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
         const ActorDecl& a = out.actors[i];
         if (a.type == ActorType::Guest && a.cfg[a.cfg_len - 1] >= out.guest_count) {
             w = "guest actor names a guest the image does not carry";
+            return false;
+        }
+        PresentConfig pc{};
+        if (a.type == ActorType::Present && present_config(a, pc) && (pc.flags & kPresentTls) != 0 &&
+            out.broker_ca_len == 0) {
+            w = "present asks for TLS and the image carries no broker CA";
             return false;
         }
     }
@@ -341,7 +376,7 @@ bool present_config(const ActorDecl& a, PresentConfig& out) {
     out.port = rd16(p + 4);
     out.keepalive_s = p[6];
     out.flags = p[7];
-    return out.port != 0 && out.keepalive_s >= 5 && out.keepalive_s <= 120 && out.flags == 0 &&
+    return out.port != 0 && out.keepalive_s >= 5 && out.keepalive_s <= 120 && (out.flags & ~kPresentTls) == 0 &&
            (out.ip[0] | out.ip[1] | out.ip[2] | out.ip[3]) != 0;
 }
 

@@ -868,6 +868,8 @@ BootOutcome g_outcome = BootOutcome::NoDeployment;
 #if CONFIG_POT_WASM
 constexpr size_t kImageBufLen = kMaxImageLen;  // M7: guests carry their code
 EXT_RAM_BSS_ATTR uint8_t g_guest_pool[kMaxImageLen];  // PSRAM; the guest task reads the modules here
+#elif CONFIG_POT_PRESENT
+constexpr size_t kImageBufLen = 2048;  // M13: the outside section's names and the broker's CA (deploy.py's limit)
 #else
 constexpr size_t kImageBufLen = 512;  // no guest section can run here, so images stay as small as before M7
 #endif
@@ -905,6 +907,8 @@ struct OutsideName {
 };
 EXT_RAM_BSS_ATTR OutsideName g_outside[kMaxOutside];
 size_t g_outside_n = 0;
+EXT_RAM_BSS_ATTR uint8_t g_broker_ca[kMaxBrokerCa];
+size_t g_broker_ca_len = 0;
 
 void keep_outside(const DeployImage& img) {
     g_outside_n = 0;
@@ -917,6 +921,9 @@ void keep_outside(const DeployImage& img) {
         std::memcpy(o.name, name, o.len);
         o.name[o.len] = '\0';
     }
+    // The broker's CA (version 4), copied for the same reason.
+    g_broker_ca_len = img.broker_ca_len <= kMaxBrokerCa ? img.broker_ca_len : 0;
+    if (g_broker_ca_len != 0) std::memcpy(g_broker_ca, img.broker_ca, g_broker_ca_len);
 }
 
 // Read the active slot, validate every actor meant for this node, and only then apply them: a
@@ -3123,6 +3130,12 @@ const char* cell_id(void*) {
     return id[0] != 0 ? id : "00000000";
 }
 const char* system_name(void*) { return sys_system(); }
+bool broker_ca(void*, const uint8_t** der, size_t* len) {
+    if (deploy_rt::g_broker_ca_len == 0) return false;
+    *der = deploy_rt::g_broker_ca;
+    *len = deploy_rt::g_broker_ca_len;
+    return true;
+}
 uint64_t unix_ms(void*) {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
@@ -3132,7 +3145,7 @@ uint64_t unix_ms(void*) {
 }
 
 const BoardServices g_board_services{nullptr,     &led_app, &bg::submit,  &bg::yield, bg::kWorkers,
-                                     &outside_at, &cell_id, &system_name, &unix_ms};
+                                     &outside_at, &cell_id, &system_name, &unix_ms, &broker_ca};
 
 // M12: the inventory record (pot/node_status.hpp). With g_mutex held (on_deploy).
 size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {

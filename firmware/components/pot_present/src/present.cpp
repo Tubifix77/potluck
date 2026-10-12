@@ -61,7 +61,11 @@ struct StartCfg {
     uint8_t n_presenters;
     uint8_t keepalive_s;
     bool login;
+    bool tls;
+    uint16_t ca_len;
+    uint8_t ca[kMaxBrokerCa];  // the broker's CA (DER), a copy: the package's bytes go with the next package
 };
+static_assert(2 + sizeof(StartCfg) <= kRecLen, "the 'S' record carries a whole StartCfg");
 
 // One presenter per board, so its state is one block, in PSRAM where there is any: only tasks touch it.
 struct State {
@@ -223,6 +227,11 @@ void sender_task(void*) {
             mc.session.last_will.msg_len = static_cast<int>(std::strlen(g.active.will_msg));
             mc.session.last_will.qos = 1;
             mc.session.last_will.retain = 0;
+            if (g.active.tls) {
+                // DER, so the length is given (esp-tls hands it to mbedTLS, which tells PEM from DER itself).
+                mc.broker.verification.certificate = reinterpret_cast<const char*>(g.active.ca);
+                mc.broker.verification.certificate_len = g.active.ca_len;
+            }
             mc.network.reconnect_timeout_ms = 3000;
             mc.buffer.size = 2048;
             g.client = esp_mqtt_client_init(&mc);
@@ -284,8 +293,22 @@ class PresentActor : public Actor {
         std::snprintf(b.status_topic, sizeof(b.status_topic), "%s/status", CONFIG_POT_PRESENT_PREFIX);
         presenter_topic(cl, self, b.will_topic, sizeof(b.will_topic));
         will_payload(self, b.will_msg, sizeof(b.will_msg));
-        std::snprintf(b.uri, sizeof(b.uri), "mqtt://%u.%u.%u.%u:%u", cfg_.ip[0], cfg_.ip[1], cfg_.ip[2], cfg_.ip[3],
-                      static_cast<unsigned>(cfg_.port));
+        b.tls = (cfg_.flags & kPresentTls) != 0;
+        if (b.tls) {
+            // The package pins the broker's CA (pot/deploy.hpp, image version 4); parse_image refused a TLS presenter
+            // without one, so missing here means a board too old to hand it over.
+            const uint8_t* der = nullptr;
+            size_t dl = 0;
+            if (board_->broker_ca == nullptr || !board_->broker_ca(board_->ctx, &der, &dl) || dl == 0 ||
+                dl > sizeof(b.ca)) {
+                ESP_LOGE(kTag, "TLS asked for and no broker CA from the package: not presenting");
+                return false;
+            }
+            std::memcpy(b.ca, der, dl);
+            b.ca_len = static_cast<uint16_t>(dl);
+        }
+        std::snprintf(b.uri, sizeof(b.uri), "%s://%u.%u.%u.%u:%u", b.tls ? "mqtts" : "mqtt", cfg_.ip[0], cfg_.ip[1],
+                      cfg_.ip[2], cfg_.ip[3], static_cast<unsigned>(cfg_.port));
         std::snprintf(b.client_id, sizeof(b.client_id), "potluck-%s-%04x", g.cell_id, static_cast<unsigned>(self));
         std::memcpy(b.cell_id, g.cell_id, sizeof(b.cell_id));
         std::memcpy(b.system, g.system, sizeof(b.system));
@@ -581,12 +604,12 @@ bool holding() { return g.holding.load(); }
 bool connected() { return g.connected.load(); }
 
 void print_status() {
-    std::printf("{\"t\":\"present\",\"holding\":%d,\"connected\":%d,\"connects\":%lu,\"configs\":%lu,\"states\":%lu,"
+    std::printf("{\"t\":\"present\",\"holding\":%d,\"tls\":%d,\"connected\":%d,\"connects\":%lu,\"configs\":%lu,\"states\":%lu,"
                 "\"writes_sent\":%lu,\"writes_applied\":%lu,\"writes_refused\":%lu,\"cmds_dropped\":%lu,"
                 "\"enqueue_fail\":%lu,\"errors\":%lu,\"published\":%lu,\"publish_fail\":%lu,\"pending\":%u,"
                 "\"int_free\":%u,\"int_largest\":%u,"
-                "\"int_min_free\":%u}\n",
-                g.holding.load() ? 1 : 0, g.connected.load() ? 1 : 0, static_cast<unsigned long>(g.connects.load()),
+                "\"int_min_free\":%u,\"ext_free\":%u,\"ext_min_free\":%u}\n",
+                g.holding.load() ? 1 : 0, g.holding.load() && g.active.tls ? 1 : 0, g.connected.load() ? 1 : 0, static_cast<unsigned long>(g.connects.load()),
                 static_cast<unsigned long>(g.configs), static_cast<unsigned long>(g.states),
                 static_cast<unsigned long>(g.writes_sent), static_cast<unsigned long>(g.writes_applied),
                 static_cast<unsigned long>(g.writes_refused), static_cast<unsigned long>(g.cmds_dropped.load()),
@@ -595,7 +618,9 @@ void print_status() {
                 g.out != nullptr ? static_cast<unsigned>(kOutLen - xMessageBufferSpacesAvailable(g.out)) : 0u,
                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                 static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
-                static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+                static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
+                static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM)));
 }
 
 bool handle_console(const char* line, size_t len) {

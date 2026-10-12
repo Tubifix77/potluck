@@ -362,9 +362,27 @@ def load_cluster(path: str) -> Cluster:
         if "present" not in board_modules:
             raise ApplyError("present: the cell presents itself only with the 'present' module in the firmware -- "
                              "add it to firmware.modules")
-        extra_keys = set(present) - {"broker", "keepalive_s", "period_ms"}
+        extra_keys = set(present) - {"broker", "keepalive_s", "period_ms", "tls_ca"}
         if extra_keys:
             raise ApplyError(f"present: unknown key(s) {sorted(extra_keys)}")
+        if present.get("tls_ca") is not None:
+            # TLS to the broker: the file of the broker's CA certificate (PEM or DER), relative to this file. Its DER
+            # goes into the manifest, so the owner's signature pins it; it is public, never a secret.
+            ca_path = _rel(base, str(present["tls_ca"]))
+            try:
+                raw = Path(ca_path).read_bytes()
+            except OSError as e:
+                raise ApplyError(f"present.tls_ca: cannot read {ca_path}: {e}") from None
+            import base64
+
+            from . import deploy as dp
+
+            text = raw.decode("ascii", "replace") if b"-----BEGIN" in raw else base64.b64encode(raw).decode()
+            try:
+                der = dp.broker_ca_der(text, "present.tls_ca")
+            except dp.DeployError as e:
+                raise ApplyError(str(e)) from None
+            present = dict(present, tls_ca=base64.b64encode(der).decode())
     apps = [_source(a, f"apps[{i}]", base, f"app{i}") for i, a in enumerate(doc.get("apps", []))]
     if len({a.name for a in apps}) != len(apps):
         raise ApplyError("apps: two apps share a name")

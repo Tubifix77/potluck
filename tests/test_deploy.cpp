@@ -705,6 +705,61 @@ TEST(deploy, an_outside_section_that_breaks_a_rule_is_refused) {
     CHECK(!parse_image(trailing.data(), trailing.size(), d, &why));
 }
 
+// host/potluck/tests/test_outside.py's PRESENT_TLS_GOLDEN: a present actor with TLS (flags 01) and led_b, the broker's
+// CA a 5-byte stand-in, version 4.
+const char* kPresentTlsGolden =
+    "504f54440402000003000000a7cd7195e09bef4625000000feff0a159e35af6ed00702006301687301c0a8004d5b070a01"
+    "68730b08a41b2e6bff8c0000000005003003020101";
+
+TEST(deploy, the_host_compilers_broker_ca_parses_here_and_a_tls_presenter_needs_it) {
+    const auto img = from_hex(kPresentTlsGolden);
+    DeployImage d{};
+    const char* why = nullptr;
+    CHECK(parse_image(img.data(), img.size(), d, &why));
+    CHECK_EQ(static_cast<size_t>(d.broker_ca_len), static_cast<size_t>(5));
+    CHECK(d.broker_ca != nullptr && d.broker_ca[0] == 0x30 && d.broker_ca[4] == 0x01);
+    CHECK_EQ(image_extent(img.data(), img.size()), img.size());
+    std::vector<uint8_t> stream = img;
+    stream.resize(img.size() + 176, 0xAB);  // the signature trailer follows the image in a slot
+    CHECK_EQ(image_extent(stream.data(), stream.size()), img.size());
+    PresentConfig pc{};
+    bool found = false;
+    for (size_t i = 0; i < d.actor_count; ++i) {
+        if (d.actors[i].type == ActorType::Present) found = present_config(d.actors[i], pc);
+    }
+    CHECK(found);
+    CHECK_EQ(static_cast<int>(pc.flags), static_cast<int>(kPresentTls));
+    CHECK_EQ(static_cast<int>(pc.port), 1883);
+
+    // The same declarations as a version-3 image without the CA: a TLS presenter with nothing to verify against.
+    auto no_ca = img;
+    no_ca[4] = kImageVersionOutside;
+    no_ca.resize(no_ca.size() - 7);
+    CHECK(!parse_image(no_ca.data(), no_ca.size(), d, &why));
+    CHECK(std::string(why).find("no broker CA") != std::string::npos);
+    // A CA cut short, an empty one, a byte after it: refused.
+    auto cut = img;
+    cut.pop_back();
+    CHECK(!parse_image(cut.data(), cut.size(), d, &why));
+    CHECK_EQ(image_extent(cut.data(), cut.size()), static_cast<size_t>(0));
+    auto empty = img;
+    empty.resize(empty.size() - 5);
+    empty[empty.size() - 2] = 0;
+    CHECK(!parse_image(empty.data(), empty.size(), d, &why));
+    auto trailing = img;
+    trailing.push_back(0);
+    CHECK(!parse_image(trailing.data(), trailing.size(), d, &why));
+    // An unknown presenter flag: refused.
+    auto flag = img;
+    for (size_t i = 0; i + 1 < flag.size(); ++i) {
+        if (flag[i] == 0x0a && flag[i + 1] == 0x01) {  // keep-alive 10 s, then the flags
+            flag[i + 1] = 0x03;
+            break;
+        }
+    }
+    CHECK(!parse_image(flag.data(), flag.size(), d, &why));
+}
+
 TEST(deploy, an_image_without_an_outside_section_clears_the_last_ones_rules) {
     Namespace ns;
     DeployImage d{};

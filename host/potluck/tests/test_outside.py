@@ -139,6 +139,14 @@ PRESENT_GOLDEN = ("504f54440102000003000000cd8c12d9a4f8758a25000000feff0a159e35a
                   "68730b08a41b2e6bff8c0000")
 
 
+#: The same with TLS: tls_ca a stand-in DER (30 03 02 01 01, a SEQUENCE holding INTEGER 1 -- its shape is all the host
+#: checks), at counter 3. Version 4; the present config's flags byte 01; then the guest section (0), the outside
+#: section (0) and the CA, 0005 bytes. tests/test_deploy.cpp parses these bytes.
+TLS_CA = "MAMCAQE="
+PRESENT_TLS_GOLDEN = ("504f54440402000003000000a7cd7195e09bef4625000000feff0a159e35af6ed00702006301687301c0a8004d5b070a01"
+                      "68730b08a41b2e6bff8c0000000005003003020101")
+
+
 def present_manifest(**cfg) -> dict:
     return {"schema": 1, "system": "lab", "min_core_version": 1,
             "nodes": [{"node_id": 0x6300, "label": "A"}, {"node_id": 0x7368, "label": "B"}],
@@ -151,6 +159,21 @@ def present_manifest(**cfg) -> dict:
 class PresentActor(unittest.TestCase):
     def test_the_present_and_led_switch_declarations_compile_to_the_node_format(self) -> None:
         self.assertEqual(dp.compile_image(parse(present_manifest()), 3).hex(), PRESENT_GOLDEN)
+
+    def test_tls_puts_the_brokers_ca_in_a_version_4_image(self) -> None:
+        self.assertEqual(dp.compile_image(parse(present_manifest(tls_ca=TLS_CA)), 3).hex(), PRESENT_TLS_GOLDEN)
+        pem = "-----BEGIN CERTIFICATE-----\nMAMC\nAQE=\n-----END CERTIFICATE-----\n"
+        # A PEM is a different manifest (another package digest, bytes 12..19); the rest is the same image.
+        self.assertEqual(dp.compile_image(parse(present_manifest(tls_ca=pem)), 3)[20:].hex(), PRESENT_TLS_GOLDEN[40:])
+
+    def test_a_ca_that_is_not_one_der_certificate_is_refused(self) -> None:
+        import base64
+
+        for bad in ("not base64!", base64.b64encode(b"\x02\x01\x01").decode(),
+                    base64.b64encode(b"\x30" + bytes(dp.MAX_BROKER_CA)).decode(),
+                    "-----BEGIN PRIVATE KEY-----\nMAMCAQE=\n-----END PRIVATE KEY-----"):
+            with self.assertRaises(dp.DeployError):
+                dp.compile_image(parse(present_manifest(tls_ca=bad)), 3)
 
     def test_a_broker_that_is_not_an_address_and_a_keepalive_out_of_range_are_refused(self) -> None:
         for bad in ({"broker": "broker.local"}, {"broker": "192.168.0.300"}, {"keepalive_s": 2}, {"colour": 1}):

@@ -66,6 +66,9 @@ struct BoardServices {
     const char* (*system_name)(void* ctx) = nullptr;
     // The network's time in ms since 1970, 0 while it is not known (SNTP has not answered).
     uint64_t (*unix_ms)(void* ctx) = nullptr;
+    // The running package's broker CA (DER), for a presenter with TLS: false when the package carries none. The bytes
+    // stay valid until the next package is applied, so a presenter copies them when it starts.
+    bool (*broker_ca)(void* ctx, const uint8_t** der, size_t* len) = nullptr;
 };
 
 // What the runtime gives an actor.
