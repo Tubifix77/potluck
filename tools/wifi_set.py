@@ -4,7 +4,8 @@
     <IDF python> tools/wifi_set.py COM5 <path to your file>
     <IDF python> tools/wifi_set.py COM5 --forget
 
-The file holds two lines: the house Wi-Fi name, then its password (8-64 characters, WPA2).
+The file holds two lines: the house Wi-Fi name, then its password (8-64 characters, WPA2). A four-line file made for
+tools/pme_set_wifi.py works too: its first two lines are the house Wi-Fi, and the hotspot's lines are ignored.
 
 M13: Potluck's own station (firmware.modules: ["wifi"]). It sends `POT! wifi sta "<name>" "<password>"` to the
 board's console, quoting and escaping both, waits for the board's result line, and restarts the board once so the
@@ -70,9 +71,11 @@ def main() -> int:
         return send(port, "forget", "forgotten")
     with open(what, encoding="utf-8-sig") as f:
         lines = [l.rstrip("\r\n") for l in f.readlines() if l.strip("\r\n") != ""]
-    if len(lines) != 2:
-        print(f"the file must hold two non-empty lines (name, password); it holds {len(lines)}")
+    if len(lines) not in (2, 4):
+        print(f"the file must hold two non-empty lines (name, password), or four (tools/pme_set_wifi.py's: the house "
+              f"Wi-Fi, then a hotspot, which this ignores); it holds {len(lines)}")
         return 2
+    lines = lines[:2]  # the house Wi-Fi
     name, password = lines
     if not 1 <= len(name.encode()) <= 32:
         print(f"the name is {len(name.encode())} bytes; Wi-Fi allows 1-32")
