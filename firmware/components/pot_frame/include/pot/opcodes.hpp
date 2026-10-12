@@ -60,7 +60,10 @@ constexpr uint8_t kOpFwStatus = 0x37;
 // M12: what a node runs -- firmware, package, role, actors -- for potluck apply's inventory. Routed like a
 // deploy, and passed on by the board on the cable to the node it names, as FW_STATUS is.
 constexpr uint8_t kOpNodeStatus = 0x38;
-inline bool is_deploy_opcode(uint8_t op) { return op >= kOpDeployBegin && op <= kOpNodeStatus; }
+// M14: the cell's leases (pot/lease.hpp) -- one resident hub, one deploy at a time. Routed like a deploy; the board
+// on the cable passes it on to the arbiter, as NODE_STATUS is passed on.
+constexpr uint8_t kOpLease = 0x39;
+inline bool is_deploy_opcode(uint8_t op) { return op >= kOpDeployBegin && op <= kOpLease; }
 inline bool is_fw_opcode(uint8_t op) { return op >= kOpFwBegin && op <= kOpFwStatus; }
 // constexpr uint8_t kOpMigratePrepare = 0x40;
 // constexpr uint8_t kOpMigrateCommit  = 0x41;

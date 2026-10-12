@@ -45,6 +45,7 @@ label; one written for another cluster name is re-homed under this one.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import copy
 import hashlib
 import io
@@ -941,7 +942,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
         return 2
     times["plan (package, firmware build)"] = time.monotonic() - t_start
 
-    with Bridge.open(port=port, baud=c.baud) as b:
+    with Bridge.open(port=port, baud=c.baud) as b, contextlib.ExitStack() as held:
         if b.hello(timeout=3.0) is None:
             print(f"REFUSED, nothing changed: no board answers on {port}")
             return 2
@@ -979,6 +980,17 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
         if plan_only:
             print("plan only: nothing changed")
             return 0
+        # M14: the cell's deploy lease, held until this run ends -- a second apply, from this PC or another, is
+        # refused here, before anything changes, naming the first.
+        from .lease import KIND_DEPLOY, CellLease, LeaseRefused, holder_name
+
+        try:
+            lease = held.enter_context(CellLease.take(b, KIND_DEPLOY, holder_name("apply"), log=log))
+        except LeaseRefused as exc:
+            print(f"REFUSED, nothing changed: {exc}")
+            return 2
+        if lease.supported:
+            log(f"lease: the cell's deploy lease is ours (board 0x{lease.reply.arbiter:04x} holds it)")
         uptime0 = {n: (inv[n].uptime_s if inv[n] else None) for n in boards}
         t_uptime0 = time.monotonic()
         reboots_expected: set[int] = set()

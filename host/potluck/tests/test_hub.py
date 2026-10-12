@@ -168,5 +168,27 @@ class Api(HubFixture):
         self.assertTrue(data.startswith("data: {"))
 
 
+class SecondHub(unittest.TestCase):
+    def test_a_second_hub_on_this_pc_is_refused_naming_the_first_before_it_opens_the_port(self) -> None:
+        import contextlib
+        import io
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as d:
+            st = Path(d) / "hub.json"
+            st.write_text(json.dumps({"pid": 4242, "port": "COM6", "relay": "127.0.0.1:8471", "api": "127.0.0.1:8470"}))
+            out = io.StringIO()
+            with (mock.patch.object(hb, "state_file", return_value=st),
+                  mock.patch.object(hb, "hub_endpoint", return_value="127.0.0.1:8471"),
+                  mock.patch.object(hb, "open_transport") as opened, contextlib.redirect_stdout(out)):
+                rc = hb.main(["--port", "COM6"])
+            self.assertEqual(rc, 2)
+            self.assertIn("REFUSED", out.getvalue())
+            self.assertIn("pid 4242", out.getvalue())
+            opened.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

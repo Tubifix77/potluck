@@ -509,7 +509,7 @@ TEST(deploy, every_opcode_in_the_deploy_range_reaches_the_deploy_server) {
         c.advance_ms(20);
     }
     CHECK(seen.ops == want);
-    CHECK_EQ(want.size(), static_cast<size_t>(9));  // DEPLOY_BEGIN..ABORT, FW_BEGIN..STATUS, NODE_STATUS (M12)
+    CHECK_EQ(want.size(), static_cast<size_t>(10));  // DEPLOY_BEGIN..ABORT, FW_BEGIN..STATUS, NODE_STATUS (M12), LEASE (M14)
     CHECK_EQ(c.slots[1].node->counters().rx_unknown_opcode, 0u);
 }
 

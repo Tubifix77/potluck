@@ -1936,6 +1936,7 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         case kOpFwCommit:
         case kOpFwStatus:
         case kOpNodeStatus:  // M12: the inventory
+        case kOpLease:       // M14: the cell's leases
             handle_deploy(p, f);
             break;
         case kOpSafeState: handle_safe_state(p, f); break;

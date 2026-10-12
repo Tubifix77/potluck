@@ -47,6 +47,7 @@
 #endif
 #include "pot/espnow_port.hpp"
 #include "pot/node.hpp"
+#include "pot/lease.hpp"
 #include "pot/node_status.hpp"
 #include "pot/opcodes.hpp"
 #include "pot/reconcile.hpp"
@@ -1330,8 +1331,84 @@ void on_node_status(uint16_t from, uint16_t msg_id, const uint8_t* p, uint16_t l
     if (n > 0) g_node->send_reply_raw(from, msg_id, wire, static_cast<uint16_t>(n));
 }
 
+// ---- M14: the cell's leases (LEASE) ---------------------------------------------------------------
+// Every board keeps a table; the lowest-id live board is the one asked. A request with target 0 is for the arbiter
+// this board picks; it goes on over the radio with that board's id in it, so the arbiter answers it as its own.
+LeaseTable g_leases;  // under g_mutex
+
+struct LeaseProxy {
+    uint16_t awaiting = 0, target = 0, requester = 0, requester_msg = 0;
+    uint8_t kind = 0;
+};
+LeaseProxy g_lease_proxy;
+
+void lease_unreachable(uint16_t to, uint16_t msg, uint16_t arbiter, uint8_t kind) {
+    LeaseReply r;
+    r.status = LeaseStatus::Unreachable;
+    r.kind = kind;
+    r.arbiter = arbiter;
+    uint8_t wire[kLeaseReplyMaxLen];
+    const size_t n = store_lease_reply(r, wire, sizeof(wire));
+    g_node->send_reply_raw(to, msg, wire, static_cast<uint16_t>(n));
+}
+
+void on_lease(uint16_t from, uint16_t msg_id, const uint8_t* p, uint16_t len) {
+    LeaseRequest req;
+    if (!load_lease_request(p, len, req)) {
+        LeaseReply r;  // Malformed
+        uint8_t wire[kLeaseReplyMaxLen];
+        r.arbiter = g_node_id;
+        g_node->send_reply_raw(from, msg_id, wire, static_cast<uint16_t>(store_lease_reply(r, wire, sizeof(wire))));
+        return;
+    }
+    uint16_t target = req.target;
+    if (target == 0) {
+        uint16_t alive[PeerTable::capacity()];
+        size_t n = 0;
+        for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+            const PeerLink& q = g_node->peers().slot(i);
+            if (q.state == PeerState::Alive && std::memcmp(q.mac, kHostMac, kMacLen) != 0) alive[n++] = q.node_id;
+        }
+        target = lease_arbiter(g_node_id, alive, n);
+    }
+    if (target != g_node_id) {
+        req.target = target;
+        uint8_t wire[kLeaseRequestMaxLen];
+        const size_t wl = store_lease_request(req, wire, sizeof(wire));
+        const uint16_t m = wl > 0 ? g_node->send_deploy(target, kOpLease, wire, static_cast<uint16_t>(wl)) : 0;
+        if (m == 0) {
+            lease_unreachable(from, msg_id, target, req.kind);
+            return;
+        }
+        if (g_lease_proxy.awaiting != 0) {
+            lease_unreachable(g_lease_proxy.requester, g_lease_proxy.requester_msg, g_lease_proxy.target,
+                              g_lease_proxy.kind);
+        }
+        g_lease_proxy = LeaseProxy{m, target, from, msg_id, req.kind};
+        return;
+    }
+    const LeaseReply r = g_leases.handle(req, now_ms_(), g_node_id);
+    if (r.status != LeaseStatus::Ok || req.op != kLeaseQuery) {
+        ESP_LOGI(kTag, "lease %s from 0x%04x: %s (holder now: %s)", lease_kind_str(req.kind), from,
+                 lease_status_str(r.status), r.name_len ? r.name : "none");
+    }
+    uint8_t wire[kLeaseReplyMaxLen];
+    g_node->send_reply_raw(from, msg_id, wire, static_cast<uint16_t>(store_lease_reply(r, wire, sizeof(wire))));
+}
+
 void on_result(void*, uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, const uint8_t* p,
                uint16_t len) {
+    if (op == kOpLease) {  // M14: the arbiter's answer to a request passed on
+        if (g_lease_proxy.awaiting == 0 || msg != g_lease_proxy.awaiting || peer != g_lease_proxy.target) return;
+        const LeaseProxy lp = g_lease_proxy;
+        g_lease_proxy = LeaseProxy{};
+        if (timed_out || p == nullptr || len == 0) {
+            lease_unreachable(lp.requester, lp.requester_msg, lp.target, lp.kind);
+        } else {
+            g_node->send_reply_raw(lp.requester, lp.requester_msg, p, len);
+        }
+        return;
+    }
     if (is_fw_opcode(op)) {
         fw_rt::on_result(peer, msg, op, timed_out, p, len);
         return;
@@ -1380,6 +1457,10 @@ size_t on_deploy(void*, uint16_t from, uint16_t msg_id, uint8_t op, const uint8_
     if (is_fw_opcode(op)) return fw_rt::on_fw(from, msg_id, op, p, len, reply, cap);  // M11
     if (op == kOpNodeStatus) {  // M12: answered whatever else is going on
         on_node_status(from, msg_id, p, len);
+        return 0;
+    }
+    if (op == kOpLease) {  // M14: likewise -- a lease is asked for while a deploy runs
+        on_lease(from, msg_id, p, len);
         return 0;
     }
     DeployReply r{};

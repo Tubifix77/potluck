@@ -57,7 +57,7 @@ DASHBOARD_DIR = Path(__file__).resolve().parent / "dashboard"
 #: Requests a tool sends that the cell answers with a REPLY correlated by msg_id: the hub re-numbers these.
 _REQUEST_OPS = frozenset({fr.Op.READ, fr.Op.WRITE, fr.Op.CALL, fr.Op.DEPLOY_BEGIN, fr.Op.DEPLOY_CHUNK,
                           fr.Op.DEPLOY_COMMIT, fr.Op.DEPLOY_ABORT, fr.Op.FW_BEGIN, fr.Op.FW_CHUNK, fr.Op.FW_COMMIT,
-                          fr.Op.FW_STATUS, fr.Op.NODE_STATUS})
+                          fr.Op.FW_STATUS, fr.Op.NODE_STATUS, fr.Op.LEASE})
 
 
 # ---- where a running hub can be found ---------------------------------------------------------------
@@ -678,11 +678,32 @@ def main(argv: list[str] | None = None) -> int:
             print(f"hub: {exc}")
             return 2
         a.port = a.port or cluster.port
+    # One resident hub per cell (M14). On this PC: the state file names a running one, found by its relay answering.
+    if hub_endpoint(None) is not None:
+        try:
+            st = json.loads(state_file().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            st = {}
+        print(f"REFUSED, nothing changed: a hub already runs on this PC (pid {st.get('pid')}, holding "
+              f"{st.get('port')}, API http://{st.get('api')}/) -- use it, or stop it first")
+        return 2
+    from .lease import KIND_HUB, CellLease, LeaseRefused, holder_name
+
     hub = Hub(open_transport(port=a.port, tcp=a.tcp, baud=a.baud))
     hub.start()
     model = Model(hub, cluster=cluster, package=package, pull_period_ms=a.pull_ms)
+    lease = None
     if hub.hello(timeout=3.0) is None:
         print(f"hub: no board answers on {a.port or a.tcp}; serving anyway, and retrying")
+    else:
+        # In the cell: its hub lease, held by the lowest-id board. Another PC's resident hub holds it -> refused,
+        # naming that hub, before anything is served.
+        try:
+            lease = CellLease.take(hub, KIND_HUB, holder_name("hub"), log=lambda m: print(f"[hub] {m}", flush=True))
+        except LeaseRefused as exc:
+            print(f"REFUSED, nothing changed: {exc} -- one resident hub per cell")
+            hub.close()
+            return 2
     relay = serve_relay(hub, a.relay)
     api = serve_api(model, a.api)
     st = {"pid": os.getpid(), "port": a.port or a.tcp, "relay": a.relay, "api": a.api, "started": _hub_ms()}
@@ -695,6 +716,11 @@ def main(argv: list[str] | None = None) -> int:
             t0 = time.monotonic()
             if hub.peer_node_id is None:
                 hub.hello(timeout=2.0)
+            if lease is not None and lease.lost is not None:
+                # The arbiter changed and another PC's hub took the lease there first: this one stands down.
+                model.record("hub_lease_lost", None, {"holder": lease.lost.name, "arbiter": lease.lost.arbiter})
+                print(f"[hub] standing down: the cell's hub lease is {lease.lost.holder_line()}", flush=True)
+                break
             model.pull()
             time.sleep(max(0.0, a.pull_ms / 1000 - (time.monotonic() - t0)))
     except KeyboardInterrupt:
@@ -705,6 +731,8 @@ def main(argv: list[str] | None = None) -> int:
                 state_file().unlink()
         except (OSError, ValueError):
             pass
+        if lease is not None:
+            lease.release()
         relay.shutdown()
         api.shutdown()
         hub.close()
