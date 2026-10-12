@@ -76,7 +76,10 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > ran 04:22-07:22. **New fail-stop:** a board whose every radio send fails for 60 s restarts (`{"t":"tx_dead"}`) --
 > C's radio stalled after 5.6 h tonight and B's boot stall recurred once; both recovered.
 >
-> **Next session:** read M0-LOG session 41; analyse the soak (`tools/soak_report.py`, the `present` lines' heap);
+> **Next session:** read M0-LOG session 41. **First: compare the two 3-hour soaks** -- with presenting
+> (`captures/m13-soak-*`: B's radio stalled twice, the fail-stop restarted it) and without (`captures/m13-soak-off-*`,
+> 07:27-10:27, package 48; the bench is left on it, so put the presenter back with `keys/desk-m13.json`): does presenting
+> make B's transmit stall likelier? That decides M13's kill line. Then
 > deploy a build with `pocket` and `wifi` (both idle without credentials) and check NODE_STATUS shows them idle; then
 > whatever the owner unblocked above. M14 (the hub) is next in section 13 once M13's owner-gated lines are in.
 >

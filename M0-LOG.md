@@ -5121,3 +5121,13 @@ associated station, and a lost DHCP lease left `connected` true -- the link loop
 both scan paths stand down when associated, and `IP_EVENT_STA_LOST_IP` clears the address; (6) the pocket page
 registered ten handlers into eight slots -- ten now, results checked (the server refused the two extra methods by
 itself either way).
+
+**The 3-hour soak with B presenting (04:22-07:22, firmware 20, package 47)** -- `captures/m13-soak-*.jsonl.gz`,
+`m13-soak-report.txt`. Presenting held: 16,023 messages published, none dropped or failed, one connection; B's internal
+heap lowest 141.4 KB (presenter's own figure 144.8 KB), largest block never under 64 KB; RTT p50/p99 4-6/11-16 ms over
+23,606 samples. **But B's radio stalled twice** -- every send refused, the fail-stop restarted it 60 s later each time
+(04:49, 38 min after a boot; 05:35, 44 min after the next), then 107 minutes clean; A and C each recorded the two
+deaths and two reboots, nothing else. With C's stall at 5.6 h earlier tonight (not presenting), the stall is not the
+presenter's alone; whether presenting makes it likelier is the question that decides M13's kill line ("presenting the
+cell costs the radio its M0 figures"). So the same 3 hours on the same firmware **without** the presenter (package 48,
+taken live) started at 07:27: `captures/m13-soak-off-*.jsonl`. This is the first thing for the next session to read.
