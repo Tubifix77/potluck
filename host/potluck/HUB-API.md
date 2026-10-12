@@ -91,7 +91,9 @@ Kinds include every node event the boards print (`peer_dead`, `peer_alive`, `pee
 ## GET /api/stream
 
 Server-sent events (`text/event-stream`): `event: model` with the full model once per pull period, `event: events` with
-new events as they arrive. A dashboard needs nothing else; ten open streams cost the cell no more radio than one,
+new events as they arrive, in the same shape as `GET /api/events` (`{api, next, events}`; at most the last 200 on connect).
+A write to a path that is not writable from outside, or unknown, is `403`; malformed, `400`; an owning board that does not
+answer, `504`. A dashboard needs nothing else; ten open streams cost the cell no more radio than one,
 since every viewer is served from the hub's one pull (M15).
 
 ## POST /api/write

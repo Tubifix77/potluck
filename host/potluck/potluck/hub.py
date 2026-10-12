@@ -555,7 +555,8 @@ def serve_api(model: Model, addr: str) -> ThreadingHTTPServer:
                             evs = [e for e in model.events if e["seq"] > last]
                         if evs:
                             last = evs[-1]["seq"]
-                            self.wfile.write(b"event: events\ndata: " + json.dumps(evs).encode() + b"\n\n")
+                            body = {"api": API_VERSION, "next": last + 1, "events": evs[-200:]}  # GET /api/events' shape
+                            self.wfile.write(b"event: events\ndata: " + json.dumps(body).encode() + b"\n\n")
                         self.wfile.flush()
                         time.sleep(model.pull_period_ms / 1000)
                 except OSError:
