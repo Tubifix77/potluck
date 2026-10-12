@@ -102,7 +102,7 @@ SCHEMA = 1
 
 #: M6: modules whose placement is decided at run time by the reconciler (potluck.reconcile), so a
 #: resolved manifest need not freeze a node for them.
-RUNTIME_PLACED_MODULES = ("builtin:ticker",)
+RUNTIME_PLACED_MODULES = ("builtin:ticker", "builtin:present")
 
 
 class ManifestError(Exception):

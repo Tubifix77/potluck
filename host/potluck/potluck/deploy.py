@@ -53,13 +53,16 @@ ACTOR_MC_LENDER = 6  # M9: lends its node's idle cores to the mc_pi pure functio
 ACTOR_MC_JOB = 7  # M9: a Monte Carlo job that borrows idle cores; publishes node-<id>/job/mc/pi
 ACTOR_GUEST = 8  # M7: a sandboxed WebAssembly module from a guest author (potluck.guest); portable
 ACTOR_CLUSTER = 9  # M12: the cluster's name, every node; added by compile_image when `system` is not "lab"
+ACTOR_PRESENT = 10  # M13: the presenting role -- portable, needs a connected board (pot/present.hpp)
+ACTOR_LED_SWITCH = 11  # M13: the status LED as a writable resource, node-<id>/led/on (pot/led_switch.hpp)
 CLUSTER_NAME_MAX = 31
 OUTSIDE_NAME_MAX = 40  # M13: deploy.hpp's kMaxOutsideName
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
 MAX_ACTOR_CFG = 48
 BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER,
             "builtin:svc_client": ACTOR_SVC_CLIENT, "builtin:die_temp": ACTOR_DIE_TEMP,
-            "builtin:mc_lender": ACTOR_MC_LENDER, "builtin:mc_job": ACTOR_MC_JOB}
+            "builtin:mc_lender": ACTOR_MC_LENDER, "builtin:mc_job": ACTOR_MC_JOB,
+            "builtin:present": ACTOR_PRESENT, "builtin:led_switch": ACTOR_LED_SWITCH}
 
 
 def mc_job_path(system: str, node_id: int) -> str:
@@ -197,6 +200,48 @@ def _portable_header(m: Manifest, a, period: int, where: str) -> bytes:
     for node_id, gravity in nodes:
         cfg += struct.pack("<HB", node_id, gravity)
     return cfg
+
+
+def led_switch_path(system: str, node_id: int) -> str:
+    """M13. The writable resource a led_switch actor declares on its board."""
+    return f"potluck://{system}/node-{node_id:04x}/led/on"
+
+
+def _led_switch_config(m: Manifest, a, where: str) -> bytes:
+    extra = set(a.config) - {"r", "g", "b", "blink_ms"}
+    if extra:
+        raise DeployError(f"{where}: unknown led_switch config key(s) {sorted(extra)}")
+    if a.pin is None:
+        raise DeployError(f"{where}: a led_switch lights the board it runs on, so it is pinned")
+    rgb = [int(a.config.get(k, d)) for k, d in (("r", 255), ("g", 160), ("b", 0))]
+    blink = int(a.config.get("blink_ms", 0))
+    if any(not 0 <= v <= 255 for v in rgb) or not (blink == 0 or 200 <= blink <= 25500):
+        raise DeployError(f"{where}: r, g, b are 0..255 and blink_ms 0 or 200..25500")
+    return struct.pack("<IBBBB", path_hash(led_switch_path(m.system, a.pin)), *rgb, blink // 100)
+
+
+def _present_config(m: Manifest, a, where: str) -> bytes:
+    """M13: the portable header (every board eligible; the reconciler places it only on a connected one), then
+    broker a.b.c.d, port, keep-alive, flags."""
+    extra = set(a.config) - {"broker", "keepalive_s", "period_ms"}
+    if extra:
+        raise DeployError(f"{where}: unknown present config key(s) {sorted(extra)}")
+    broker = str(a.config.get("broker", ""))
+    host, _, port = broker.partition(":")
+    parts = host.split(".")
+    try:
+        ip = [int(p) for p in parts]
+        port_n = int(port or 1883)
+    except ValueError:
+        ip, port_n = [], 0
+    if len(ip) != 4 or any(not 0 <= v <= 255 for v in ip) or not ip[0] or not 1 <= port_n <= 65535:
+        raise DeployError(f"{where}: broker must be an IPv4 address and an optional port, \"192.168.0.77:1883\" "
+                          f"(a name needs DNS on the board, which the presenter does not do yet)")
+    keepalive = int(a.config.get("keepalive_s", 10))
+    if not 5 <= keepalive <= 120:
+        raise DeployError(f"{where}: keepalive_s={keepalive} is outside 5..120")
+    hdr = _portable_header(m, a, int(a.config.get("period_ms", 2000)), where)
+    return hdr + struct.pack("<4BHBB", *ip, port_n, keepalive, 0)
 
 
 def _ticker_config(m: Manifest, a, where: str) -> bytes:
@@ -354,11 +399,11 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
             raise DeployError(f"{where}: module '{a.module}' is not a built-in actor this firmware "
                               f"has (ADR-003 Tier 0: one of {sorted(BUILTINS)}), and no --modules "
                               f"descriptor describes it")
-        if a.module == "builtin:ticker":
+        if a.module in ("builtin:ticker", "builtin:present"):
             # Section 7.7: every node gets it; the reconciler decides where it runs. A pinned ticker
             # is a portable one with a single eligible node.
             node = 0xFFFE
-            cfg = _ticker_config(m, a, where)
+            cfg = _ticker_config(m, a, where) if a.module == "builtin:ticker" else _present_config(m, a, where)
             body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
             count += 1
             continue
@@ -368,6 +413,11 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
         spec = m.node(node)
         if spec is not None and spec.kind == "host":
             raise DeployError(f"{where}: placed on '{spec.label}', a host: built-in actors run on firmware")
+        if a.module == "builtin:led_switch":
+            cfg = _led_switch_config(m, a, where)
+            body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+            count += 1
+            continue
         if a.module == "builtin:die_temp":
             cfg = _die_temp_config(m, a, where)
             body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg

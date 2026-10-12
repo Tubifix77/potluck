@@ -56,7 +56,9 @@
 #include "pot/sys_resources.hpp"
 #include "pot/trust.hpp"
 #include "pot/trust_store.hpp"
+#include "pot/present.hpp"
 #include "nvs.h"
+#include <sys/time.h>
 #include "driver/gpio.h"
 #include "driver/rmt_tx.h"
 #include "driver/uart.h"
@@ -866,6 +868,30 @@ void save() {
     }
 }
 
+// M13: the running package's outside section, names included, for the presenter (BoardServices::outside_at). A
+// copy, since the image buffer it came from is reused by the next deploy. PSRAM: only tasks read it.
+struct OutsideName {
+    uint32_t hash;
+    uint8_t flags;
+    uint8_t len;
+    char name[kMaxOutsideName + 1];
+};
+EXT_RAM_BSS_ATTR OutsideName g_outside[kMaxOutside];
+size_t g_outside_n = 0;
+
+void keep_outside(const DeployImage& img) {
+    g_outside_n = 0;
+    for (size_t i = 0; i < img.outside_count && i < kMaxOutside; ++i) {
+        OutsideName& o = g_outside[g_outside_n++];
+        const char* name = nullptr;
+        size_t len = 0;
+        outside_rule(img, i, o.hash, o.flags, &name, &len);
+        o.len = static_cast<uint8_t>(len > kMaxOutsideName ? kMaxOutsideName : len);
+        std::memcpy(o.name, name, o.len);
+        o.name[o.len] = '\0';
+    }
+}
+
 // Read the active slot, validate every actor meant for this node, and only then apply them: a
 // half-applied image is worse than either whole one.
 bool load_and_apply(const char** why) {
@@ -920,6 +946,7 @@ bool load_and_apply(const char** why) {
     g_portable_n = portable_n;
     // M13: what the package lets the outside do. parse_image judged every rule, so this cannot refuse.
     apply_outside(img, g_node->ns());
+    keep_outside(img);
     g_pkg_counter = img.rollback_counter;
     std::memcpy(g_pkg_digest, img.package_digest, sizeof(g_pkg_digest));
     ESP_LOGI(kTag, "deploy: image counter %u, digest %02x%02x%02x%02x..., %u actor(s) in the image",
@@ -1030,6 +1057,7 @@ bool apply_live(DeployStatus* refused) {
     }
     if (as.failed != nullptr) ESP_LOGE(kTag, "actors: %s could not start; dropped", as.failed);
     apply_outside(img, g_node->ns());  // M13: before the reconciler re-declares, so its entries take the flags
+    keep_outside(img);
 #if CONFIG_POT_RECONCILER
     std::memcpy(g_portable, g_portable_stage, sizeof(PortableSpec) * portable_n);
     g_portable_n = portable_n;
@@ -1506,6 +1534,8 @@ void link_task(void*) {
 #if CONFIG_POT_EXTENDER || CONFIG_POT_WIFI
     uint32_t next_hunt_poll_ms = now_ms_();
     bool was_associated = false;  // matches the window app_main chose: hunting unless already associated
+    bool ip_seen = false;         // M13: the connected bit's hysteresis
+    uint32_t ip_since_ms = now_ms_();
 #endif
     uint32_t next_assess_ms = now_ms_() + status_led::kUpdateMs;
     status_led::Colour colour = status_led::Colour::Blue;
@@ -1640,6 +1670,21 @@ void link_task(void*) {
             xSemaphoreTake(g_mutex, portMAX_DELAY);
             const bool known = assoc && radio_ch == g_node->channel();
             if (known != g_node->channel_known()) g_node->set_channel_known(known);
+            // M13: on a network outside the cell, with hysteresis -- an address held 3 s before we say so, gone 5 s
+            // before we unsay it -- so a flapping station does not drag the presenting role back and forth.
+            {
+                const bool ip = uplink::has_ip();
+                if (ip != ip_seen) {
+                    ip_seen = ip;
+                    ip_since_ms = nt;
+                }
+                const bool want = ip_seen ? (nt - ip_since_ms >= 3000 || g_node->connected())
+                                          : (nt - ip_since_ms < 5000 && g_node->connected());
+                if (want != g_node->connected()) {
+                    g_node->set_connected(want);
+                    ESP_LOGI(kTag, "%s: %s the house network", uplink::name(), want ? "on" : "off");
+                }
+            }
             // M13: a lower-id station is the cell's channel authority; if it is on another channel than ours,
             // Potluck's station picks again preferring it (at most every 30 s), and announces nothing meanwhile.
             const uint8_t auth = g_node->outranking_channel();
@@ -1833,6 +1878,9 @@ void stats_task(void*) {
                     static_cast<unsigned>(now_ms_()));
         extender::print_status();  // M6.1: the baseline's {"t":"hs"} line, on an extender build only
         wifi::print_status();      // M13: {"t":"wifi"}, when Potluck's own station is up
+#if CONFIG_POT_PRESENT
+        present::print_status();   // M13: {"t":"present"}, the presenting module's figures
+#endif
         // M8.2 (PS-5): what the LED shows, since nobody may be looking at it.
         std::printf("{\"t\":\"led\",\"node\":%u,\"shows\":\"%s\",\"app\":%d}\n", static_cast<unsigned>(node_id),
                     status_led::g_last_shown, status_led::g_last_app ? 1 : 0);
@@ -2542,6 +2590,9 @@ bool handle_test(const char* line, size_t len) {
 void handle(const char* line, size_t len) {
     if (extender::handle_console(line, len)) return;  // M6.1: credentials; prints a result, never them
     if (wifi::handle_console(line, len)) return;      // M13: the same rule
+#if CONFIG_POT_PRESENT
+    if (present::handle_console(line, len)) return;   // M13: the broker's login, the same rule
+#endif
     if (len > 5 && std::strncmp(line, "POT! ", 5) == 0) {
         // M8.1: the actors' own test instruments (e.g. "POT! die_temp fail 1"), offered generically.
         lock_node();
@@ -2926,7 +2977,36 @@ void start() {
 }
 }  // namespace bg
 
-const BoardServices g_board_services{nullptr, &led_app, &bg::submit, &bg::yield, bg::kWorkers};
+// M13: what the presenting role asks the board (pot/actor.hpp).
+bool outside_at(void*, size_t i, uint32_t* hash, uint8_t* flags, const char** name, size_t* len) {
+    if (i >= deploy_rt::g_outside_n) return false;
+    const deploy_rt::OutsideName& o = deploy_rt::g_outside[i];
+    *hash = o.hash;
+    *flags = o.flags;
+    *name = o.name;
+    *len = o.len;
+    return true;
+}
+const char* cell_id(void*) {
+    static char id[9] = {};
+    if (id[0] == 0 && trust_rt::g_id_boot.enrolled) {
+        uint8_t fp[kCaFpLen];
+        ca_fingerprint(trust_rt::g_id_boot.ca_pub, fp);
+        std::snprintf(id, sizeof(id), "%02x%02x%02x%02x", fp[0], fp[1], fp[2], fp[3]);
+    }
+    return id[0] != 0 ? id : "00000000";
+}
+const char* system_name(void*) { return sys_system(); }
+uint64_t unix_ms(void*) {
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    // Before SNTP answers, the clock counts from 1970 at boot: anything before 2025 is not the network's time.
+    if (tv.tv_sec < 1735689600) return 0;
+    return static_cast<uint64_t>(tv.tv_sec) * 1000u + static_cast<uint64_t>(tv.tv_usec / 1000);
+}
+
+const BoardServices g_board_services{nullptr,     &led_app, &bg::submit,  &bg::yield, bg::kWorkers,
+                                     &outside_at, &cell_id, &system_name, &unix_ms};
 
 // M12: the inventory record (pot/node_status.hpp). With g_mutex held (on_deploy).
 size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {

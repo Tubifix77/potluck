@@ -83,6 +83,8 @@ enum class ActorType : uint8_t {
     McJob = 7,      // M9: a Monte Carlo job that runs its units here and borrows idle cores elsewhere
     Guest = 8,      // M7: a sandboxed WebAssembly program from the image's guest section (pot_wasm)
     Cluster = 9,    // M12: the cluster's name, every node; renames the built-in resources (pot/cluster.hpp)
+    Present = 10,   // M13: the presenting role -- the cell's exposed resources to an MQTT broker (pot/present.hpp)
+    LedSwitch = 11, // M13: the status LED as a writable resource, node-<id>/led/on (pot/led_switch.hpp)
 };
 
 // M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an
@@ -189,6 +191,21 @@ bool portable_header(const ActorDecl& a, TickerConfig& out, size_t& len);
 // The inverse, for code that holds a TickerConfig and needs its declaration bytes (tests, and the
 // reconciler's TickerConfig overload). Returns the length written, 0 if `cap` is too small.
 size_t encode_ticker_config(const TickerConfig& c, uint8_t* out, size_t cap);
+
+// M13: the presenting role. Portable -- the reconciler gives it to one connected board among those its header
+// lists, and moves it -- and after the standard portable header:
+//   broker_ip u8[4] (a.b.c.d), broker_port u16, keepalive_s u8 (5..120), flags u8 (0; bit 0 reserved for TLS)
+// The broker's login, if it has one, is typed by the owner on each board (`POT! present login`), never carried
+// by the package.
+struct PresentConfig {
+    TickerConfig place;
+    uint8_t ip[4];
+    uint16_t port;
+    uint8_t keepalive_s;
+    uint8_t flags;
+};
+constexpr size_t kPresentOwnCfgLen = 8;
+bool present_config(const ActorDecl& a, PresentConfig& out);
 
 // SvcClient (M8, section 7.5): every period_ms, CALL the service `svc_hash` on node `provider` -- a
 // host's potluck-agent -- and publish the answer to `out_hash`, a resource this node owns. Pinned:

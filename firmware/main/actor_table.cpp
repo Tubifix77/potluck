@@ -15,7 +15,11 @@
 #if CONFIG_POT_WASM
 #include "pot/guest.hpp"
 #endif
+#include "pot/led_switch.hpp"
 #include "pot/mc.hpp"
+#if CONFIG_POT_PRESENT
+#include "pot/present.hpp"
+#endif
 #include "pot/svc_client.hpp"
 #include "pot/ticker.hpp"
 
@@ -128,6 +132,10 @@ const ActorKind kBuiltinRows[] = {
     kMcLenderKind,  // M9
     kMcJobKind,
     kClusterKind,  // M12: the cluster's name, carried by the package
+    kLedSwitchKind,  // M13: the status LED as a writable resource
+#if CONFIG_POT_PRESENT
+    present::kPresentKind,  // M13: portable, needs a connected board; without the module an image naming it is refused
+#endif
 #if CONFIG_POT_WASM
     kGuestKind,  // M7: portable, sandboxed; without the sandbox an image naming a guest is refused
 #endif

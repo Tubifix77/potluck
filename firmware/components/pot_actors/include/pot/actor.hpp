@@ -57,6 +57,15 @@ struct BoardServices {
     bool (*bg_submit)(void* ctx, void (*work)(void* arg), void* arg) = nullptr;
     void (*bg_yield)(void* ctx) = nullptr;
     uint8_t bg_workers = 0;
+
+    // M13: what the presenting role needs from the board.
+    // Rule `i` of the running package's outside section (pot/deploy.hpp): false past the last.
+    bool (*outside_at)(void* ctx, size_t i, uint32_t* hash, uint8_t* flags, const char** name, size_t* len) = nullptr;
+    // The cell's identity, 8 lowercase hex digits of its CA's fingerprint ("" when not enrolled), and its name.
+    const char* (*cell_id)(void* ctx) = nullptr;
+    const char* (*system_name)(void* ctx) = nullptr;
+    // The network's time in ms since 1970, 0 while it is not known (SNTP has not answered).
+    uint64_t (*unix_ms)(void* ctx) = nullptr;
 };
 
 // What the runtime gives an actor.

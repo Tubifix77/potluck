@@ -188,6 +188,21 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                 }
                 break;
             }
+            case ActorType::Present: {
+                PresentConfig pc{};
+                if (a.node_id != kPortableNode || !present_config(a, pc)) {
+                    w = "present must be portable: the portable header, then broker address, port and keep-alive";
+                    return false;
+                }
+                break;
+            }
+            case ActorType::LedSwitch:
+                // M13: pinned; pot/led_switch.hpp judges the rest (the row's check).
+                if (a.node_id == kPortableNode || a.node_id == kEveryNode || a.cfg_len != 8) {
+                    w = "led_switch must be pinned, with an output, a colour and a blink period";
+                    return false;
+                }
+                break;
             case ActorType::Cluster:
                 // M12: every node, a name of 1..31 characters; pot/cluster.hpp judges the characters.
                 if (a.node_id != kEveryNode || a.cfg_len == 0 || a.cfg_len > 31) {
@@ -314,6 +329,20 @@ bool apply_outside(const DeployImage& img, Namespace& ns) {
     const size_t n = img.outside_count <= kMaxOutside ? img.outside_count : 0;
     for (size_t i = 0; i < n; ++i) outside_rule(img, i, hashes[i], flags[i]);
     return ns.set_outside(hashes, flags, n);
+}
+
+bool present_config(const ActorDecl& a, PresentConfig& out) {
+    size_t hl = 0;
+    if (a.type != ActorType::Present || !portable_header(a, out.place, hl) || a.cfg_len != hl + kPresentOwnCfgLen) {
+        return false;
+    }
+    const uint8_t* p = a.cfg + hl;
+    std::memcpy(out.ip, p, 4);
+    out.port = rd16(p + 4);
+    out.keepalive_s = p[6];
+    out.flags = p[7];
+    return out.port != 0 && out.keepalive_s >= 5 && out.keepalive_s <= 120 && out.flags == 0 &&
+           (out.ip[0] | out.ip[1] | out.ip[2] | out.ip[3]) != 0;
 }
 
 bool led_config(const ActorDecl& a, LedConfig& out) {

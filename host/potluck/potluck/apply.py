@@ -86,6 +86,8 @@ class BoardModule:
     kconfig: tuple[str, ...]
     archives: tuple[str, ...]
     requires: tuple[str, ...] = ()
+    #: at least one of these too (the presenter needs a network connection: Potluck's station or the extender's)
+    requires_any: tuple[str, ...] = ()
     #: section 13's class: "a security liability" or "filler" -- printed by --plan, never a reason to refuse.
     why_optional: str = "filler"
 
@@ -96,6 +98,9 @@ BOARD_MODULES = {
     "sandbox": BoardModule(("CONFIG_POT_WASM=y",), ("libpot_wasm.a",), why_optional="filler"),
     # M13: Potluck's own Wi-Fi station -- puts the board on a house network, with its credentials on the board.
     "wifi": BoardModule(("CONFIG_POT_WIFI=y",), ("libpot_wifi.a",), why_optional="a security liability"),
+    # M13: the presenting role -- the cell's exposed resources to an MQTT broker; ESP-IDF's managed MQTT client.
+    "present": BoardModule(("CONFIG_POT_PRESENT=y",), ("libpot_present.a", "libespressif__mqtt.a"),
+                           requires_any=("wifi", "extender"), why_optional="a security liability"),
 }
 EXTENDER_ARCHIVES = ("libpme_hotspot.a",)
 
@@ -257,6 +262,8 @@ class Cluster:
     #: M13: Potluck's board modules in the image: those `firmware.modules` names, the sandbox when `extra` turns
     #: it on directly, and the extender when `firmware.extender` is given.
     board_modules: tuple[str, ...] = ()
+    #: M13: the cluster file's `present` block -- the presenting role's broker, keep-alive and period -- or None.
+    present: dict[str, Any] | None = None
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -292,7 +299,7 @@ def load_cluster(path: str) -> Cluster:
     if not isinstance(doc, dict) or doc.get("schema") != SCHEMA:
         raise ApplyError(f"{path}: not a cluster file (\"schema\": \"{SCHEMA}\")")
     allowed = {"schema", "system", "port", "baud", "boards", "keys", "firmware", "apps", "package", "verify",
-               "comment", "outside"}
+               "comment", "outside", "present"}
     extra = set(doc) - allowed
     if extra:
         raise ApplyError(f"{path}: unknown key(s) {sorted(extra)}")
@@ -339,9 +346,23 @@ def load_cluster(path: str) -> Cluster:
     if fwd and fwd.get("extender"):
         board_modules.append("extender")
     for m in board_modules:
-        for r in BOARD_MODULES[m].requires if m in BOARD_MODULES else ():
+        spec = BOARD_MODULES.get(m)
+        for r in spec.requires if spec else ():
             if r not in board_modules:
                 raise ApplyError(f"firmware.modules: '{m}' needs '{r}' in the image too")
+        if spec and spec.requires_any and not any(r in board_modules for r in spec.requires_any):
+            raise ApplyError(f"firmware.modules: '{m}' needs one of {', '.join(spec.requires_any)} in the image too "
+                             f"(a network connection)")
+    present = doc.get("present")
+    if present is not None:
+        if not isinstance(present, dict) or not isinstance(present.get("broker"), str):
+            raise ApplyError("present: {\"broker\": \"a.b.c.d[:port]\", \"keepalive_s\": 10, \"period_ms\": 2000}")
+        if "present" not in board_modules:
+            raise ApplyError("present: the cell presents itself only with the 'present' module in the firmware -- "
+                             "add it to firmware.modules")
+        extra_keys = set(present) - {"broker", "keepalive_s", "period_ms"}
+        if extra_keys:
+            raise ApplyError(f"present: unknown key(s) {sorted(extra_keys)}")
     apps = [_source(a, f"apps[{i}]", base, f"app{i}") for i, a in enumerate(doc.get("apps", []))]
     if len({a.name for a in apps}) != len(apps):
         raise ApplyError("apps: two apps share a name")
@@ -368,7 +389,8 @@ def load_cluster(path: str) -> Cluster:
         outside[full] = mode
     return Cluster(p, system, doc.get("port"), int(doc.get("baud", 921600)), boards, keys, fwd, potluck, extender,
                    apps, extra_cfg, manifests, modules, _rel(base, pkg.get("guests_root", ".")),
-                   float(ver.get("timeout_s", 240)), list(ver.get("read", [])), outside, tuple(board_modules))
+                   float(ver.get("timeout_s", 240)), list(ver.get("read", [])), outside, tuple(board_modules),
+                   dict(present) if present else None)
 
 
 # ---- sources: git archive into a cache, never a live tree ---------------------------------------------
@@ -683,6 +705,11 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
         out["links"] = links
     if c.outside:
         out["outside"] = dict(c.outside)  # M13: the owner's, from the cluster file
+    if c.present:
+        # M13: the presenting role, as one portable actor; the reconciler gives it to a connected board.
+        if "present" in names:
+            raise ApplyError(f"an actor named 'present' is in {names['present']}; the name belongs to the presenting role")
+        actors.append({"name": "present", "module": "builtin:present", "latency_class": 4, "config": dict(c.present)})
     return out
 
 
@@ -817,7 +844,7 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
             portable += 1
             for name, _t in gs.parse_outputs(a.config["outputs"], a.name):
                 reads.append(dp.guest_output_path(m.system, a.name, name))
-        elif a.module == "builtin:ticker" or (spec is not None and spec.placement == "portable"):
+        elif a.module in ("builtin:ticker", "builtin:present") or (spec is not None and spec.placement == "portable"):
             portable += 1
             reads.append(rc.output_path(m, a))
             reads += _outputs(m, spec, a, [])
@@ -831,6 +858,8 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
                 pinned[node] += 1
             if a.module == "builtin:die_temp" and node is not None:
                 reads.append(dp.die_temp_path(m.system, node))
+            if a.module == "builtin:led_switch" and node is not None:
+                reads.append(dp.led_switch_path(m.system, node))
             reads += _outputs(m, spec, a, [node] if node is not None else [])
     if m.system != "lab":
         for n in boards:

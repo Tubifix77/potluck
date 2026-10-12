@@ -1,0 +1,7 @@
+## M13: the MQTT client, ESP-IDF's managed component (it left ESP-IDF itself in v6). Pinned to one version, and
+## fetched only for a build that carries the presenting module (firmware.modules: ["present"]).
+dependencies:
+  espressif/mqtt:
+    version: "1.1.0"
+    rules:
+      - if: "$CONFIG{POT_PRESENT} == True"

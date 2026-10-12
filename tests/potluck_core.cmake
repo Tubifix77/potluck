@@ -57,8 +57,10 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_actors/src/die_temp.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/mc.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/cluster.cpp"
+  "${POT_FIRMWARE}/components/pot_actors/src/led_switch.cpp"
   "${POT_FIRMWARE}/components/pot_wasm/src/wasm_sandbox.cpp"
   "${POT_FIRMWARE}/components/pot_wasm/src/guest.cpp"
+  "${POT_FIRMWARE}/components/pot_present/src/present_core.cpp"
 )
 target_link_libraries(pot_portable PUBLIC monocypher wasm3)
 target_include_directories(pot_portable PUBLIC
@@ -71,4 +73,5 @@ target_include_directories(pot_portable PUBLIC
   "${POT_FIRMWARE}/components/pot_reconcile/include"
   "${POT_FIRMWARE}/components/pot_actors/include"
   "${POT_FIRMWARE}/components/pot_wasm/include"
+  "${POT_FIRMWARE}/components/pot_present/include"
 )

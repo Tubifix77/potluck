@@ -356,6 +356,21 @@ config POT_WIFI_HUNT_MISSES
     help
         As POT_EXTENDER_HUNT_MISSES: each scan takes the radio off the cell's channel for seconds.
 
+config POT_PRESENT
+    bool "M13: the presenting role -- the cell's exposed resources to an MQTT broker (optional module 'present')"
+    default n
+    help
+        The cell presents the resources its package exposes (the outside section) to a broker the package
+        names, by Home Assistant's MQTT discovery, and passes on outside writes the package allows. A portable
+        role: the reconciler gives it to one board that carries this module and is on a network (the 'wifi'
+        module or the extender), and moves it when that board dies. Pulls in the managed component
+        espressif/mqtt. A broker login: POT! present login / forget on the console.
+
+config POT_PRESENT_PREFIX
+    string "Home Assistant's discovery prefix"
+    depends on POT_PRESENT
+    default "homeassistant"
+
 config POT_RECONCILER
     bool "Run portable actors: the section 7.7 reconciler (M6)"
     default y if SPIRAM

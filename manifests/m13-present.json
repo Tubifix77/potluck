@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "system": "lab",
+  "min_core_version": 1,
+  "nodes": [
+    {"node_id": 25344, "label": "A"},
+    {"node_id": 29544, "label": "B", "owns": [
+      {"path": "potluck://lab/node-7368/led/on", "unit": "none", "kind": "sampled", "access": "read_write",
+       "latency_class": 3}
+    ]},
+    {"node_id": 33120, "label": "C"}
+  ],
+  "actors": [
+    {
+      "name": "led_b",
+      "module": "builtin:led_switch",
+      "latency_class": 3,
+      "pin": 29544,
+      "on_host_loss": "hold",
+      "config": {"r": 255, "g": 140, "b": 0}
+    }
+  ]
+}

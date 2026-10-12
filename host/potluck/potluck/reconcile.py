@@ -38,7 +38,7 @@ PORTABLE_NODE = 0xFFFE
 MAX_ELIGIBLE = 8
 MAX_PORTABLE = 8
 #: The modules that can be portable on this firmware (ADR-003 Tier 0).
-PORTABLE_MODULES = ("builtin:ticker",)
+PORTABLE_MODULES = ("builtin:ticker", "builtin:present")
 
 
 def fmix32(h: int) -> int:
