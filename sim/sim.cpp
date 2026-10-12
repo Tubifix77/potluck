@@ -20,7 +20,9 @@
 #include <vector>
 
 #include "pot/node.hpp"
+#include "pot/opcodes.hpp"
 #include "pot/stats_json.hpp"
+#include "pot/telemetry.hpp"
 #include "cell.hpp"
 #include "link_model.hpp"
 
@@ -168,6 +170,121 @@ void scenario_present(Cell& c, uint32_t sec) {
     }
 }
 
+// M15: the hub's telemetry pull. Node 0 is the board on the hub's cable: every period it asks each other board, one
+// request at a time as the real proxy does, for its health, its links (paged, five peers a reply), its actors and its
+// events. Each board answers with a reply of the size pot/telemetry.hpp gives for a cell this size -- the bytes on
+// the air are what matters here, not their content. Compare airtime, deaths and RTT with --scenario none.
+struct TelemetryDriver {
+    uint32_t period_ms = 10000;
+    uint8_t actors = 4;       // portable actors in the package
+    size_t board = 1;         // whom we are asking
+    size_t step = 0;          // which reply of that board's pull
+    uint16_t awaiting = 0;
+    uint64_t sent_us = 0;
+    uint64_t cycle_start_us = 0;
+    bool idle = true;
+    uint32_t sent = 0, answered = 0, timeouts = 0, refused = 0, cycles = 0;
+    uint64_t reply_bytes = 0;
+    uint64_t cycle_us_sum = 0, cycle_us_max = 0;
+};
+TelemetryDriver g_tel;
+
+size_t tel_link_pages(Cell& c) {
+    const size_t peers = c.size() - 1;
+    return (peers + kTelemetryLinksPerReply - 1) / kTelemetryLinksPerReply;
+}
+
+// Step i of a board's pull: 0 health, 1..pages links, then actors, then events.
+TelemetryRequest tel_request(Cell& c, size_t board, size_t step) {
+    TelemetryRequest r;
+    r.target = c.node(board).node->config().node_id;
+    const size_t pages = tel_link_pages(c);
+    if (step == 0) {
+        r.section = kTelemetryHealth;
+    } else if (step <= pages) {
+        r.section = kTelemetryLinks;
+        r.start = static_cast<uint8_t>((step - 1) * kTelemetryLinksPerReply);
+    } else if (step == pages + 1) {
+        r.section = kTelemetryActors;
+    } else {
+        r.section = kTelemetryEvents;
+    }
+    return r;
+}
+
+size_t tel_server(void* ctx, uint16_t from, uint16_t msg_id, uint8_t op, const uint8_t* p, uint16_t len, uint8_t*,
+                  size_t) {
+    auto* sn = static_cast<SimNode*>(ctx);
+    TelemetryRequest r;
+    if (op != kOpTelemetry || !load_telemetry_request(p, len, r)) return 0;
+    const size_t peers = sn->cell->size() - 1;
+    size_t n = kTelemetryHeaderLen;
+    if (r.section == kTelemetryHealth) {
+        n += kTelemetryHealthLen;
+    } else if (r.section == kTelemetryLinks) {
+        const size_t left = peers > r.start ? peers - r.start : 0;
+        n += 3 + (left < kTelemetryLinksPerReply ? left : kTelemetryLinksPerReply) * kTelemetryLinkLen;
+    } else if (r.section == kTelemetryActors) {
+        n += 3 + g_tel.actors * kTelemetryActorLen;
+    } else {
+        n += 5;  // a quiet cell: no new events
+    }
+    uint8_t buf[kTelemetryReplyMax] = {};
+    sn->node->send_reply_raw(from, msg_id, buf, static_cast<uint16_t>(n));
+    return 0;
+}
+
+void tel_result(void*, uint16_t, uint16_t msg_id, uint8_t op, bool timed_out, const uint8_t*, uint16_t len) {
+    if (op != kOpTelemetry || msg_id != g_tel.awaiting) return;
+    g_tel.awaiting = 0;
+    if (timed_out) {
+        ++g_tel.timeouts;
+    } else {
+        ++g_tel.answered;
+        g_tel.reply_bytes += len;
+    }
+}
+
+void tel_step(Cell& c, void*) {
+    const uint64_t now = c.now_us();
+    if (g_tel.awaiting != 0) {
+        if (now - g_tel.sent_us < 500000) return;  // the hub's own timeout; the node's pending entry times out too
+        g_tel.awaiting = 0;
+        ++g_tel.timeouts;
+    }
+    if (g_tel.idle) {
+        if (now < g_tel.cycle_start_us + static_cast<uint64_t>(g_tel.period_ms) * 1000) return;
+        g_tel.idle = false;
+        g_tel.cycle_start_us = now;
+        g_tel.board = 1;
+        g_tel.step = 0;
+    }
+    const size_t steps = tel_link_pages(c) + 3;
+    if (g_tel.step >= steps) {
+        g_tel.step = 0;
+        ++g_tel.board;
+    }
+    if (g_tel.board >= c.size()) {
+        g_tel.idle = true;
+        ++g_tel.cycles;
+        const uint64_t took = now - g_tel.cycle_start_us;
+        g_tel.cycle_us_sum += took;
+        if (took > g_tel.cycle_us_max) g_tel.cycle_us_max = took;
+        return;
+    }
+    const TelemetryRequest r = tel_request(c, g_tel.board, g_tel.step++);
+    uint8_t w[kTelemetryRequestLen];
+    store_telemetry_request(r, w, sizeof(w));
+    const uint16_t m = c.node(0).node->send_deploy(r.target, kOpTelemetry, w, sizeof(w));
+    if (m == 0) {
+        ++g_tel.refused;  // the board is not alive in node 0's view, or four requests are already out
+        return;
+    }
+    g_tel.awaiting = m;
+    g_tel.sent_us = now;
+    ++g_tel.sent;
+}
+
 void usage() {
     std::printf(
         "pot_sim - run N real pot::Node objects over a modelled ESP-NOW cell\n"
@@ -179,7 +296,8 @@ void usage() {
         "  --hb-ms N          heartbeat period, default 100 (section 8.2)\n"
         "  --probe-ms N       round-robin probe interval, default 1000\n"
         "  --seed N           RNG seed, default 1\n"
-        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present (default none)\n"
+        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present|telemetry (default none)\n"
+        "  --tel-ms N         telemetry: the hub's pull period per board, default 10000 (M15)\n"
         "  --start-days D     start the virtual clock D days in, to straddle a counter wrap\n"
         "  --json             emit one link/node record per node, in the firmware's format\n"
         "  --sweep            print the airtime table and exit\n"
@@ -223,6 +341,7 @@ int main(int argc, char** argv) {
         else if (a == "--json") json = true;
         else if (a == "--scenario") scenario = next();
         else if (a == "--start-days") start_days = std::stod(next());
+        else if (a == "--tel-ms") g_tel.period_ms = static_cast<uint32_t>(std::stoul(next()));
         else if (a == "--help" || a == "-h") { usage(); return 0; }
         else { std::printf("unknown option '%s'\n\n", a.c_str()); usage(); return 2; }
     }
@@ -250,6 +369,13 @@ int main(int argc, char** argv) {
     }
     if (scenario == "present") {
         cell.set_on_second(&scenario_present);
+    } else if (scenario == "telemetry") {
+        for (size_t i = 1; i < cell.size(); ++i) cell.node(i).node->set_deploy_server(&tel_server, &cell.node(i));
+        cell.node(0).node->set_deploy_result(&tel_result, nullptr);
+        g_tel.cycle_start_us = 3000000;  // the first pull 3 s in plus a period, once the cell has formed
+        cell.set_on_step(&tel_step, nullptr);
+        std::printf("telemetry: node 0 pulls every board every %u ms, %zu replies a board\n",
+                    static_cast<unsigned>(g_tel.period_ms), tel_link_pages(cell) + 3);
     } else if (scenario == "reboot") {
         cell.set_on_second(&scenario_reboot);
     } else if (scenario == "partition") {
@@ -332,7 +458,15 @@ int main(int argc, char** argv) {
     }
     std::printf("\nmembership: %u death declarations, %u revivals across the cell\n", deaths,
                 revivals);
-    if (scenario == "none" || scenario == "present") {  // M13: polling must not cost a death
+    if (scenario == "telemetry") {
+        std::printf("\ntelemetry: %u pulls, %u requests, %u answered, %u timed out, %u refused, %.1f KB of replies; "
+                    "a pull of the whole cell took %.0f ms on average, %.0f ms at most\n",
+                    static_cast<unsigned>(g_tel.cycles), static_cast<unsigned>(g_tel.sent),
+                    static_cast<unsigned>(g_tel.answered), static_cast<unsigned>(g_tel.timeouts),
+                    static_cast<unsigned>(g_tel.refused), g_tel.reply_bytes / 1024.0,
+                    g_tel.cycles ? g_tel.cycle_us_sum / 1000.0 / g_tel.cycles : 0.0, g_tel.cycle_us_max / 1000.0);
+    }
+    if (scenario == "none" || scenario == "present" || scenario == "telemetry") {  // polling must not cost a death
         std::printf("  %s\n", deaths ? "<-- unperturbed cell lost peers; the heartbeat did not hold"
                                      : "no deaths on an unperturbed cell, as required");
     } else {
