@@ -60,6 +60,17 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-12 (evening): **M13 shown end to end with Home Assistant; M14 and M16 first cuts running** (M0-LOG session 41).
+>
+> Home Assistant and Mosquitto run as containers on the homelab (`/home/boas/homeassistant/docker-compose.yml`, owner's
+> account; MQTT broker localhost:1883 in HA). C presents (Potluck's own station, the owner's credentials), B is the
+> fallback (BUSY, ranked last). HA shows 3 devices, 4 entities; its switch lights B's LED. Bench: firmware `8e7fce4`,
+> package 52 from `keys/desk-m13.json` (modules sandbox, present, wifi, pocket). The hub (`python -m potluck.hub
+> --cluster ../../keys/desk-m13.json` from host/potluck) was stopped at the owner's request; start it again to use the
+> dashboard at http://127.0.0.1:8470/. **Next:** a long soak with C presenting (then propose M13 for acceptance), TLS's
+> runtime cost (a TLS listener on Mosquitto), M14's remaining lines (agent and hostnode through the hub, a second
+> resident hub refused, the deploy lock), M15 telemetry. ~40 commits are local: ask the owner before pushing.
+>
 > ## HANDOVER, 2026-10-12 (morning): **M13 built and shown on the bench; M13.1 built** (M0-LOG session 41). Not accepted.
 >
 > **For the owner, what only you can do** (each unblocks an acceptance line): (1) a real Home Assistant with an MQTT
