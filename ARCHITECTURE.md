@@ -919,8 +919,10 @@ internal heap held, the fail-stop restarting it after 60 s while B presented. **
 station, no presenter -- ran 3 hours with no stall**; heartbeat delivery was the same in both phases. With session 41's
 two soaks (B presenting over the extender's station: two stalls in 3 h; not presenting: none), presenting over a board's
 own station is the trigger, on both builds, and the kill line's fallback (a board with nothing else on it) does not
-escape it. Open: whether restarting the Wi-Fi driver clears the wedge (`CONFIG_POT_TX_DEAD_SOFT_S`, on the bench), and
-the line's other route -- the hub presenting from the PC (M14). M13 is not accepted while this stands.
+escape it. A complete Wi-Fi driver restart -- ESP-NOW de-initialised, Wi-Fi stopped and started, peers re-added --
+does not clear the wedge (`CONFIG_POT_TX_DEAD_SOFT_S`, on the bench the same morning): only a chip reset does, so the
+60 s fail-stop is the right recovery and M13 needs the wedge not to form, or the line's other route -- the hub
+presenting from the PC (M14). M13 is not accepted while this stands.
 
 *M13.1 built, 2026-10-12 (M0-LOG session 41) -- not on the bench.* `pot_pocket`: a portable core renders the page and its JSON from a snapshot (host-tested: which board is dead and since when, values with quality and age and no number when there is none, another cell's refused frames, names escaped, a full snapshot fits, nothing on the page can send anything back); the board half makes the access point beside the station (APSTA, on the cell's channel, WPA2, at most two phones -- soft-AP and ESP-NOW share the encryption key slots) only when the owner has set a name and password, serves `/` and `/status.json` with ESP-IDF's HTTP server from a copy of the snapshot the link task fills once a second, and answers every other method 405. Cost, with the Wi-Fi station, by the difference of two builds: about 64 KB flash, 1.9 KB static internal RAM (1.6 KB of it the station's scan records, since moved to PSRAM) and 22 KB PSRAM; core unchanged. Owed: everything on the bench -- the access point's password is the owner's to set, and the test is a phone.
 

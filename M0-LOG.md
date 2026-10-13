@@ -5301,3 +5301,21 @@ refused, and the internal heap at the first refusal.
 
 **Also:** a Python edit script opened CRLF files in text mode and wrote them back LF, and Git Bash's `sed -i` did the
 same once; caught both times by `git diff --stat` and restored (the memory note says how).
+
+**The stall experiment, answered (05:07-10:43, on the bench).** Four firmware steps through the morning, each rolled
+out under the cell's deploy lease (the first real deploy held by it, 05:35): `61beb74` carried the evidence, and
+`tx_dead` read `first_err 0x3067` (`ESP_ERR_ESPNOW_NO_MEM`) with the internal heap already ~10 KB down at the first
+refusal (05:22) -- the transmit buffers fill before ESP-NOW starts refusing. The driver restart (`CONFIG_POT_TX_DEAD_SOFT_S=10`)
+first skipped C because ESP-NOW *attaches* to the Wi-Fi Potluck's own station module brings up (`a8e038d` fixed the
+test); then failed (05:56) with its reason only in the text log (`c0a660e` named the step); then failed at
+`esp_wifi_set_channel` (06:40) after `esp_now_deinit`, `esp_wifi_stop`, `esp_wifi_start` and `esp_wifi_set_ps` had all
+succeeded -- a connecting station owns the channel (`ea28980` leaves it to the station). **On `ea28980` C ran 3 h 47 min
+without a stall** (06:56-10:43; at the earlier rate of one per 10-60 min, unlikely by luck -- the firmware does not
+explain it, so the trigger may be outside the boards: the router, or the house's RF by time of day; a lead), **then
+stalled, and the full driver restart completed** (`ok 1`, both peers re-added) **and did not clear it:** every send
+stayed NO_MEM (5,647 refusals in 60 s), the heap fell another ~10 KB, and the fail-stop restarted C at 60 s. Whatever is
+exhausted survives ESP-NOW's de-init and a Wi-Fi stop and start; only a chip reset clears it. So the 60 s restart is the
+right recovery and no gentler one exists at the driver level; M13 needs the wedge not to form -- or no board carrying
+MQTT over its own station, the hub presenting from the PC (M14's last line). Next diagnostic: which memory is
+exhausted (lwIP's pbufs and the Wi-Fi driver's dynamic transmit buffer count are the suspects), recorded at the first
+refusal. In the 24-hour run so far, B (the extender, not presenting) and A have not stalled once.

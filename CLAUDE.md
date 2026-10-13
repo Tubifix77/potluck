@@ -67,7 +67,8 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > homelab), in phases: presenting (00:32-01:50, C stalled 3 times), control with no presenter (01:50-04:50, no
 > stall), then presenting again from 05:07 on firmware `61beb74` (counter 26) with package 54 from
 > `keys/desk-m13-soft.json` -- the stall's evidence in `tx_dead` and the experiment `CONFIG_POT_TX_DEAD_SOFT_S=10`
-> (a Wi-Fi driver restart before the reboot: watch for `tx_soft` / `tx_soft_ok`). **Monitor it** -- the owner's rule:
+> (a Wi-Fi driver restart before the reboot) -- answered by 10:43: a full driver restart does not clear the wedge,
+> only a chip reset does (boards now on `ea28980`, package 57). **Monitor it** -- the owner's rule:
 > a board dying unseen ruins the run. **Finding:** a board presenting over its own station wedges its radio (ESP-NOW
 > NO_MEM and the station's TCP stopped together); the station alone does not. M13's kill line is met; its fallback does
 > not escape it. **Next:** read the presenting phase's `tx_soft` result; the TLS cost (`keys/desk-m13-tls.json`, the
