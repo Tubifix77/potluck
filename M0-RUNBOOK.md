@@ -808,6 +808,10 @@ image carries it (version 4). `keys/desk-m13-tls.json` is the bench's: the house
 of `mosquitto.conf`, the file before them is `mosquitto.conf.pre-tls`, and the port is published in the compose file).
 The present status line shows `tls`, PSRAM free and low-water, and `sender_stack_free`.
 
+**Aggregation.** A cell that presents is built with `CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n` on every board; `apply --plan`
+says so. With aggregation on, a board presenting over its own station wedged its radio every 10-60 minutes (ESP-NOW
+NO_MEM and the station's TCP stopped until a chip reset); with it off, 13 h 19 min clean (M0-LOG session 42).
+
 **Leases.** Nothing to run: `apply` takes the cell's deploy lease after planning and says
 `lease: the cell's deploy lease is ours (board 0x6300 holds it)`; a second `apply` meanwhile, from any PC, is
 `REFUSED, nothing changed: the cell's deploy lease is held by "apply on <PC>" ...`. A resident hub takes the hub lease;

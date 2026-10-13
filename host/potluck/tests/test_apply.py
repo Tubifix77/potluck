@@ -134,6 +134,17 @@ class ClusterFile(unittest.TestCase):
         with self.assertRaisesRegex(ap.ApplyError, "read_write"):
             self.cluster(outside={"node-0100/hw/die_temp": "write"})
 
+    def test_a_cell_that_presents_builds_without_ampdu_transmit_aggregation(self):
+        # M0-LOG session 42: aggregation on a board presenting over its own station wedges its radio.
+        present = {"broker": "192.168.0.77:1883"}
+        c = self.cluster(firmware={"modules": ["present", "wifi"]}, present=present)
+        self.assertIn(ap.AMPDU_TX_OFF, c.extra)
+        self.assertNotIn(ap.AMPDU_TX_OFF, self.cluster(firmware={"modules": ["wifi"]}).extra)
+        own = self.cluster(firmware={"modules": ["present", "wifi"], "extra": ["CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=y"]},
+                           present=present)
+        self.assertNotIn(ap.AMPDU_TX_OFF, own.extra)  # the owner's explicit choice stands
+        self.assertNotIn(ap.AMPDU_TX_OFF, self.cluster(firmware=None).extra)  # firmware left alone: nothing to build
+
     def test_the_brokers_ca_file_goes_into_the_signed_manifest_as_der(self):
         # M13: TLS to the broker. The cluster file names the CA's file; its DER rides in the manifest (the owner
         # signs it) and the image carries it (version 4).

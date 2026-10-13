@@ -69,6 +69,9 @@ ROLE_NAMES = {0x01: "extender-build", 0x02: "extender", 0x04: "sandbox", 0x08: "
 FW_STATES = {0: "factory", 1: "confirmed", 2: "on_trial"}
 #: M13: pot/node_status.hpp's ModuleId, ModuleState and ModuleReason -- the words the inventory prints.
 MODULE_NAMES = {1: "sandbox", 2: "extender", 3: "wifi", 4: "present", 5: "pocket"}
+AMPDU_TX_KEY = "CONFIG_ESP_WIFI_AMPDU_TX_ENABLED="
+AMPDU_TX_OFF = AMPDU_TX_KEY + "n"
+
 MODULE_STATES = {1: "active", 2: "idle", 3: "failed"}
 MODULE_REASONS = {0: "", 1: "no credentials", 2: "no network", 3: "standby", 4: "nothing here uses it",
                   5: "out of memory", 6: "refused", 7: "error", 8: "another module is the connection"}
@@ -348,6 +351,12 @@ def load_cluster(path: str) -> Cluster:
             extra_cfg += [k for k in spec.kconfig if k not in extra_cfg]
     if fwd and fwd.get("extender"):
         board_modules.append("extender")
+    if fwd is not None and "present" in board_modules and not any(k.startswith(AMPDU_TX_KEY) for k in extra_cfg):
+        # M13 (M0-LOG session 42): AMPDU transmit aggregation on a board that presents over its own station wedges its
+        # radio -- ESP-NOW refused and the station's TCP stopped until a chip reset (a stall every 10-60 min; with it
+        # off, 13 h 19 min clean). Every board runs one image, and any board may hold the presenting role, so a cell
+        # that presents gets it off everywhere. A cluster file that names the key itself keeps its choice.
+        extra_cfg.append(AMPDU_TX_OFF)
     for m in board_modules:
         spec = BOARD_MODULES.get(m)
         for r in spec.requires if spec else ():
@@ -937,6 +946,10 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
         if fwb is not None:
             for line in module_costs(c, fwb):
                 log(line)
+            if AMPDU_TX_OFF in c.extra and "present" in c.board_modules:
+                log("note: AMPDU transmit aggregation is off on every board, because this cell presents (a board "
+                    "presenting over its own station with it on wedges its radio; M0-LOG session 42) -- the extender's "
+                    "hotspot carries less as a result")
     except ApplyError as exc:
         print(f"REFUSED, nothing changed: {exc}")
         return 2
