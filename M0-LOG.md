@@ -5330,3 +5330,10 @@ ESP-NOW with static transmit buffers. At 11:06 package 58 went out on the same f
 ~191 KB), against one every 10-60 minutes with aggregation on and a longest quiet stretch of 3 h 47 min. Not yet
 called: the run goes on to 00:32. If it holds, the fix is a build choice -- aggregation off where a board presents over
 its own station -- and its cost is the extender hotspot's throughput, which needs the owner's phone to measure.
+
+**The 24-hour run ended at 00:32 (2026-10-14). With aggregation off (11:06-00:25): 13 h 19 min, no stall and no
+reboot on any board; C presented throughout -- 120,894 messages to Home Assistant, none failed -- against twelve stall
+records on C with aggregation on the same day.** Called: AMPDU transmit aggregation on a board that presents over its
+own station causes the radio wedge. The fix is a build choice -- aggregation off where a board presents over its own
+station -- and its cost, the extender hotspot's throughput, is still to measure (needs the owner's phone). Monitoring
+moves to the owner's daily manual checks. Captures `captures/m13-soak24-{a,b,c}.jsonl` (to compress before committing).

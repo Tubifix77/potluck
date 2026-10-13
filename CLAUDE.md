@@ -60,6 +60,15 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-14 (00:30): **the presenting stall's cause found -- AMPDU transmit aggregation** (M0-LOG session 42, end).
+>
+> With `CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n` on every board (package 58 from `keys/desk-m13-noampdu.json`, firmware
+> `ea28980`), C presented 13 h 19 min with no stall (120,894 messages, none failed); with it on, a stall every 10-60 min.
+> The 24 h capture has ended; compress `captures/m13-soak24-*.jsonl` before committing. **Monitoring is now the owner's
+> daily manual check -- no background watchers.** Next: make aggregation-off the build rule for a board that presents
+> over its own station (measure the extender hotspot's cost with the owner's phone), then propose M13 for acceptance;
+> TLS's runtime cost; M14's and M15's bench runs.
+>
 > ## HANDOVER, 2026-10-13 (night): **M13's kill line met on the bench; TLS, M14's leases and host node, M15 built** (M0-LOG session 42).
 >
 > **A 24-hour capture runs until 00:32 on 2026-10-14** (`captures/m13-soak24-{a,b,c}.jsonl`, three detached
