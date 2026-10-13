@@ -176,6 +176,10 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--keygen" && i + 1 < argc) return keygen(argv[i + 1]);
+        if (a == "--caps") {  // M14: what potluck.hostnode checks before it puts this node behind the hub
+            std::printf("{\"msg_id_max\":32767}\n");
+            return 0;
+        }
         if (a == "--identity" && i + 1 < argc) identity_path = argv[++i];
         else if (a == "--image" && i + 1 < argc) image_path = argv[++i];
         else if (a == "--node" && i + 1 < argc) node_id = static_cast<uint16_t>(std::strtoul(argv[++i], nullptr, 0));

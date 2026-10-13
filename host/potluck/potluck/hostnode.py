@@ -73,6 +73,19 @@ def main(argv: list[str] | None = None) -> int:
     child = subprocess.Popen([os.path.abspath(a.exe), "--identity", a.identity, "--image", img_path],
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
     if relay is not None and not os.environ.get("POTLUCK_NO_HUB"):
+        # Behind the hub the node must number its requests below 0x8000; an executable built before that would lose
+        # its replies to the hub after ~32k requests to one peer (found by review), so it is refused here.
+        caps = subprocess.run([os.path.abspath(a.exe), "--caps"], capture_output=True, text=True, timeout=10)
+        try:
+            ok = caps.returncode == 0 and json.loads(caps.stdout.strip() or "{}").get("msg_id_max", 0xFFFF) < 0x8000
+        except ValueError:
+            ok = False
+        if not ok:
+            print(f"hostnode: {a.exe} predates the hub (no --caps): rebuild it (tools/run_host_tests.ps1), or stop "
+                  f"the hub and use the cable directly")
+            child.terminate()
+            os.unlink(img_path)
+            return 2
         port = open_transport(tcp=relay)  # the hub's relay speaks the cable's framing
         print(f"# through potluck-hub at {relay}", flush=True)
     else:
