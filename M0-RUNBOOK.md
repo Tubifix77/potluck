@@ -798,3 +798,29 @@ four golden signals, then utilisation and saturation per resource (cell-wide sat
 radio link), then the tabs Cell, Apps, Data, Integrations, Deploys, Events. Links are `#<tab>/<item>`, e.g.
 `#cell/8160` or `#data/potluck://lab/node-7368/hw/die_temp`. Tests: `python -m pytest -q
 host/potluck/tests/test_dashboard.py` (the mock against the contract, the page's landmarks; no browser needed).
+
+## 18. M13-M15 (2026-10-13): TLS to the broker, the cell's leases, the host node behind the hub, telemetry
+
+**TLS to the broker.** The cluster file's `present` block takes `"tls_ca": "<file>"` (the broker's CA, PEM or DER,
+relative to the cluster file) and a broker on its TLS port; `apply` puts the CA's DER in the signed manifest and the
+image carries it (version 4). `keys/desk-m13-tls.json` is the bench's: the house broker's listener 8883 and
+`keys/bench-broker-ca.crt` (the homelab's `/home/boas/mosquitto/config/certs/ca.crt`; the listener's lines are at the end
+of `mosquitto.conf`, the file before them is `mosquitto.conf.pre-tls`, and the port is published in the compose file).
+The present status line shows `tls`, PSRAM free and low-water, and `sender_stack_free`.
+
+**Leases.** Nothing to run: `apply` takes the cell's deploy lease after planning and says
+`lease: the cell's deploy lease is ours (board 0x6300 holds it)`; a second `apply` meanwhile, from any PC, is
+`REFUSED, nothing changed: the cell's deploy lease is held by "apply on <PC>" ...`. A resident hub takes the hub lease;
+a second hub on the same PC is refused from `%LOCALAPPDATA%\potluck\hub.json`, one on another PC by the lease. A cell
+on firmware before M14 answers no LEASE: noted, not refused.
+
+**The placement host behind the hub.** With a hub holding COM6, `python -m potluck.hostnode --port COM6 --package
+../../keys/<m>.pkg.json --identity ../../keys/host-00fe.id` goes through the hub by itself (`--hub [host:port]` to name
+it); potctl, the agent and apply run beside it. It refuses an old `pot_hostnode` (`pot_hostnode --caps`): rebuild with
+`tools\run_host_tests.ps1`.
+
+**Telemetry.** The hub pulls every board's health, links, actors and events every `--telemetry-ms` (default 10000;
+0 never): `python -m potluck.hub --cluster ../../keys/desk-m13.json --telemetry-ms 10000`. The model's `boards[].heap`,
+`links`, `rssi` and `telemetry` fill from it (HUB-API.md); the dashboard's heap and radio-link tables show it. From a
+script: `from potluck import telemetry as tm; tm.health(bridge, 0x7368); tm.links(bridge, 0x7368)`.
+`build/tests/pot_sim.exe --nodes 20 --scenario telemetry --tel-ms 10000` is the pull's airtime at 20 boards.
