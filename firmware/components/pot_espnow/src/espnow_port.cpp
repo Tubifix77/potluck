@@ -334,6 +334,10 @@ bool espnow_reset_radio(uint8_t channel, bool potluck_owns, const char** failed_
         {"esp_now_register_send_cb", [](uint8_t) { return esp_now_register_send_cb(on_send); }},
     };
     for (const Step& s : kSteps) {
+        // With Potluck's own station the router owns the channel: the station starts connecting the moment Wi-Fi
+        // starts, and setting a channel then fails (ESP_FAIL, found on the bench at 06:40) -- the cell follows the
+        // station's channel anyway (M6.1's channel authority), so the step is skipped.
+        if (g_attached && potluck_owns && s.fn == kSteps[4].fn) continue;
         err = s.fn(channel);
         if (err != ESP_OK) {
             at = s.name;
