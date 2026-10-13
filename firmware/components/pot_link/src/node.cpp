@@ -1000,6 +1000,10 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         p->last_rssi = rssi;
     }
 
+    // Whether this HELLO admits anything: a peer already alive answering its periodic want-ack HELLO is not news,
+    // and emitting it each time filled the event ring with repeats (queued since M0's soak; M0-LOG session 42:
+    // ~1 a second per board, crowding M15's 64-entry event log).
+    const bool was_alive = p->state == PeerState::Alive;
     bool new_incarnation = false;  // first verified contact with this peer, or it rebooted or re-enrolled
     if (outcome == AuthOutcome::Fresh) {
         PeerAuth& slot = auth_[peers_.index_of(p)];
@@ -1060,7 +1064,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
 
     if ((h.flags & kHelloFlagWantAck) != 0 && !departed_) {
         send_hello_ack(*p, kAdmitOk, f.hdr.msg_id);
-        emit(EventKind::PeerAdmitted, p);
+        if (new_incarnation || !was_alive) emit(EventKind::PeerAdmitted, p);
         if (new_incarnation) {
             // First contact with this incarnation of the asker. It may still hold the key of OUR
             // previous incarnation, and then drops every unicast frame we send it -- the ack above

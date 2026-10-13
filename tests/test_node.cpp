@@ -250,6 +250,22 @@ TEST(node, two_nodes_discover_each_other) {
     CHECK_EQ(p.max_payload(), kMaxPayloadV2);
 }
 
+TEST(node, peer_admitted_is_emitted_once_per_admission_not_on_every_periodic_hello) {
+    // Queued since M0's soak, fixed in M0-LOG session 42: a settled peer's periodic want-ack HELLO re-emitted
+    // PeerAdmitted every hello interval, ~1 a second per board, crowding the event ring and M15's event log.
+    TestCell c;
+    c.build(2, BeaconMode::BroadcastBeacon);
+    c.start_all();
+    c.advance_ms(20000);  // many hello intervals
+    size_t admitted = 0;
+    Event e{};
+    while (c.nodes[0].node->events().pop(e)) {
+        if (e.kind == EventKind::PeerAdmitted) ++admitted;
+    }
+    CHECK(admitted >= 1);
+    CHECK(admitted <= 2);
+}
+
 TEST(node, broadcast_beacon_cost_is_linear_in_the_cell_size) {
     // The §8.2 scaling fix, as an assertion. One beacon per node per period, no matter how many
     // peers are listening — this is the whole difference between a cell that fits its channel and
