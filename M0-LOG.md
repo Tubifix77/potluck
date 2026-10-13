@@ -5319,3 +5319,14 @@ right recovery and no gentler one exists at the driver level; M13 needs the wedg
 MQTT over its own station, the hub presenting from the PC (M14's last line). Next diagnostic: which memory is
 exhausted (lwIP's pbufs and the Wi-Fi driver's dynamic transmit buffer count are the suspects), recorded at the first
 refusal. In the 24-hour run so far, B (the extender, not presenting) and A have not stalled once.
+
+**The likely cause: AMPDU transmit aggregation (11:06 onward).** Since M12 every board runs one image, the extender's,
+and that build turns AMPDU transmit aggregation on (`CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=y`, for the hotspot's
+throughput, session 28) -- so C had it too. Aggregation applies only to a station's data to its access point: exactly
+C's MQTT, and exactly what the control (station idle) took away; session 28 had already caught aggregation wedging
+ESP-NOW with static transmit buffers. At 11:06 package 58 went out on the same firmware tree with one setting changed,
+`CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n` on every board (`keys/desk-m13-noampdu.json`; the build's sdkconfig confirms it).
+**Six hours later C had presented without a stall** (by 17:20: ~45,000 messages, none failed, internal heap flat at
+~191 KB), against one every 10-60 minutes with aggregation on and a longest quiet stretch of 3 h 47 min. Not yet
+called: the run goes on to 00:32. If it holds, the fix is a build choice -- aggregation off where a board presents over
+its own station -- and its cost is the extender hotspot's throughput, which needs the owner's phone to measure.
