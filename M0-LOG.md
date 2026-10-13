@@ -5211,3 +5211,93 @@ MQTT command); refused writes and the owning board's own refusal shown; a dead b
 presenters, failover at the broker 0.68-4.3 s with no visible outage; a cell without the module builds without it and
 `apply --plan` shows its cost; the radio's cost measured same-session and the kill line met and answered on the
 extender; 20 boards in pot_sim. **Owed:** a long soak with C presenting, and TLS's runtime cost.
+
+## Session 42 -- 2026-10-13 (night): the long soak with C presenting, TLS, M14's leases and host node, M15 telemetry
+
+**The owner's answers at the start:** yes to a 24-hour soak with C presenting, and yes to a TLS listener on the house
+broker (a self-signed certificate in `/home/boas/mosquitto/config/certs`, listener 8883 beside 1883, the container
+restarted; HA stays on 1883, nothing installed).
+
+**The soak (00:32, firmware `8e7fce4`, package 52 -- C presents over Potluck's own station, B the fallback).** Three
+JSON-only captures detached from the session (`captures/m13-soak24-{a,b,c}.jsonl`, `tools/json_capture.py`, 24 h)
+and every broker message recorded on the homelab (`/tmp/potluck-soak/m13-soak24-broker.jsonl`, `tools/mqtt_tool.py`
+in a reconnecting loop). The broker was restarted three times at 00:32-00:33 for the TLS listener (a CA with
+keyUsage was needed: Python 3.14's strict verification refused the first); C and Home Assistant reconnected each
+time within ~5 s. **C's radio stalled three times in the first 1.6 hours** -- at 3.6, 60.1 and 9.7 minutes of uptime
+(00:35, 01:36, 01:46): every ESP-NOW send refused (`enqueue_err` climbing ~280 per 11 s), the station still
+associated and receiving, MQTT's TCP stalled at the same moment (2.6 KB queued unsent, then disconnected), the
+internal heap 11-17 KB lower (transmit buffers held); the fail-stop restarted it 60 s later each time and B
+presented meanwhile and handed back. B (the extender, not presenting) did not stall. With the 3-hour soaks of
+session 41 (B presenting over the extender's station: two stalls; B not presenting: none), the common factor is a
+board presenting over its own station -- MQTT's TCP on the same radio as ESP-NOW. The 60.1-minute stall lined up
+with lwIP's hourly SNTP (3,600,000 ms) and the presenter starts SNTP, but the 9.7-minute one does not: one sample was a
+lead, not the cause. No matching ESP-IDF report was found (the documented `ESP_ERR_ESPNOW_NO_MEM` is transient
+back-pressure; this is a wedge of the whole transmit path). Wi-Fi power save is already off on every station.
+**So the presenting soak cannot pass as it stands, and the night turned to attribution:** at 01:50:15 package 53 from
+`keys/desk-m13-off.json` (the same firmware, no presenter; C's station still associated) -- the control. The
+captures run on in the same files. **The control: 3 hours (01:50-04:50), no stall on any board** -- against three
+on C in 1.6 hours presenting, on the same firmware and the same associated station. Heartbeat loss over the six links
+was about the same in both phases (0.72 % presenting, 0.64 % control; the heartbeats from A reach B and C with ~1.25 %
+loss in both, an A matter, not this one), so presenting costs nothing measurable outside the stalls -- the cost is the
+wedge. Presenting over a board's own station -- MQTT's TCP sharing the radio with ESP-NOW -- triggers it; the station
+alone does not. That meets M13's kill line on a board with nothing else on it but the station, and the line's own
+fallback (presenting moves to a board with nothing else on it) does not escape it. What is left: whether the wedge is
+driver state a restart clears (the experiment below), and the architecture's other route, the hub presenting from the
+PC (M14's last line). **At 04:50** firmware `61beb74` (counter 26: TLS, leases, telemetry, the stall's evidence and the
+experiment switch on, `CONFIG_POT_TX_DEAD_SOFT_S=10`) went out to all three with package 54 from
+`keys/desk-m13-soft.json` (C presenting on plain MQTT again; 17.9 min command to verified, ~10 of it a cold build);
+verified at 05:07. One check over the cable: TELEMETRY answered every section from all three boards through the proxy
+(C: 191 KB internal free of 326 KiB, its links with RTT percentiles, its actors, its events), and a LEASE was taken on
+0x6300 (the lowest id), named its holder to a query, and was released. Potluck's core is now 63,424 B of 65,536 B
+static internal RAM (2,112 B left). The second presenting phase runs from 05:07 as this is written; its first stall answers whether a driver restart clears the wedge.
+
+**TLS (built, `374eb26`):** the package pins the broker's CA. The cluster file's `present.tls_ca` names the CA file
+(PEM or DER); `apply` puts its DER in the manifest, so the owner's signature covers it, and the image carries it in
+a version-4 section after the outside section (`kMaxBrokerCa` 1024 B; a P-256 CA is 415 B). The presenter copies it
+at start and gives esp-mqtt an `mqtts://` URI with it. A TLS presenter whose image has no CA, or another CA than its
+declaration's crc32 names, is refused at parse (the crc32 because review found a live change of only the CA would
+keep the old presenter). A present-built board without the sandbox now takes a 2048-byte signed stream. The present
+status line carries `tls`, PSRAM free/low and the sender task's stack margin (TLS writes run on it). `keys/desk-m13-
+tls.json` is desk-m13 with the broker on 8883 and `bench-broker-ca.crt`. The runtime cost is measured after the soak
+(all three boards are in it). Not yet measured: all three boards are in the soak.
+
+**M14 -- the cell's leases (`68f3ae8`):** LEASE (0x39) asks the lowest-id live board -- with target 0 the board on the
+cable picks it and passes the request on, so two PCs never need to agree on who is alive -- for a named lease (a
+token, a time to live renewed at a third of it, the holder's name). `potluck apply` takes the deploy lease after
+planning, before changing anything; a resident hub takes the hub lease before serving and stands down if a renewal
+finds another holder; a second hub on the same PC is refused from the state file (shown in a test). An arbiter that
+answers "unreachable" is retried, then apply refuses and the hub warns and keeps asking; a cell that never answers
+(firmware before M14) is noted -- shown live at 01:49 when package 53 went out on `8e7fce4`. Advisory (old tools are
+not refused by the boards) and in RAM (an arbiter that reboots forgets; the next renewal takes it again).
+
+**M14 -- M10's placement host through the hub (`7ebe122`):** `potluck.hostnode --hub` (or by itself when a hub
+holds the port) is the hub's node client: told from a tool by its HELLO's boot epoch, its frames carried to the cable
+byte for byte (its frames to other boards are tagged over the header), the hub silent while it is attached and for
+its death window after it goes (review found the hub's own heartbeats kept 0x00fe alive on the cabled board). msg_ids
+are split, not renumbered: `NodeConfig::msg_id_max` (0x7FFF on pot_hostnode, the whole range on boards) and the hub
+numbering from 0x8000; `pot_hostnode --caps` lets hostnode refuse an older executable. Tests over FakeNode; the
+handover through it (M10's 0.63-0.69 s, the kill line) is a bench run still owed.
+
+**M15 -- telemetry over the cell (`5181850`):** TELEMETRY (0x3A) answers four binary sections, each under the cable's
+226-byte floor and paged where it grows -- health (88 B: heap, PSRAM, channel, counters, flags including a declared
+long window), links (40 B a peer, where the console's JSON line is ~600), the reconciler's actor view, and the board's
+events with sequence numbers (a 64-entry log). The hub pulls every alive board at `--telemetry-ms` (default 10 s),
+fills the model's heap, links, rssi and telemetry (HUB-API.md), turns board events into `board_*` events, counts
+per-link deaths from them, and shows a quiet board that declared a long window as asleep (dead once the cabled board
+says so). `pot_sim --scenario telemetry`, 20 boards, 10 simulated minutes: airtime floor 26.0 % with no pull, 28.8 %
+every 10 s, 40.1 % every 2 s; no deaths, no timeouts; a pull of the whole cell takes 0.8 s. The bench [MEASURE] (M0's
+round trips and delivery at the chosen rate) is owed.
+
+**An independent review** (read-only subagent) of the four commits found seven defects, all fixed before any reached a
+board (`f86f8ab`, `389a535`): the hub's heartbeats behind a host node; a CA-only change not reaching the presenter;
+an unreachable arbiter mistaken for old firmware; the sender stack under TLS (now measured); missed events after a
+board reboot (now by boot epoch); boards never asked again after failing telemetry, and asleep forever; an old
+pot_hostnode behind the hub. Wire layouts, image bounds, locking, proxies and line endings checked fine.
+
+**`tx_dead` now carries the evidence** (`f86f8ab`): the first and last `esp_now_send` error, how many sends were
+refused, and the internal heap at the first refusal.
+
+**Fixed the same night:** `peer_admitted` fired on every periodic want-ack HELLO of a peer already alive (queued as cosmetic since M0) -- about one event a second per board, which crowded the event ring and M15's 64-entry log; now only on an admission (`b332ec4`, its test fails without the fix; not on the boards yet).
+
+**Also:** a Python edit script opened CRLF files in text mode and wrote them back LF, and Git Bash's `sed -i` did the
+same once; caught both times by `git diff --stat` and restored (the memory note says how).

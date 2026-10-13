@@ -60,6 +60,22 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-13 (night): **M13's kill line met on the bench; TLS, M14's leases and host node, M15 built** (M0-LOG session 42).
+>
+> **A 24-hour capture runs until 00:32 on 2026-10-14** (`captures/m13-soak24-{a,b,c}.jsonl`, three detached
+> `tools/json_capture.py` processes, JSON only; broker side `/tmp/potluck-soak/m13-soak24-broker.jsonl` on the
+> homelab), in phases: presenting (00:32-01:50, C stalled 3 times), control with no presenter (01:50-04:50, no
+> stall), then presenting again from 05:07 on firmware `61beb74` (counter 26) with package 54 from
+> `keys/desk-m13-soft.json` -- the stall's evidence in `tx_dead` and the experiment `CONFIG_POT_TX_DEAD_SOFT_S=10`
+> (a Wi-Fi driver restart before the reboot: watch for `tx_soft` / `tx_soft_ok`). **Monitor it** -- the owner's rule:
+> a board dying unseen ruins the run. **Finding:** a board presenting over its own station wedges its radio (ESP-NOW
+> NO_MEM and the station's TCP stopped together); the station alone does not. M13's kill line is met; its fallback does
+> not escape it. **Next:** read the presenting phase's `tx_soft` result; the TLS cost (`keys/desk-m13-tls.json`, the
+> house broker's listener 8883); then decide M13's route -- a driver-level fix or recovery, or the hub presenting from
+> the PC (M14's last line). Owed on the bench: M14's runs (M10's handover through the hub), M15's [MEASURE].
+> `b332ec4` (peer_admitted noise fixed) is not on the boards yet. The house broker's TLS changes: `certs/`,
+> `mosquitto.conf.pre-tls`, `docker-compose.yml.pre-tls` beside the originals.
+>
 > ## HANDOVER, 2026-10-12 (evening): **M13 shown end to end with Home Assistant; M14 and M16 first cuts running** (M0-LOG session 41).
 >
 > Home Assistant and Mosquitto run as containers on the homelab (`/home/boas/homeassistant/docker-compose.yml`, owner's
@@ -69,7 +85,7 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > --cluster ../../keys/desk-m13.json` from host/potluck) was stopped at the owner's request; start it again to use the
 > dashboard at http://127.0.0.1:8470/. **Next:** a long soak with C presenting (then propose M13 for acceptance), TLS's
 > runtime cost (a TLS listener on Mosquitto), M14's remaining lines (agent and hostnode through the hub, a second
-> resident hub refused, the deploy lock), M15 telemetry. ~40 commits are local: ask the owner before pushing.
+> resident hub refused, the deploy lock), M15 telemetry. (Everything was pushed that evening, `cc63476`.)
 >
 > ## HANDOVER, 2026-10-12 (morning): **M13 built and shown on the bench; M13.1 built** (M0-LOG session 41). Not accepted.
 >
