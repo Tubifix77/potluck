@@ -2003,13 +2003,18 @@ void link_task(void*) {
                     }
                 }
                 xSemaphoreGive(g_mutex);
-                const bool ok = espnow_reset_radio(ch, uplink::kind() == uplink::Kind::Wifi);
+                const char* failed_at = nullptr;
+                int32_t reset_err = 0;
+                const bool ok = espnow_reset_radio(ch, uplink::kind() == uplink::Kind::Wifi, &failed_at, &reset_err);
                 size_t readded = 0;
                 for (size_t i = 0; ok && i < n; ++i) readded += espnow_add_peer(macs[i], 0) ? 1 : 0;
                 std::printf("{\"t\":\"tx_soft\",\"node\":%u,\"failing_ms\":%lu,\"first_err\":\"0x%lx\",\"ok\":%d,"
+                            "\"failed_at\":\"%s\",\"reset_err\":\"0x%lx\","
                             "\"peers\":%u,\"readded\":%u,\"int_free\":%lu}\n",
                             static_cast<unsigned>(g_node->config().node_id), static_cast<unsigned long>(nt - since),
                             static_cast<unsigned long>(static_cast<uint32_t>(g_radio_first_err.load())), ok ? 1 : 0,
+                            failed_at != nullptr ? failed_at : "",
+                            static_cast<unsigned long>(static_cast<uint32_t>(reset_err)),
                             static_cast<unsigned>(n), static_cast<unsigned>(readded),
                             static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
             }

@@ -305,21 +305,42 @@ EspNowInitReport espnow_start(const EspNowConfig& cfg) {
     return rep;
 }
 
-bool espnow_reset_radio(uint8_t channel, bool potluck_owns) {
-    if (!g_espnow_up || (g_attached && !potluck_owns)) return false;
+bool espnow_reset_radio(uint8_t channel, bool potluck_owns, const char** failed_at, int32_t* err_out) {
+    const char* dummy_at = nullptr;
+    int32_t dummy_err = 0;
+    const char*& at = failed_at != nullptr ? *failed_at : dummy_at;
+    int32_t& eo = err_out != nullptr ? *err_out : dummy_err;
+    at = nullptr;
+    eo = 0;
+    if (!g_espnow_up || (g_attached && !potluck_owns)) {
+        at = "not ours";
+        return false;
+    }
     g_espnow_up = false;  // espnow_send returns at once from here on: nothing calls into a driver going down
     vTaskDelay(pdMS_TO_TICKS(20));
-    esp_err_t err = esp_now_deinit();
-    if (err == ESP_OK) err = esp_wifi_stop();
-    if (err == ESP_OK) err = esp_wifi_start();
-    if (err == ESP_OK) err = esp_wifi_set_ps(WIFI_PS_NONE);
-    if (err == ESP_OK) err = esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
-    if (err == ESP_OK) err = esp_now_init();
-    if (err == ESP_OK) err = esp_now_register_recv_cb(on_recv);
-    if (err == ESP_OK) err = esp_now_register_send_cb(on_send);
-    if (err != ESP_OK) {
-        ESP_LOGE(kTag, "radio reset failed: %s", esp_err_to_name(err));
-        return false;
+    esp_err_t err = ESP_OK;
+    struct Step {
+        const char* name;
+        esp_err_t (*fn)(uint8_t);
+    };
+    static const Step kSteps[] = {
+        {"esp_now_deinit", [](uint8_t) { return esp_now_deinit(); }},
+        {"esp_wifi_stop", [](uint8_t) { return esp_wifi_stop(); }},
+        {"esp_wifi_start", [](uint8_t) { return esp_wifi_start(); }},
+        {"esp_wifi_set_ps", [](uint8_t) { return esp_wifi_set_ps(WIFI_PS_NONE); }},
+        {"esp_wifi_set_channel", [](uint8_t ch) { return esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE); }},
+        {"esp_now_init", [](uint8_t) { return esp_now_init(); }},
+        {"esp_now_register_recv_cb", [](uint8_t) { return esp_now_register_recv_cb(on_recv); }},
+        {"esp_now_register_send_cb", [](uint8_t) { return esp_now_register_send_cb(on_send); }},
+    };
+    for (const Step& s : kSteps) {
+        err = s.fn(channel);
+        if (err != ESP_OK) {
+            at = s.name;
+            eo = err;
+            ESP_LOGE(kTag, "radio reset failed at %s: %s", s.name, esp_err_to_name(err));
+            return false;
+        }
     }
     g_espnow_up = true;
     return espnow_add_peer(kBroadcastMac, 0);
