@@ -126,8 +126,9 @@ EspNowQueueStats espnow_queue_stats();
 // M13 experiment (CONFIG_POT_TX_DEAD_SOFT_S): take ESP-NOW down, restart the Wi-Fi driver, bring ESP-NOW up again
 // on `channel` -- in the order ESP-IDF's ESP-NOW guide gives ("start Wi-Fi before initializing ESP-NOW and stop
 // Wi-Fi after de-initializing ESP-NOW") -- and re-add the broadcast peer. A de-init deletes every paired peer, so the
-// caller re-adds its own. Only where Potluck owns the driver (not attached); false if any step failed.
-bool espnow_reset_radio(uint8_t channel);
+// caller re-adds its own. Only where Potluck owns the driver: not attached, or `potluck_owns` -- attached to Wi-Fi that
+// Potluck's own station module brought up (never an application's, the extender's); false if any step failed.
+bool espnow_reset_radio(uint8_t channel, bool potluck_owns = false);
 
 // Whether the radio actually came up. Every espnow_* call is a no-op when it did not:
 // on a build with no Wi-Fi driver, calling into ESP-NOW resets the chip rather than

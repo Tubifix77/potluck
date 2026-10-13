@@ -305,8 +305,8 @@ EspNowInitReport espnow_start(const EspNowConfig& cfg) {
     return rep;
 }
 
-bool espnow_reset_radio(uint8_t channel) {
-    if (!g_espnow_up || g_attached) return false;
+bool espnow_reset_radio(uint8_t channel, bool potluck_owns) {
+    if (!g_espnow_up || (g_attached && !potluck_owns)) return false;
     g_espnow_up = false;  // espnow_send returns at once from here on: nothing calls into a driver going down
     vTaskDelay(pdMS_TO_TICKS(20));
     esp_err_t err = esp_now_deinit();

@@ -1986,8 +1986,10 @@ void link_task(void*) {
                 std::printf("{\"t\":\"tx_soft_ok\",\"node\":%u,\"after_ms\":%lu}\n",
                             static_cast<unsigned>(g_node->config().node_id), static_cast<unsigned long>(nt - soft_at));
                 soft_tried = false;
-            } else if (since != 0 && !soft_tried && !espnow_attached() &&
+            } else if (since != 0 && !soft_tried && uplink::kind() != uplink::Kind::Extender &&
                        nt - since > static_cast<uint32_t>(CONFIG_POT_TX_DEAD_SOFT_S) * 1000u) {
+                // Potluck owns the driver: no station, or its own `wifi` module's (ESP-NOW attaches to that one too,
+                // so espnow_attached() is no test -- found on the bench: the first try skipped C, the board it was for).
                 soft_tried = true;
                 soft_at = nt;
                 uint8_t macs[kMaxPeers][kMacLen];
@@ -2001,7 +2003,7 @@ void link_task(void*) {
                     }
                 }
                 xSemaphoreGive(g_mutex);
-                const bool ok = espnow_reset_radio(ch);
+                const bool ok = espnow_reset_radio(ch, uplink::kind() == uplink::Kind::Wifi);
                 size_t readded = 0;
                 for (size_t i = 0; ok && i < n; ++i) readded += espnow_add_peer(macs[i], 0) ? 1 : 0;
                 std::printf("{\"t\":\"tx_soft\",\"node\":%u,\"failing_ms\":%lu,\"first_err\":\"0x%lx\",\"ok\":%d,"
