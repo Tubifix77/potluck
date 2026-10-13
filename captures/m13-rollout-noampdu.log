@@ -1,0 +1,42 @@
+[    0.1 s] package: modules from app 'passive-sensor' (pot_passive_sensor)
+[    0.2 s] package: guest 'alarm' by 7, signature verified under the cluster CA
+[    0.2 s] package: 'lab', 7 actor(s) (3 portable), image 1203 B, for 3 board(s)
+[    4.2 s] firmware: building ea28980-e7ddf8 (1 app component dir(s), extender) -- a few minutes the first time
+[  346.3 s] firmware: built in 342 s
+[  346.3 s] module sandbox: 82,043 B flash, 2,673 B internal RAM, 0 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  346.3 s] module wifi: 3,129 B flash, 139 B internal RAM, 1,472 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  346.3 s] module present: 19,923 B flash, 0 B internal RAM, 25,144 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  346.3 s] module pocket: 3,277 B flash, 105 B internal RAM, 19,008 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  346.3 s] module extender: 2,816 B flash, 90 B internal RAM, 0 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  346.3 s] module app component pot_passive_sensor: 7,198 B flash, 82 B internal RAM, 1,390 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  346.3 s] Potluck core: 63,424 B of 65,536 B static internal RAM (2,112 B left)
+[  346.8 s] inventory: 0x6300  fw ea28980-8f2946 (counter 29, floor 29, confirmed)  package 57 (floor 57)  cluster 'lab'  up 14603 s  live 1  ck writes 471  roles extender-build,sandbox,reconciler,enrolled,cabled  actors rf_link,rf_indicator (0/3 portable here)  modules sandbox:idle (nothing here uses it),extender:idle (no credentials),present:idle (no network),pocket:idle (no credentials),wifi:idle (no credentials)
+[  346.8 s] inventory: 0x7368  fw ea28980-8f2946 (counter 29, floor 29, confirmed)  package 57 (floor 57)  cluster 'lab'  up 14888 s  live 1  ck writes 496  roles extender-build,extender,sandbox,reconciler,relay,enrolled  actors rf_link,rf_indicator,die_temp,led_switch,guest (1/3 portable here)  modules sandbox:active,extender:active,present:idle (standby),pocket:idle (another module is the connection),wifi:idle (another module is the connection)
+[  346.8 s] inventory: 0x8160  fw ea28980-8f2946 (counter 29, floor 29, confirmed)  package 57 (floor 57)  cluster 'lab'  up 404 s  live 0  ck writes 6  roles extender-build,sandbox,reconciler,enrolled  actors rf_link,rf_indicator,rf_fusion,present (2/3 portable here)  modules sandbox:idle (nothing here uses it),extender:idle (no credentials),present:active,pocket:idle (no credentials),wifi:active
+[  346.8 s] plan: firmware ea28980-e7ddf8 to 0x6300, 0x7368, 0x8160
+[  346.8 s] plan: package 'lab' replaces what runs now (die_temp, guest, led_switch, present, rf_fusion, rf_indicator, rf_link) with rf_link (ext:passive_sensor/rf_link), rf_fusion (ext:passive_sensor/rf_fusion), rf_indicator (ext:passive_sensor/rf_indicator), die_b (builtin:die_temp), alarm (guest:overheat_alarm), led_b (builtin:led_switch), present (builtin:present)
+[  346.9 s] lease: the cell's deploy lease is ours (board 0x6300 holds it)
+[  346.9 s] firmware: ea28980-e7ddf8 to 0x7368, 0x8160, 0x6300 at counter 30
+[  489.3 s] firmware: 0x7368 confirmed ea28980-e7ddf8 in 142 s
+[  629.9 s] firmware: 0x8160 confirmed ea28980-e7ddf8 in 141 s
+[  770.9 s] firmware: 0x6300 confirmed ea28980-e7ddf8 in 141 s
+[  772.3 s] package: counter 58 committed on 0x6300, passed on to 2 board(s)
+[  784.9 s] verify: 0x6300 confirmed package 58: rf_link,rf_indicator
+[  785.0 s] verify: 0x7368 confirmed package 58: rf_link,rf_indicator,die_temp,led_switch,guest
+[  785.1 s] verify: 0x8160 confirmed package 58: rf_link,rf_indicator,rf_fusion,present
+[  785.2 s] verify: potluck://lab/act/rf_fusion/out = false  [GOOD, age 1535 ms, ts 165617, class L4]
+[  787.4 s] verify: potluck://lab/node-7368/hw/die_temp = 50.5 C  [GOOD, age 2665 ms, ts 309048, class L4]
+[  789.5 s] verify: potluck://lab/act/alarm/out = 50.503  [GOOD, age 2621 ms, ts 311245, class L3]
+[  791.7 s] verify: potluck://lab/act/alarm/alarm = 1  [GOOD, age 2773 ms, ts 313247, class L3]
+[  793.8 s] verify: potluck://lab/act/alarm/count = 134431  [GOOD, age 2929 ms, ts 315247, class L3]
+[  796.0 s] verify: potluck://lab/node-7368/led/on = false  [GOOD, age 318551 ms, ts 1778, class L3]
+[  798.1 s] verify: potluck://lab/act/present/out = 4  [GOOD, age 4004 ms, ts 176095, class L4]
+
+  plan (package, firmware build)     346.3 s
+  inventory                            0.2 s
+  firmware                           424.0 s
+  package                              1.1 s
+  verify                              25.8 s
+  command to verified                798.2 s
+  package 58: live on 3 board(s); rebooted for it: none
+VERIFIED: cluster 'lab' runs package 58 on 3 board(s)
