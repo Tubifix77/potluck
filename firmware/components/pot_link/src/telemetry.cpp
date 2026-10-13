@@ -105,7 +105,7 @@ size_t store_telemetry_health(uint16_t node, const TelemetryHealth& h, uint8_t* 
         w.u32(v);
     }
     w.u16(h.link_stack_free);
-    w.u16(0);
+    w.u16(h.int_total_kib);
     return w.at;
 }
 

@@ -67,7 +67,8 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
 
 - `board.state`: `alive` | `dead` | `asleep` (a declared long window, M5.1) | `unknown` (never heard since the hub started).
 - `board.heap`, `board.links`, `board.rssi` and `board.telemetry` come from M15's telemetry, pulled over the radio every
-  `hub.telemetry_period_ms` (`--telemetry-ms`, default 10000; 0 never): `heap` adds `psram_min`; each link adds `lost`
+  `hub.telemetry_period_ms` (`--telemetry-ms`, default 10000; 0 never): `heap` adds `internal_total_kib` and `psram_min` (`signals.saturation.internal_ram` is the worst
+  board's internal heap used at its low-water mark); each link adds `lost`
   (sequence gaps), `misses`, `cable` (the PC on that board's cable) and `window_ms` (the peer's declared death window);
   `delivery` is `null` on the cable, where nothing is acknowledged. `telemetry` holds the board's counters --
   `{at, channel, flags, up_ms, epoch, peers_alive, peers_dead, deaths, revivals, reboots_seen, rx_total, rx_rejected,

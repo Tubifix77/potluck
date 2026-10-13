@@ -1447,6 +1447,7 @@ size_t build_telemetry(const TelemetryRequest& rq, uint8_t* out, size_t cap) {
         h.int_free = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
         h.int_min = static_cast<uint32_t>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
         h.int_largest = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+        h.int_total_kib = static_cast<uint16_t>(heap_caps_get_total_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) / 1024);
         h.ext_free = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
         h.ext_min = static_cast<uint32_t>(heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM));
         h.peers_alive = static_cast<uint8_t>(g_node->peers().count_in_state(PeerState::Alive));

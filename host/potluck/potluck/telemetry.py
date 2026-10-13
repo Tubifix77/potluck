@@ -75,6 +75,7 @@ class Health:
     writes_served: int
     writes_rejected: int
     link_stack_free: int
+    int_total_kib: int = 0  # 0 from a board that does not say
 
     @property
     def long_window(self) -> bool:
@@ -171,8 +172,7 @@ def parse_health(raw: bytes) -> Health:
     node = _header(raw, HEALTH)
     if len(raw) < 4 + _HEALTH.size:
         raise TelemetryError("health section cut short")
-    v = _HEALTH.unpack_from(raw, 4)
-    return Health(node, *v[:-1])  # the last field is reserved
+    return Health(node, *_HEALTH.unpack_from(raw, 4))
 
 
 def parse_links(raw: bytes) -> tuple[int, int, list[Link]]:

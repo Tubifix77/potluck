@@ -17,7 +17,7 @@
 //             u8 actors_pinned, u8 actors_portable_here, u32 deaths, u32 revivals, u32 reboots_seen, u32 rx_total,
 //             u32 rx_rejected (bad frame + short payload + unknown opcode), u32 rx_queue_dropped, u32 tx_total,
 //             u32 tx_enqueue_err, u32 tx_done_dropped, u32 events_dropped, u32 writes_served, u32 writes_rejected,
-//             u16 link_stack_free, u16 reserved                                                        (88 bytes)
+//             u16 link_stack_free, u16 int_total_kib (the internal heap's size, for saturation)      (88 bytes)
 //     Links   (kTelemetryLinks): u8 total (peers in the table), u8 start, u8 n, n x link (40 bytes):
 //             u16 node, u8 state (PeerState), i8 rssi, u8 espnow_version, u8 flags (kTelLink*), u16 hb_period_ms,
 //             u8 miss_limit, u8 misses, u32 tx_frames, u32 tx_cb_ok, u32 tx_cb_fail, u32 rx_frames, u32 rx_lost
@@ -89,6 +89,7 @@ struct TelemetryHealth {
     uint32_t tx_total = 0, tx_enqueue_err = 0, tx_done_dropped = 0;
     uint32_t events_dropped = 0, writes_served = 0, writes_rejected = 0;
     uint16_t link_stack_free = 0;
+    uint16_t int_total_kib = 0;
 };
 
 struct TelemetryLink {

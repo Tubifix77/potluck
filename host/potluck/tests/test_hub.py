@@ -261,6 +261,7 @@ class Telemetry(HubFixture):
 
         h = tm.parse_health(bytes.fromhex(tt.HEALTH_GOLDEN))
         h.flags = flags
+        h.int_min, h.int_total_kib = 180000, 300
         _, _, links = tm.parse_links(bytes.fromhex(tt.LINKS_GOLDEN))
         with self.model.lock:
             self.model.boards[0x1001] = {"state": "alive", "since_at": 0, "last_ok": time.monotonic(),
@@ -276,6 +277,7 @@ class Telemetry(HubFixture):
         self.assertEqual(b["links"][0]["window_ms"], 6000)
         self.assertEqual(b["rssi"], -45)
         self.assertEqual(b["telemetry"]["flags"], ["connected", "enrolled"])
+        self.assertEqual(self.model.snapshot()["signals"]["saturation"]["internal_ram"], round(1 - 180000 / 307200, 2))
 
     def test_a_board_that_declared_a_long_window_and_goes_quiet_is_asleep_not_dead(self) -> None:
         from potluck import telemetry as tm

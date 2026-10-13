@@ -595,7 +595,8 @@ class Model:
         if tel is not None:
             h = tel["health"]
             out["heap"] = {"internal_free": h.int_free, "internal_min": h.int_min, "internal_largest": h.int_largest,
-                           "psram_free": h.ext_free, "psram_min": h.ext_min}
+                           "internal_total_kib": h.int_total_kib or None, "psram_free": h.ext_free,
+                           "psram_min": h.ext_min}
             out["links"] = [{"peer": f"{k.node:04x}", "state": k.state_name, "delivery": k.delivery,
                              "rtt_p50_ms": k.rtt_p50_ms, "rtt_p99_ms": k.rtt_p99_ms, "rssi": k.rssi if k.rssi else None,
                              "deaths": self.link_deaths.get((n, k.node), 0),
@@ -705,9 +706,13 @@ class Model:
         errors = sum(1 for t in self.errors if now - t < 60)
         alive = [b for b in boards if b.get("actors") is not None]
         slots = max((len(b.get("actors", [])) / 8 for b in alive), default=None)
+        # M15: the worst board's internal heap used at its low-water mark, from telemetry.
+        ram = [1 - b["heap"]["internal_min"] / (b["heap"]["internal_total_kib"] * 1024) for b in boards
+               if b.get("heap") and b["heap"].get("internal_total_kib")]
         return {"latency_p50_ms": p50, "latency_p99_ms": p99, "traffic_frames_s": traffic, "errors_min": errors,
                 "saturation": {"peers": round(len(boards) / 21, 2) if boards else None, "namespace": None,
-                               "actor_slots": round(slots, 2) if slots is not None else None, "internal_ram": None,
+                               "actor_slots": round(slots, 2) if slots is not None else None,
+                               "internal_ram": round(max(ram), 2) if ram else None,
                                "airtime": None}}
 
 
