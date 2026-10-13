@@ -381,6 +381,17 @@ config POT_TX_DEAD_RESTART_S
         keeps its portable actors, and the members that cannot hear it run them too. A restart is a death
         the cell handles; a mute member is not. Longer than any station's hunting scan.
 
+config POT_TX_DEAD_SOFT_S
+    int "Experiment: restart the Wi-Fi driver after this many seconds of refused sends, before the restart (0 = never)"
+    range 0 3600
+    default 0
+    help
+        M13 (M0-LOG session 42): a board presenting over its own station stalls -- every ESP-NOW send refused
+        (NO_MEM) and the station's TCP stopped, while it still receives. This tries a driver restart first
+        (ESP-NOW down, Wi-Fi stopped and started, ESP-NOW up, peers re-added) and records {"t":"tx_soft"}
+        and, if sends come back, {"t":"tx_soft_ok"}: whether the wedge is driver state a restart clears.
+        Not on a board whose application owns Wi-Fi (the extender). POT_TX_DEAD_RESTART_S still applies.
+
 config POT_POCKET
     bool "M13.1: the pocket page -- a board's own access point and a read-only page for a phone (optional module 'pocket')"
     default n

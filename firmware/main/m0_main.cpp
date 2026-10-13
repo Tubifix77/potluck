@@ -1976,6 +1976,43 @@ void link_task(void*) {
         }
 #endif
 
+#if CONFIG_POT_TX_DEAD_SOFT_S > 0
+        {
+            // The experiment: a driver restart first (Kconfig help, M0-LOG session 42). Once per stall.
+            static bool soft_tried = false;
+            static uint32_t soft_at = 0;
+            const uint32_t since = g_radio_fail_since_ms.load();
+            if (since == 0 && soft_tried) {
+                std::printf("{\"t\":\"tx_soft_ok\",\"node\":%u,\"after_ms\":%lu}\n",
+                            static_cast<unsigned>(g_node->config().node_id), static_cast<unsigned long>(nt - soft_at));
+                soft_tried = false;
+            } else if (since != 0 && !soft_tried && !espnow_attached() &&
+                       nt - since > static_cast<uint32_t>(CONFIG_POT_TX_DEAD_SOFT_S) * 1000u) {
+                soft_tried = true;
+                soft_at = nt;
+                uint8_t macs[kMaxPeers][kMacLen];
+                size_t n = 0;
+                xSemaphoreTake(g_mutex, portMAX_DELAY);
+                const uint8_t ch = g_node->channel();
+                for (size_t i = 0; i < kMaxPeers; ++i) {
+                    const PeerLink& q = g_node->peers().slot(i);
+                    if (q.state != PeerState::Free && std::memcmp(q.mac, kHostMac, kMacLen) != 0) {
+                        std::memcpy(macs[n++], q.mac, kMacLen);
+                    }
+                }
+                xSemaphoreGive(g_mutex);
+                const bool ok = espnow_reset_radio(ch);
+                size_t readded = 0;
+                for (size_t i = 0; ok && i < n; ++i) readded += espnow_add_peer(macs[i], 0) ? 1 : 0;
+                std::printf("{\"t\":\"tx_soft\",\"node\":%u,\"failing_ms\":%lu,\"first_err\":\"0x%lx\",\"ok\":%d,"
+                            "\"peers\":%u,\"readded\":%u,\"int_free\":%lu}\n",
+                            static_cast<unsigned>(g_node->config().node_id), static_cast<unsigned long>(nt - since),
+                            static_cast<unsigned long>(static_cast<uint32_t>(g_radio_first_err.load())), ok ? 1 : 0,
+                            static_cast<unsigned>(n), static_cast<unsigned>(readded),
+                            static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+            }
+        }
+#endif
 #if CONFIG_POT_TX_DEAD_RESTART_S > 0
         if (const uint32_t since = g_radio_fail_since_ms.load();
             since != 0 && nt - since > static_cast<uint32_t>(CONFIG_POT_TX_DEAD_RESTART_S) * 1000u) {
