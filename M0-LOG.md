@@ -5337,3 +5337,17 @@ records on C with aggregation on the same day.** Called: AMPDU transmit aggregat
 own station causes the radio wedge. The fix is a build choice -- aggregation off where a board presents over its own
 station -- and its cost, the extender hotspot's throughput, is still to measure (needs the owner's phone). Monitoring
 moves to the owner's daily manual checks. Captures `captures/m13-soak24-{a,b,c}.jsonl` (to compress before committing).
+
+**After the run (2026-10-14, 00:35-01:00): the rule, and TLS's cost.** `apply` now builds a cell that presents with AMPDU
+transmit aggregation off on every board (`f697bf5`; a cluster file that names the key keeps its choice; `--plan`
+says so). With it, firmware `ea28980-cbe742` (counter 31, the experiment switch gone) and package 59 from
+`keys/desk-m13-tls.json` went out under the deploy lease: C presents to the house broker's TLS listener -- Mosquitto
+logs `TLSv1.2 cipher ECDHE-ECDSA-AES256-GCM-SHA384`, the broker verified against the CA the package pins, by its IP SAN.
+**TLS's cost on C**, against plain MQTT on the same board minutes before: internal heap free 190,207 -> 164,887 B
+(24.7 KB while connected), low-water 180,455 -> 153,683 B (the handshake), PSRAM unchanged (mbedTLS allocates
+internally), the sender task's stack margin 2,560 -> 2,080 B (no need to grow its 4 KB). **On the tightest board** --
+B, the extender with passive-sensor's actors -- with C held in reset for 180 s: B took the role within one 11 s
+stats period and presented over TLS, 488 messages, none failed; internal heap 161,455 B on standby -> ~127,200 B
+presenting (34 KB for the MQTT client and TLS together), low-water 114,403 B; C back, B handed the role back and its
+heap returned to 158,627 B. The kill line's memory half ("an MQTT client cannot fit that board's internal RAM") does
+not fire, with TLS (captures `m13-tls-{baseline-c,c,b}.jsonl.gz`).

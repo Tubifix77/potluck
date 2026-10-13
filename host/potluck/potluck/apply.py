@@ -814,13 +814,18 @@ def plan_package(c: Cluster, cache: Path, log) -> Package | None:
     return Package(m, doc, img)
 
 
-def sign_and_compile(c: Cluster, pkg: Package, counter: int) -> bytes:
+def sign_and_compile(c: Cluster, pkg: Package, counter: int, keep: Path | None = None) -> bytes:
+    """The signed image for the cell. `keep`: also write the signed package there (what `potluck.hostnode
+    --package` reads, so a placement host runs exactly what the boards run)."""
     from . import deploy as dp
     from .signing import read_key, sign_manifest, verify_package
 
     dk = read_key(str(c.keys["deploy_key"]))
     cert = json.loads(c.keys["deploy_cert"].read_text(encoding="utf-8"))
     signed = sign_manifest(pkg.manifest, dk, cert, counter)
+    if keep is not None:
+        keep.parent.mkdir(parents=True, exist_ok=True)
+        keep.write_text(json.dumps(signed, indent=1), encoding="utf-8")
     v = verify_package(json.loads(json.dumps(signed)), read_key(str(c.keys["ca"])).public, min_counter=counter)
     img = dp.compile_image(v.manifest, counter, str(c.guests_root))
     bcert = bytes.fromhex(c.keys["deploy_bcert"].read_text(encoding="ascii").strip())
@@ -1081,8 +1086,10 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                 print("FAILED: still on trial: " + ", ".join(f"0x{n:04x}" for n in busy))
                 return 1
         counter = max(max(s.pkg_floor, s.pkg_counter) for s in inv.values() if s is not None) + 1
+        keep = cache / "packages" / f"{c.system}-{counter}.pkg.json"
         try:
-            signed = sign_and_compile(c, pkg, counter)
+            signed = sign_and_compile(c, pkg, counter, keep=keep)
+            log(f"package: signed at counter {counter}, kept as {keep}")
         except Exception as exc:  # noqa: BLE001 - a key problem the plan's checks did not catch
             print(f"FAILED before sending the package: {exc}")
             return 1

@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "system": "lab",
+  "min_core_version": 1,
+  "comment": "M14's bench: the PC as a placement host (M10's portable ticker, drawn to the PC by needing its uptime) and as a service (M8's clock, a client pinned on A calling the PC's svc/time), both through potluck-hub.",
+  "nodes": [
+    {"node_id": 25344, "label": "A"},
+    {"node_id": 29544, "label": "B"},
+    {"node_id": 33120, "label": "C"},
+    {
+      "node_id": 254,
+      "label": "pc",
+      "kind": "host",
+      "placement": true,
+      "owns": [
+        {"path": "potluck://lab/node-00fe/sys/uptime", "unit": "millisecond", "kind": "sampled", "access": "read",
+         "latency_class": 4, "staleness_bound_ms": 5000},
+        {"path": "potluck://lab/svc/time", "unit": "millisecond", "kind": "sampled", "access": "read",
+         "latency_class": 4, "staleness_bound_ms": 0}
+      ]
+    }
+  ],
+  "actors": [
+    {
+      "name": "ticker",
+      "module": "builtin:ticker",
+      "latency_class": 3,
+      "needs": ["potluck://lab/node-00fe/sys/uptime"],
+      "config": {"period_ms": 100}
+    },
+    {
+      "name": "clock",
+      "module": "builtin:svc_client",
+      "latency_class": 4,
+      "pin": 25344,
+      "needs": ["potluck://lab/svc/time"],
+      "on_host_loss": "hold",
+      "config": {"period_ms": 1000}
+    }
+  ]
+}
