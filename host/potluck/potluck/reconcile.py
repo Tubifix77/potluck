@@ -79,6 +79,10 @@ def portability(m: Manifest, a: ActorSpec) -> tuple[bool, str]:
     return True, "portable"
 
 
+#: The actor modules pot_hostnode can run (host/native/pot_hostnode.cpp's kKinds).
+HOST_MODULES = frozenset({"builtin:ticker"})
+
+
 def eligible(m: Manifest, a: ActorSpec) -> list[tuple[int, int]]:
     """[(node_id, gravity)] in manifest order."""
     if a.pin is not None:
@@ -87,8 +91,11 @@ def eligible(m: Manifest, a: ActorSpec) -> list[tuple[int, int]]:
     for n in m.nodes:
         if n.kind == "host" and not n.placement:
             continue  # M8: a host that only offers named services; M10's placement hosts opt in
-        if n.kind == "host" and a.module.startswith("guest:"):
-            continue  # M7: guests run in the boards' sandbox; pot_hostnode has no guest row
+        if n.kind == "host" and a.module not in HOST_MODULES:
+            # A placement host runs only what pot_hostnode has a row for. M7 already kept guests (the boards'
+            # sandbox) off it; M14 found the rest on the bench: an app's external actors and the presenter listed the
+            # PC, and pot_hostnode refused the whole image (M0-LOG session 42).
+            continue
         if n.headroom_bytes < a.headroom_bytes:
             continue
         if a.priority == "background" and not n.background_allowed():

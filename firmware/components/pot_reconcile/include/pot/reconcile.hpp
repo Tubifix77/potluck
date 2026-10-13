@@ -125,9 +125,12 @@ struct CheckpointPersist {
 };
 
 // Collect an image's portable actors through a registration table. False sets `why`: a type with no
-// row, or no placement hook, or a config its row refuses, or more than `cap`.
+// row, or no placement hook, or a config its row refuses, or more than `cap`. `only_eligible` (M14): when non-zero,
+// actors whose eligible set leaves that node out are skipped rather than judged -- a placement host (pot_hostnode)
+// need not know a board-only actor's type, since it can never be placed there. Boards pass 0: every board runs one
+// image, so an unknown type is a fault.
 bool collect_portable(const DeployImage& img, const ActorKind* table, size_t n_kinds, PortableSpec* out,
-                      size_t cap, size_t& count, const char** why);
+                      size_t cap, size_t& count, const char** why, uint16_t only_eligible = 0);
 
 class Reconciler {
   public:

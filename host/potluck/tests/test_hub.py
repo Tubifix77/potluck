@@ -290,6 +290,38 @@ class Telemetry(HubFixture):
         self.model.pull()
         self.assertEqual(self.model.boards[0x1001]["state"], "dead")
 
+class RelayedFrames(unittest.TestCase):
+    """M0-LOG session 42: with the cabled board relaying (M10), other boards' frames come down the cable too."""
+
+    def test_the_cabled_board_is_learned_from_what_is_said_to_us_never_from_a_relayed_member(self) -> None:
+        import struct as st
+        from potluck.payloads import Heartbeat
+        from potluck.serial_framing import write_serial_frame
+
+        host_side, node_side = LoopbackTransport.pair()
+        hub = hb.Hub(host_side)
+        hub.start()
+        try:
+            beacon = Heartbeat(uptime_ms=1, boot_epoch=9, hb_seq=1, tx_frames=0, tx_cb_ok=0, tx_cb_fail=0,
+                               rx_frames=0, rx_lost_seqgap=0, turnaround_us=0, ack_of_msg_id=0, rtt_min_us=None,
+                               rtt_max_us=None, free_dram_kib=0, espnow_version=2, hb_flags=0)
+            relayed = fr.encode(src=0x7368, dst=fr.NODE_BROADCAST, opcode=fr.Op.HEARTBEAT, seq=1, payload=beacon.encode())
+            node_side.write(write_serial_frame(relayed))
+            time.sleep(0.3)
+            self.assertIsNone(hub.peer_node_id, "a relayed member's broadcast is not the cabled board")
+            ack = st.pack("<IHBBBBH", 5, 0x6300, 2, 0, 10, 6, 0)
+            node_side.write(write_serial_frame(fr.encode(src=0x6300, dst=0x00FE, opcode=fr.Op.HELLO_ACK, seq=2,
+                                                         payload=ack)))
+            time.sleep(0.3)
+            self.assertEqual(hub.peer_node_id, 0x6300)
+            other = st.pack("<IHBBBBH", 7, 0x7368, 2, 0, 10, 6, 0)  # B answering a host node's HELLO, relayed
+            node_side.write(write_serial_frame(fr.encode(src=0x7368, dst=0x00FE, opcode=fr.Op.HELLO_ACK, seq=3,
+                                                         payload=other)))
+            time.sleep(0.3)
+            self.assertEqual(hub.peer_node_id, 0x6300)
+        finally:
+            hub.close()
+
 class SecondHub(unittest.TestCase):
     def test_a_second_hub_on_this_pc_is_refused_naming_the_first_before_it_opens_the_port(self) -> None:
         import contextlib

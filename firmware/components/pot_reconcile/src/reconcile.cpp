@@ -303,11 +303,20 @@ Reconciler::~Reconciler() {
 }
 
 bool collect_portable(const DeployImage& img, const ActorKind* table, size_t n_kinds, PortableSpec* out,
-                      size_t cap, size_t& count, const char** why) {
+                      size_t cap, size_t& count, const char** why, uint16_t only_eligible) {
     count = 0;
     for (uint8_t i = 0; i < img.actor_count; ++i) {
         const ActorDecl& a = img.actors[i];
         if (a.node_id != kPortableNode) continue;
+        if (only_eligible != 0) {
+            TickerConfig hdr{};
+            size_t hl = 0;
+            bool listed = false;
+            if (portable_header(a, hdr, hl)) {
+                for (size_t k = 0; k < hdr.count; ++k) listed = listed || hdr.node[k] == only_eligible;
+            }
+            if (!listed) continue;  // never placed here: not this node's to judge
+        }
         const ActorKind* k = find_actor_kind(table, n_kinds, a.type);
         const char* w = nullptr;
         if (k == nullptr || k->placement == nullptr) {

@@ -188,6 +188,8 @@ class Hub(Bridge):
             if f.opcode != fr.Op.REPLY:
                 self.relay_counts["node_frames_in"] += 1
                 node.send_raw(raw)  # HELLO, heartbeats, the cell's READs and WRITEs of the PC's resources, ...
+                if f.opcode == fr.Op.HELLO_ACK:
+                    return  # the cell answering the host node's HELLO: not the hub's to learn from
         if f.opcode in (fr.Op.CALL, fr.Op.CAST) or (node is None and f.opcode == fr.Op.READ):
             if f.dst == HOST_NODE_ID:
                 # The cell asks the PC (an agent's service, M8): every tool hears it; the one offering it answers.
@@ -912,13 +914,24 @@ def main(argv: list[str] | None = None) -> int:
     else:
         # In the cell: its hub lease, held by the lowest-id board. Another PC's resident hub holds it -> refused,
         # naming that hub, before anything is served.
-        try:
-            lease = CellLease.take(hub, KIND_HUB, holder_name("hub"), strict=False,
-                                   log=lambda m: print(f"[hub] {m}", flush=True))
-        except LeaseRefused as exc:
-            print(f"REFUSED, nothing changed: {exc} -- one resident hub per cell")
-            hub.close()
-            return 2
+        me = holder_name("hub")
+        for attempt in range(2):
+            try:
+                lease = CellLease.take(hub, KIND_HUB, me, strict=False, log=lambda m: print(f"[hub] {m}", flush=True))
+                break
+            except LeaseRefused as exc:
+                if attempt == 0 and exc.reply.name == me:
+                    # This PC's own hub, gone without releasing (killed): none answers here (checked above), so its
+                    # lease is only waiting to lapse -- wait it out rather than refuse a restart (found on the bench,
+                    # M0-LOG session 42: a killed hub's restart was refused for up to a minute).
+                    wait_s = exc.reply.remaining_ms / 1000 + 1
+                    print(f"[hub] the cell's hub lease is still this PC's last hub's (killed?); taking it over in "
+                          f"{wait_s:.0f} s", flush=True)
+                    time.sleep(wait_s)
+                    continue
+                print(f"REFUSED, nothing changed: {exc} -- one resident hub per cell")
+                hub.close()
+                return 2
     relay = serve_relay(hub, a.relay)
     api = serve_api(model, a.api)
     st = {"pid": os.getpid(), "port": a.port or a.tcp, "relay": a.relay, "api": a.api, "started": _hub_ms()}

@@ -478,7 +478,13 @@ class Bridge:
         except ValueError:
             self.stats.bad_frames += 1
             return
-        self.peer_node_id = ack.node_id or f.src
+        node = ack.node_id or f.src
+        if self.peer_node_id is not None and node != self.peer_node_id:
+            # Another board's answer, relayed down the cable (the cabled board passes on what members say to a host
+            # node behind it): the board on our cable has not changed. Found on the bench, M0-LOG session 42 -- B and
+            # C answering the placement host's HELLO made a hub address everything to B.
+            return
+        self.peer_node_id = node
         self.peer_boot_epoch = ack.boot_epoch
         self.peer_hb_period_ms = ack.hb_period_ms
         self.peer_hb_miss_limit = ack.hb_miss_limit
@@ -494,7 +500,8 @@ class Bridge:
             h = Hello.parse(f.payload)
         except ValueError:
             return
-        if self.peer_node_id is None:
+        if self.peer_node_id is None and f.dst == self.node_id:
+            # Only a HELLO addressed to us: a broadcast one may be another board's, relayed down the cable.
             self.peer_node_id = h.node_id or f.src
             self.peer_boot_epoch = h.boot_epoch
             self.peer_hb_period_ms = h.hb_period_ms
@@ -514,6 +521,13 @@ class Bridge:
         # does not itself ask to be answered.
         if isinstance(hb, Heartbeat) and WANTS_ACK(f) and not hb.is_reply:
             self._reply_probe(f, recv)
+        if self.peer_node_id is not None and f.src != self.peer_node_id:
+            # A member's beacon relayed down the cable (M10: the cabled board passes broadcasts on while a host is
+            # heard) is not the cabled board's: taking its epoch for ours read every alternation as a reboot, and a hub
+            # answered each with a HELLO -- a flood (found on the bench, M0-LOG session 42).
+            return
+        if self.peer_node_id is None and f.dst != self.node_id:
+            return  # a broadcast beacon may be a relayed member's: the cabled board is learned from what it says to us
         self.last_heartbeat = hb
         self.last_heartbeat_at = time.monotonic()
         if self.peer_node_id is None:

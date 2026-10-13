@@ -232,7 +232,9 @@ int main(int argc, char** argv) {
     static const ActorKind kKinds[] = {kTickerKind};
     static PortableSpec specs[kMaxPortable];
     size_t n_specs = 0;
-    if (!collect_portable(img, kKinds, 1, specs, kMaxPortable, n_specs, &why)) {
+    // M14: only the actors this host is eligible for -- a cell's package also carries board-only ones (an app's
+    // external actors, the presenter) whose types a PC build does not have.
+    if (!collect_portable(img, kKinds, 1, specs, kMaxPortable, n_specs, &why, node_id)) {
         std::fprintf(stderr, "image refused: %s\n", why);
         return 1;
     }

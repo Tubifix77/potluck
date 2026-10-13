@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "pot/deploy.hpp"
+#include "pot/ticker.hpp"
 #include "pot/node.hpp"
 #include "pot/opcodes.hpp"
 #include "pot/actor.hpp"
@@ -926,4 +927,34 @@ TEST(reconcile, a_busy_node_is_ranked_last_but_still_takes_the_actor_when_it_is_
     c.run(4000);
     CHECK_EQ(c.runner(), 2);  // the only connected board left: the extender presents
     CHECK_EQ(c.running_count(), 1u);
+}
+
+// ---- M14: a placement host judges only the actors it can be placed on -----------------------------------
+
+TEST(reconcile, a_placement_host_skips_portable_actors_it_is_not_eligible_for) {
+    // A cell's package carries board-only portable actors (an app's external ones, the presenter) whose types a PC
+    // build does not have; pot_hostnode collects only those whose eligible set names it (found on the bench,
+    // M0-LOG session 42: the host refused the whole image).
+    TickerConfig mine{};
+    mine.out_hash = path_hash("potluck://lab/act/ticker/out");
+    mine.period_ms = 100;
+    mine.count = 2;
+    mine.node[0] = 0x00FE;
+    mine.node[1] = 0x0100;
+    TickerConfig boards = mine;
+    boards.out_hash = path_hash("potluck://lab/act/present/out");
+    boards.node[0] = 0x0100;
+    boards.node[1] = 0x0101;
+    static uint8_t c1[64], c2[64];
+    DeployImage img{};
+    img.actor_count = 2;
+    img.actors[0] = ActorDecl{kPortableNode, ActorType::Ticker, static_cast<uint8_t>(encode_ticker_config(mine, c1, sizeof(c1))), c1};
+    img.actors[1] = ActorDecl{kPortableNode, ActorType::Present, static_cast<uint8_t>(encode_ticker_config(boards, c2, sizeof(c2))), c2};
+    PortableSpec specs[kMaxPortable];
+    size_t n = 0;
+    const char* why = nullptr;
+    CHECK(!collect_portable(img, &kTickerKind, 1, specs, kMaxPortable, n, &why));  // a board: an unknown type is a fault
+    CHECK(collect_portable(img, &kTickerKind, 1, specs, kMaxPortable, n, &why, 0x00FE));
+    CHECK_EQ(n, static_cast<size_t>(1));
+    CHECK_EQ(specs[0].place.out_hash, mine.out_hash);
 }

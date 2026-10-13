@@ -26,7 +26,7 @@
       "module": "builtin:ticker",
       "latency_class": 3,
       "needs": ["potluck://lab/node-00fe/sys/uptime"],
-      "config": {"period_ms": 100}
+      "config": {"period_ms": 200}
     },
     {
       "name": "clock",

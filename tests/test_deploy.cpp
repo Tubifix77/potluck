@@ -779,3 +779,24 @@ TEST(deploy, an_image_without_an_outside_section_clears_the_last_ones_rules) {
     CHECK(apply_outside(d, ns));
     CHECK_EQ(ns.outside_count(), static_cast<size_t>(0));
 }
+
+TEST(deploy, a_portable_header_starts_from_scratch_so_no_placement_rule_is_inherited) {
+    // M0-LOG session 42: a staging entry that last held the presenter (need connected, avoid busy) kept those
+    // capability rules when a ticker was parsed into it, and two boards ranked the ticker differently from the rest.
+    TickerConfig t{};
+    t.out_hash = 0x1234;
+    t.period_ms = 100;
+    t.count = 1;
+    t.node[0] = 0x100;
+    t.gravity[0] = 1;
+    uint8_t buf[64];
+    const size_t n = encode_ticker_config(t, buf, sizeof(buf));
+    ActorDecl d{kPortableNode, ActorType::Ticker, static_cast<uint8_t>(n), buf};
+    TickerConfig reused{};
+    reused.need_caps = 0x10;
+    reused.avoid_caps = 0x01;
+    CHECK(ticker_config(d, reused));
+    CHECK_EQ(reused.need_caps, 0u);
+    CHECK_EQ(reused.avoid_caps, 0u);
+    CHECK_EQ(reused.out_hash, 0x1234u);
+}

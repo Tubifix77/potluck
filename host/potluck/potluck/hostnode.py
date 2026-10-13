@@ -49,6 +49,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out")
     ap.add_argument("--duration", type=float, default=0.0, help="stop after this many seconds (0: run until killed)")
     ap.add_argument("--baud", type=int, default=921600)
+    ap.add_argument("--cluster", default=None,
+                    help="the cluster file the package came from: its apps' module descriptors and guests, so a package "
+                         "with external actors compiles here exactly as apply compiled it")
     ap.add_argument("--hub", nargs="?", const="auto", default=None,
                     help="through potluck-hub's relay (host:port; default: the running hub's) -- found by itself too")
     a = ap.parse_args(argv)
@@ -65,7 +68,14 @@ def main(argv: list[str] | None = None) -> int:
     doc = load_package(a.package)
     verify_package(doc, read_key(a.ca).public)
     m = parse(doc["manifest"])
-    img = dp.compile_image(m, int(doc["rollback_counter"]))
+    guest_root = None
+    if a.cluster:
+        from .apply import default_cache, load_cluster, plan_package
+
+        c = load_cluster(a.cluster)
+        plan_package(c, default_cache(), lambda msg: print(f"# {msg}", flush=True))  # registers the descriptors
+        guest_root = str(c.guests_root)
+    img = dp.compile_image(m, int(doc["rollback_counter"]), guest_root)
     with tempfile.NamedTemporaryFile(prefix="pot_host_", suffix=".img", delete=False) as f:
         f.write(img)
         img_path = f.name

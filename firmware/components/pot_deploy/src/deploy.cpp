@@ -453,6 +453,11 @@ bool mc_job_config(const ActorDecl& a, McJobConfig& out) {
 }
 
 bool portable_header(const ActorDecl& a, TickerConfig& out, size_t& len) {
+    // Every field from scratch: need_caps and avoid_caps are not on the wire, a placement hook sets them, and a hook
+    // that does not (the ticker's) kept whatever the reused staging entry held -- on the bench a ticker inherited the
+    // presenter's "connected, not busy" rule after live package changes, and two boards ranked it onto C while the
+    // third and the placement host ranked it onto the PC (M0-LOG session 42).
+    out = TickerConfig{};
     if (a.cfg == nullptr || a.cfg_len < kTickerCfgFixed) {
         return false;
     }
