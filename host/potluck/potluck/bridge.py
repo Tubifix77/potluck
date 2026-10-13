@@ -551,10 +551,14 @@ class Bridge:
             pass
 
     # -- heartbeating ----------------------------------------------------------------------------
+    def _may_heartbeat(self) -> bool:
+        """Whether this bridge speaks for the host now (M14: a hub stands back while a host node is the PC's node)."""
+        return True
+
     def _hb_loop(self) -> None:
         period = self.hb_period_ms / 1000.0
         while not self._stop.wait(period):
-            if self.peer_node_id is None:
+            if self.peer_node_id is None or not self._may_heartbeat():
                 continue
             self._hb_seq = (self._hb_seq + 1) & 0xFFFFFFFF
             hb = Heartbeat(

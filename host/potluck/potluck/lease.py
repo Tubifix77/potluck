@@ -18,6 +18,7 @@ import secrets
 import socket
 import struct
 import threading
+import time
 from dataclasses import dataclass
 
 from . import frame as fr
@@ -75,6 +76,10 @@ class LeaseRefused(Exception):
         super().__init__(f"the cell's {KIND_NAMES.get(kind, kind)} lease is {reply.holder_line()}")
 
 
+class LeaseUnavailable(Exception):
+    """The cell answers LEASE but its arbiter does not (stalled, rebooting, or busy passing another request on)."""
+
+
 def request(bridge, kind: int, op: int, token: int, *, ttl_s: int = 0, name: str = "",
             timeout: float = 3.0) -> LeaseReply:
     raw = bridge.deploy_step(fr.Op.LEASE, encode_request(kind, op, token, ttl_s=ttl_s, name=name), timeout=timeout)
@@ -97,10 +102,18 @@ class CellLease:
 
     @classmethod
     def take(cls, bridge, kind: int, name: str, *, ttl_s: int = DEFAULT_TTL_S, tries: int = 3,
-             log=print) -> "CellLease":
+             strict: bool = True, backoff_s: float = 0.5, log=print) -> "CellLease":
+        """Take the lease. Someone else holding it: LeaseRefused. No reply at all, every try: a cell before M14 --
+        noted, and a CellLease with `supported` False. A reply saying the arbiter is unreachable (found by review: a
+        stalled lowest board, or two requests meeting at the cabled board's one proxy slot) is retried with back-off,
+        then `strict` raises LeaseUnavailable and otherwise the renewal thread keeps trying -- never mistaken for old
+        firmware, so exclusion is not dropped silently."""
         token = secrets.randbits(32) or 1
         last: Exception | None = None
-        for _ in range(tries):
+        unreachable: LeaseReply | None = None
+        for i in range(tries + 2):
+            if i >= tries and unreachable is None:
+                break  # the extra tries are for an arbiter that answered Unreachable
             try:
                 rep = request(bridge, kind, OP_TAKE, token, ttl_s=ttl_s, name=name)
             except Exception as exc:  # a timeout: the board ignored LEASE (before M14), or the link hiccupped
@@ -112,7 +125,20 @@ class CellLease:
                 lease = cls(bridge, kind, name, ttl_s, token, True, rep)
                 lease._start()
                 return lease
+            if rep.status == STATUS_UNREACHABLE:
+                unreachable = rep
+                time.sleep(backoff_s * (2 ** min(i, 3)))
+                continue
             last = RuntimeError(f"lease {STATUS_NAMES.get(rep.status, rep.status)} from board 0x{rep.arbiter:04x}")
+        if unreachable is not None:
+            what = (f"the cell's {KIND_NAMES.get(kind, kind)} lease is kept by board 0x{unreachable.arbiter:04x}, "
+                    f"which does not answer")
+            if strict:
+                raise LeaseUnavailable(what + " -- try again when it does (or take it out of the cell)")
+            log(f"warning: {what}; going on and asking again every {ttl_s / 3:.0f} s")
+            lease = cls(bridge, kind, name, ttl_s, token, True, None)
+            lease._start()
+            return lease
         log(f"note: the cell gives no {KIND_NAMES.get(kind, kind)} lease ({last}) -- firmware before M14? "
             f"Going on without one: nothing stops a second one at the same time")
         return cls(bridge, kind, name, ttl_s, token, False, None)

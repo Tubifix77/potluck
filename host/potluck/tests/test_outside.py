@@ -141,10 +141,10 @@ PRESENT_GOLDEN = ("504f54440102000003000000cd8c12d9a4f8758a25000000feff0a159e35a
 
 #: The same with TLS: tls_ca a stand-in DER (30 03 02 01 01, a SEQUENCE holding INTEGER 1 -- its shape is all the host
 #: checks), at counter 3. Version 4; the present config's flags byte 01; then the guest section (0), the outside
-#: section (0) and the CA, 0005 bytes. tests/test_deploy.cpp parses these bytes.
+#: section (0) and the CA, 0005 bytes. The declaration carries the CA's crc32 after the flags. tests/test_deploy.cpp parses these bytes.
 TLS_CA = "MAMCAQE="
-PRESENT_TLS_GOLDEN = ("504f54440402000003000000a7cd7195e09bef4625000000feff0a159e35af6ed00702006301687301c0a8004d5b070a01"
-                      "68730b08a41b2e6bff8c0000000005003003020101")
+PRESENT_TLS_GOLDEN = ("504f54440402000003000000a7cd7195e09bef4629000000feff0a199e35af6ed00702006301687301c0a8004d5b070a01"
+                      "cc352e1868730b08a41b2e6bff8c0000000005003003020101")
 
 
 def present_manifest(**cfg) -> dict:

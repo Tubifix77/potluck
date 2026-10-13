@@ -340,8 +340,8 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
         }
         PresentConfig pc{};
         if (a.type == ActorType::Present && present_config(a, pc) && (pc.flags & kPresentTls) != 0 &&
-            out.broker_ca_len == 0) {
-            w = "present asks for TLS and the image carries no broker CA";
+            (out.broker_ca_len == 0 || crc32(out.broker_ca, out.broker_ca_len) != pc.ca_crc)) {
+            w = "present asks for TLS and the image carries no broker CA, or another one than it names";
             return false;
         }
     }
@@ -368,7 +368,8 @@ bool apply_outside(const DeployImage& img, Namespace& ns) {
 
 bool present_config(const ActorDecl& a, PresentConfig& out) {
     size_t hl = 0;
-    if (a.type != ActorType::Present || !portable_header(a, out.place, hl) || a.cfg_len != hl + kPresentOwnCfgLen) {
+    if (a.type != ActorType::Present || !portable_header(a, out.place, hl) ||
+        (a.cfg_len != hl + kPresentOwnCfgLen && a.cfg_len != hl + kPresentOwnCfgLenTls)) {
         return false;
     }
     const uint8_t* p = a.cfg + hl;
@@ -376,7 +377,10 @@ bool present_config(const ActorDecl& a, PresentConfig& out) {
     out.port = rd16(p + 4);
     out.keepalive_s = p[6];
     out.flags = p[7];
+    const bool tls = (out.flags & kPresentTls) != 0;
+    out.ca_crc = tls && a.cfg_len == hl + kPresentOwnCfgLenTls ? rd32(p + 8) : 0;
     return out.port != 0 && out.keepalive_s >= 5 && out.keepalive_s <= 120 && (out.flags & ~kPresentTls) == 0 &&
+           a.cfg_len == hl + (tls ? kPresentOwnCfgLenTls : kPresentOwnCfgLen) &&
            (out.ip[0] | out.ip[1] | out.ip[2] | out.ip[3]) != 0;
 }
 

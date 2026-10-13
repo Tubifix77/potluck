@@ -275,9 +275,12 @@ def _present_config(m: Manifest, a, where: str) -> bytes:
         raise DeployError(f"{where}: keepalive_s={keepalive} is outside 5..120")
     hdr = _portable_header(m, a, int(a.config.get("period_ms", 2000)), where)
     flags = PRESENT_TLS if a.config.get("tls_ca") else 0
+    own = struct.pack("<4BHBB", *ip, port_n, keepalive, flags)
     if flags:
-        broker_ca_der(a.config["tls_ca"], where)
-    return hdr + struct.pack("<4BHBB", *ip, port_n, keepalive, flags)
+        # The CA's crc32 rides in the declaration: a package that changes only the CA then changes the presenter too,
+        # and a live change restarts it with the new one (deploy.hpp).
+        own += struct.pack("<I", crc32(broker_ca_der(a.config["tls_ca"], where)))
+    return hdr + own
 
 
 def _ticker_config(m: Manifest, a, where: str) -> bytes:

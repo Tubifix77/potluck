@@ -279,6 +279,12 @@ constexpr uint32_t kHostQuietMs = 2000;
 // a restart is a death the cell knows how to handle (M6), a mute member is not.
 std::atomic<uint32_t> g_radio_ok_ms{0};
 std::atomic<uint32_t> g_radio_fail_since_ms{0};
+// What the radio said (M0-LOG session 42: the stall's cause is open, so its record carries the evidence): the
+// first refusal's error code and the internal heap then, the latest code, and how many sends were refused.
+std::atomic<int32_t> g_radio_first_err{0};
+std::atomic<int32_t> g_radio_last_err{0};
+std::atomic<uint32_t> g_radio_first_err_heap{0};
+std::atomic<uint32_t> g_radio_refused{0};
 
 int32_t radio_send(const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
     const int32_t err = espnow_send(mac, data, len);
@@ -289,8 +295,15 @@ int32_t radio_send(const uint8_t mac[kMacLen], const uint8_t* data, size_t len) 
     if (err == 0) {
         g_radio_ok_ms.store(now);
         g_radio_fail_since_ms.store(0);
-    } else if (g_radio_fail_since_ms.load() == 0) {
-        g_radio_fail_since_ms.store(now == 0 ? 1 : now);
+        g_radio_refused.store(0);
+    } else {
+        g_radio_last_err.store(err);
+        g_radio_refused.fetch_add(1);
+        if (g_radio_fail_since_ms.load() == 0) {
+            g_radio_fail_since_ms.store(now == 0 ? 1 : now);
+            g_radio_first_err.store(err);
+            g_radio_first_err_heap.store(static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+        }
     }
     return err;
 }
@@ -1965,9 +1978,16 @@ void link_task(void*) {
 #if CONFIG_POT_TX_DEAD_RESTART_S > 0
         if (const uint32_t since = g_radio_fail_since_ms.load();
             since != 0 && nt - since > static_cast<uint32_t>(CONFIG_POT_TX_DEAD_RESTART_S) * 1000u) {
-            std::printf("{\"t\":\"tx_dead\",\"node\":%u,\"failing_ms\":%lu,\"last_ok_ms\":%lu,\"action\":\"restart\"}\n",
+            std::printf("{\"t\":\"tx_dead\",\"node\":%u,\"failing_ms\":%lu,\"last_ok_ms\":%lu,\"first_err\":\"0x%lx\","
+                        "\"last_err\":\"0x%lx\",\"refused\":%lu,\"int_free_at_first\":%lu,\"int_free\":%lu,"
+                        "\"action\":\"restart\"}\n",
                         static_cast<unsigned>(g_node->config().node_id), static_cast<unsigned long>(nt - since),
-                        static_cast<unsigned long>(g_radio_ok_ms.load()));
+                        static_cast<unsigned long>(g_radio_ok_ms.load()),
+                        static_cast<unsigned long>(static_cast<uint32_t>(g_radio_first_err.load())),
+                        static_cast<unsigned long>(static_cast<uint32_t>(g_radio_last_err.load())),
+                        static_cast<unsigned long>(g_radio_refused.load()),
+                        static_cast<unsigned long>(g_radio_first_err_heap.load()),
+                        static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
             std::fflush(stdout);
             vTaskDelay(pdMS_TO_TICKS(100));
             esp_restart();

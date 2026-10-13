@@ -982,14 +982,14 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             return 0
         # M14: the cell's deploy lease, held until this run ends -- a second apply, from this PC or another, is
         # refused here, before anything changes, naming the first.
-        from .lease import KIND_DEPLOY, CellLease, LeaseRefused, holder_name
+        from .lease import KIND_DEPLOY, CellLease, LeaseRefused, LeaseUnavailable, holder_name
 
         try:
             lease = held.enter_context(CellLease.take(b, KIND_DEPLOY, holder_name("apply"), log=log))
-        except LeaseRefused as exc:
+        except (LeaseRefused, LeaseUnavailable) as exc:
             print(f"REFUSED, nothing changed: {exc}")
             return 2
-        if lease.supported:
+        if lease.supported and lease.reply is not None:
             log(f"lease: the cell's deploy lease is ours (board 0x{lease.reply.arbiter:04x} holds it)")
         uptime0 = {n: (inv[n].uptime_s if inv[n] else None) for n in boards}
         t_uptime0 = time.monotonic()

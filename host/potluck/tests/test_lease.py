@@ -46,6 +46,7 @@ class FakeArbiter:
 
     def __init__(self, answers: bool = True) -> None:
         self.answers = answers
+        self.unreachable = False  # the cabled board answers, the arbiter behind it does not
         self.token = 0
         self.name = ""
         self.expires = 0.0
@@ -59,6 +60,8 @@ class FakeArbiter:
             raise TimeoutError("no REPLY")
         target, kind, op, ttl, token, n = struct.unpack_from("<HBBHIB", payload, 0)
         name = payload[11:11 + n].decode()
+        if self.unreachable:
+            return struct.pack("<BBHIIB", ls.STATUS_UNREACHABLE, kind, 0x6300, 0, 0, 0)
         with self.lock:
             self.calls.append((op, token))
             if self.token and self.now >= self.expires:
@@ -109,6 +112,28 @@ class Holder(unittest.TestCase):
         finally:
             lease.release()
         self.assertNotEqual(arb.calls[-1][0], ls.OP_RELEASE)  # a lost lease is not ours to release
+
+    def test_an_arbiter_that_does_not_answer_is_not_old_firmware(self) -> None:
+        arb = FakeArbiter()
+        arb.unreachable = True
+        with self.assertRaises(ls.LeaseUnavailable) as ctx:
+            ls.CellLease.take(arb, ls.KIND_DEPLOY, "apply on desk-pc", backoff_s=0.01, log=lambda m: None)
+        self.assertIn("0x6300", str(ctx.exception))
+        notes: list[str] = []
+        lease = ls.CellLease.take(arb, ls.KIND_HUB, "hub on desk-pc", ttl_s=3, strict=False, backoff_s=0.01,
+                                  log=notes.append)
+        try:
+            self.assertTrue(lease.supported)
+            self.assertIsNone(lease.reply)
+            self.assertIn("does not answer", notes[0])
+            arb.unreachable = False  # the arbiter is back: the renewal takes the lease
+            deadline = time.monotonic() + 3.0
+            while lease.reply is None and time.monotonic() < deadline:
+                time.sleep(0.05)
+            self.assertIsNotNone(lease.reply)
+            self.assertEqual(arb.name, "hub on desk-pc")
+        finally:
+            lease.release()
 
     def test_a_cell_before_m14_gives_no_lease_and_says_so(self) -> None:
         notes: list[str] = []

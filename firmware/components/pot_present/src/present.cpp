@@ -608,7 +608,7 @@ void print_status() {
                 "\"writes_sent\":%lu,\"writes_applied\":%lu,\"writes_refused\":%lu,\"cmds_dropped\":%lu,"
                 "\"enqueue_fail\":%lu,\"errors\":%lu,\"published\":%lu,\"publish_fail\":%lu,\"pending\":%u,"
                 "\"int_free\":%u,\"int_largest\":%u,"
-                "\"int_min_free\":%u,\"ext_free\":%u,\"ext_min_free\":%u}\n",
+                "\"int_min_free\":%u,\"ext_free\":%u,\"ext_min_free\":%u,\"sender_stack_free\":%u}\n",
                 g.holding.load() ? 1 : 0, g.holding.load() && g.active.tls ? 1 : 0, g.connected.load() ? 1 : 0, static_cast<unsigned long>(g.connects.load()),
                 static_cast<unsigned long>(g.configs), static_cast<unsigned long>(g.states),
                 static_cast<unsigned long>(g.writes_sent), static_cast<unsigned long>(g.writes_applied),
@@ -620,7 +620,9 @@ void print_status() {
                 static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                 static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
-                static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM)));
+                static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM)),
+                // With TLS the sender task runs mbedtls_ssl_write itself (found by review): its margin, measured.
+                g.sender != nullptr ? static_cast<unsigned>(uxTaskGetStackHighWaterMark(g.sender)) : 0u);
 }
 
 bool handle_console(const char* line, size_t len) {

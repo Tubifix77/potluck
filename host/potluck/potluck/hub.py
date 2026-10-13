@@ -131,6 +131,8 @@ class Hub(Bridge):
         self._clients: list[_Client] = []
         self._clients_lock = threading.Lock()
         self.node_client: _Client | None = None  # M10's placement host, while attached
+        self._node_window_s = 6.0  # its declared death window (HELLO), for the silence after it goes
+        self._quiet_until = 0.0     # after it went: say nothing as 0x00fe until the cell has declared it dead
         self.relay_counts = {"clients": 0, "requests": 0, "replies": 0, "unmatched": 0, "fanned_out": 0,
                              "node_frames_out": 0, "node_frames_in": 0}
 
@@ -151,8 +153,14 @@ class Hub(Bridge):
             self.stats.tx_bytes += len(wire)
         self._tee(raw, "tx")
 
+    def _may_heartbeat(self) -> bool:
+        # With a host node attached it is the PC's node and beats for itself; after it went, the hub keeps silent for
+        # its death window, so the cabled board declares it dead as every other board does (found by review: the
+        # hub's own heartbeats kept 0x00fe alive on the cabled board alone, and the reconcilers disagreed).
+        return self.node_client is None and time.monotonic() >= self._quiet_until
+
     def _reply_probe(self, f: fr.Frame, recv: float) -> None:
-        if self.node_client is None:  # with a host node attached, it is the PC's node and answers its own probes
+        if self._may_heartbeat():
             super()._reply_probe(f, recv)
 
     # -- frames from the cell ------------------------------------------------------------------------
@@ -217,6 +225,11 @@ class Hub(Bridge):
                     pass
                 return
             self.node_client = c
+            try:
+                h = Hello.parse(bytes(f.payload))
+                self._node_window_s = max(1.0, h.hb_period_ms * h.hb_miss_limit / 1000.0)
+            except (ValueError, struct.error):
+                self._node_window_s = 6.0
             self.record("host_node", None, {"client": c.name, "attached": True, "epoch": _hello_epoch(f)})
             self.relay_counts["node_frames_out"] += 1
             try:
@@ -256,8 +269,8 @@ class Hub(Bridge):
                         lclass=f.lclass, priority=f.priority)
 
     def say_hello(self) -> None:
-        if self.node_client is not None:
-            return  # the host node is the PC's node now; a second HELLO for 0x00fe would read as another incarnation
+        if not self._may_heartbeat():
+            return  # the host node is (or was, a death window ago) the PC's node; a HELLO now reads as its incarnation
         h = Hello(boot_epoch=0, caps=0, node_id=self.node_id, espnow_version=0, hb_period_ms=self.hb_period_ms,
                   hb_miss_limit=self.hb_miss_limit, flags=HELLO_FLAG_WANT_ACK, pubkey_fp=b"")
         try:
@@ -285,7 +298,9 @@ class Hub(Bridge):
             self.relay_counts["clients"] = len(self._clients)
         if c is self.node_client:
             # The placement host went (killed, or stopped): the cell finds it dead by its missed heartbeats, exactly as
-            # when M10's process was killed on the cable -- the hub says nothing for 0x00fe until a tool's HELLO.
+            # when M10's process was killed on the cable -- the hub says nothing for 0x00fe for its death window
+            # (and a margin), then speaks for the PC again.
+            self._quiet_until = time.monotonic() + self._node_window_s + 1.0
             self.node_client = None
             self.record("host_node", None, {"client": c.name, "attached": False})
         with self._lock:
@@ -400,6 +415,8 @@ class Model:
     # one pull: every board's NODE_STATUS, every resource's READ
     def pull(self) -> None:
         from .apply import node_status
+        if time.monotonic() < self.hub._quiet_until:
+            return  # a host node just went: any frame from 0x00fe would keep it alive on the cabled board
         cabled = self.hub.peer_node_id
         for n in self.board_ids():
             t0 = time.monotonic()
@@ -412,7 +429,11 @@ class Model:
                 prev = b["state"]
                 if st is None:
                     tel = b.get("tel") or {}
-                    if prev in ("alive", "asleep") and tel.get("health") is not None and tel["health"].long_window:
+                    if prev == "asleep" and self._cabled_sees_dead(n):
+                        # Asleep is a declared long window, not forever: once the cabled board's own view has
+                        # declared it dead (its window ran out), so does the hub (found by review).
+                        b["state"], b["since_at"] = "dead", _hub_ms()
+                    elif prev in ("alive", "asleep") and tel.get("health") is not None and tel["health"].long_window:
                         # It declared a long window (M5.1): not answering is what an asleep board does.
                         if prev != "asleep":
                             b["state"], b["since_at"] = "asleep", _hub_ms()
@@ -461,16 +482,22 @@ class Model:
         for n in self.board_ids():
             with self.lock:
                 b = self.boards.get(n)
-                if b is None or b["state"] != "alive" or b.get("tel_unsupported"):
+                if b is None or b["state"] != "alive":
                     continue
-                since = b.get("tel", {}).get("events_next", 1) - 1
+                if b.get("tel_unsupported") and time.monotonic() < b.get("tel_retry_at", 0.0):
+                    continue  # asked again every few minutes: a board stalled when the hub started, or upgraded since
+                old = b.get("tel") or {}
+                since = old.get("events_next", 1) - 1
+                old_epoch = old["health"].boot_epoch if old.get("health") is not None else None
             self.telemetry_counts["pulls"] += 1
             try:
                 h = tm.health(self.hub, n)
+                if old_epoch is not None and h.boot_epoch != old_epoch:
+                    since = 0  # it rebooted: its event log started again at 1 (found by review: counting missed it)
                 ls = tm.links(self.hub, n)
                 acts = tm.actors(self.hub, n)
                 evs, nxt = tm.events(self.hub, n, since)
-                if nxt <= since:  # the board's log started again: it rebooted since the last pull
+                if nxt <= since:  # the log is behind where we were: it rebooted, and the epoch did not say so
                     evs, nxt = tm.events(self.hub, n, 0)
             except (BridgeError, tm.TelemetryError) as exc:
                 self.telemetry_counts["failures"] += 1
@@ -479,8 +506,10 @@ class Model:
                     if b is not None:
                         b["tel_failures"] = b.get("tel_failures", 0) + 1
                         if b["tel_failures"] >= 3 and not b.get("tel"):
-                            b["tel_unsupported"] = True  # never answered: firmware before M15
-                            self._event_locked("telemetry_unsupported", n, {"why": str(exc)[:120]})
+                            if not b.get("tel_unsupported"):
+                                self._event_locked("telemetry_unsupported", n, {"why": str(exc)[:120]})
+                            b["tel_unsupported"] = True  # not answering: firmware before M15, or stalled now
+                            b["tel_retry_at"] = time.monotonic() + 300.0
                 continue
             self.telemetry_counts["replies"] += 1
             self.telemetry_counts["events"] += len(evs)
@@ -489,6 +518,7 @@ class Model:
                 if b is None:
                     continue
                 b["tel_failures"] = 0
+                b["tel_unsupported"] = False
                 b["tel"] = {"health": h, "links": ls, "actors": acts, "events_next": nxt, "at": _hub_ms()}
                 for e in evs:
                     if e.kind_name == "peer_dead":
@@ -496,6 +526,14 @@ class Model:
                     self._event_locked("board_" + e.kind_name, n,
                                        {"peer": f"{e.node:04x}", "a": e.a, "b": e.b, "board_ms": e.at_ms,
                                         "board_seq": e.seq})
+
+    def _cabled_sees_dead(self, n: int) -> bool:
+        """Under self.lock: the cabled board's last telemetry has a link to n, and it says dead."""
+        cab = self.boards.get(self.hub.peer_node_id or -1) or {}
+        for k in (cab.get("tel") or {}).get("links", []):
+            if k.node == n:
+                return k.state_name == "dead"
+        return False
 
     def _event_locked(self, kind: str, board: int | None, detail: dict) -> None:
         self.seq += 1
@@ -870,7 +908,8 @@ def main(argv: list[str] | None = None) -> int:
         # In the cell: its hub lease, held by the lowest-id board. Another PC's resident hub holds it -> refused,
         # naming that hub, before anything is served.
         try:
-            lease = CellLease.take(hub, KIND_HUB, holder_name("hub"), log=lambda m: print(f"[hub] {m}", flush=True))
+            lease = CellLease.take(hub, KIND_HUB, holder_name("hub"), strict=False,
+                                   log=lambda m: print(f"[hub] {m}", flush=True))
         except LeaseRefused as exc:
             print(f"REFUSED, nothing changed: {exc} -- one resident hub per cell")
             hub.close()

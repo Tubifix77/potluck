@@ -709,8 +709,8 @@ TEST(deploy, an_outside_section_that_breaks_a_rule_is_refused) {
 // host/potluck/tests/test_outside.py's PRESENT_TLS_GOLDEN: a present actor with TLS (flags 01) and led_b, the broker's
 // CA a 5-byte stand-in, version 4.
 const char* kPresentTlsGolden =
-    "504f54440402000003000000a7cd7195e09bef4625000000feff0a159e35af6ed00702006301687301c0a8004d5b070a01"
-    "68730b08a41b2e6bff8c0000000005003003020101";
+    "504f54440402000003000000a7cd7195e09bef4629000000feff0a199e35af6ed00702006301687301c0a8004d5b070a01"
+    "cc352e1868730b08a41b2e6bff8c0000000005003003020101";
 
 TEST(deploy, the_host_compilers_broker_ca_parses_here_and_a_tls_presenter_needs_it) {
     const auto img = from_hex(kPresentTlsGolden);
@@ -731,6 +731,7 @@ TEST(deploy, the_host_compilers_broker_ca_parses_here_and_a_tls_presenter_needs_
     CHECK(found);
     CHECK_EQ(static_cast<int>(pc.flags), static_cast<int>(kPresentTls));
     CHECK_EQ(static_cast<int>(pc.port), 1883);
+    CHECK_EQ(pc.ca_crc, crc32(d.broker_ca, d.broker_ca_len));
 
     // The same declarations as a version-3 image without the CA: a TLS presenter with nothing to verify against.
     auto no_ca = img;
@@ -738,6 +739,10 @@ TEST(deploy, the_host_compilers_broker_ca_parses_here_and_a_tls_presenter_needs_
     no_ca.resize(no_ca.size() - 7);
     CHECK(!parse_image(no_ca.data(), no_ca.size(), d, &why));
     CHECK(std::string(why).find("no broker CA") != std::string::npos);
+    // Another CA than the declaration names (a package whose CA changed must change the presenter too): refused.
+    auto other = img;
+    other.back() ^= 0x01;
+    CHECK(!parse_image(other.data(), other.size(), d, &why));
     // A CA cut short, an empty one, a byte after it: refused.
     auto cut = img;
     cut.pop_back();

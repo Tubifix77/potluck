@@ -210,8 +210,10 @@ size_t encode_ticker_config(const TickerConfig& c, uint8_t* out, size_t cap);
 // M13: the presenting role. Portable -- the reconciler gives it to one connected board among those its header
 // lists, and moves it -- and after the standard portable header:
 //   broker_ip u8[4] (a.b.c.d), broker_port u16, keepalive_s u8 (5..120), flags u8 (kPresent*)
+//   [ca_crc u32 -- with kPresentTls only: crc32 of the image's CA, so a package that changes only the CA changes the
+//    declaration too, and a live change restarts the presenter with it (found by review)]
 // kPresentTls: connect with TLS, verifying the broker against the image's CA (version 4; an image with the flag and
-// no CA is refused). The broker's login, if it has one, is typed by the owner on each board (`POT! present login`),
+// no CA, or another CA than ca_crc names, is refused). The broker's login, if it has one, is typed by the owner on each board (`POT! present login`),
 // never carried by the package.
 constexpr uint8_t kPresentTls = 1;
 struct PresentConfig {
@@ -220,8 +222,10 @@ struct PresentConfig {
     uint16_t port;
     uint8_t keepalive_s;
     uint8_t flags;
+    uint32_t ca_crc;  // with kPresentTls
 };
 constexpr size_t kPresentOwnCfgLen = 8;
+constexpr size_t kPresentOwnCfgLenTls = 12;
 bool present_config(const ActorDecl& a, PresentConfig& out);
 
 // SvcClient (M8, section 7.5): every period_ms, CALL the service `svc_hash` on node `provider` -- a
