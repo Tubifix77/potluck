@@ -96,18 +96,29 @@ uint64_t unix_ms() {
                                      .count());
 }
 
-// The node to ask about a resource this node has no entry for: its board, from the name ("node-7368/..."), or for a
-// portable actor's output ("act/...") any live board -- every board works the declaration out from the image.
-uint16_t describer(Node& node, const char* name, size_t len) {
+// The node to ask about a resource this node has no entry for. Every board works the declaration out from the image
+// (M8.2's adoption), so the first choice is the board on the PC's cable: its answer crosses no radio. Found on the
+// bench (M0-LOG session 42): asking the owner -- the extender, whose radio is the busiest -- lost answers on the relay
+// and left an entity unpresented for 16-33 s after the PC took the role. Then the owner, then any live board.
+uint16_t describer(Node& node, const char* name, size_t len, unsigned attempt) {
+    uint16_t cabled = 0, owner = 0, any = 0;
+    for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+        const PeerLink& q = node.peers().slot(i);
+        if (q.state != PeerState::Alive || q.node_id == 0) continue;
+        if (any == 0) any = q.node_id;
+        if (cabled == 0 && !node.peer_relayed(&q)) cabled = q.node_id;
+    }
     if (len >= 10 && std::strncmp(name, "node-", 5) == 0 && name[9] == '/') {
         char hex[5] = {name[5], name[6], name[7], name[8], 0};
         const uint16_t id = static_cast<uint16_t>(std::strtoul(hex, nullptr, 16));
         const PeerLink* q = node.peers().find_by_node_id(id);
-        if (q != nullptr && q->state == PeerState::Alive) return id;
+        if (q != nullptr && q->state == PeerState::Alive) owner = id;
     }
-    for (size_t i = 0; i < PeerTable::capacity(); ++i) {
-        const PeerLink& q = node.peers().slot(i);
-        if (q.state == PeerState::Alive && q.node_id != 0) return q.node_id;
+    // Every other question to the next choice, so one lossy path cannot hold a resource back.
+    const uint16_t order[3] = {cabled, owner, any};
+    for (unsigned k = 0; k < 3; ++k) {
+        const uint16_t who = order[(attempt + k) % 3];
+        if (who != 0) return who;
     }
     return 0;
 }
@@ -169,6 +180,10 @@ class HostPresentActor : public Actor {
     }
 
     void tick(uint32_t now) override {
+        if (static_cast<int32_t>(now - status_ms_) >= 0) {
+            status_ms_ = now + 10000;
+            print_status();
+        }
         while (!g.cmds.empty()) {
             const Cmd c = g.cmds.front();
             g.cmds.pop_front();
@@ -341,13 +356,18 @@ class HostPresentActor : public Actor {
     }
 
     // M14: a resource of an actor type this PC build does not have -- an app's output, a board's LED switch -- has no
-    // entry here until a board describes it; at most one question a rule every 5 s.
+    // entry here until a board describes it; at most one question a rule every 2 s.
     void describe(size_t rule_i, uint32_t hash, const char* name, size_t len, uint32_t now) {
         if (rule_i >= kMaxOutside) return;
-        if (asked_[rule_i] != 0 && static_cast<int32_t>(now - asked_[rule_i]) < 5000) return;
-        const uint16_t who = describer(node_, name, len);
+        if (asked_[rule_i] != 0 && static_cast<int32_t>(now - asked_[rule_i]) < 2000) return;
+        const uint16_t who = describer(node_, name, len, tries_[rule_i]++);
         if (who == 0) return;
-        if (node_.request_describe(who, hash) != 0) asked_[rule_i] = now == 0 ? 1 : now;
+        if (node_.request_describe(who, hash) != 0) {
+            asked_[rule_i] = now == 0 ? 1 : now;
+            ++describes_;
+        } else {
+            ++describe_fail_;
+        }
     }
 
     Node& node_;
@@ -362,6 +382,31 @@ class HostPresentActor : public Actor {
     unsigned long configs_ = 0, states_ = 0;
     uint32_t now_ms_ = 0;
     uint32_t asked_[kMaxOutside] = {};
+    unsigned tries_[kMaxOutside] = {};
+    uint32_t status_ms_ = 0;
+    unsigned long describes_ = 0, describe_fail_ = 0;
+
+    // Every 10 s on stderr (potluck.hostnode keeps it in --out): what this presenter has and lacks -- an exposed
+    // resource with no entry here yet is one a board has not described (host_present.hpp).
+    void print_status() {
+        std::string unknown;
+        uint32_t hash = 0;
+        uint8_t flags = 0;
+        const char* name = nullptr;
+        size_t len = 0;
+        for (size_t i = 0; rule(i, hash, flags, name, len); ++i) {
+            if ((flags & kOutsideExposed) == 0 || node_.ns().find(hash) != nullptr) continue;
+            char h[16];
+            std::snprintf(h, sizeof(h), "%s\"%08" PRIx32 "\"", unknown.empty() ? "" : ",", hash);
+            unknown += h;
+        }
+        std::fprintf(stderr,
+                     "{\"t\":\"present_host\",\"node\":%u,\"connected\":%d,\"entities\":%u,\"configs\":%lu,"
+                     "\"states\":%lu,\"describes\":%lu,\"describe_fail\":%lu,\"unknown\":[%s]}\n",
+                     static_cast<unsigned>(node_.config().node_id), g.connected ? 1 : 0,
+                     static_cast<unsigned>(entities_), configs_, states_, describes_, describe_fail_, unknown.c_str());
+        std::fflush(stderr);
+    }
 };
 
 bool check(const ActorDecl& d, const ActorEnv&, const char** why) {

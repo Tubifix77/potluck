@@ -72,6 +72,9 @@ struct RCell {
     // as long as it does on the boards, where a signed HELLO arrives 2-3.5 s after a reboot.
     size_t hello_blocked = SIZE_MAX;
     uint32_t hello_blocked_until_us = 0;
+    size_t drop_from = SIZE_MAX, drop_to = SIZE_MAX;
+    uint8_t drop_op = 0;
+    uint32_t drop_until_us = 0;
 
     bool deaf_pair(size_t a, size_t b) const {
         for (const auto& d : deaf) {
@@ -272,7 +275,10 @@ struct RCell {
             const bool hello = f.data.size() > 6 && (f.data[6] == kOpHello || f.data[6] == kOpHelloAck);
             const bool blocked = hello && now_us < hello_blocked_until_us &&
                                  (f.from == hello_blocked || f.to == hello_blocked);
-            const bool heard = !to.down && to.node != nullptr && !deaf_pair(f.from, f.to) && !blocked;
+            // One direction, one opcode, for a while: a lossy relay that loses a claim while heartbeats get through.
+            const bool dropped = f.from == drop_from && f.to == drop_to && f.data.size() > 6 && f.data[6] == drop_op &&
+                                 now_us < drop_until_us;
+            const bool heard = !to.down && to.node != nullptr && !deaf_pair(f.from, f.to) && !blocked && !dropped;
             if (heard) to.node->on_rx(from.mac, f.data.data(), f.data.size(), now_us, -50);
             if (!f.bcast && !from.down && from.node != nullptr) from.node->on_tx_done(to.mac, heard, now_us);
         }
@@ -1209,4 +1215,35 @@ TEST(partition8, a_node_that_reboots_inside_a_split_rejoins_without_a_second_cop
     std::printf("      last unsettled %u ms after the heal; %u ms with a second copy after the first settled\n",
                 g_last_unsettled, g_extra_ms);
     std::printf("    a reboot inside the split: one of each %u ms after the heal\n", healed);
+}
+
+TEST(reconcile, a_holder_that_takes_an_actor_back_offers_the_handover_again) {
+    // Found on the bench (M14, M0-LOG session 42): C released the presenting role to the PC, the PC's first claim
+    // was lost on the relay while heartbeats got through, so C saw the role unclaimed and started it again -- at the
+    // same term the PC had just taken, winning the tie on node id. C kept the role for good: it still remembered
+    // having released it to the PC, and only a change of membership cleared that, which never came.
+    RCell c;
+    c.build(3, {2, 1, 1});
+    c.kill(0);
+    c.run(8000);
+    const int holder = c.runner();
+    CHECK(holder == 1 || holder == 2);
+    // The preferred node comes back. The moment the holder releases to it, the preferred node's claims to the
+    // holder are lost for 1.5 s -- longer than the holder's orphan step -- while everything else arrives.
+    const uint32_t released_before = c.nodes[static_cast<size_t>(holder)].rec->view(0).released;
+    c.drop_from = 0;
+    c.drop_to = static_cast<size_t>(holder);
+    c.drop_op = kOpCast;
+    c.revive(0);
+    bool took_back = false;
+    c.run(20000, [&] {
+        const Reconciler::ActorView v = c.nodes[static_cast<size_t>(holder)].rec->view(0);
+        if (c.drop_until_us == 0 && v.released > released_before) c.drop_until_us = c.now_us + 1500 * 1000;
+        if (c.drop_until_us != 0 && v.running) took_back = true;
+    });
+    CHECK(c.drop_until_us != 0);  // the release happened
+    CHECK(took_back);             // and the holder, hearing no claim, took it back: the bench's sequence
+    // The preferred node holds it in the end, and only it.
+    CHECK_EQ(c.running_count(), 1u);
+    CHECK_EQ(c.runner(), 0);
 }

@@ -608,6 +608,10 @@ void Reconciler::activate(size_t i, uint32_t now) {
     s.term = s.max_term + 1;
     s.max_term = s.term;
     s.unclaimed_since = 0;
+    // A new holding offers the handover anew. Found on the bench (M14, M0-LOG session 42): C released the role to
+    // the PC, the PC's first claim was lost on the relay, C took the role back -- and, still remembering the release,
+    // never offered it again, since only a change of membership cleared it and none came.
+    s.released_to = 0;
     // M8.1: a fresh instance per activation -- section 7.7's "re-activation restarts from the actor's
     // declared initial state" by construction.
     ActorEnv env;
