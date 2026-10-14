@@ -42,7 +42,7 @@ developer manual rewritten for it (blind reader: a new app written, tested and d
 whole-cell power cycle was a reset of every chip, not a hand power cut. Every milestone through M12 is built and
 14 of 17 accepted; what is left there is the list above, all the owner's to run. **NEXT: M13-M18 (planned 2026-10-11,
 ARCHITECTURE section 13, from BEYOND-M12.md and its picture beyond-m12-overview.html)** -- the cell presenting its
-resources to other systems: M13 the cell presents itself (presenting role, no PC; BUILT and shown on the bench 2026-10-12), M13.1 a phone reaches the nearest board with no network (BUILT), M14 the hub, M15 telemetry, M16 the dashboard,
+resources to other systems: M13 the cell presents itself (presenting role, no PC; ACCEPTED 2026-10-14, M0-LOG session 42, with caveats), M13.1 a phone reaches the nearest board with no network (BUILT), M14 the hub, M15 telemetry, M16 the dashboard,
 M17 Home Assistant first-class, M18 the integration layer. The owner is the idea-giver; the evidence for what to show and
 which integrations came from primary sources (ledger).
 
@@ -60,9 +60,9 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
-> ## HANDOVER, 2026-10-14 (03:45): **M13 proposed for acceptance; M14's and M15's bench runs done** (M0-LOG session 42, end).
+> ## HANDOVER, 2026-10-14 (03:45): **M13 ACCEPTED (with caveats); M14's and M15's bench runs done** (M0-LOG session 42, end).
 >
-> M13's evidence, line by line, is the table at the end of M0-LOG session 42 -- the owner decides. The build rule
+> M13's evidence, line by line, and its caveats are at the end of M0-LOG session 42; the owner accepted. The build rule
 > (aggregation off where a cell presents) costs B's hotspot about a quarter of its download and a third of its upload
 > (owner's phone: 12.2 / 10.4 Mbps against 16-18 / 16-17). M15 at 10 s: heartbeat loss 0.43 % against 0.42 % without
 > the pull; the slowest probe 60.2 ms. M14: M10's handover through the hub 608-660 ms. Bench: firmware `3995681`

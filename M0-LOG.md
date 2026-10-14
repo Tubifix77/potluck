@@ -5426,3 +5426,7 @@ router's range. This is the cost of M13's build rule, paid by any cell that pres
 | kill: the MQTT client fits; presenting leaves the radio its M0 figures | memory half does not fire; radio half fired (the wedge) and is answered: AMPDU transmit aggregation off, 13 h 19 min presenting with no stall against twelve with it on; since, C over TLS from 01:56 with one connection, 12,039 messages, none failed, no `tx_dead` on any board | the answer costs the extender's hotspot about a quarter to a third of its throughput (above) |
 
 Not part of M13 and not built: the hub presenting in the cell's place (M14's last line). The decision is the owner's.
+
+**M13 ACCEPTED (2026-10-14), by the owner, with the caveats above:** the desk PC on (power and consoles, nothing of
+Potluck's in the path), the LED switched by hand rather than by an automation, resets for unplugs, and the hotspot's
+cost from one speed test. Not redone: a real power pull and a Home Assistant automation.
