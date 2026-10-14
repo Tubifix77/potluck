@@ -60,10 +60,10 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 ## What works today
 
 Everything below runs on real ESP32-S3 boards and has passed a test written before it was tried -- each milestone
-has one, and a criterion that would have killed it. 18 of the 24 milestones so far are accepted (the latest: M13, the cell presenting its resources to Home Assistant with
-no PC; M13.1, a phone page with no network; M14, the hub; M15, telemetry over the radio), and the remaining six are
-built and on the bench, not yet accepted (among them M16, the dashboard; M17, Home Assistant first-class; M18, the
-integration layer); the full ledger,
+has one, and a criterion that would have killed it. 21 of the 24 milestones so far are accepted (the latest: M13, the cell presenting its resources to Home Assistant with
+no PC; M13.1, a phone page with no network; M14, the hub; M15, telemetry over the radio; M16, the dashboard; M17,
+Home Assistant first-class; M18, the integration layer), and the remaining three (M5.1, M8.1, M8.2) are built and
+wait only for long runs or a hand on the hardware; the full ledger,
 with every measurement and caveat, is [STATUS.md](STATUS.md).
 
 - **Boards that find each other and know when one is gone.** Over the radio, a missing board is declared dead
@@ -85,8 +85,8 @@ with every measurement and caveat, is [STATUS.md](STATUS.md).
 - **Potluck shares the radio**: a board can be a cluster member and a Wi-Fi extender at the same time.
 - **Record and replay** a session byte for byte, to see exactly what happened.
 
-Not there yet: the acceptance of M16-M18 (built and on the bench; [STATUS.md](STATUS.md) says what each still owes),
-a few long soak tests, and the limits listed at the end of the
+Not there yet: a few long soak tests and hands-on checks (M5.1, M8.1, M8.2; [STATUS.md](STATUS.md) says what each still
+owes), and the limits listed at the end of the
 [getting-started guide](GETTING-STARTED.md) (up to 20 boards in a radio cell, ESP32-S3 boards and PCs only, one
 package per cluster).
 

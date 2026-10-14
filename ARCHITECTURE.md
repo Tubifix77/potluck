@@ -1038,9 +1038,26 @@ states its retention and the hub's card shows it. Shown: ten dashboard streams c
 (the hub's cable frames in 60 s: 966, 960 with ten, 968); the first screen, the login, a look-only login and a replay
 at phone width. **Owed:** a real phone on the house network through the login, and Home Assistant's Ingress (with M17).
 
+***M16 ACCEPTED, 2026-10-14*** *(M0-LOG session 44), by the owner, with one caveat:* Home Assistant's Ingress was not
+tested -- the bench's Home Assistant runs in Docker, with no add-ons. The owner's phone on the house Wi-Fi opened the
+dashboard over HTTPS behind his look-only login (a wrong password refused first) and read "All is well".
+
 **M17 — Home Assistant, first-class.** *(Planned 2026-10-11, from the owner: the integration most in demand now, and likely where people find Potluck useful. Evidence, BEYOND-M12.md 6.3: of 553,881 installations sharing their integrations, 86.2 % use Home Assistant's phone app, 48.6 % MQTT, 27.3 % ESPHome; HACS is on 395,983.)* M13 gives Home Assistant the cell with no PC; M17 makes it excellent with one: a Home Assistant integration in a public repository, installed through HACS, set up by a config flow after the hub announces itself (zeroconf), with each board a device, each exposed resource an entity of the right kind and unit, board health as diagnostic entities, the firmware as an update entity that shows versions and installs nothing, the cell's own health as entities ("the room sensor is down"), sleeping boards as asleep, and the same devices and names as the cell's presenting role. *Accept:* on a fresh Home Assistant installation the integration discovers the hub with nothing typed but a confirmation; boards, resources and health appear as above; an automation changes B's LED; with the PC switched off the same devices stay live through the cell's presenting role (M13) and come back to the hub's when it returns, if the hub is the configured presenter; a reader who uses Home Assistant and has never seen Potluck gets from the README to their boards in Home Assistant with no other help, and every place they got stuck is fixed. *Kill:* if a resource cannot be shown in Home Assistant with its quality intact, or writes cannot be confined to what the package allows.
 
+***M17 ACCEPTED, 2026-10-14*** *(M0-LOG session 44), by the owner, with one caveat:* the owner's own Home Assistant
+(2026.10.1), not a fresh installation. HACS installed the integration from the public repository; the hub was
+discovered with nothing typed, paired with the owner's Allow; boards, resources and health appeared (39 entities, the
+boards staying the presenter's MQTT devices -- a device belongs to one config entry -- and the hub adding to them); an
+automation switched B's LED; with the hub stopped the boards' entities stayed live through C and the hub's came back
+in 3-5 s when it started; two blind readers, the second's gaps fixed in HOME-ASSISTANT.md.
+
 **M18 — The integration layer, and the owner's programs.** *(Planned 2026-10-11, revised 2026-10-12.)* Every integration does five things -- names the cell's resources in the other system's terms; carries the tuple across; reads only what the package exposes, writes only what it allows and never deploys; is a module the owner chooses; reports its own state to the hub -- and M18 builds them once, as the hub's plugin interface and a board-module interface, documented the way DEVELOPING-APPS.md documents actors, so the next integration is an adapter, not a design. The owner's own programs use the same API (section 7.1's `pot-app`). The MQTT payload -- value, unit, age, quality -- is documented for any consumer, not only Home Assistant. A writable resource may name which integrations may write it. Which integration comes after Home Assistant is chosen as Home Assistant was: by published evidence of what people running systems like Potluck use, filtered by the S3 for any board-side part (BEYOND-M12.md question 9). *Accept:* a second integration built on the interface by a reader from the documentation alone, with no change to the hub; each outside program has a share of what the hub may ask of the cell, and one that asks for more is slowed, not the cell -- shown with a client pulling as fast as it can while the dashboard stays current; a worked example program in a second language reads, watches and writes the cell; the dashboard shows both integrations' state. *Kill:* if the second integration needs the hub changed, the interface is not one yet -- revise it before calling M18 done.
+
+***M18 ACCEPTED, 2026-10-14*** *(M0-LOG session 44), by the owner, with one caveat:* Node-RED itself is not installed;
+the Node-RED integration (`integrations/node-red`, built by a reader from INTEGRATIONS.md and HUB-API.md with no hub
+change) ran its client under Node.js against the real hub. A client pulling as fast as it could got its 20 requests a
+second while the dashboard stayed current and the cell saw no difference; the Node.js example program reads, watches
+and writes; the dashboard listed Home Assistant and Node-RED connected at once.
 
 ## 14. Risk register
 

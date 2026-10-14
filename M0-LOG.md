@@ -5714,3 +5714,7 @@ connected, 3 of 3 boards alive" and "Node-RED, connected, stream, 3 resource(s)"
 (`captures/m18-both-integrations.txt`). Every M16-M18 line is now shown on the bench; proposed for acceptance with
 their caveats (M16: Ingress not testable on a Home Assistant in Docker; M17: the owner's Home Assistant, not a fresh
 installation; M18: Node-RED itself not installed).
+
+**M16, M17 and M18 ACCEPTED by the owner (2026-10-14, evening)**, each with its caveat (M16: Ingress not tested;
+M17: the owner's Home Assistant, not a fresh installation; M18: Node-RED itself not installed). 21 of 24 milestones
+are accepted; M5.1, M8.1 and M8.2 are built and wait on long runs or a hand on the hardware.
