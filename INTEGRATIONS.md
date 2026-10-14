@@ -30,7 +30,7 @@ the cell's [README](README.md); the hub's API, field by field, is [host/potluck/
 |---|---|---|
 | runs on | any computer that reaches the hub | the boards, in the one image |
 | needs the PC | yes -- the hub runs on it | no |
-| examples | the Home Assistant integration (`custom_components/potluck`), the Node.js example (`examples/programs/node`) | the presenting role (`pot_present`, M13): MQTT to Home Assistant with no PC |
+| examples | the Home Assistant integration (`custom_components/potluck`), the Node-RED integration (`integrations/node-red`), the Node.js example program (`examples/programs/node`, a program rather than an integration: it skips duty 5) | the presenting role (`pot_present`, M13): MQTT to Home Assistant with no PC |
 | built with | HTTP and JSON, any language | C++ on ESP-IDF, the actor API (DEVELOPING-APPS.md) |
 
 Prefer a program on the hub's API: it costs the boards nothing. Build a board module only when the integration must
@@ -98,7 +98,7 @@ output it presents, it learns the entry's declaration from a board that has it (
 ## Which integration next
 
 Chosen as Home Assistant was: by published evidence of what people running systems like Potluck use, filtered by what
-an ESP32-S3 can carry for any board-side part. On 2026-10-14 that evidence (the ledger) put **Node-RED** first: on 13.0 %
+an ESP32-S3 can carry for any board-side part. On 2026-10-14 that evidence (the ledger) put **Node-RED** first, and it is built (`integrations/node-red`, M18): on 13.0 %
 of Home Assistant installations that report add-ons and 17.3 % of ioBroker installations, used for home automation
 and, by its own survey, professionally by about half its users -- and a program on the hub's API, with nothing on the
 boards. Metrics (InfluxDB, Grafana) come next; Matter does not fit a board (Espressif's own light example takes about

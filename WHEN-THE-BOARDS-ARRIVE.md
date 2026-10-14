@@ -469,7 +469,8 @@ tools\soak.ps1 -Stop
   powered through the same socket it uses on the PC. C is the control: if A-C degrades while B is far
   away, the cause was the house, not the distance.
 - **B's LED is the field indicator**: blue = not yet joined, green = hearing everyone (< 10 %
-  heartbeat loss over 2 s), yellow = 10-50 %, red = over 50 % or a peer dead. It is B's *receive*
+  heartbeat loss over 2 s), yellow = 10-50 %, red = over 50 % or a peer dead (the sweep's scheme; replaced
+  2026-10-14 -- GETTING-STARTED.md step 3 has the current colours). It is B's *receive*
   view; the measurement is A's and C's captures, which see both directions.
 - **The capture splits itself.** Each plug-in is a new boot epoch, so one spot = one epoch. Notes
   are still needed for what each spot *was*: place, metres, walls or floors in between.

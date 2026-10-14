@@ -294,8 +294,8 @@ hub's API in full: [host/potluck/HUB-API.md](host/potluck/HUB-API.md).
 | [INTEGRATIONS.md](INTEGRATIONS.md) | How any other system uses the cell: the five things every integration does, a program on the hub's API step by step, the MQTT payload, a board module |
 | [host/potluck/HUB-API.md](host/potluck/HUB-API.md) | The hub's API, field by field: the model, events, the stream, writes, logins, pairing, shares |
 | [STATUS.md](STATUS.md) | Every milestone, what it set out to prove, and exactly how far each claim has been measured -- the full ledger behind "What works today" |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the nine decision records, and milestones M0–M12 with accept/kill criteria |
-| [BEYOND-M12.md](BEYOND-M12.md) | A discussion draft, not a decision: what comes after the roadmap -- one hub on the PC that owns the link, a dashboard of the whole cell, and integrations that let any other system use the cell's resources, Home Assistant first |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the nine decision records, and milestones M0–M18 with accept/kill criteria |
+| [BEYOND-M12.md](BEYOND-M12.md) | The reasoning behind M13-M18 (now ARCHITECTURE section 13, all accepted): one hub on the PC that owns the link, a dashboard of the whole cell, and integrations that let any other system use the cell's resources, Home Assistant first |
 | [M0-LOG.md](M0-LOG.md) | The decision log, newest session last — including the conclusions that were later **withdrawn**, kept struck-through rather than deleted. The QEMU sessions are a study in how a stale flash image manufactures false evidence |
 | [M0-RUNBOOK.md](M0-RUNBOOK.md) | Bench procedure: build, flash, emulate, soak, and the delay methodology to read *before quoting any number* |
 | [CLAUDE.md](CLAUDE.md) | Standing rules for working on this repo (largely built with [Claude Code](https://claude.com/claude-code), which these rules keep honest) |

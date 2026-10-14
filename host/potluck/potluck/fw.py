@@ -156,7 +156,10 @@ def resolve_targets(targets: str | None, manifest: str | None, cabled: int | Non
 
         with open(manifest, encoding="utf-8") as f:
             doc = json.load(f)
-        nodes = [int(n["node_id"]) for n in doc.get("nodes", []) if n.get("kind", "board") != "host"]
+        if "boards" in doc:  # a cluster file (potluck apply's): boards[].node in hex
+            nodes = [int(str(b["node"]), 16) for b in doc["boards"] if b.get("kind", "board") != "host"]
+        else:  # a package manifest: nodes[].node_id
+            nodes = [int(n["node_id"]) for n in doc.get("nodes", []) if n.get("kind", "board") != "host"]
     else:
         raise TargetsError("name your boards: --manifest <your cell's manifest>, or --targets <hex ids, comma-separated>")
     if not nodes:

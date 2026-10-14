@@ -76,7 +76,7 @@ TEST(hello_app, the_host_tools_bytes_parse_into_its_config) {
     CHECK_EQ(hello::output_hash(c.system_prefix, 0x7368), path_hash("potluck://lab/node-7368/hello/peers"));
 }
 
-TEST(hello_app, it_publishes_its_peer_count_and_lights_the_led_when_alone) {
+TEST(hello_app, it_publishes_its_peer_count_and_asks_for_cyan_only_in_company) {
     Rig r;
     CHECK(r.create());
     for (int i = 0; i < 10; ++i) r.actor->tick(++g_t);
@@ -86,7 +86,7 @@ TEST(hello_app, it_publishes_its_peer_count_and_lights_the_led_when_alone) {
     CHECK(rd.value.as_u32(n) && n == 0u);  // no radio peer in this rig
     CHECK(rd.quality == Quality::Good);
     CHECK_EQ(r.led.calls, 1);  // once per period, not once per tick
-    CHECK(r.led.on);
+    CHECK(!r.led.on);  // alone: no cyan (the board itself shows yellow, searching)
     for (int i = 0; i < 5000; ++i) r.actor->tick(++g_t);
     CHECK_EQ(r.led.calls, 2);
     char line[128];

@@ -14,7 +14,7 @@ namespace {
 const uint8_t kDecl[] = {0xff, 0xff, 0xf0, 0x06, 0x27, 0x11, 0x39, 0x61, 0x88, 0x13};
 }  // namespace
 
-TEST(hello_kit, it_publishes_once_a_period_and_shows_cyan_alone) {
+TEST(hello_kit, it_publishes_once_a_period_and_asks_for_cyan_only_in_company) {
     testkit::Rig rig;  // node 0x0100
     CHECK(rig.declare_bytes(kDecl, sizeof(kDecl)));
     CHECK(rig.start(hello::peers_row()));
@@ -23,7 +23,7 @@ TEST(hello_kit, it_publishes_once_a_period_and_shows_cyan_alone) {
     CHECK(r.quality == Quality::Good);
     uint32_t n = 99;
     CHECK(r.value.as_u32(n) && n == 0u);  // the rig has no radio, so no peers
-    CHECK(rig.led.on);
+    CHECK(!rig.led.on);  // alone: no cyan (the board shows yellow, searching)
     CHECK_EQ(rig.led.calls, 1);
     rig.advance(5000, 10);
     CHECK_EQ(rig.led.calls, 2);  // once per period

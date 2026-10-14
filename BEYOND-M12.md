@@ -1,5 +1,7 @@
 # Beyond M12: the hub, the dashboard and integrations
 
+**Settled (2026-10-12):** this draft became M13-M18 in [ARCHITECTURE.md](ARCHITECTURE.md) section 13, all built and accepted by 2026-10-14; it stays as the reasoning behind them.
+
 **A discussion draft (started 2026-10-11, rewritten the same day), not a decision.** Nothing here is part of the
 architecture until it is agreed and moved into [ARCHITECTURE.md](ARCHITECTURE.md) section 13 as milestones with
 accept and kill criteria, the way every milestone so far got there. Until then, ARCHITECTURE.md stays the single

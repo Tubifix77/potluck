@@ -2,7 +2,7 @@
 //
 // ext:hello/peers (type 0xF0, every node): every period, each board publishes how many radio peers it
 // sees alive, to potluck://<system>/node-<id>/hello/peers (u32), and lights its status LED cyan while it
-// sees none. A reader anywhere in the cell gets the number with its age and quality, like any resource.
+// hears at least one (an app's colour shows in green's place, on a healthy board only). A reader anywhere in the cell gets the number with its age and quality, like any resource.
 //
 // What it shows: a config parsed from the bytes the host tools encode from the descriptor; an output
 // path built on the board from the descriptor's system_prefix; the output declared by the actor on its

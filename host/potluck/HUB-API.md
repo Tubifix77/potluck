@@ -58,8 +58,8 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
      "detail": "192.168.0.77:1883, 4 entities"}
   ],
   "deploys": [
-    {"at": 1791771600000, "kind": "package", "counter": 47, "result": "verified", "detail": "live on 3 board(s)"},
-    {"at": 1791771300000, "kind": "firmware", "counter": 20, "result": "confirmed", "detail": "3 board(s)"}
+    {"at": 1791771300000, "kind": "firmware", "counter": 20, "result": "confirmed", "detail": "confirmed on 3 board(s)"},
+    {"at": 1791771600000, "kind": "package", "counter": 47, "result": "verified", "detail": "live on 3 board(s)"}
   ],
   "signals": {"latency_p50_ms": 5, "latency_p99_ms": 16, "traffic_frames_s": 62.0, "errors_min": 0.4,
               "saturation": {"peers": 0.15, "namespace": 0.31, "actor_slots": 0.38, "internal_ram": 0.24,
@@ -96,7 +96,10 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
   first has a value. The model holds every resource the package names, for the owner's dashboard; an integration shows
   only those with `exposed: true`. A strict resource (section 4) that is not `GOOD` arrives with `value: null` -- the hub
   has already withheld the number; a client never needs to know which are strict.
-- `deploy.result`: `verified` | `confirmed` | `reverted` | `refused` | `failed` | `running`.
+- `deploys`: the last 20, oldest first, learned from the boards' firmware and package counters moving -- whoever
+  deployed (`apply` through the hub, or a board catching up from a peer); the hub sends none itself. `result`:
+  `running` (`detail`: `N of M board(s)`), then `verified` (a package) or `confirmed` (firmware) once every board
+  it hears runs it; `reverted`, `refused` and `failed` are reserved, not reported yet.
 
 ## GET /api/events?since=<seq>
 

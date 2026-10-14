@@ -93,6 +93,10 @@ class Targets(unittest.TestCase):
             with open(m, "w", encoding="ascii") as f:
                 json.dump({"nodes": [{"node_id": 0x2A10}, {"node_id": 0x3B21}, {"node_id": 254, "kind": "host"}]}, f)
             self.assertEqual(fw.resolve_targets(None, m, 0x2A10, rollout=True), [0x3B21, 0x2A10])
+            c = os.path.join(d, "cluster.json")  # a cluster file names its boards in hex
+            with open(c, "w", encoding="ascii") as f:
+                json.dump({"boards": [{"node": "2a10"}, {"node": "3b21"}, {"node": "00fe", "kind": "host"}]}, f)
+            self.assertEqual(fw.resolve_targets(None, c, 0x2A10, rollout=True), [0x3B21, 0x2A10])
         with self.assertRaises(fw.TargetsError):
             fw.resolve_targets(None, None, 0x2A10, rollout=True)
 

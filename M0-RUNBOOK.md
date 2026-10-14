@@ -25,7 +25,7 @@ session is the one that matters. Then this.
 | Heartbeat timers | 100 ms period, dead at 6 misses = 600 ms (§8.2, wireless row) |
 | What you flash | one binary, both boards — node ids derive from each board's MAC |
 | Where the numbers land | `potluck-capture`'s summary, printed on Ctrl-C; the capture file has the raw stream |
-| The one thing to remember | **there is no one-way delay figure.** M0 measures RTT. See [§7](#7-the-delay-methodology-read-before-quoting-any-number). |
+| The one thing to remember | **there is no one-way delay figure.** M0 measures RTT. See [§7](#7-the-delay-methodology--read-before-quoting-any-number). |
 
 ```bash
 tools\build_firmware.ps1 -Flash -Port COM7
@@ -748,8 +748,8 @@ What the owner adds to a cluster file (section 15), and what each line does:
 - `builtin:led_switch` (pinned, `r` `g` `b`, `blink_ms`) is B's status LED as `node-<id>/led/on`, the bench's
   stand-in for a lightbulb (`manifests/m13-present.json`).
 
-**The bench broker.** No broker or Home Assistant is installed on the house network, so the bench uses a small
-MQTT 3.1.1 broker that logs every message with its own clock, run from `/tmp` on the homelab laptop (nothing
+**The bench broker.** Home Assistant and Mosquitto run on the homelab since 2026-10-12 (HOME-ASSISTANT.md); for a
+run that wants every message logged with its own clock, the bench also has a small MQTT 3.1.1 broker, run from `/tmp` on the homelab laptop (nothing
 installed):
 
 ```
@@ -773,12 +773,12 @@ every other path 404. Without a name and password there is no access point; on a
 module stays idle (the extender owns the access point). The board prints `{"t":"pocket",...}`: phones on it, pages
 served, requests refused, its internal heap.
 
-## 17. M16: the dashboard (first cut, on the mock)
+## 17. M16: the dashboard, and the mock
 
 The dashboard is three static files in `host/potluck/potluck/dashboard/` (`index.html`, `app.js`, `style.css`; no
-framework, nothing fetched from the internet) that the hub (M14) will serve at `/`. It reads only the hub's API
+framework, nothing fetched from the internet) that the hub (M14) serves at `/` (with `--listen`, over HTTPS behind a login). It reads only the hub's API
 version 1 (`host/potluck/HUB-API.md`): `/api/stream`, falling back to `/api/model` and `/api/events` every 2 s when
-the stream fails. Until the hub exists it is built against `tools/hub_mock.py`, which serves the same files and the
+the stream fails. For work without boards, `tools/hub_mock.py` serves the same files and the
 same API from a simulated cell of three boards (A 6300 cabled, B 7368 extender and presenter, C 8160). The mock opens
 no serial port and touches no board; any Python 3.10+ runs it, from the repository root:
 

@@ -28,7 +28,8 @@ There are two paths, and you want both:
 - **B. The hub and the Potluck integration.** The **hub** is a program on the PC that has the USB cable to the cell.
   While it runs, it adds health information to the same board devices over MQTT (alive or asleep, memory, signal,
   firmware), so it too needs path A's `present` and broker. The Potluck integration, installed with HACS, adds one
-  device of its own, **Potluck hub**, with the hub's view (boards alive, apps working, problems). Without the
+  device of its own, **Potluck hub**, with the hub's view (hub link, boards alive, apps working, last deploy,
+  problems). Without the
   integration you keep the board diagnostics and lose only that device.
 
 ## What you need

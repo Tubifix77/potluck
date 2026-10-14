@@ -137,7 +137,8 @@ python -m potluck.enrol --port COM7 --ca-key ..\..\keys\ca.key
 It asks the board for the key it made at its first boot, signs a certificate for it with your CA and hands it
 back; the board checks it and saves it. Note the node id it prints. The certificate takes effect at the next
 boot: press each board's **RST** button. Within a few seconds the LEDs turn **green** -- the boards found each
-other (yellow or red means a link is losing heartbeats, or a peer is gone).
+other (still yellow: they do not hear each other yet -- see Troubleshooting; red: a link losing over half its
+heartbeats, or a board that died).
 
 ## 5. Connect the PC
 

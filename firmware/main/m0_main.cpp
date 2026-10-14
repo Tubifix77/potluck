@@ -648,10 +648,12 @@ void bye_button_poll() {}
 // indicator, not the measurement -- the measurement is the board on the PC, which sees both
 // directions of every link it has (inbound by sequence gaps, outbound by the MAC ACK).
 //
-//   blue    no peer heard since power-up
-//   green   every peer alive, heartbeat loss under 10 % over the last two seconds
-//   yellow  every peer alive, but the worst one losing 10-50 %
-//   red     some peer losing over 50 %, or declared dead
+// The owner's scheme (2026-10-14; the sweep's blue/green/yellow/red by loss is gone):
+//   purple  updating: firmware or a package arriving, or running on trial
+//   yellow  searching: no peer alive, or hunting for the cell's channel
+//   red     a peer dead within CONFIG_POT_STATUS_LED_DEAD_RED_S, a peer losing over 50 %, or this
+//           board's own sends failing
+//   green   on the Potluck network (an app's blue or cyan may show in its place)
 //
 // Updated once a second. At power-up: red, green, blue, half a second each, so the pin and the
 // colour order can be checked by eye before the colours are trusted.

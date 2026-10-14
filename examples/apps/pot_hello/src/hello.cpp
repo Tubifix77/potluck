@@ -77,10 +77,11 @@ void PeersActor::tick(uint32_t now_ms) {
     last_ = alive_peers();
     node_.ns().publish(out_, Value::of_u32(last_), now_ms);
     ++published_;
-    // The LED shows an application state only while every link is healthy, and lapses 5 s after the
-    // last call -- so "alone" is shown for as long as it is true, and a dead link is never hidden.
+    // The LED shows an application state only in green's place -- on a board that hears its peers and has
+    // no problem -- and lapses 5 s after the last call: "company" is shown for as long as it is true, and a
+    // dead link or an update is never hidden. (A board alone is yellow, whatever an app asks.)
     if (board_ != nullptr && board_->led_app != nullptr) {
-        board_->led_app(board_->ctx, last_ == 0, 0, 180, 180, 0);
+        board_->led_app(board_->ctx, last_ > 0, 0, 180, 180, 0);
     }
 }
 
