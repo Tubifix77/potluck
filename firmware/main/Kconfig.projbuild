@@ -240,11 +240,16 @@ config POT_STATUS_LED_GPIO
         firmware drives this pin AND POT_STATUS_LED_GPIO_ALT. On these boards nothing else is
         attached to either, so the wrong one simply has no LED on it.
 
-        The colour is this node's own view of the cell, for reading without a console:
-          green   every peer heard, heartbeat loss under 10 % over the last two seconds
-          yellow  every peer heard, but some peer losing 10-50 %
-          red     some peer losing over 50 %, or declared dead within POT_STATUS_LED_DEAD_RED_S
-          blue    no peer has been heard since power-up, or every peer heard is long dead
+        The colour is this node's own view of the cell, for reading without a console (the
+        owner's scheme, 2026-10-14):
+          purple  updating: receiving firmware or a package, or running one on trial
+          yellow  searching: no peer alive (none heard yet, or every one long dead), or hunting
+                  for the cell's channel
+          red     disconnected, dead or stalled: a peer declared dead within
+                  POT_STATUS_LED_DEAD_RED_S, a peer losing over 50 % of its heartbeats, or this
+                  board's own radio sends failing for over 3 s
+          green   on the Potluck network, every peer heard; an application's state (an LED
+                  switch, an app's colour) may show in its place, never in place of the others
         At power-up it shows red, green, blue for half a second each, in that order. If the
         order on the board differs, the LED's byte order is not GRB and the colours above lie.
 

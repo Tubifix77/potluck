@@ -668,11 +668,11 @@ constexpr uint8_t kBrightness = 24;           // of 255: readable indoors, not a
 constexpr uint32_t kUpdateMs = 1000;  // how often the colour is reassessed
 constexpr uint32_t kRenderMs = 100;   // how often it is drawn, so a deployed blink can blink
 
-// What "healthy" looks like. Built-in: steady green. A deployed Led actor (M3) replaces it; blue,
-// yellow and red keep their diagnostic meaning whatever is deployed, so no deployment can make a
-// failing link look healthy.
+// The owner's scheme (2026-10-14): purple updating, yellow searching, red disconnected / dead /
+// stalled, green on the Potluck network. Healthy is always green: a deployed Led actor (M3) used to
+// recolour it, and A's blinking purple then read as "updating", so its colour is kept but no longer
+// shown. Only an application's state (below) may replace green, and purple, yellow and red always win.
 LedConfig g_healthy{0, 255, 0, 0, 1000};
-bool g_custom = false;
 // M8.2 (PS-5): an application's state, shown in place of the healthy colour only (see BoardServices).
 struct AppOverlay {
     bool on;
@@ -682,12 +682,9 @@ struct AppOverlay {
 };
 AppOverlay g_app{};
 constexpr uint32_t kAppLapseMs = 5000;
-const char* g_last_shown = "blue";  // what render() drew last, for the stats line
+const char* g_last_shown = "yellow";  // what render() drew last, for the stats line
 bool g_last_app = false;
-void set_healthy(const LedConfig& c) {
-    g_healthy = c;
-    g_custom = true;
-}
+void set_healthy(const LedConfig& c) { g_healthy = c; }
 
 rmt_symbol_word_t symbol(uint16_t high_ticks, uint16_t low_ticks) {
     rmt_symbol_word_t s{};
@@ -781,7 +778,14 @@ void init() {
     vTaskDelay(pdMS_TO_TICKS(500));
 }
 
-enum class Colour : uint8_t { Blue, Green, Yellow, Red };
+enum class Colour : uint8_t { Yellow, Green, Red, Purple };
+
+// What the board itself is doing, gathered by the link task for assess().
+struct Signals {
+    bool updating;  // receiving firmware or a package, or running one on trial
+    bool scanning;  // hunting for the cell's channel
+    bool stalled;   // this board's own radio sends failing
+};
 
 // Per peer slot: the (broadcast received, heartbeats lost) counters one and two seconds ago.
 struct Snap {
@@ -797,7 +801,7 @@ Snap g_hist[kMaxPeers][2];
 constexpr uint32_t kDeadRedMs = static_cast<uint32_t>(CONFIG_POT_STATUS_LED_DEAD_RED_S) * 1000u;
 
 // Called with g_mutex held: reads the peer table, touches nothing in it.
-Colour assess(const Node& n, uint32_t now_ms) {
+Colour assess(const Node& n, uint32_t now_ms, const Signals& sig) {
     bool any = false;
     bool dead = false;
     uint32_t worst_ppm = 0;
@@ -822,10 +826,11 @@ Colour assess(const Node& n, uint32_t now_ms) {
             static_cast<uint32_t>((static_cast<uint64_t>(lost) * 1000000u) / (rx + lost));
         if (ppm > worst_ppm) worst_ppm = ppm;
     }
-    if (!any) return Colour::Blue;
+    if (sig.updating) return Colour::Purple;
+    if (sig.stalled) return Colour::Red;
+    if (!any || sig.scanning) return Colour::Yellow;
     if (dead || worst_ppm > 500000) return Colour::Red;
-    if (worst_ppm >= 100000) return Colour::Yellow;
-    return Colour::Green;
+    return Colour::Green;  // a link losing 10-50 % stays green here; the dashboard shows the loss
 }
 
 uint8_t scaled(uint8_t v) {
@@ -836,7 +841,11 @@ uint8_t scaled(uint8_t v) {
 
 void render(Colour c, uint32_t now_ms) {
     switch (c) {
-        case Colour::Blue: show(0, 0, kBrightness); g_last_shown = "blue"; g_last_app = false; break;
+        case Colour::Purple:
+            show(kBrightness, 0, kBrightness);
+            g_last_shown = "purple";
+            g_last_app = false;
+            break;
         case Colour::Green:
             g_last_shown = "green";
             g_last_app = g_app.on && static_cast<int32_t>(g_app.until_ms - now_ms) > 0;
@@ -846,12 +855,8 @@ void render(Colour c, uint32_t now_ms) {
                 } else {
                     show(scaled(g_app.r), scaled(g_app.g), scaled(g_app.b));
                 }
-            } else if (!g_custom) {
-                show(0, kBrightness, 0);
-            } else if (g_healthy.blink && (now_ms % g_healthy.period_ms) >= g_healthy.period_ms / 2) {
-                show(0, 0, 0);
             } else {
-                show(scaled(g_healthy.r), scaled(g_healthy.g), scaled(g_healthy.b));
+                show(0, kBrightness, 0);
             }
             break;
         case Colour::Yellow: show(kBrightness, kBrightness, 0); g_last_shown = "yellow"; g_last_app = false; break;
@@ -872,6 +877,9 @@ size_t on_fw(uint16_t from, uint16_t msg_id, uint8_t op, const uint8_t* p, uint1
 void on_result(uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, const uint8_t* p, uint16_t len);
 bool busy();
 void tick(uint32_t now);
+bool receiving();    // an image arriving (the status LED's "updating")
+uint32_t received();  // its bytes so far
+bool on_trial();
 }  // namespace fw_rt
 
 extern const BoardServices g_board_services;  // below, with the background workers it names
@@ -1586,7 +1594,11 @@ void link_task(void*) {
 #if CONFIG_POT_POCKET
     uint32_t next_pocket_ms = now_ms_();
 #endif
-    status_led::Colour colour = status_led::Colour::Blue;
+    status_led::Colour colour = status_led::Colour::Yellow;
+    // "Updating" counts a transfer only while its bytes still arrive: one whose sender went away would
+    // otherwise leave the LED purple until the next transfer began.
+    uint32_t upd_bytes = 0;
+    uint32_t upd_seen_ms = 0;
 
     for (;;) {
         // Send completions first: cheap, and they carry the MAC-layer ACK an in-flight probe waits
@@ -1843,8 +1855,19 @@ void link_task(void*) {
 #endif
         if (static_cast<int32_t>(nt - next_assess_ms) >= 0) {
             next_assess_ms = nt + status_led::kUpdateMs;
+            const bool receiving = fw_rt::receiving() || deploy_rt::g_rx.in_progress();
+            const uint32_t bytes = fw_rt::received() +
+                                   static_cast<uint32_t>(deploy_rt::g_rx.image_len());
+            if (receiving && bytes != upd_bytes) upd_seen_ms = nt;
+            upd_bytes = bytes;
+            const uint32_t failing_since = g_radio_fail_since_ms.load();
             xSemaphoreTake(g_mutex, portMAX_DELAY);
-            colour = status_led::assess(*g_node, nt);
+            const status_led::Signals sig{
+                (receiving && nt - upd_seen_ms < 30000u) || deploy_rt::g_trial || fw_rt::on_trial(),
+                g_node->scanning(),
+                failing_since != 0 && nt - failing_since > 3000u,
+            };
+            colour = status_led::assess(*g_node, nt, sig);
             xSemaphoreGive(g_mutex);
         }
         if (static_cast<int32_t>(nt - next_led_ms) >= 0) {
@@ -2867,6 +2890,9 @@ const char* state_str(FwState s) {
 }
 
 bool busy() { return g_state == FwState::OnTrial || g_committed; }
+bool receiving() { return g_rx.in_progress(); }
+uint32_t received() { return g_rx.received(); }
+bool on_trial() { return g_state == FwState::OnTrial; }
 
 // Before any task starts.
 void boot() {

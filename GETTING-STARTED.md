@@ -108,7 +108,16 @@ pwsh tools\build_firmware.ps1 -Flash -Port COM7
 
 with the board's port (Device Manager shows it). The first build takes ~5 minutes; repeat with each board's
 port -- the image is built once and flashed again. A freshly booted board blinks red, green, blue (its LED's
-self-test) and then shows **blue: no peer**.
+self-test) and then shows **yellow: searching**, until it hears another board.
+
+**What a board's LED says** -- its own view of the cell:
+
+| colour | meaning |
+|---|---|
+| **purple** | updating: receiving new firmware or a new package, or running one on trial before it is confirmed |
+| **yellow** | searching: no other board heard (yet, or for over 10 minutes), or hunting for the cell's radio channel |
+| **red** | disconnected, dead or stalled: a board it knew died in the last 10 minutes, a link losing over half its heartbeats, or its own radio failing to send |
+| **green** | on the Potluck network, all well. An app may show its own colour in green's place (a Home Assistant LED switch, an app's state); purple, yellow and red always win |
 
 The build also rewrites the size reports Potluck keeps in `firmware\size\`, so `git status` shows them changed and
 later builds are stamped `-dirty`; `git checkout -- firmware/size` puts them back if you care.
@@ -250,8 +259,8 @@ ESP-IDF's own `idf.py -p COM7 monitor` works too, but resets the board when it o
 | what you see | why, and what to do |
 |---|---|
 | A board seems dead over USB | It is on the socket labelled USB. Use **UART**. |
-| A board's LED is red | It hears a peer losing over half its heartbeats, or one that died in the last 10 minutes (a peer gone longer no longer counts: a PC switched off does not leave the boards red). The hub's dashboard names the peer. |
-| LEDs stay blue after enrolling | The certificate takes effect at the next boot: press RST. Still blue: the board's console log shows `peer_refused` for a board from another CA -- enrol it with *your* CA. |
+| A board's LED is red | It hears a board losing over half its heartbeats, one that died in the last 10 minutes (one gone longer no longer counts: a PC switched off does not leave the boards red), or its own radio cannot send. The hub's dashboard names the board. |
+| LEDs stay yellow after enrolling | The certificate takes effect at the next boot: press RST. Still yellow: the board's console log shows `peer_refused` for a board from another CA -- enrol it with *your* CA. |
 | `enrol` times out | Another program holds the board's port (a serial monitor): close it. |
 | The build fails at once in `export.ps1` | You ran it from Windows PowerShell 5.1; use `pwsh`. |
 | A board without PSRAM boots into errors | Build with `-Variant nopsram -Extra "CONFIG_SPIRAM=n"` (portable actors are then compiled out). |

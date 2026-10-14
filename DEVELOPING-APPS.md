@@ -246,7 +246,7 @@ checkpoint you do not recognise.
 ### Board services
 
 `ActorEnv::board` (null on a PC): `led_app(on, r, g, b, blink_ms)` shows an app state on the status LED --
-only while every link is healthy (blue, yellow and red always win, so no app can hide a dead link), and it
+only while the board is green (purple, yellow and red always win, so no app can hide a dead link or an update), and it
 lapses 5 s after the last call; `bg_submit(work, arg)` runs a computation on a background worker below
 everything the node does, refused when all workers are busy; `bg_yield` must be called every ~50 ms inside
 it (the task watchdog watches the idle task).
@@ -343,8 +343,8 @@ others into the owner's one package (below):
   | `builtin:die_temp` | pinned | `period_ms` 200-60000 (1000) | `node-<id>/hw/die_temp`, the chip's temperature, f32 degC |
   | `builtin:ticker` | portable | `period_ms` 50-60000 (100) | `act/<name>/out`, a counter (the reconciler's test actor) |
   | `builtin:svc_client` | pinned | `period_ms` 100-60000; one `needs` of `potluck://<system>/svc/<name>`; `on_host_loss` continue or hold | the PC service's answer |
-  | `builtin:led` | pinned | `r` `g` `b` 0-255, `blink`, `period_ms` 200-10000 | the status LED's healthy colour |
-  | `builtin:led_switch` | pinned | `r` `g` `b` 0-255, `blink_ms` 0 or 200-25500 | `node-<id>/led/on`, a writable bool: the status LED shows the colour while it is true (M13; blue, yellow and red still win) |
+  | `builtin:led` | pinned | `r` `g` `b` 0-255, `blink`, `period_ms` 200-10000 | nothing shown since 2026-10-14: healthy is always green (the owner's LED scheme, GETTING-STARTED.md); kept so older packages still deploy |
+  | `builtin:led_switch` | pinned | `r` `g` `b` 0-255, `blink_ms` 0 or 200-25500 | `node-<id>/led/on`, a writable bool: the status LED shows the colour in green's place while it is true (M13; purple, yellow and red still win) |
   | `builtin:mc_lender` / `builtin:mc_job` | pinned | M9's borrowed-core job (`slots`; `units`, `samples`, `seed`, `lend`, `start_after_ms`) | `node-<id>/job/mc/pi` |
   | `builtin:fault` | pinned | `panic_after_ms` | nothing: it crashes the node on purpose, to test reverts |
   | `guest:<name>` | portable | section 9 | `act/<actor>/<output>` |

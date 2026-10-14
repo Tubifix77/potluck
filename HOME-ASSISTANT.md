@@ -84,7 +84,8 @@ There are two paths, and you want both:
 
    `system` is your cell's name. Add `"ha-led.json"` to the list in the cluster file's `package.manifests`. While the
    switch is on, the board's status LED shows the colour in `config` (orange here) instead of its usual green; the
-   status colours blue, yellow and red still win, so a board with a link problem shows no change.
+   status colours purple (updating), yellow (searching) and red (a problem) still win, so a board that is not green
+   shows no change ([what the colours mean](GETTING-STARTED.md#3-build-and-flash-potluck-onto-each-board)).
 3. **Say what Home Assistant may see**, in the cluster file. Add `present` to `firmware.modules` -- keep the modules
    already there -- and, if no board is an extender, `wifi`; name your broker; list every resource another system may
    read or write:
