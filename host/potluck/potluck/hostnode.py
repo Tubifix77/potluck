@@ -60,6 +60,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--cluster", default=None,
                     help="the cluster file the package came from: its apps' module descriptors and guests, so a package "
                          "with external actors compiles here exactly as apply compiled it")
+    ap.add_argument("--broker-login", help="M14: a file of two lines, the broker's user name and password, when the PC "
+                                           "presents to a broker that wants a login (never printed)")
     ap.add_argument("--hub", nargs="?", const="auto", default=None,
                     help="through potluck-hub's relay (host:port; default: the running hub's) -- found by itself too")
     a = ap.parse_args(argv)
@@ -109,6 +111,7 @@ def main(argv: list[str] | None = None) -> int:
             host, _, port = str(act.config.get("broker", "")).partition(":")
             broker = (host, int(port or 1883))
     link = mqtt_link.PresenterLink(control, lambda msg: print(f"# {msg}", flush=True)) if broker else None
+    login = mqtt_link.read_login(a.broker_login) if a.broker_login else None
     if relay is not None and not os.environ.get("POTLUCK_NO_HUB"):
         # Behind the hub the node must number its requests below 0x8000; an executable built before that would lose
         # its replies to the hub after ~32k requests to one peer (found by review), so it is refused here.
@@ -184,6 +187,8 @@ def main(argv: list[str] | None = None) -> int:
                 elif d.get("k") == "S":
                     print(f"# presenting: the role is this PC's -- to {d['host']}:{d['port']}"
                           f"{' (TLS)' if d.get('tls') else ''}", flush=True)
+                    if login is not None:
+                        d["user"], d["pass"] = login
                     link.start(d)
                 elif d.get("k") == "X":
                     print("# presenting: the role handed on", flush=True)

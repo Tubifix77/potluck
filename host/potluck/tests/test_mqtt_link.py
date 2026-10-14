@@ -115,6 +115,30 @@ class Transport(unittest.TestCase):
         time.sleep(0.5)
         self.assertNotIn("connected 1", self.ctl)
 
+    def test_a_broker_that_wants_a_login_gets_it_and_refuses_without(self) -> None:
+        self.mod.AUTH = ("potluck", "not-a-real-password")
+        try:
+            self.link.start(dict(self.cfg))  # no login
+            time.sleep(1.0)
+            self.assertNotIn("connected 1", self.ctl)
+            self.link.stop()
+            self.link.start(dict(self.cfg, user="potluck", **{"pass": "not-a-real-password"}))
+            self.assertTrue(wait_for(lambda: "connected 1" in self.ctl))
+        finally:
+            self.mod.AUTH = None
+
+    def test_a_login_file_is_two_lines(self) -> None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            p = os.path.join(tmp, "login.txt")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("user\r\npass word\r\n")
+            self.assertEqual(ml.read_login(p), ("user", "pass word"))
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("only one\n")
+            with self.assertRaises(ValueError):
+                ml.read_login(p)
+
     def test_a_packet_split_anywhere_is_put_back_together(self) -> None:
         pkt = ml.publish_packet("a/b", b"x" * 300)  # a two-byte remaining length
         for cut in range(len(pkt)):

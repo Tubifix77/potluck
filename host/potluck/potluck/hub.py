@@ -1154,6 +1154,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--record-hours", type=int, default=24, help="M16: how many hours of recording to keep")
     ap.add_argument("--replay", help="M16: serve this recording through the API instead of a cell (no port)")
     ap.add_argument("--speed", type=float, default=1.0, help="M16: replay speed")
+    ap.add_argument("--broker-login", help="M17: a file of two lines, the broker's user name and password, for a "
+                                           "broker that wants a login (never printed)")
     ap.add_argument("--no-ha-entities", action="store_true",
                     help="M17: do not publish the hub's own entities (board health, firmware) to the cluster's broker")
     a = ap.parse_args(argv)
@@ -1280,7 +1282,14 @@ def main(argv: list[str] | None = None) -> int:
         # M17: the hub's own entities in Home Assistant, on the presenter's devices (hub_extras.py).
         from .hub_extras import Extras
 
-        extras = Extras(model, lambda m: print(f"[hub] {m}", flush=True))
+        from .mqtt_link import read_login
+
+        try:
+            login = read_login(a.broker_login) if a.broker_login else None
+        except (OSError, ValueError) as exc:
+            print(f"hub: --broker-login: {exc}")
+            return 2
+        extras = Extras(model, lambda m: print(f"[hub] {m}", flush=True), login)
         extras.start()
     st = {"pid": os.getpid(), "port": a.port or a.tcp, "relay": a.relay, "api": a.api, "started": _hub_ms()}
     state_file().parent.mkdir(parents=True, exist_ok=True)

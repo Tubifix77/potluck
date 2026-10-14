@@ -44,11 +44,26 @@ def _packet(h: int, body: bytes) -> bytes:
     return bytes([h]) + _len(len(body)) + body
 
 
-def connect_packet(client_id: str, keepalive: int, will_topic: str, will: bytes) -> bytes:
+def connect_packet(client_id: str, keepalive: int, will_topic: str, will: bytes, user: str | None = None,
+                   password: str | None = None) -> bytes:
     flags = 0x02 | 0x04 | (1 << 3)  # clean session, a will, will QoS 1, not retained
+    if user:
+        flags |= 0x80 | (0x40 if password else 0)  # MQTT 3.1.1: user name, then password, after the will
     body = _s(b"MQTT") + bytes([4, flags]) + struct.pack("!H", keepalive)
     body += _s(client_id.encode()) + _s(will_topic.encode()) + _s(will)
+    if user:
+        body += _s(user.encode()) + (_s(password.encode()) if password else b"")
     return _packet(0x10, body)
+
+
+def read_login(path: str) -> tuple[str, str]:
+    """A broker login from a file of two lines -- user name, then password -- as tools/wifi_set.py reads Wi-Fi. The
+    caller never prints either."""
+    with open(path, encoding="utf-8-sig") as f:
+        lines = [line.rstrip("\r\n") for line in f if line.strip("\r\n")]
+    if len(lines) != 2:
+        raise ValueError(f"{path}: two lines expected (the broker's user name, then its password)")
+    return lines[0], lines[1]
 
 
 def publish_packet(topic: str, payload: bytes) -> bytes:
@@ -143,7 +158,7 @@ class PresenterLink:
             try:
                 sock = self._open(cfg)
                 sock.sendall(connect_packet(cfg["client_id"], int(cfg["keepalive_s"]), cfg["will_topic"],
-                                            base64.b64decode(cfg["will_b64"])))
+                                            base64.b64decode(cfg["will_b64"]), cfg.get("user"), cfg.get("pass")))
                 sock.settimeout(5)
                 buf = b""
                 while (pkt := take_packet(buf)) is None:

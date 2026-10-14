@@ -32,7 +32,7 @@ def _slug(s: str) -> str:
 
 
 class Extras:
-    def __init__(self, model, log=lambda m: None) -> None:
+    def __init__(self, model, log=lambda m: None, login: tuple[str, str] | None = None) -> None:
         self.model = model
         self.log = log
         p = model.cluster.present
@@ -47,6 +47,8 @@ class Extras:
                     "cmd_filter": f"potluck/{self.cell}/hub/+/set",  # nothing is writable here; the filter is required
                     "status_topic": "homeassistant/status",
                     "ca_b64": p.get("tls_ca") or ""}
+        if login is not None:  # --broker-login: a broker that wants a user name and password
+            self.cfg["user"], self.cfg["pass"] = login
         self.lock = threading.Lock()
         self.connected = False
         self.need_configs = False
