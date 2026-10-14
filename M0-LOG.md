@@ -5664,3 +5664,13 @@ passed the self-signed certificate warning and logged in: the hub logged a refus
 OS's add-ons; the bench's Home Assistant runs in Docker, so that line is not testable here. A lesson recorded as a
 standing rule (memory): the session had started the hub on the network while the owner was away; nothing that needs him
 starts now until he says he is ready.
+
+**HOME-ASSISTANT.md, second blind reader (2026-10-14, evening):** verdict "yes, with gaps": path B followable click by
+click, path A guessed at two places -- making the owner's cluster file work on another PC (paths, port, apps one cannot
+build) and composing the LED fragment from a one-line pointer. Fixed in the guide: the four terms defined first
+(cluster file, module, package/manifest, extender), the cluster file's paths to change, the LED as a whole fragment
+added to `package.manifests` (and what "on" shows: a colour that blue, yellow and red still override), "keep the
+modules already there", a resource exists only if an actor produces it (`apply` does not check `outside` against
+producers), 2.4 GHz and the cell following the router's channel, the console commands written out, the certificate's
+directory and address, who provides what in path B, a YAML automation, and HACS's empty list just after its own setup
+(the owner met it). HUB-API's title no longer calls it a contract written before either side was built.

@@ -1,4 +1,4 @@
-# The hub's API, version 1 (M14, M16) -- a contract, written before either side is built
+# The hub's API, version 1 (M14, M16-M18)
 
 `potluck-hub` (M14) holds the cable to the cell and keeps **one model** of it. Everything else reads that model through
 this API: the dashboard (M16), Home Assistant's integration (M17), the owner's own programs (M18). It is served on the
