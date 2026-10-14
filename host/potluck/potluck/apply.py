@@ -372,9 +372,11 @@ def load_cluster(path: str) -> Cluster:
         if "present" not in board_modules:
             raise ApplyError("present: the cell presents itself only with the 'present' module in the firmware -- "
                              "add it to firmware.modules")
-        extra_keys = set(present) - {"broker", "keepalive_s", "period_ms", "tls_ca"}
+        extra_keys = set(present) - {"broker", "keepalive_s", "period_ms", "tls_ca", "hub"}
         if extra_keys:
             raise ApplyError(f"present: unknown key(s) {sorted(extra_keys)}")
+        if "hub" in present and not isinstance(present["hub"], bool):
+            raise ApplyError("present.hub: true (the PC's placement node presents while it is in the cell) or false")
         if present.get("tls_ca") is not None:
             # TLS to the broker: the file of the broker's CA certificate (PEM or DER), relative to this file. Its DER
             # goes into the manifest, so the owner's signature pins it; it is public, never a secret.

@@ -15,11 +15,18 @@ The package is the one the boards run: its signature is checked against the CA, 
 here exactly as for a deploy. Only one program may hold the port: not potctl or potluck-agent at the
 same time -- unless potluck-hub holds it (M14): then this connects to the hub's relay instead (found by itself, or
 --hub [host:port]), and the hub carries its frames unchanged while potctl, the agent and apply run beside it.
+
+THE PRESENTING ROLE (M14, the hub presenting in the cell's place). When the cluster file says `present.hub`, the
+package lists this node for the cell's presenting role, first by gravity, and the reconciler gives it the role while the
+PC is in the cell. pot_hostnode then builds what is published (host/native/host_present.hpp) and this carries it to
+the broker (potluck.mqtt_link); this also tells the node whether the PC can reach the broker -- HELLO's connected bit,
+which the role needs -- by trying to connect every 5 s.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import struct
@@ -30,6 +37,7 @@ import threading
 import time
 
 from . import deploy as dp
+from . import mqtt_link
 from . import serial_framing as sf
 from .manifest import parse
 from .signing import load_package, read_key, verify_package
@@ -80,8 +88,27 @@ def main(argv: list[str] | None = None) -> int:
         f.write(img)
         img_path = f.name
 
-    child = subprocess.Popen([os.path.abspath(a.exe), "--identity", a.identity, "--image", img_path],
+    child = subprocess.Popen([os.path.abspath(a.exe), "--identity", a.identity, "--image", img_path,
+                              "--system", m.system],
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+    stdin_lock = threading.Lock()  # the cable's frames and the presenter's control records share the node's stdin
+
+    def control(text: str) -> None:
+        b = text.encode()
+        try:
+            with stdin_lock:
+                child.stdin.write(struct.pack("<H", 0x8000 | len(b)) + b)
+                child.stdin.flush()
+        except OSError:
+            pass
+
+    # M14: the presenting role, if the package lists this node for it.
+    broker = None
+    for act in m.actors:
+        if act.module == "builtin:present" and act.config.get("hub"):
+            host, _, port = str(act.config.get("broker", "")).partition(":")
+            broker = (host, int(port or 1883))
+    link = mqtt_link.PresenterLink(control, lambda msg: print(f"# {msg}", flush=True)) if broker else None
     if relay is not None and not os.environ.get("POTLUCK_NO_HUB"):
         # Behind the hub the node must number its requests below 0x8000; an executable built before that would lose
         # its replies to the hub after ~32k requests to one peer (found by review), so it is refused here.
@@ -119,8 +146,9 @@ def main(argv: list[str] | None = None) -> int:
             for frame in r.feed(chunk):
                 counts["cable_rx"] += 1
                 try:
-                    child.stdin.write(struct.pack("<H", len(frame)) + frame)
-                    child.stdin.flush()
+                    with stdin_lock:
+                        child.stdin.write(struct.pack("<H", len(frame)) + frame)
+                        child.stdin.flush()
                 except OSError:
                     stop.set()
                     return
@@ -142,6 +170,25 @@ def main(argv: list[str] | None = None) -> int:
             line = raw.decode("utf-8", "replace").strip()
             if not line:
                 continue
+            if line.startswith('{"t":"mqtt"'):
+                # M14: the presenting role's transport (host_present.hpp). Publications are not printed: one every
+                # few milliseconds while presenting.
+                try:
+                    d = json.loads(line)
+                except ValueError:
+                    continue
+                if link is None:
+                    continue
+                if d.get("k") == "P":
+                    link.publish(d["topic"], base64.b64decode(d["b64"]))
+                elif d.get("k") == "S":
+                    print(f"# presenting: the role is this PC's -- to {d['host']}:{d['port']}"
+                          f"{' (TLS)' if d.get('tls') else ''}", flush=True)
+                    link.start(d)
+                elif d.get("k") == "X":
+                    print("# presenting: the role handed on", flush=True)
+                    link.stop()
+                continue
             if out is not None and line.startswith("{"):
                 try:
                     d = json.loads(line)
@@ -155,7 +202,15 @@ def main(argv: list[str] | None = None) -> int:
                 print(line, flush=True)
         stop.set()
 
-    threads = [threading.Thread(target=f, daemon=True) for f in (cable_to_node, node_to_cable, stats)]
+    def broker_probe() -> None:
+        # HELLO's connected bit for this node: the PC can reach the broker. Re-sent every pass, so a restarted node
+        # (or one that missed it) has it within 5 s.
+        while not stop.is_set():
+            control("net 1" if mqtt_link.reachable(*broker) else "net 0")
+            stop.wait(5.0)
+
+    funcs = [cable_to_node, node_to_cable, stats] + ([broker_probe] if broker else [])
+    threads = [threading.Thread(target=f, daemon=True) for f in funcs]
     for t in threads:
         t.start()
     end = time.time() + a.duration if a.duration > 0 else None
@@ -165,6 +220,9 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         pass
     stop.set()
+    if link is not None:
+        link.stop()  # its own availability offline, a clean DISCONNECT -- as a board that hands the role on
+        time.sleep(0.3)
     child.terminate()
     try:
         child.wait(timeout=3)

@@ -76,7 +76,8 @@ target_link_libraries(pot_tests PRIVATE pot_portable)
 target_include_directories(pot_tests PRIVATE "${POT_FIRMWARE}/../examples/apps/pot_hello/include")
 
 # M10: the PC as a placement node -- the boards' own Node, reconciler and actors, built for the host.
-add_executable(pot_hostnode "${CMAKE_CURRENT_SOURCE_DIR}/../host/native/pot_hostnode.cpp")
+add_executable(pot_hostnode "${CMAKE_CURRENT_SOURCE_DIR}/../host/native/pot_hostnode.cpp"
+                            "${CMAKE_CURRENT_SOURCE_DIR}/../host/native/host_present.cpp")
 target_link_libraries(pot_hostnode PRIVATE pot_portable)
 target_include_directories(pot_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 

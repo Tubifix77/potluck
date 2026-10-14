@@ -120,6 +120,30 @@ class HostPlacement(unittest.TestCase):
             m = parse(self.with_host(placement))
             self.assertNotIn(0x00FE, [n for n, _ in rc.eligible(m, m.actors[0])])
 
+    def present(self, hub: bool | None, host: bool = True) -> dict:
+        cfg = {"broker": "192.168.0.77:1883", "keepalive_s": 10, "period_ms": 2000}
+        if hub is not None:
+            cfg["hub"] = hub
+        d = doc({"name": "present", "module": "builtin:present", "latency_class": 4, "config": cfg})
+        if host:
+            d["nodes"].append({"node_id": 0x00FE, "label": "pc", "kind": "host", "placement": True})
+        return d
+
+    def test_the_hub_presents_only_when_the_cluster_says_so_and_then_first(self):
+        # M14: present.hub lists the PC's node for the presenting role, first by gravity; without it the PC never is.
+        m = parse(self.present(True))
+        self.assertEqual(rc.eligible(m, m.actors[0])[-1], (0x00FE, 255))
+        self.assertEqual(rc.plan(m)[0].order[0], 0x00FE)
+        for hub in (None, False):
+            m = parse(self.present(hub))
+            self.assertNotIn(0x00FE, [n for n, _ in rc.eligible(m, m.actors[0])])
+            dp.compile_image(m, 1)  # the hub key changes who is eligible, nothing on the wire
+
+    def test_the_hub_presenting_with_no_placement_host_is_refused(self):
+        m = parse(self.present(True, host=False))
+        with self.assertRaisesRegex(dp.DeployError, "needs a placement host"):
+            dp.compile_image(m, 1)
+
     def test_placement_is_for_hosts_only(self):
         from potluck.manifest import ManifestErrors
         d = self.with_host(True)

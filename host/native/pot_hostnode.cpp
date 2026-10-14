@@ -9,7 +9,10 @@
 // object per line.
 //
 //   pot_hostnode --keygen <identity file>              make an identity (prints its public key)
-//   pot_hostnode --identity <file> --image <file> [--node 0x00fe]
+//   pot_hostnode --identity <file> --image <file> [--node 0x00fe] [--system <name>]
+//
+// M14: stdin also carries control records from potluck.hostnode -- a length with bit 15 set, then text -- for the
+// presenting role when the PC holds it (host_present.hpp): "net 1|0", "connected 1|0", "discovery", "cmd ...".
 //
 // The identity file is text: "seed <64 hex>", then, once enrolled, "ca <64 hex>" and "cert <hex>". The
 // image is a compiled deploy image (potluck.deploy.compile_image), the same bytes a board stores.
@@ -41,6 +44,7 @@
 #include "pot/reconcile.hpp"
 #include "pot/ticker.hpp"
 #include "pot/trust.hpp"
+#include "host_present.hpp"
 
 using namespace pot;
 
@@ -76,17 +80,23 @@ int32_t hal_send(void*, const uint8_t*, const uint8_t* data, size_t len) {
 // Frames from stdin, queued by a reader thread and handed to the node on the main thread only.
 std::mutex g_in_mu;
 std::deque<std::vector<uint8_t>> g_in;
+std::deque<std::string> g_ctl;  // M14: control records (host_present.hpp), the same lock
 std::atomic<bool> g_eof{false};
 
 void reader() {
     for (;;) {
         uint8_t hdr[2];
         if (std::fread(hdr, 1, 2, stdin) != 2) break;
-        const size_t len = static_cast<size_t>(hdr[0]) | (static_cast<size_t>(hdr[1]) << 8);
+        const size_t raw = static_cast<size_t>(hdr[0]) | (static_cast<size_t>(hdr[1]) << 8);
+        const size_t len = raw & 0x7FFF;  // frames are far shorter; bit 15 marks a control record
         std::vector<uint8_t> f(len);
         if (len > 0 && std::fread(f.data(), 1, len, stdin) != len) break;
         std::lock_guard<std::mutex> lk(g_in_mu);
-        g_in.push_back(std::move(f));
+        if (raw & 0x8000) {
+            g_ctl.emplace_back(f.begin(), f.end());
+        } else {
+            g_in.push_back(std::move(f));
+        }
     }
     g_eof = true;
 }
@@ -146,6 +156,29 @@ const char* state_str(PeerState s) {
     }
 }
 
+std::vector<uint8_t> unb64(const std::string& s) {
+    std::vector<uint8_t> out;
+    uint32_t v = 0;
+    int bits = 0;
+    for (char ch : s) {
+        int d = (ch >= 'A' && ch <= 'Z') ? ch - 'A' : (ch >= 'a' && ch <= 'z') ? ch - 'a' + 26
+              : (ch >= '0' && ch <= '9') ? ch - '0' + 52 : ch == '+' ? 62 : ch == '/' ? 63 : -1;
+        if (d < 0) continue;
+        v = (v << 6) | static_cast<uint32_t>(d);
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            out.push_back(static_cast<uint8_t>((v >> bits) & 0xFF));
+        }
+    }
+    return out;
+}
+
+void emit_line(const char* line) {
+    std::fprintf(stderr, "%s\n", line);
+    std::fflush(stderr);
+}
+
 int keygen(const char* path) {
     std::random_device rd;
     uint8_t seed[kEdSeedLen];
@@ -173,6 +206,7 @@ int main(int argc, char** argv) {
     const char* identity_path = nullptr;
     const char* image_path = nullptr;
     uint16_t node_id = 0x00FE;
+    const char* system = "lab";
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--keygen" && i + 1 < argc) return keygen(argv[i + 1]);
@@ -183,6 +217,7 @@ int main(int argc, char** argv) {
         if (a == "--identity" && i + 1 < argc) identity_path = argv[++i];
         else if (a == "--image" && i + 1 < argc) image_path = argv[++i];
         else if (a == "--node" && i + 1 < argc) node_id = static_cast<uint16_t>(std::strtoul(argv[++i], nullptr, 0));
+        else if (a == "--system" && i + 1 < argc) system = argv[++i];
     }
     if (identity_path == nullptr || image_path == nullptr) {
         std::fprintf(stderr, "usage: pot_hostnode --identity <file> --image <file> [--node 0x00fe] | --keygen <file>\n");
@@ -229,12 +264,13 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "image refused: %s\n", why);
         return 1;
     }
-    static const ActorKind kKinds[] = {kTickerKind};
+    // M14: the presenting role too, when the package lists this node for it (present.hub in the cluster file).
+    static const ActorKind kKinds[] = {kTickerKind, hostpresent::kHostPresentKind};
     static PortableSpec specs[kMaxPortable];
     size_t n_specs = 0;
     // M14: only the actors this host is eligible for -- a cell's package also carries board-only ones (an app's
     // external actors, the presenter) whose types a PC build does not have.
-    if (!collect_portable(img, kKinds, 1, specs, kMaxPortable, n_specs, &why, node_id)) {
+    if (!collect_portable(img, kKinds, 2, specs, kMaxPortable, n_specs, &why, node_id)) {
         std::fprintf(stderr, "image refused: %s\n", why);
         return 1;
     }
@@ -269,6 +305,18 @@ int main(int argc, char** argv) {
             return rec.on_cast(from, path, args, len);
         },
         nullptr);
+    static char cell_id[9] = "00000000";
+    {
+        uint8_t fp[kCaFpLen];
+        ca_fingerprint(ca, fp);  // the cell's id, as every board computes it (m0_main's cell_id)
+        std::snprintf(cell_id, sizeof(cell_id), "%02x%02x%02x%02x", fp[0], fp[1], fp[2], fp[3]);
+    }
+    hostpresent::Services ps;
+    ps.img = &img;
+    ps.cell_id = cell_id;
+    ps.system = system;
+    ps.emit = &emit_line;
+    hostpresent::set_services(ps);
     node.start();
     rec.start(now_ms());
     std::fprintf(stderr, "{\"t\":\"host_boot\",\"node\":%u,\"epoch\":%u,\"portable\":%u,\"pub\":\"%s\"}\n",
@@ -290,6 +338,26 @@ int main(int argc, char** argv) {
             }
             ++g_rx_frames;
             node.on_rx(kCableMac, f.data(), f.size(), now_us(), 0);
+        }
+        for (;;) {  // M14: control records from potluck.hostnode, on this thread like the frames
+            std::string c;
+            {
+                std::lock_guard<std::mutex> lk(g_in_mu);
+                if (g_ctl.empty()) break;
+                c = std::move(g_ctl.front());
+                g_ctl.pop_front();
+            }
+            if (c == "net 1" || c == "net 0") {
+                node.set_connected(c == "net 1");
+            } else if (c == "connected 1" || c == "connected 0") {
+                hostpresent::on_connected(c == "connected 1");
+            } else if (c == "discovery") {
+                hostpresent::on_discovery();
+            } else if (c.compare(0, 4, "cmd ") == 0 && c.size() > 13) {
+                const uint32_t hash = static_cast<uint32_t>(std::strtoul(c.substr(4, 8).c_str(), nullptr, 16));
+                const std::vector<uint8_t> p = unb64(c.substr(13));
+                hostpresent::on_command(hash, reinterpret_cast<const char*>(p.data()), p.size());
+            }
         }
         const uint32_t t = now_ms();
         node.tick(t);

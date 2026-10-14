@@ -91,7 +91,8 @@ def eligible(m: Manifest, a: ActorSpec) -> list[tuple[int, int]]:
     for n in m.nodes:
         if n.kind == "host" and not n.placement:
             continue  # M8: a host that only offers named services; M10's placement hosts opt in
-        if n.kind == "host" and a.module not in HOST_MODULES:
+        hub_presents = a.module == "builtin:present" and bool(a.config.get("hub"))
+        if n.kind == "host" and a.module not in HOST_MODULES and not hub_presents:
             # A placement host runs only what pot_hostnode has a row for. M7 already kept guests (the boards'
             # sandbox) off it; M14 found the rest on the bench: an app's external actors and the presenter listed the
             # PC, and pot_hostnode refused the whole image (M0-LOG session 42).
@@ -102,6 +103,10 @@ def eligible(m: Manifest, a: ActorSpec) -> list[tuple[int, int]]:
             continue
         owned = {r.path for r in n.owns}
         gravity = 1 + sum(1 for p in a.needs if m.bindings.get(p, p) in owned)
+        if hub_presents and n.kind == "host":
+            # M14: the hub presents in the cell's place -- the PC's node first whenever it is in the cell; the boards
+            # take the role back by the same ranking when it goes (host_present.hpp).
+            gravity = 255
         out.append((n.node_id, min(gravity, 255)))
     if len(out) > MAX_ELIGIBLE:
         # M12: a cell bigger than a node image's list. The actor gets the MAX_ELIGIBLE nodes the

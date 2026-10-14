@@ -256,7 +256,7 @@ def _present_config(m: Manifest, a, where: str) -> bytes:
     """M13: the portable header (every board eligible; the reconciler places it only on a connected one), then
     broker a.b.c.d, port, keep-alive, flags. With `tls_ca` (base64 DER, or PEM) the presenter connects with TLS and
     verifies the broker against that CA, which the image carries (version 4)."""
-    extra = set(a.config) - {"broker", "keepalive_s", "period_ms", "tls_ca"}
+    extra = set(a.config) - {"broker", "keepalive_s", "period_ms", "tls_ca", "hub"}  # hub: who is eligible only
     if extra:
         raise DeployError(f"{where}: unknown present config key(s) {sorted(extra)}")
     broker = str(a.config.get("broker", ""))
@@ -273,6 +273,12 @@ def _present_config(m: Manifest, a, where: str) -> bytes:
     keepalive = int(a.config.get("keepalive_s", 10))
     if not 5 <= keepalive <= 120:
         raise DeployError(f"{where}: keepalive_s={keepalive} is outside 5..120")
+    if a.config.get("hub"):
+        from . import reconcile as rc
+
+        if not any(m.node(n) is not None and m.node(n).kind == "host" for n, _ in rc.eligible(m, a)):
+            raise DeployError(f"{where}: hub: true needs a placement host in the cell (a manifest node with kind "
+                              f"'host' and placement: true) -- the PC's node is what presents")
     hdr = _portable_header(m, a, int(a.config.get("period_ms", 2000)), where)
     flags = PRESENT_TLS if a.config.get("tls_ca") else 0
     own = struct.pack("<4BHBB", *ip, port_n, keepalive, flags)
