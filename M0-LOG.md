@@ -5655,3 +5655,12 @@ wait 50,967 times; the dashboard's stream got a model every 2.0 s throughout, an
 a second against 16.2 without it. A writable resource may name its writers (the hub's rule; the boards cannot tell an
 MQTT write from the hub's). Node-RED next by published evidence: 13.0 % of Home Assistant installations that report
 add-ons, 17.3 % of ioBroker's (ledger).
+
+**M16's phone line, on the bench (2026-10-14, evening):** the owner made a login (`python -m potluck.hubauth add tue
+--right look`, his password typed by him -- the first was under 10 characters and refused), the hub ran with `--listen
+0.0.0.0:8443` and the certificate for 192.168.0.7, and his phone on the house Wi-Fi opened `https://192.168.0.7:8443/`,
+passed the self-signed certificate warning and logged in: the hub logged a refused attempt and then `login ok` from
+192.168.0.88; the first screen read "All is well". Ingress (the dashboard inside Home Assistant) needs Home Assistant
+OS's add-ons; the bench's Home Assistant runs in Docker, so that line is not testable here. A lesson recorded as a
+standing rule (memory): the session had started the hub on the network while the owner was away; nothing that needs him
+starts now until he says he is ready.
