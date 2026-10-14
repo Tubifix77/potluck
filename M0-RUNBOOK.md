@@ -765,7 +765,8 @@ from `host/potluck/`). The presenting board prints `{"t":"present",...}` every s
 messages published, outside writes applied, sent and refused, and its internal heap (free, largest block, lowest).
 
 **M13.1: the pocket page.** Add `"pocket"` to `firmware.modules`. On each board that should answer a phone, the owner
-types `POT! pocket ap <name> <password>` (WPA2, 8-63 characters; it prints only the result) and resets it: the board
+types `POT! pocket ap <name> <password>` (WPA2, 8-63 characters; it prints only the result) and resets it -- or runs
+`<IDF python> tools/pocket_set.py <port> <file>` with the two in a file, which does both and prints neither: the board
 then makes that access point on the cell's channel, beside the station ESP-NOW rides on, and serves
 `http://192.168.4.1/` (the page, refreshing itself every 5 s) and `/status.json`. Every other method is answered 405,
 every other path 404. Without a name and password there is no access point; on an extender whose hotspot is up the
