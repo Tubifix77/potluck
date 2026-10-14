@@ -237,6 +237,8 @@ ESP-IDF's own `idf.py -p COM7 monitor` works too, but resets the board when it o
 
 ## Where next
 
+- **Your boards in Home Assistant:** [HOME-ASSISTANT.md](HOME-ASSISTANT.md) -- with no PC through MQTT, and the
+  hub's view through the Potluck integration. Any other system: [INTEGRATIONS.md](INTEGRATIONS.md).
 - **Make an app:** [DEVELOPING-APPS.md](DEVELOPING-APPS.md) -- your own actors, compiled in or sandboxed, tested
   on the PC first.
 - **What your apps can rely on, and what they cannot:** the README's
