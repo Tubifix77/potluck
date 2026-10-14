@@ -143,3 +143,35 @@ tab works on it unchanged; the model then carries `hub.replay` = `{"file", "from
 "paused": <bool>}` moves it (any login; it changes nothing in a cell). Writes are `403`: there is no cell behind it.
 The recording is the model the dashboard showed, not the radio's frames -- those are section 7.6's capture, which
 replays the cell byte for byte.
+
+## Announced on the network, and paired (M17)
+
+With `--listen`, the hub announces itself by multicast DNS (RFC 6762/6763), so Home Assistant finds it with nothing
+typed: service type `_potluck._tcp.local.`, instance `Potluck <system> <cell id>`, port the `--listen` port, and TXT
+records `cell=<cell id>` (8 hex digits), `system=<name>`, `api=1`, `tls=1`, `fp=<SHA-256 of the hub's certificate,
+DER, 64 lowercase hex digits>`. A client checks the certificate it is served against `fp` -- the hub's certificate is
+self-signed, so the announcement is what it is checked against -- and the owner's approval below is what makes it
+trusted.
+
+Pairing gives a program a token, approved by the owner on the PC, with nothing typed on the program's side:
+
+- `POST /api/pair` (on `--listen`, no session needed, with `X-Potluck-Request: 1`) `{"name": "Home Assistant",
+  "right": "look"}` -> `202 {"pair_id": "<id>", "expires_in_s": 300}`. At most 4 pending requests; more are `429`.
+- `GET /api/pair/<pair_id>` -> `{"state": "pending"}`, then `{"state": "approved", "name", "right", "token"}` (the
+  token is shown once), or `{"state": "denied"}`; `404` once it expired or was fetched.
+- The owner sees each pending request in the model (`hub.pairing`: `[{"pair_id", "name", "right", "from", "at"}]`) and
+  on the dashboard's hub card, and answers on the PC: `POST /api/pairing {"pair_id": "<id>", "approve": true|false}` --
+  on 127.0.0.1 only, never on `--listen`.
+- A paired program sends `Authorization: Bearer <token>` instead of a session; the token carries the right it was
+  approved with (`look` or `write`; never deploy). Tokens are kept hashed (SHA-256) in the logins file and listed and
+  removed with `python -m potluck.hubauth tokens` / `python -m potluck.hubauth revoke <name>`.
+
+## The hub's own entities in Home Assistant (M17)
+
+When the cluster file names a broker (`present`) the resident hub also publishes, by MQTT discovery and on the same
+devices the cell's presenting role creates (identifiers `potluck_<cell>_<board>` and `potluck_<cell>_cell`), what only
+it knows: each board's state (`alive`/`asleep`/`dead`), internal RAM free, uptime, signal strength and worst heartbeat
+delivery as diagnostic sensors, and its firmware as an update entity (installed = the board's, latest = the newest in
+the cell; no command topic, so Home Assistant installs nothing); and on the cell's device, apps working and a problem
+binary sensor per app. They are available while the hub is (`potluck/<cell>/hub`, `online`/`offline`, its will
+`offline`): with the PC off they go unavailable and the boards' resources stay live through the cell's own presenter.
