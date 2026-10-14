@@ -1,0 +1,86 @@
+<script type="text/javascript">
+  RED.nodes.registerType('potluck-in', {
+    category: 'network',
+    color: '#E9C46A',
+    defaults: {
+      name: { value: '' },
+      hub: { value: '', type: 'potluck-hub', required: true },
+      paths: { value: '' },
+      initial: { value: true },
+      boards: { value: false },
+      events: { value: false },
+    },
+    inputs: 0,
+    outputs: 1,
+    icon: 'bridge.svg',
+    label: function () {
+      return this.name || (this.paths ? 'potluck ' + this.paths.split(/[\n,]/)[0] : 'potluck in');
+    },
+    paletteLabel: 'potluck in',
+  });
+</script>
+
+<script type="text/html" data-template-name="potluck-in">
+  <div class="form-row">
+    <label for="node-input-hub"><i class="fa fa-server"></i> Hub</label>
+    <input type="text" id="node-input-hub">
+  </div>
+  <div class="form-row">
+    <label for="node-input-paths"><i class="fa fa-filter"></i> Resources</label>
+    <input type="text" id="node-input-paths" placeholder="all; or e.g. node-7368/*, act/rf_fusion/out">
+  </div>
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-initial" style="display: inline-block; width: auto; vertical-align: top;">
+    <label for="node-input-initial" style="width: auto;">send every current value when connected</label>
+  </div>
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-boards" style="display: inline-block; width: auto; vertical-align: top;">
+    <label for="node-input-boards" style="width: auto;">also send board state changes (alive, asleep, dead)</label>
+  </div>
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-input-events" style="display: inline-block; width: auto; vertical-align: top;">
+    <label for="node-input-events" style="width: auto;">also send the cell's events</label>
+  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name">
+  </div>
+</script>
+
+<script type="text/html" data-help-name="potluck-in">
+  <p>Sends a message whenever something in a Potluck cell changes: a resource's value or quality, a board's state, or
+  (optionally) an event.</p>
+  <h3>Outputs</h3>
+  <p>A <b>resource</b> message (always on):</p>
+  <dl class="message-properties">
+    <dt>topic <span class="property-type">string</span></dt>
+    <dd>the resource's path, e.g. <code>potluck://lab/node-7368/hw/die_temp</code></dd>
+    <dt>payload <span class="property-type">number | boolean | null</span></dt>
+    <dd>the value. <b>null</b> means there is no value to show: the board that owns it is dead, its sensor is broken,
+    it has never published, or the hub cannot be reached. Never treat null as zero or as "off".</dd>
+    <dt>potluck.quality <span class="property-type">string</span></dt>
+    <dd><code>GOOD</code> (fresh), <code>STALE</code> (older than it should be; the value is still sent),
+    <code>UNAVAILABLE</code>, <code>NO_DATA</code> or <code>FAULTY</code> (no value)</dd>
+    <dt>potluck.unit, potluck.age_ms</dt>
+    <dd>the value's unit (e.g. <code>C</code>) and how old it was, in milliseconds, when the hub last read the cell</dd>
+    <dt>potluck.owner, potluck.board</dt>
+    <dd>the board that owns the resource (its node id), and that board's <code>{node, label, state, since_at}</code></dd>
+  </dl>
+  <p>A <b>board</b> message (if chosen): <code>topic</code> <code>potluck://&lt;system&gt;/node-&lt;id&gt;</code>,
+  <code>payload</code> <code>alive</code> | <code>asleep</code> | <code>dead</code> | <code>unknown</code>,
+  <code>potluck.kind</code> = <code>board</code>, <code>potluck.previous</code>.</p>
+  <p>An <b>event</b> message (if chosen): <code>topic</code> <code>potluck://&lt;system&gt;/event/&lt;kind&gt;</code>
+  (e.g. <code>board_dead</code>, <code>outside_write</code>), <code>payload</code> the event's detail,
+  <code>potluck.seq</code>, <code>potluck.at</code>, <code>potluck.board</code>.</p>
+  <p>Tell the three apart with a <b>switch</b> node on <code>msg.potluck.kind</code>.</p>
+  <h3>Details</h3>
+  <p><b>Resources</b>: a comma-separated list of paths or names, <code>*</code> matching anything; empty is every
+  resource the cell exposes to other systems. Only exposed resources are sent unless the hub connection says
+  otherwise.</p>
+  <p>The node follows the hub's live stream. If the stream stops, it reads the hub every 2 s and tries the stream
+  again every 15 s; if the hub cannot be reached for 10 s, every resource is sent once more with payload null and
+  quality <code>UNAVAILABLE</code>, so no flow keeps acting on an old number.</p>
+</script>

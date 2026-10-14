@@ -1,0 +1,161 @@
+<script type="text/javascript">
+  RED.nodes.registerType('potluck-hub', {
+    category: 'config',
+    defaults: {
+      name: { value: '' },
+      url: { value: 'http://127.0.0.1:8470/', required: true, validate: RED.validators.regex(/^https?:\/\/.+/) },
+      clientName: { value: 'Node-RED', required: true },
+      fingerprint: { value: '', validate: function (v) { return !v || /^[0-9a-fA-F:\s]{64,95}$/.test(v); } },
+      right: { value: 'look' },
+      includeUnexposed: { value: false },
+      numberType: { value: 'auto' },
+    },
+    credentials: {
+      token: { type: 'password' },
+    },
+    label: function () {
+      return this.name || this.url || 'potluck hub';
+    },
+    oneditprepare: function () {
+      var node = this;
+      var $status = $('#potluck-hub-status');
+      function say(text, bad) { $status.text(text).css('color', bad ? '#c00' : ''); }
+      function toggleTls() {
+        var tls = /^https:/i.test($('#node-config-input-url').val());
+        $('.potluck-hub-tls').toggle(tls);
+      }
+      $('#node-config-input-url').on('change keyup', toggleTls);
+      toggleTls();
+
+      $('#potluck-hub-find').on('click', function () {
+        say('looking for hubs on the network (3 s)...');
+        $.ajax({ url: 'potluck-hub/discover', type: 'POST', contentType: 'application/json', data: '{}' })
+          .done(function (r) {
+            var $list = $('#potluck-hub-found').empty();
+            if (!r.hubs || !r.hubs.length) {
+              say('no hub answered. A hub is announced only when started with --listen; on its own PC use http://127.0.0.1:8470/');
+              return;
+            }
+            say(r.hubs.length + ' hub(s) found: pick one');
+            r.hubs.forEach(function (h) {
+              $('<li>').append($('<a href="#">').text(h.instance + '  (' + h.url + ', cell ' + h.cell + ')').on('click', function (e) {
+                e.preventDefault();
+                $('#node-config-input-url').val(h.url).trigger('change');
+                $('#node-config-input-fingerprint').val(h.fp);
+                if (!$('#node-config-input-name').val()) $('#node-config-input-name').val('Potluck ' + h.system + ' ' + h.cell);
+                say('chosen: ' + h.instance + '. Now pair, then Deploy.');
+              })).appendTo($list);
+            });
+          })
+          .fail(function (x) { say('could not search: ' + (x.responseJSON && x.responseJSON.error || x.statusText), true); });
+      });
+
+      $('#potluck-hub-pair').on('click', function () {
+        var body = {
+          url: $('#node-config-input-url').val(),
+          fingerprint: $('#node-config-input-fingerprint').val(),
+          name: $('#node-config-input-clientName').val() || 'Node-RED',
+          right: $('#node-config-input-right').val(),
+        };
+        say('asking the hub...');
+        $.ajax({ url: 'potluck-hub/pair', type: 'POST', contentType: 'application/json', data: JSON.stringify(body) })
+          .done(function (r) {
+            var poll = function () {
+              $.getJSON('potluck-hub/pair/' + encodeURIComponent(r.key)).done(function (p) {
+                if (p.state === 'approved') {
+                  $('#node-config-input-token').val(p.token);
+                  say('approved with the right "' + p.right + '". Press Update, then Deploy, to keep the token.');
+                } else if (p.state === 'failed') {
+                  say('not paired: ' + p.error, true);
+                } else {
+                  if (p.state === 'pending') say('waiting: on the hub\'s PC, open its dashboard and click Allow for "' + body.name + '"');
+                  setTimeout(poll, 2000);
+                }
+              }).fail(function () { say('the pairing request was lost; try again', true); });
+            };
+            poll();
+          })
+          .fail(function (x) { say('could not ask: ' + x.statusText, true); });
+      });
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="potluck-hub">
+  <div class="form-row">
+    <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-config-input-name" placeholder="Potluck">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-url"><i class="fa fa-globe"></i> Hub URL</label>
+    <input type="text" id="node-config-input-url" placeholder="http://127.0.0.1:8470/">
+  </div>
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <button type="button" class="red-ui-button" id="potluck-hub-find"><i class="fa fa-search"></i> Find hubs on the network</button>
+    <ul id="potluck-hub-found" style="margin: 6px 0 0 104px;"></ul>
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-clientName"><i class="fa fa-id-badge"></i> This program</label>
+    <input type="text" id="node-config-input-clientName" placeholder="Node-RED">
+  </div>
+  <div class="form-row potluck-hub-tls">
+    <label for="node-config-input-fingerprint"><i class="fa fa-lock"></i> Certificate</label>
+    <input type="text" id="node-config-input-fingerprint" placeholder="SHA-256 fingerprint (fp= in the announcement)">
+  </div>
+  <div class="form-row potluck-hub-tls">
+    <label for="node-config-input-right"><i class="fa fa-key"></i> Ask for</label>
+    <select id="node-config-input-right" style="width: 40%;">
+      <option value="look">look (read only)</option>
+      <option value="write">write (read, and write what the cell allows)</option>
+    </select>
+    <button type="button" class="red-ui-button" id="potluck-hub-pair"><i class="fa fa-handshake-o"></i> Pair</button>
+  </div>
+  <div class="form-row potluck-hub-tls">
+    <label for="node-config-input-token"><i class="fa fa-ticket"></i> Token</label>
+    <input type="password" id="node-config-input-token" placeholder="filled in by Pair">
+  </div>
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <span id="potluck-hub-status"></span>
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-numberType"><i class="fa fa-hashtag"></i> Numbers</label>
+    <select id="node-config-input-numberType" style="width: 70%;">
+      <option value="auto">as they are (20 is a whole number, 20.5 a fraction)</option>
+      <option value="float">always with a fraction (20 is sent as 20.0)</option>
+      <option value="int">whole numbers only</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <input type="checkbox" id="node-config-input-includeUnexposed" style="display: inline-block; width: auto; vertical-align: top;">
+    <label for="node-config-input-includeUnexposed" style="width: auto;">also read resources the cell does not expose to other systems</label>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="potluck-hub">
+  <p>A connection to a Potluck hub: the program on a PC that keeps one picture of a Potluck cell (a group of small
+  boards working as one) and serves it over HTTP.</p>
+  <h3>Properties</h3>
+  <dl class="message-properties">
+    <dt>Hub URL <span class="property-type">string</span></dt>
+    <dd><code>http://127.0.0.1:8470/</code> when Node-RED runs on the hub's own PC: no login is needed there. From
+    another computer the hub must be started with <code>--listen</code>; it then speaks <code>https://</code> and
+    announces itself on the network, so <b>Find hubs</b> fills in the URL and the certificate.</dd>
+    <dt>This program <span class="property-type">string</span></dt>
+    <dd>The name the hub knows this Node-RED by: on its dashboard, in its rate limits and in a resource's list of
+    allowed writers. Pair with the same name.</dd>
+    <dt>Certificate <span class="property-type">string</span></dt>
+    <dd>The hub's certificate fingerprint (SHA-256, 64 hex digits). The hub signs its own certificate, so this is
+    what it is checked against; a hub that shows another certificate is refused before anything is sent.</dd>
+    <dt>Ask for / Pair / Token</dt>
+    <dd><b>Pair</b> asks the hub for a token; on the hub's PC the owner clicks <b>Allow</b> on the dashboard, and the
+    token appears here. Ask for <i>write</i> only if a <code>potluck-out</code> node will use this hub. Deploy to keep it.</dd>
+    <dt>Numbers</dt>
+    <dd>A board takes a whole number and a number with a fraction as different types. If a resource is a fraction
+    (a temperature setpoint, say), choose <i>always with a fraction</i> so 20 reaches it as 20.0.</dd>
+  </dl>
+  <p>The connection reports its own state to the hub every 30 s, so the hub's dashboard shows whether Node-RED is
+  connected.</p>
+</script>

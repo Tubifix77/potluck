@@ -1,0 +1,74 @@
+<script type="text/javascript">
+  RED.nodes.registerType('potluck-out', {
+    category: 'network',
+    color: '#E9C46A',
+    defaults: {
+      name: { value: '' },
+      hub: { value: '', type: 'potluck-hub', required: true },
+      path: { value: '' },
+      numberType: { value: 'hub' },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: 'bridge.svg',
+    align: 'right',
+    label: function () {
+      return this.name || (this.path ? 'potluck ' + this.path : 'potluck out');
+    },
+    paletteLabel: 'potluck out',
+  });
+</script>
+
+<script type="text/html" data-template-name="potluck-out">
+  <div class="form-row">
+    <label for="node-input-hub"><i class="fa fa-server"></i> Hub</label>
+    <input type="text" id="node-input-hub">
+  </div>
+  <div class="form-row">
+    <label for="node-input-path"><i class="fa fa-crosshairs"></i> Resource</label>
+    <input type="text" id="node-input-path" placeholder="msg.topic; or e.g. node-7368/led/on">
+  </div>
+  <div class="form-row">
+    <label for="node-input-numberType"><i class="fa fa-hashtag"></i> Numbers</label>
+    <select id="node-input-numberType" style="width: 70%;">
+      <option value="hub">as the hub connection says</option>
+      <option value="auto">as they are</option>
+      <option value="float">always with a fraction (20 is sent as 20.0)</option>
+      <option value="int">whole numbers only</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name">
+  </div>
+</script>
+
+<script type="text/html" data-help-name="potluck-out">
+  <p>Writes a value to a resource in a Potluck cell -- switching a board's LED, say -- and passes the message on with
+  the hub's answer.</p>
+  <h3>Inputs</h3>
+  <dl class="message-properties">
+    <dt>payload <span class="property-type">boolean | number | string</span></dt>
+    <dd>the value: <code>true</code>/<code>false</code> or a number. The strings <code>"on"</code>,
+    <code>"off"</code>, <code>"true"</code>, <code>"false"</code> and numbers written as text are accepted too.</dd>
+    <dt class="optional">topic <span class="property-type">string</span></dt>
+    <dd>the resource's path (<code>potluck://lab/node-7368/led/on</code>) or name (<code>node-7368/led/on</code>),
+    when the node has no Resource set</dd>
+  </dl>
+  <h3>Outputs</h3>
+  <dl class="message-properties">
+    <dt>potluck.result <span class="property-type">string</span></dt>
+    <dd>the hub's answer: <code>applied</code> when the board that owns the resource applied it; otherwise why not,
+    e.g. <code>not writable from outside</code>, <code>this login may look, not write</code>,
+    <code>not writable by this program</code>, <code>the owning board did not answer</code></dd>
+    <dt>potluck.ok <span class="property-type">boolean</span></dt>
+    <dd>true only when the write was applied</dd>
+    <dt>potluck.status <span class="property-type">number</span></dt>
+    <dd>the HTTP status (200, 400, 403, 504...); 0 when the node refused it before asking the hub</dd>
+  </dl>
+  <h3>Details</h3>
+  <p>Only what the cell's owner allows can be written from outside, never a safety-relevant resource, and the board
+  that owns it checks again. Nothing can be deployed through this node.</p>
+  <p>The hub gives each program two writes a second. Faster than that, it asks the node to wait; the node waits as
+  long as it is told and tries again (up to three times), so a burst arrives late rather than lost.</p>
+</script>

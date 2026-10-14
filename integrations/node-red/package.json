@@ -1,0 +1,39 @@
+{
+  "name": "node-red-contrib-potluck",
+  "version": "0.1.0",
+  "description": "Node-RED nodes for a Potluck cell: read its boards' resources with their quality, write what the cell allows, through the Potluck hub's API",
+  "keywords": [
+    "node-red",
+    "potluck",
+    "esp32",
+    "esp32-s3",
+    "home automation"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tubifix77/potluck.git",
+    "directory": "integrations/node-red"
+  },
+  "main": "lib/client.js",
+  "files": [
+    "lib/",
+    "nodes/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/client.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "node-red": {
+    "version": ">=3.0.0",
+    "nodes": {
+      "potluck-hub": "nodes/potluck-hub.js",
+      "potluck-in": "nodes/potluck-in.js",
+      "potluck-out": "nodes/potluck-out.js"
+    }
+  },
+  "dependencies": {}
+}
