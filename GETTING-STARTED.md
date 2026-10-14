@@ -117,7 +117,7 @@ self-test) and then shows **yellow: searching**, until it hears another board.
 | **purple** | updating: receiving new firmware or a new package, or running one on trial before it is confirmed |
 | **yellow** | searching: no other board heard (yet, or for over 10 minutes), or hunting for the cell's radio channel |
 | **red** | disconnected, dead or stalled: a board it knew died in the last 10 minutes, a link losing over half its heartbeats, or its own radio failing to send |
-| **green** | on the Potluck network, all well. An app may show its own colour in green's place -- blue, cyan or white (a Home Assistant LED switch, an app's state); purple, yellow and red always win |
+| **green** | on the Potluck network, all well. An app may show its own colour in green's place -- blue or cyan (a Home Assistant LED switch, an app's state); purple, yellow and red always win |
 
 The build also rewrites the size reports Potluck keeps in `firmware\size\`, so `git status` shows them changed and
 later builds are stamped `-dirty`; `git checkout -- firmware/size` puts them back if you care.

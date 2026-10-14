@@ -3076,18 +3076,23 @@ namespace {
 // M8.2 (PS-5): the board services every actor gets. Called from actor ticks, on the link task, the
 // same task that renders the LED.
 // The four status colours are the board's own (purple updating, yellow searching, red a problem, green
-// healthy). An app colour in one of their hues -- each channel counted as lit at half the brightest or
-// more, so orange counts as yellow and magenta as purple -- is drawn white instead, so no app can look
-// like an update or a fault. Blue, cyan and white are the apps'.
+// healthy). An app may show blue or cyan; any colour with its red channel lit (at half the brightest or
+// more: purple, yellow, orange, red, and white, which at this LED's brightness looks light purple --
+// seen on the bench 2026-10-14) or plain green is drawn blue instead, so no app can look like an
+// update or a fault.
 bool reserved_hue(uint8_t r, uint8_t g, uint8_t b) {
     const uint8_t top = std::max(r, std::max(g, b));
     if (top == 0) return false;
     const bool R = r * 2 >= top, G = g * 2 >= top, B = b * 2 >= top;
-    return (R && !G && B) || (R && G && !B) || (R && !G && !B) || (!R && G && !B);
+    return R || (G && !B);
 }
 
 void led_app(void*, bool on, uint8_t r, uint8_t g, uint8_t b, uint16_t period_ms) {
-    if (reserved_hue(r, g, b)) r = g = b = 255;
+    if (reserved_hue(r, g, b)) {
+        r = 0;
+        g = 0;
+        b = 255;
+    }
     status_led::g_app.on = on;
     status_led::g_app.r = r;
     status_led::g_app.g = g;

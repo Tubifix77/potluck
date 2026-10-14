@@ -247,8 +247,8 @@ checkpoint you do not recognise.
 
 `ActorEnv::board` (null on a PC): `led_app(on, r, g, b, blink_ms)` shows an app state on the status LED --
 only while the board is green (purple, yellow and red always win, so no app can hide a dead link or an update);
-pick blue, cyan or white -- a colour in the hue of purple, yellow, red or green (orange counts as yellow, magenta as
-purple) is shown white, so no app can look like the board's own status, and it
+pick blue or cyan -- any other colour (anything with red in it, white included, or plain green) is shown blue, so no
+app can look like the board's own status, and it
 lapses 5 s after the last call; `bg_submit(work, arg)` runs a computation on a background worker below
 everything the node does, refused when all workers are busy; `bg_yield` must be called every ~50 ms inside
 it (the task watchdog watches the idle task).
