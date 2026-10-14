@@ -42,7 +42,7 @@ developer manual rewritten for it (blind reader: a new app written, tested and d
 whole-cell power cycle was a reset of every chip, not a hand power cut. Every milestone through M12 is built and
 14 of 17 accepted; what is left there is the list above, all the owner's to run. **NEXT: M13-M18 (planned 2026-10-11,
 ARCHITECTURE section 13, from BEYOND-M12.md and its picture beyond-m12-overview.html)** -- the cell presenting its
-resources to other systems: M13 the cell presents itself (presenting role, no PC; ACCEPTED 2026-10-14, M0-LOG session 42, with caveats), M13.1 a phone reaches the nearest board with no network (ACCEPTED 2026-10-14), M14 the hub, M15 telemetry (ACCEPTED 2026-10-14), M16 the dashboard,
+resources to other systems: M13 the cell presents itself (presenting role, no PC; ACCEPTED 2026-10-14, M0-LOG session 42, with caveats), M13.1 a phone reaches the nearest board with no network (ACCEPTED 2026-10-14), M14 the hub (proposed 2026-10-14), M15 telemetry (ACCEPTED 2026-10-14), M16 the dashboard,
 M17 Home Assistant first-class, M18 the integration layer. The owner is the idea-giver; the evidence for what to show and
 which integrations came from primary sources (ledger).
 
@@ -60,6 +60,18 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-14 (afternoon): **M13.1 and M15 ACCEPTED; M14 proposed for acceptance; M16 built** (M0-LOG session 42, end).
+>
+> M14's last line is built and shown: `present.hub` in a cluster file makes the PC's placement node present whenever
+> it is in the cell (0.67-0.70 s to take the role, 2.33-2.46 s for a board to take it back, never two presenters,
+> configs byte-identical). New on the wire: READ's describe flag (a node learns an entry it has no actor type for).
+> Bench: firmware 34 (`1c7b6b6`), package 67 from `keys/desk-m14-hub.json`; C presents (no PC node, hub or agent
+> running); A's relay off; A keeps the owner's pocket access point (test credentials, the owner's choice). The
+> 8-node partition tests are in tests/test_reconcile.cpp [partition8]; a separate task was offered for a deploy and
+> the leases during a split -- done the same afternoon (session 43,
+> below; its firmware not on the boards yet). Open: the PC refuses a HELLO claiming to be from A (bad signature) every ~12 s;
+> M16's real phone over the house network and Ingress; M17, M18. Windows Update rebooted the PC at 05:15-05:19.
+>
 > ## HANDOVER, 2026-10-14 (afternoon): **deploys and leases in a partition, host-tested; three deploy faults fixed** (M0-LOG session 43).
 >
 > The deploy server, push and catch-up moved from `m0_main.cpp` into `pot/package_agent.hpp` (host-tested in

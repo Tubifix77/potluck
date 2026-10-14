@@ -11,14 +11,20 @@ around it, and whether two presenters published states at once (never twice is t
 
 from __future__ import annotations
 
+import gzip
 import json
+import os
 import sys
 from collections import defaultdict
 
 
 def main(argv: list[str]) -> int:
     path = argv[0]
-    rows = [json.loads(line) for line in open(path, encoding="utf-8") if line.startswith("{")]
+    if not os.path.exists(path) and os.path.exists(path + ".gz"):  # committed captures are compressed
+        f = gzip.open(path + ".gz", "rt", encoding="utf-8")
+    else:
+        f = open(path, encoding="utf-8")
+    rows = [json.loads(line) for line in f if line.startswith("{")]
     pres = []  # (wall, node, online)
     states: dict[str, list[float]] = defaultdict(list)
     last_online: dict[str, bool] = {}

@@ -1,0 +1,12 @@
+[  314.6 s] verify: potluck://lab/act/present/out = 4  [GOOD, age 3852 ms, ts 43181615, class L4]
+
+  plan (package, firmware build)       0.4 s
+  inventory                            0.3 s
+  package                              1.3 s
+  verify                             311.5 s
+  command to verified                314.7 s
+  package 65: live on 0 board(s); rebooted for it: none
+NOT VERIFIED:
+  0x6300 did not confirm package 65: 0x6300  fw 3995681-a90c96 (counter 32, floor 32, confirmed)  package 65 (floor 65)  cluster 'lab'  up 6093 s  live 1  ck writes 202  roles extender-build,sandbox,reconciler,enrolled,cabled  actors rf_link,rf_indicator,svc_client,ticker (1/4 portable here)  modules sandbox:idle (nothing here uses it),extender:idle (no credentials),present:idle (no network),pocket:active,wifi:idle (no credentials)
+  0x7368 did not confirm package 65: 0x7368  fw 3995681-a90c96 (counter 32, floor 32, confirmed)  package 65 (floor 65)  cluster 'lab'  up 31986 s  live 1  ck writes 1064  roles extender-build,extender,sandbox,reconciler,relay,enrolled  actors rf_link,rf_indicator,die_temp,led_switch,guest (1/4 portable here)  modules sandbox:active,extender:active,present:idle (standby),pocket:idle (another module is the connection),wifi:idle (another module is the connection)
+  0x8160 did not confirm package 65: 0x8160  fw 3995681-a90c96 (counter 32, floor 32, confirmed)  package 65 (floor 65)  cluster 'lab'  up 43176 s  live 3  ck writes 1438  roles extender-build,sandbox,reconciler,enrolled  actors rf_link,rf_indicator,rf_fusion,present (2/4 portable here)  modules sandbox:idle (nothing here uses it),extender:idle (no credentials),present:active,pocket:idle (no credentials),wifi:active

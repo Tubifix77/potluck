@@ -989,6 +989,16 @@ took 195 s to converge (now queued: 15 s). **The leases**: each side's lowest bo
 the cluster's lowest board, which apply already needs to reach, and stops if a renewal finds the lease lost; the hub
 lease stays per side, stated in the README's failure contract as a non-claim.
 
+*M14's last line, 2026-10-14 (M0-LOG session 42) -- built, shown, and M14 proposed for acceptance.* `present.hub` in
+the cluster file lists the PC's placement node for the presenting role first by gravity, so the reconciler gives the PC
+the role while it is in the cell and a connected board takes it back when it goes -- one portable role, never two
+holders, no protocol of its own. `pot_hostnode` runs it from the board's own code (`present_core`), `potluck.hostnode`
+carries it to the broker. A node now learns an entry it has no actor type for by asking another to **describe** it
+(READ's flag bit 0): the PC presents an app's outputs it cannot run. Seven takeovers and six hand-backs at the house
+broker: 0.67-0.70 s board to PC, 2.33-2.46 s back, never two presenters, every config byte-identical whichever node
+sent it; states paused about 3 s at each hand-back. Found and fixed on the way: a holder that took an actor back after
+a lost claim never offered the handover again (firmware 34). Caveat: the PC switched off by killing its node.
+
 **M15 — Telemetry over the cell.** *(Planned 2026-10-11, revised 2026-10-12. Optional on the boards: a cell with no hub never needs it.)* Most of what a board knows about itself it prints to its USB console, which no deployed board has. What changes: the resident hub pulls, at a rate it is given, a board's link statistics, peer view, reconciler and actor stats, module states and recent events over the radio -- the way `NODE_STATUS` already carries the inventory -- reusing the counters the stats lines keep, buffers in PSRAM, and serves every viewer and integration from one pull, so they never multiply the radio's load. A board that has declared a long window (asleep, M5.1) is asked when it next reports, not chased. *Accept:* with no console connected to any board, the hub shows every board's link statistics, peer view, actor stats and modules, current within one pull period, and a sleeping board as asleep, not dead; the cell's heartbeat round trips and delivery stay within M0's measured spread at the chosen rate, measured on the bench **[MEASURE]** and carried to 20 boards in `pot_sim`. *Kill:* if no rate that leaves M0's figures intact carries enough to show section 5 of BEYOND-M12.md's layers 1-3.
 
 *M15 built, 2026-10-13 (M0-LOG session 42) -- not on the bench.* TELEMETRY answers four binary sections, each under the

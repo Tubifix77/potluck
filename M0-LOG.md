@@ -5488,6 +5488,51 @@ Ingress when the hub runs on the Home Assistant machine (with M17).
 
 **M13.1 and M15 ACCEPTED (2026-10-14, midday), by the owner, with their caveats** -- M13.1: a laptop's Wi-Fi stood in for the phone and a held reset for an unplug; M15: the USB cables stayed in for power, and a declared window with a held reset stood in for a real sleep mode. The PC was restarted overnight by Windows Update (KB5127648, 05:14-05:19, System log events 1074 and 109); no Potluck process was running and nothing was lost. A restarted at about 12:13 (boot epoch 289, five restarts since 03:59); B and C ran through the PC's reboots, so it was not the reboot -- most likely another program opening COM3.
 
+**M14's last line on the bench (2026-10-14, afternoon): the hub presents in the cell's place -- M14 proposed for
+acceptance.** Built (`aa42677`, `fb1dabd`, `1c7b6b6`): `present.hub` in the cluster file lists the PC's placement node
+for the presenting role, first by gravity (255), so the reconciler gives the PC the role while it is in the cell and a
+connected board takes it back when it goes -- M10's handover, the same never-two rule. `pot_hostnode` runs the role
+(`host/native/host_present.cpp`: the board's PresentActor step for step, the same `present_core` and namespace) and
+`potluck.hostnode` carries it to the broker (`potluck.mqtt_link`, standard library: MQTT 3.1.1, the will, TLS against
+the package's CA) and sets HELLO's connected bit while the PC can reach the broker. Bench: `keys/desk-m14-hub.json`
+(desk-m14 plus `present.hub`), the hub resident, the PC's node joined and killed -- TerminateProcess, M10's caveat --
+again and again while a subscriber on the PC logged everything the house broker carried for the cell
+(`tools/m14_present_report.py`, `captures/m14p*`). **Four faults found and fixed on the way:**
+1. The PC presented 1 of 4 entities: the other three are outputs of actor types `pot_hostnode` does not carry, so it had
+   no entry for them, and a REPLY carries no staleness rule to make one from. Now a node can ask another to **describe**
+   an entry -- READ's flag bit 0, answered with the declaration (`ns_payloads.hpp`); the answering board works it out
+   from the image as for its own reads (M8.2's adoption). Firmware 33 (`fb1dabd`); tests in `test_remote_read.cpp`.
+2. `apply`'s verify never confirmed a package with an actor the PC may run -- last night's fix (7) counted those out of
+   the portable total that every board counts in. Now both counts are kept (`pc_runnable`).
+3. **A holder that takes an actor back never offered the handover again**: C released the role to the PC, the PC's
+   first claim was lost on the relay while heartbeats got through, C saw the role unclaimed after its orphan step and
+   started it again -- at the PC's term, winning the tie on node id -- and kept it, since `released_to` still named the
+   PC and only a change of membership cleared it. `activate()` clears it (firmware 34, `1c7b6b6`); a test drops one
+   direction's claims right after the release and fails without the fix.
+4. The PC's first states for B's die temperature and LED came 16-33 s late on some takeovers: it asked the extender to
+   describe them and lost the answers on the radio relay. It now asks the board on its cable first (no radio), then the
+   owner, then any board, every 2 s.
+
+**The final run (firmware 34, package 67, `captures/m14p5-*`): seven PC takeovers, six hand-backs.** Board to PC:
+**0.67-0.70 s** from the board's availability going offline to the PC's going online; PC to board: **2.33-2.46 s**
+(the PC's death window, the board's orphan step, a TLS connect); **never two presenters online at once**; every
+discovery config the PC sent byte-identical to C's for the same entity (235 configs over the runs, one payload per
+entity), so Home Assistant sees the same four entities throughout. States paused ~3.1 s at every hand-back (no
+presenter between the PC going and the board's first publication; availability stays "online" meanwhile under
+`availability_mode: any`, and only sensors' expiry, 10 s here, could turn an entity unavailable); at one takeover in
+seven B's two entities started 10.9 s late -- the PC's node had not yet admitted B, whose signed HELLO comes through the
+relay. **Open, not chased:** the PC logs a bad-signature refusal of a HELLO claiming to be from A about every 12 s
+(reason 5, `BadSignature`), in every run; A stays alive in the PC's view and the role is unaffected, but something on
+the cable path may alter A's signed HELLO.
+
+| acceptance line | evidence | caveat |
+|---|---|---|
+| M8's service, M10's placement host, a watch and a plan at once through one cabled board | 2026-10-14 01:00-02:25 (above) | |
+| an on-demand `apply` from a laptop, with the cell presenting, leaves every Home Assistant device untouched | package changes and a firmware rollout through the hub left C's presenter connected (above); today three rollouts and packages 65-67 the same | the same PC, not a laptop |
+| a second resident hub, and a second `apply` while one runs, refused before anything changes, naming the first | above | the "other PC" hub simulated on this PC |
+| killing the hub leaves the cell and its presenting role untouched, and its restart catches up | above | |
+| with the hub configured to present, switching the PC off and on hands the presentation to the cell's role and back, each device at most briefly unavailable and never duplicated | seven takeovers and six hand-backs: 0.67-0.70 s and 2.33-2.46 s, never two presenters, configs byte-identical; states paused ~3 s at hand-backs, once 10.9 s for two entities at a takeover | the PC "switched off" by killing its node's process, not powering it down (M10's caveat); the subscriber ran on the same PC |
+| kill: a hub in the path breaks M10's handover (0.63-0.69 s) or M8's deadlines | M10's handover through the hub 608-660 ms; M8's service ~1 call/s throughout (above) -- does not fire | |
 ## Session 43 -- 2026-10-14 (afternoon): a deploy and the cell's leases in a partition (host tests; the boards untouched)
 
 **The question** (the owner's, after session 42's `[partition8]`): two partition cases were untested -- a package
