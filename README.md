@@ -271,6 +271,64 @@ python tools/can_capture.py 300 captures/m4-can.log     # B on COM4 floods, C on
 python tools/can_report.py captures/m4-can.log
 ```
 
+## Home Assistant
+
+Potluck reaches [Home Assistant](https://www.home-assistant.io/) in two ways, and you want both:
+
+- **The boards and what they measure come through MQTT, from the cell itself** -- with or without the PC on. Each
+  board is a device and each resource the cell lets out is an entity of the right kind and unit; one you may write
+  (a board's LED, say) is a switch an automation can use. This needs Home Assistant's
+  [MQTT integration](https://www.home-assistant.io/integrations/mqtt/) and a broker (the program MQTT messages go
+  through, such as Mosquitto), and the cell's cluster file naming that broker in `present` and listing what Home
+  Assistant may see in `outside` ([DEVELOPING-APPS.md](DEVELOPING-APPS.md), the cluster file's table;
+  [M0-RUNBOOK.md](M0-RUNBOOK.md) section 16). Nothing below is needed for that.
+- **The hub's view of the cell comes through the Potluck integration** in this repository. The hub is the program
+  on the PC that holds the cable to the cell. The integration adds one device, **Potluck hub (*your cell's name*)**,
+  with five entities: whether the hub's link to the cell is up, how many boards are alive, how many apps are
+  working, when the last deploy was and how it ended, and the cell's problems as a count with the list in its
+  attributes. While the hub runs, the boards' MQTT devices also gain its diagnostics (alive or asleep, memory,
+  uptime, signal) and a firmware entity that shows versions and installs nothing. It needs Home Assistant 2026.10
+  or newer and [HACS](https://hacs.xyz/) (the Home Assistant Community Store, which installs integrations that
+  are not built in).
+
+**1. Start the hub so Home Assistant can reach it.** On the PC that has the USB-serial adapter, from
+`host/potluck/`. The hub needs a certificate; a self-signed one is fine, because Home Assistant pins its exact
+fingerprint when it pairs:
+
+```
+openssl req -x509 -newkey rsa:2048 -nodes -keyout hub-key.pem -out hub-cert.pem -days 3650 -subj "/CN=potluck-hub"
+python -m potluck.hub --port COM6 --cluster my-cell.json --listen 0.0.0.0:8443 --tls-cert hub-cert.pem --tls-key hub-key.pem
+```
+
+Keep `hub-key.pem` to yourself. The hub announces itself on the house network by multicast DNS. If the PC's
+firewall asks, allow the hub on your private network: Home Assistant needs TCP port 8443, and the announcement
+uses UDP port 5353.
+
+**2. Install the integration with HACS.** In Home Assistant, open **HACS**, select the three dots in the top
+right corner, then **Custom repositories**. Enter `https://github.com/Tubifix77/potluck`, choose the type
+**Integration**, and select **Add**. Find **Potluck** in HACS, download it, and restart Home Assistant.
+
+**3. Accept the discovery.** After the restart, **Settings > Devices & services** lists Potluck under
+**Discovered**, named after your cell (for example `lab (ef76cc2e)`: the cell's name and its id). Select **Add**,
+then **Submit**. Home Assistant now waits for the owner's approval, for up to 5 minutes.
+
+**4. Approve on the PC.** On the PC that runs the hub, open the hub's dashboard at http://127.0.0.1:8470/ and
+approve the request from **Home Assistant** on the hub's card. Home Assistant finishes by itself; the device
+**Potluck hub (*your cell's name*)** appears under the Potluck integration. Home Assistant gets read-only access.
+To take it back: `python -m potluck.hubauth revoke "Home Assistant"`.
+
+**If Home Assistant discovers nothing** (it runs on another network segment, or multicast does not reach it): in
+**Settings > Devices & services**, select **Add integration**, choose **Potluck**, and enter the PC's address
+and `8443`. Home Assistant shows the fingerprint of the certificate it was served. On the PC,
+`openssl x509 -in hub-cert.pem -noout -fingerprint -sha256` prints the same digits if it is your hub; then
+continue, and approve as in step 4.
+
+**If it stops working:** with the PC off, the hub's device and the hub's diagnostics go unavailable while the
+boards' own entities stay live through MQTT, and everything returns when the hub does. If the PC's address
+changes, the next announcement moves the integration to it. If you revoke the token or give the hub a new
+certificate, Home Assistant asks you to re-authenticate under **Settings > Devices & services**; it shows the new
+fingerprint, if there is one, and you approve again on the PC.
+
 ## Reading order
 
 | file | what it is |

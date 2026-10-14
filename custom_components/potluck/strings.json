@@ -1,0 +1,72 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "confirm": {
+        "title": "Potluck hub found",
+        "description": "Home Assistant found the Potluck hub of the cell **{system}** (cell id {cell}) at {address}.\n\nWhen you submit, the hub asks its owner for approval. Then, on the PC that runs the hub, open the hub's dashboard ({dashboard}) and approve **{name}** on the hub's card. Home Assistant gets read-only access to the hub's view of the cell."
+      },
+      "user": {
+        "title": "Add a Potluck hub",
+        "description": "Use this when Home Assistant does not find the hub by itself. The hub must run with `--listen` (for example `--listen 0.0.0.0:8443`) and a TLS certificate, and this Home Assistant must reach that port.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        },
+        "data_description": {
+          "host": "The address of the PC that runs the hub, for example 192.168.0.20.",
+          "port": "The port in the hub's `--listen` option."
+        }
+      },
+      "fingerprint": {
+        "title": "Check the hub's certificate",
+        "description": "The hub at {address} presented a certificate with this SHA-256 fingerprint:\n\n`{fingerprint}`\n\nContinue only if it is your hub's. On the PC, `openssl x509 -in <the hub's certificate file> -noout -fingerprint -sha256` prints the same digits. Home Assistant will only ever talk to this certificate."
+      },
+      "reauth_confirm": {
+        "title": "Pair with the Potluck hub again",
+        "description": "The hub at {address} (cell **{system}**) refused Home Assistant's token, or presented a different certificate than the one it was paired with. Submit to pair again; the owner approves on the PC that runs the hub ({dashboard})."
+      }
+    },
+    "progress": {
+      "wait_for_approval": "Waiting for the owner's approval.\n\nOn the PC that runs the hub, open the hub's dashboard ({dashboard}) and approve the request from **{name}** on the hub's card. The request expires after 5 minutes."
+    },
+    "error": {
+      "cannot_connect": "Could not open a TLS connection to the hub. Check the host and port, and that the hub runs with `--listen`."
+    },
+    "abort": {
+      "already_configured": "This Potluck cell is already set up.",
+      "invalid_discovery": "The hub's announcement was incomplete (it needs a cell id, a port and a certificate fingerprint).",
+      "unsupported_api": "This hub speaks a version of the hub API this integration does not know. Update the integration.",
+      "no_tls": "The hub announced itself without TLS. Start it with `--listen`, `--tls-cert` and `--tls-key`.",
+      "pairing_denied": "The owner refused the pairing on the PC. Add the hub again to ask once more.",
+      "pairing_expired": "Nobody approved the pairing within 5 minutes. Add the hub again, then approve the request for {name} on the hub's dashboard on the PC ({dashboard}).",
+      "pairing_busy": "The hub already holds 4 pairing requests waiting for an answer. Approve or refuse them on the hub's dashboard on the PC ({dashboard}), then try again.",
+      "pairing_failed": "Pairing failed: {error}",
+      "fingerprint_mismatch": "The hub presented a different certificate than the one it announced. Nothing was sent to it.",
+      "cannot_connect": "Could not reach the hub: {error}",
+      "wrong_cell": "The hub that answered is not the cell this was set up for.",
+      "reauth_successful": "Paired again with the Potluck hub."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "hub_link": {
+        "name": "Hub link"
+      }
+    },
+    "sensor": {
+      "boards_alive": {
+        "name": "Boards alive"
+      },
+      "apps_working": {
+        "name": "Apps working"
+      },
+      "last_deploy": {
+        "name": "Last deploy"
+      },
+      "problems": {
+        "name": "Problems"
+      }
+    }
+  }
+}

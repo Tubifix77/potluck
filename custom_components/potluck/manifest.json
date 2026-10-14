@@ -1,0 +1,13 @@
+{
+  "domain": "potluck",
+  "name": "Potluck",
+  "codeowners": ["@Tubifix77"],
+  "config_flow": true,
+  "documentation": "https://github.com/Tubifix77/potluck",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/Tubifix77/potluck/issues",
+  "requirements": [],
+  "version": "0.1.0",
+  "zeroconf": ["_potluck._tcp.local."]
+}
