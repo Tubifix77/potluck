@@ -60,6 +60,16 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-14 (evening): **M16-M18 shown in the owner's Home Assistant; the LED has the owner's colours** (M0-LOG session 44, end).
+>
+> M17: HACS installed `custom_components/potluck`, the hub was discovered and paired, an automation ("Potluck LED test
+> (M17)", MQTT trigger `potluck-test/led`, written by the session at the owner's request) switched B's LED, and the PC
+> off/on left the boards' entities live through C (hub entities back in 3-5 s). **LED scheme (the owner's): purple
+> updating, yellow searching, red disconnected/dead/stalled, green on the network; apps blue or cyan only.** Bench:
+> firmware `b384e80` (counter 36), package 69 from `keys/desk-m14-hub.json`; the hub runs resident (`--listen
+> 0.0.0.0:8443`, log `captures/m17-hub-3.log`), paired with Home Assistant. Catch-up worked on the boards (~62 s).
+> The homelab's clock runs 85 s behind the PC. Open: passive-sensor's magenta (drawn blue) for its own session.
+>
 > ## HANDOVER, 2026-10-14 (afternoon): **M13.1 and M15 ACCEPTED; M14 proposed for acceptance; M16 built** (M0-LOG session 42, end).
 >
 > M14's last line is built and shown: `present.hub` in a cluster file makes the PC's placement node present whenever
