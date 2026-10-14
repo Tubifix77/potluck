@@ -5,7 +5,9 @@
 //    when the killed node returns, it does not double-run. Partition and heal the mesh -- duplication
 //    ends within gossip convergence, and fenced consumers never accept the losing instance."
 
+#include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <map>
 #include <new>
@@ -161,6 +163,50 @@ struct RCell {
         }
         actors.assign(1, tc);
         for (RNode& t : nodes) boot(t);
+    }
+
+    // `k` portable actors, every node eligible for each with equal gravity: the rendezvous hash spreads them.
+    void build_many(size_t n, size_t k) {
+        nodes.resize(n);
+        actors.clear();
+        for (size_t a = 0; a < k; ++a) {
+            TickerConfig tc{};
+            char path[48];
+            std::snprintf(path, sizeof(path), "potluck://lab/act/job%u/out", static_cast<unsigned>(a));
+            tc.out_hash = path_hash(path);
+            tc.period_ms = 100;
+            tc.count = static_cast<uint8_t>(n);
+            for (size_t i = 0; i < n; ++i) {
+                tc.node[i] = static_cast<uint16_t>(0x100 + i);
+                tc.gravity[i] = 1;
+            }
+            actors.push_back(tc);
+        }
+        for (size_t i = 0; i < n; ++i) {
+            RNode& t = nodes[i];
+            t.cell = this;
+            t.index = i;
+            t.id = static_cast<uint16_t>(0x100 + i);
+            t.mac[0] = 0x02;
+            t.mac[5] = static_cast<uint8_t>(i);
+        }
+        for (RNode& t : nodes) boot(t);
+    }
+    size_t running_count_of(size_t a) const {
+        size_t n = 0;
+        for (const RNode& t : nodes) {
+            if (!t.down && t.rec->view(a).running) ++n;
+        }
+        return n;
+    }
+    // Cut the cell into groups: every pair of nodes in different groups is deaf to each other.
+    void split(const std::vector<int>& group_of) {
+        deaf.clear();
+        for (size_t i = 0; i < nodes.size(); ++i) {
+            for (size_t j = i + 1; j < nodes.size(); ++j) {
+                if (group_of[i] != group_of[j]) deaf.emplace_back(i, j);
+            }
+        }
     }
 
     ~RCell() {
@@ -957,4 +1003,210 @@ TEST(reconcile, a_placement_host_skips_portable_actors_it_is_not_eligible_for) {
     CHECK(collect_portable(img, &kTickerKind, 1, specs, kMaxPortable, n, &why, 0x00FE));
     CHECK_EQ(n, static_cast<size_t>(1));
     CHECK_EQ(specs[0].place.out_hash, mine.out_hash);
+}
+
+// ---- eight nodes, split many ways (the owner's question, 2026-10-14: "how does a severed potluck network behave,
+// and what happens when it reconnects?"). The boards are three; these are eight real Nodes and Reconcilers over the
+// simulated channel above, every one eligible for four portable jobs. What is checked at every millisecond, not just
+// at the end: no node ever accepts a lower owner term for a job than it accepted before (never the losing copy); and
+// at the end of every heal, each job runs on exactly one node and every node names that node as its owner.
+
+namespace {
+
+constexpr size_t kEight = 8;
+constexpr size_t kJobs = 4;
+
+struct Fence {
+    RCell& c;
+    std::vector<uint32_t> floor = std::vector<uint32_t>(kEight * kJobs, 0);
+    bool regressed = false;
+    explicit Fence(RCell& cell) : c(cell) { reset(); }
+    // A rebooted node starts again from nothing: its floor starts again too.
+    void reset() {
+        for (size_t i = 0; i < kEight; ++i)
+            for (size_t a = 0; a < kJobs; ++a) floor[i * kJobs + a] = c.nodes[i].down ? 0 : c.nodes[i].rec->view(a).owner_term;
+    }
+    void step() {
+        for (size_t i = 0; i < kEight; ++i) {
+            if (c.nodes[i].down) continue;
+            for (size_t a = 0; a < kJobs; ++a) {
+                const Reconciler::ActorView v = c.nodes[i].rec->view(a);
+                if (v.owner == 0) continue;
+                if (v.owner_term < floor[i * kJobs + a]) regressed = true;
+                floor[i * kJobs + a] = v.owner_term;
+            }
+        }
+    }
+};
+
+// Every job on exactly one live node, and every live node agreeing on which.
+bool settled(const RCell& c) {
+    for (size_t a = 0; a < kJobs; ++a) {
+        if (c.running_count_of(a) != 1) return false;
+        uint16_t owner = 0;
+        for (const RNode& t : c.nodes) {
+            if (t.down) continue;
+            const Reconciler::ActorView v = t.rec->view(a);
+            if (owner == 0) owner = v.owner;
+            if (v.owner == 0 || v.owner != owner) return false;
+        }
+    }
+    return true;
+}
+
+size_t copies(const RCell& c) {
+    size_t n = 0;
+    for (size_t a = 0; a < kJobs; ++a) n += c.running_count_of(a);
+    return n;
+}
+
+// Run `ms` checking the fence every millisecond; the first millisecond the cell is settled (0: never).
+// Also every later millisecond it was not (a handover back to a job's preferred node passes through an unsettled
+// moment): `last_unsettled` is the last one, `extra_ms` how many milliseconds any job ran on two nodes after the first
+// settled moment.
+uint32_t g_last_unsettled = 0, g_extra_ms = 0;
+uint32_t heal_watch(RCell& c, Fence& f, uint32_t ms) {
+    uint32_t t = 0, settled_at = 0;
+    g_last_unsettled = 0;
+    g_extra_ms = 0;
+    c.run(ms, [&] {
+        ++t;
+        f.step();
+        const bool s = settled(c);
+        if (settled_at == 0 && s) settled_at = t;
+        if (!s) g_last_unsettled = t;
+        if (settled_at != 0 && copies(c) > kJobs) ++g_extra_ms;
+    });
+    return settled_at;
+}
+
+}  // namespace
+
+TEST(partition8, four_pairs_each_run_their_own_copy_and_the_heal_leaves_one_of_each) {
+    RCell c;
+    c.build_many(kEight, kJobs);
+    c.run(8000);
+    CHECK(settled(c));
+    Fence f(c);
+    c.split({0, 0, 1, 1, 2, 2, 3, 3});
+    uint32_t t = 0, all_four_at = 0;
+    c.run(10000, [&] {
+        ++t;
+        f.step();
+        if (all_four_at == 0 && copies(c) == kJobs * 4) all_four_at = t;
+    });
+    // Each pair, alone, runs every job: four copies of each (no quorum: section 7.3).
+    for (size_t a = 0; a < kJobs; ++a) CHECK_EQ(c.running_count_of(a), static_cast<size_t>(4));
+    CHECK(all_four_at > 0);
+    c.deaf.clear();
+    const uint32_t healed = heal_watch(c, f, 15000);
+    CHECK(!f.regressed);
+    CHECK(healed > 0);
+    CHECK(settled(c));
+    CHECK_EQ(g_extra_ms, 0u);
+    std::printf("      last unsettled %u ms after the heal; %u ms with a second copy after the first settled\n",
+                g_last_unsettled, g_extra_ms);
+    std::printf("    4 pairs: every pair running all %u jobs %u ms after the split (16 copies); one of each "
+                "%u ms after the heal\n", static_cast<unsigned>(kJobs), all_four_at, healed);
+}
+
+TEST(partition8, uneven_splits_heal_the_same_way) {
+    const std::vector<std::vector<int>> shapes = {
+        {0, 1, 1, 1, 1, 1, 1, 1},  // one alone
+        {0, 0, 1, 1, 1, 1, 1, 1},  // two and six
+        {0, 0, 0, 1, 1, 1, 1, 1},  // three and five
+        {0, 1, 2, 0, 1, 2, 0, 1},  // three groups, interleaved ids
+    };
+    for (const auto& shape : shapes) {
+        RCell c;
+        c.build_many(kEight, kJobs);
+        c.run(8000);
+        CHECK(settled(c));
+        Fence f(c);
+        c.split(shape);
+        c.run(8000, [&] { f.step(); });
+        int groups = 0;
+        for (int g : shape) groups = g + 1 > groups ? g + 1 : groups;
+        for (size_t a = 0; a < kJobs; ++a) CHECK_EQ(c.running_count_of(a), static_cast<size_t>(groups));
+        c.deaf.clear();
+        const uint32_t healed = heal_watch(c, f, 15000);
+        CHECK(!f.regressed);
+        CHECK(healed > 0);
+        CHECK_EQ(g_extra_ms, 0u);
+        std::printf("      last unsettled %u ms after the heal; %u ms with a second copy after the first settled\n",
+                    g_last_unsettled, g_extra_ms);
+        std::printf("    %d groups (%d alone first): %u copies in the split, one of each %u ms after the heal\n",
+                    groups, static_cast<int>(std::count(shape.begin(), shape.end(), 0)),
+                    static_cast<unsigned>(groups * kJobs), healed);
+    }
+}
+
+TEST(partition8, groups_merge_one_step_at_a_time) {
+    RCell c;
+    c.build_many(kEight, kJobs);
+    c.run(8000);
+    Fence f(c);
+    c.split({0, 0, 1, 1, 2, 2, 3, 3});
+    c.run(6000, [&] { f.step(); });
+    CHECK_EQ(copies(c), kJobs * 4);
+    c.split({0, 0, 0, 0, 1, 1, 1, 1});  // the pairs meet two by two
+    c.run(6000, [&] { f.step(); });
+    CHECK_EQ(copies(c), kJobs * 2);
+    c.deaf.clear();
+    const uint32_t healed = heal_watch(c, f, 15000);
+    CHECK(!f.regressed);
+    CHECK(healed > 0);
+    CHECK_EQ(g_extra_ms, 0u);
+    std::printf("      last unsettled %u ms after the heal; %u ms with a second copy after the first settled\n",
+                g_last_unsettled, g_extra_ms);
+    std::printf("    4 -> 2 -> 1 groups: 16 -> 8 -> 4 copies, one of each %u ms after the last heal\n", healed);
+}
+
+TEST(partition8, links_that_flap_never_let_a_node_go_back_to_a_losing_copy) {
+    RCell c;
+    c.build_many(kEight, kJobs);
+    c.run(8000);
+    Fence f(c);
+    uint32_t seed = 0x5eed;
+    auto rnd = [&seed](uint32_t n) {
+        seed = seed * 1103515245u + 12345u;
+        return (seed >> 16) % n;
+    };
+    for (int round = 0; round < 25; ++round) {  // 25 random splits into 2-4 groups, 1.5 s each, 1 s apart
+        std::vector<int> shape(kEight);
+        const uint32_t groups = 2 + rnd(3);
+        for (size_t i = 0; i < kEight; ++i) shape[i] = static_cast<int>(rnd(groups));
+        c.split(shape);
+        c.run(1500, [&] { f.step(); });
+        c.deaf.clear();
+        c.run(1000, [&] { f.step(); });
+    }
+    const uint32_t healed = heal_watch(c, f, 15000);
+    CHECK(!f.regressed);
+    CHECK(healed > 0);
+    CHECK_EQ(g_extra_ms, 0u);
+    std::printf("      last unsettled %u ms after the heal; %u ms with a second copy after the first settled\n",
+                g_last_unsettled, g_extra_ms);
+    std::printf("    25 random splits: no node ever took a lower term; one of each %u ms after the last\n", healed);
+}
+
+TEST(partition8, a_node_that_reboots_inside_a_split_rejoins_without_a_second_copy) {
+    RCell c;
+    c.build_many(kEight, kJobs);
+    c.run(8000);
+    c.split({0, 0, 0, 0, 1, 1, 1, 1});
+    c.run(4000);
+    c.kill(5);
+    c.run(2000);
+    c.revive(5);  // a new incarnation, inside the minority side
+    c.run(6000);
+    Fence f(c);
+    c.deaf.clear();
+    const uint32_t healed = heal_watch(c, f, 15000);
+    CHECK(!f.regressed);
+    CHECK(healed > 0);
+    CHECK_EQ(g_extra_ms, 0u);
+    std::printf("      last unsettled %u ms after the heal; %u ms with a second copy after the first settled\n",
+                g_last_unsettled, g_extra_ms);
+    std::printf("    a reboot inside the split: one of each %u ms after the heal\n", healed);
 }

@@ -369,10 +369,16 @@ runtime states them. Here they are:
   itself; one that crashes is rolled back by the bootloader at the next start. Updates go one board at a
   time and stop at the first that rolls back, so a bad image costs one board 15 s to 2 min, not the cell.
 - **A guest program is contained, not trusted** (since M7, on boards built with the sandbox): code from an author the owner certified runs in a WebAssembly sandbox with a budget of work per tick, its own memory and nothing to call but its inputs, its outputs, a 128-byte checkpoint and a log. It can write nothing -- every output is read-only -- and cannot reach a pin, the radio or another node. A tick that faults publishes nothing and its outputs read FAULTY until a tick succeeds; three faults in a row quarantine it for that activation (a move to another board or a reboot is a new activation, with three more tries). Guests on one board run one at a time, so a guest can hold up another on the same board for its whole budget. They run below everything the node itself does and are never placed on a PC.
-- **Activation is at-least-once, actuation exactly-once.** While a partition lasts, both sides may run
-  the same portable actor; when it heals, the copy with the older claim stops (0.38 s on the bench),
-  and readers never accept a value from it once they have seen the newer one. A node that has just
-  booted starts nothing for up to 6 s, until it has heard who runs what.
+- **Activation is at-least-once, actuation exactly-once.** While a partition lasts, every side runs
+  each portable actor it can (no quorum: a cell split four ways runs four copies); when it heals, the
+  copies with the older claims stop (0.38 s on the bench, three boards; eight simulated nodes split
+  two, three and four ways heal the same way), and readers never accept a value from one once they
+  have seen the newer one. A node that has just booted starts nothing for up to 6 s, until it has
+  heard who runs what.
+- **The presenting role is a portable actor too** (since M13): while a partition with a network on both
+  sides lasts, each side presents. Home Assistant sees one device per board -- the ids are the cell's,
+  not the presenter's -- but its values may come from either side until the heal, and an entity whose
+  board is across the split reads as unavailable from one side only.
 
 None of the above is a certified safety function — `SAFE_STATE` (the reserved everyone-freeze
 broadcast), the staleness rules and the locality contract are availability and honesty features, not
