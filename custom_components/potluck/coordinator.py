@@ -55,4 +55,10 @@ class PotluckCoordinator(DataUpdateCoordinator[HubSnapshot]):
             raise ConfigEntryAuthFailed(str(err)) from err
         except HubError as err:
             raise UpdateFailed(str(err)) from err
-        return HubSnapshot(model=model, summary=summarize(model), problems=problems(model))
+        snap = HubSnapshot(model=model, summary=summarize(model), problems=problems(model))
+        # M18: every integration reports its own state to the hub, so the hub's dashboard shows it.
+        boards = model.get("boards", [])
+        await self.client.report(
+            "Home Assistant", "connected",
+            f"{sum(1 for b in boards if b.get('state') == 'alive')} of {len(boards)} boards alive")
+        return snap

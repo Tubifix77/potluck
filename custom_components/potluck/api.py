@@ -183,6 +183,16 @@ class HubClient:
             raise HubError(f"the hub speaks API version {data.get('api')!r}; this integration knows {API_VERSION}")
         return data
 
+    async def report(self, name: str, state: str, detail: str = "") -> bool:
+        """POST /api/integrations (M18): tell the hub how this integration is, so its dashboard shows it. Never
+        raises: a report that does not arrive only makes the hub show this integration silent after 60 s."""
+        try:
+            status, _ = await self._request("POST", "/api/integrations",
+                                            body={"name": name, "state": state, "detail": detail})
+        except HubError:
+            return False
+        return status == 200
+
     async def request_pairing(self, name: str, right: str = "look") -> PairRequest:
         """POST /api/pair: ask the owner for a token. No session or token needed."""
         status, data = await self._request("POST", "/api/pair", body={"name": name, "right": right}, auth=False)

@@ -1,0 +1,3 @@
+{"phase": "stream alone, 30 s", "models": 15, "max_gap_s": 2.0, "mean_gap_s": 2.0, "cable_frames_per_s": 16.2}
+{"phase": "with a greedy client, 60 s", "models": 30, "max_gap_s": 2.0, "mean_gap_s": 2.0, "cable_frames_per_s": 16.3}
+{"greedy": {"ok": 1240, "429": 50967, "other": 0}, "greedy_served_per_s": 20.7}
