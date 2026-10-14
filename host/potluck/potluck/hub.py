@@ -680,11 +680,20 @@ class Model:
             pin = m.placement_of(a)
             nodes = [f"{pin:04x}"] if pin is not None and not portable else [b["node"] for b in boards]
             running = [n for n, acts in running_here.items() if kind in acts and (portable or every or n in nodes)]
+            if portable and not running:
+                # M14: a placement host runs it -- NODE_STATUS sees boards only, but every board's telemetry names the
+                # owner its reconciler accepts (found on the bench: "running on 0 boards" while the PC ran the ticker).
+                from . import reconcile as rc
+                key = f"{path_hash(rc.output_path(m, a)):08x}"
+                owners = {t["owner"] for b in boards for t in (b.get("telemetry") or {}).get("actors", [])
+                          if t["key"] == key}
+                if owners == {"00fe"}:
+                    running = ["00fe"]
             outs = [p for p in expected(m, [int(n, 16) for n in nodes])[2] if f"/act/{a.name}/" in p or
                     (pin is not None and f"/node-{pin:04x}/" in p and not portable)]
             bad_outs = [p for p in outs if quality.get(p) not in (None, "GOOD")]
             if portable:
-                ok, why = len(running) == 1, ("" if len(running) == 1 else f"running on {len(running)} boards")
+                ok, why = len(running) == 1, ("" if len(running) == 1 else f"running on {len(running)} nodes")
             else:
                 want = nodes if not every else [b["node"] for b in boards if b["state"] == "alive"]
                 ok = all(n in running for n in want)

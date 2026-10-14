@@ -5351,3 +5351,31 @@ stats period and presented over TLS, 488 messages, none failed; internal heap 16
 presenting (34 KB for the MQTT client and TLS together), low-water 114,403 B; C back, B handed the role back and its
 heap returned to 158,627 B. The kill line's memory half ("an MQTT client cannot fit that board's internal RAM") does
 not fire, with TLS (captures `m13-tls-{baseline-c,c,b}.jsonl.gz`).
+
+**M14 on the bench (2026-10-14, 01:00-02:25; firmware `3995681`, counter 32; packages 60-64 from `keys/desk-m14.json`
+= desk-m13-tls plus `manifests/m14-host.json`: M10's portable ticker drawn to the PC, M8's clock pinned on A calling
+the PC's `svc/time`).** A resident hub held COM6 (`--telemetry-ms 10000`); through it, at once: the agent (M8,
+`--service time`), the placement host (`potluck.hostnode --cluster ... --package <apply's kept package>`), a `potctl
+watch`, `apply --plan`, live `apply` package changes and a firmware rollout. **Seven faults found and fixed on the way**
+(`3995681`, `f6385fb`): (1) with the cabled board relaying (M10), the bridge learned "the board on my cable" from any
+frame -- a member's broadcast, or B's and C's HELLO_ACKs to the host node relayed back -- and the hub addressed
+everything to B; now only from what is said to us, and another board's acknowledgement never switches it; (2) a relayed
+member's beacon read as the cabled board rebooting, and the hub answered each with a HELLO -- a flood; (3) `pot_hostnode`
+refused the whole image for board-only portable actors -- it now collects only those it is eligible for, and a host is
+eligible only for what it can run (`reconcile.HOST_MODULES`); (4) **`portable_header` never reset `need_caps` /
+`avoid_caps`** (not on the wire; a placement hook sets them): after live package changes a ticker inherited the
+presenter's "connected, not busy" rule from a reused staging entry, and A and B ranked it onto C while C and the PC
+ranked it onto the PC -- a firmware bug since M13, found because the views disagreed in telemetry; (5) a killed hub's
+restart was refused by its own lease -- it now waits it out; (6) the hub called a board dead on one unanswered poll --
+three now; (7) `apply`'s verify counted a host-run actor against the boards and read the PC's resources from them; and
+the agent and host node now stop when the hub's relay closes. **Shown, after the fixes:** the PC took the ticker 6 s
+after joining through the hub, and **M10's handover through the hub held: three kills (TerminateProcess), failover to A
+608, 645 and 660 ms after the PC's last frame** (M10 measured 629-687 ms, the kill line), handover back 7-14 ms, never
+two runners (`tools/m10_report.py captures/m14-handover`); M8's service served ~1 call/s throughout (2,441 by 02:10);
+agent, placement host, watch and plan together through one cable, every board alive in the hub's model; a second hub on
+this PC refused naming the first (pid, port, API); a hub "on another PC" refused by the cell's lease naming this PC's;
+a second `apply` while one ran refused before anything changed, naming the first; every package change since the
+firmware rollout left C's presenter connected (the broker logged nothing; package 61 restarted it once because its
+own declaration changed); the hub killed: the cell and C's presenting untouched, the ticker failed over to A, the agent
+and host node stopped, the restarted hub caught up in seconds (3 boards, 9 of 9 apps, 192 board events back-filled).
+Not built: the hub presenting in the cell's place.
