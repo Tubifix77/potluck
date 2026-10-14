@@ -1245,6 +1245,7 @@ void Node::pending_expire(uint32_t now_ms) {
 
 NsError Node::read(uint32_t path_hash, Reading& out, bool* is_local) {
     const NsEntry* e = ns_.find(path_hash);
+    const uint32_t full_before = ns_.full_refusals();
     if (e == nullptr && adopt_peer_sys_resource(path_hash)) {
         e = ns_.find(path_hash);  // M13: a peer's built-in, for a local reader (the presenter) as for a peer's READ
     }
@@ -1255,7 +1256,8 @@ NsError Node::read(uint32_t path_hash, Reading& out, bool* is_local) {
         if (is_local != nullptr) {
             *is_local = false;
         }
-        return NsError::NotFound;
+        // It exists on another node, but this node's table had no room for its replica: say so, not NOT_FOUND.
+        return ns_.full_refusals() != full_before ? NsError::Full : NsError::NotFound;
     }
 
     const bool local = e->is_local(cfg_.node_id);
@@ -1405,12 +1407,13 @@ void Node::handle_read(PeerLink* p, const Frame& f) {
         // has not declared yet from the image, exactly as a reading would.
         Reading r;
         bool local = true;
-        (void)read(req.path_hash, r, &local);
+        const NsError rst = read(req.path_hash, r, &local);
         const NsEntry* e = ns_.find(req.path_hash);
         ReplyPayload rep{};
         rep.path_hash = req.path_hash;
         rep.reply_to = kReplyDescribe;
-        rep.status = static_cast<uint8_t>(e != nullptr ? NsError::Ok : NsError::NotFound);
+        rep.status = static_cast<uint8_t>(e != nullptr ? NsError::Ok : rst == NsError::Full ? NsError::Full
+                                                                                             : NsError::NotFound);
         if (e != nullptr) {
             rep.timestamp_ms = e->staleness_bound_ms;
             rep.unit = static_cast<uint16_t>(e->unit);

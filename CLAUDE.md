@@ -31,9 +31,10 @@ owner to take the router away). The step-0 rerun and B's low inbound PDR are clo
 accounting bug, fixed in `c70756f`). One owner, one application package per cluster is a recorded scope choice (ARCHITECTURE section 0.1).
 **What is left (audit, 2026-10-11, session 39, after M12):** every roadmap milestone is built and 14 of 17 accepted; left
 are M5.1's two 24 h soaks, M8.1's "value moves when B is warmed", M8.2's 30 min empty room and 24 h with no PC, a
-physical cable pull (M10) and a hand power cut (M11, M12) -- all the owner's to run; the flash endurance figure behind
-M12's wear bound is unverified (ledger); section 15's questions 1 (needs a
-control-loop application; radio apps counted all-L4) and 2 (namespace cap) untested; B's power-on transmit stall a
+physical cable pull (M10) and a hand power cut (M11, M12) -- all the owner's to run; the flash endurance figure is verified
+(min 100,000 cycles, WROOM-1 datasheet v1.8) and checkpoints now have a board-wide wear budget (~18-20 years);
+section 15's questions 1 (the classes carry weight: three control/monitor apps use L0-L4) and 2 (128 stays; a full
+table now answers FULL and is counted; `apply --plan` accounting still to build) were run 2026-10-15; B's power-on transmit stall a
 known limitation (its trigger, a power-on, never retried). A second MCU family -- the proof of "hardware-agnostic"
 beyond the PC node -- is the next edition's.
 **M12 ACCEPTED (2026-10-11, M0-LOG session 39)** -- Potluck as a platform: one image, `potluck apply

@@ -1,0 +1,257 @@
+{
+  "schema": 1,
+  "system": "arm",
+  "min_core_version": 1,
+  "nodes": [
+    {
+      "node_id": 8705,
+      "label": "shoulder",
+      "power": "mains",
+      "headroom_bytes": 49152,
+      "owns": [
+        {
+          "path": "potluck://arm/node-2201/encoder/angle",
+          "unit": "radian",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 0,
+          "staleness_bound_ms": 1,
+          "staleness_policy": "strict"
+        },
+        {
+          "path": "potluck://arm/node-2201/motor/pwm",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 0,
+          "staleness_bound_ms": 1,
+          "staleness_policy": "strict"
+        },
+        {
+          "path": "potluck://arm/node-2201/motor/current",
+          "unit": "ampere",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 1,
+          "staleness_bound_ms": 5,
+          "staleness_policy": "strict"
+        },
+        {
+          "path": "potluck://arm/node-2201/joint/setpoint",
+          "unit": "radian",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 1,
+          "staleness_bound_ms": 50,
+          "staleness_policy": "strict"
+        },
+        {
+          "path": "potluck://arm/node-2201/joint/angle",
+          "unit": "radian",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 2,
+          "staleness_bound_ms": 20,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 8706,
+      "label": "elbow",
+      "power": "mains",
+      "headroom_bytes": 49152,
+      "owns": [
+        {
+          "path": "potluck://arm/node-2202/encoder/angle",
+          "unit": "radian",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 0,
+          "staleness_bound_ms": 1,
+          "staleness_policy": "strict"
+        },
+        {
+          "path": "potluck://arm/node-2202/motor/pwm",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 0,
+          "staleness_bound_ms": 1,
+          "staleness_policy": "strict"
+        },
+        {
+          "path": "potluck://arm/node-2202/motor/current",
+          "unit": "ampere",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 1,
+          "staleness_bound_ms": 5,
+          "staleness_policy": "strict"
+        },
+        {
+          "path": "potluck://arm/node-2202/joint/setpoint",
+          "unit": "radian",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 1,
+          "staleness_bound_ms": 50,
+          "staleness_policy": "strict"
+        },
+        {
+          "path": "potluck://arm/node-2202/joint/angle",
+          "unit": "radian",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 2,
+          "staleness_bound_ms": 20,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 8707,
+      "label": "coordinator",
+      "power": "mains",
+      "headroom_bytes": 65536,
+      "owns": [
+        {
+          "path": "potluck://arm/node-2203/arm/mode",
+          "unit": "none",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 2,
+          "staleness_bound_ms": 100,
+          "staleness_policy": "strict"
+        },
+        {
+          "path": "potluck://arm/node-2203/arm/goal",
+          "unit": "radian",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 254,
+      "label": "pc",
+      "kind": "host",
+      "power": "mains",
+      "headroom_bytes": 1048576,
+      "owns": [
+        {
+          "path": "potluck://arm/node-00fe/plan/path",
+          "unit": "none",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    }
+  ],
+  "actors": [
+    {
+      "name": "shoulder_servo",
+      "module": "ext:arm/servo",
+      "latency_class": 1,
+      "pin": 8705,
+      "needs": [
+        "potluck://arm/node-2201/encoder/angle",
+        "potluck://arm/node-2201/motor/pwm",
+        "potluck://arm/node-2201/motor/current",
+        "potluck://arm/node-2201/joint/setpoint"
+      ],
+      "headroom_bytes": 8192,
+      "priority": "critical",
+      "on_host_loss": "hold"
+    },
+    {
+      "name": "elbow_servo",
+      "module": "ext:arm/servo",
+      "latency_class": 1,
+      "pin": 8706,
+      "needs": [
+        "potluck://arm/node-2202/encoder/angle",
+        "potluck://arm/node-2202/motor/pwm",
+        "potluck://arm/node-2202/motor/current",
+        "potluck://arm/node-2202/joint/setpoint"
+      ],
+      "headroom_bytes": 8192,
+      "priority": "critical",
+      "on_host_loss": "hold"
+    },
+    {
+      "name": "trajectory",
+      "module": "ext:arm/trajectory",
+      "latency_class": 2,
+      "pin": 8707,
+      "needs": [
+        "potluck://arm/node-2201/joint/angle",
+        "potluck://arm/node-2202/joint/angle",
+        "potluck://arm/node-2201/joint/setpoint",
+        "potluck://arm/node-2202/joint/setpoint",
+        "potluck://arm/node-2203/arm/mode"
+      ],
+      "headroom_bytes": 16384,
+      "priority": "critical",
+      "on_host_loss": "hold"
+    },
+    {
+      "name": "planner",
+      "module": "ext:arm/planner",
+      "latency_class": 4,
+      "pin": 254,
+      "needs": [
+        "potluck://arm/node-2203/arm/goal",
+        "potluck://arm/node-2201/joint/angle",
+        "potluck://arm/node-2202/joint/angle"
+      ],
+      "headroom_bytes": 262144,
+      "priority": "normal",
+      "on_host_loss": "hold"
+    }
+  ],
+  "placement": {
+    "shoulder_servo": 8705,
+    "elbow_servo": 8706,
+    "trajectory": 8707,
+    "planner": 254
+  },
+  "links": [
+    {
+      "a": 8705,
+      "b": 8707,
+      "transport": "can"
+    },
+    {
+      "a": 8706,
+      "b": 8707,
+      "transport": "can"
+    },
+    {
+      "a": 8705,
+      "b": 8706,
+      "transport": "can"
+    },
+    {
+      "a": 8707,
+      "b": 254,
+      "transport": "host"
+    },
+    {
+      "a": 8705,
+      "b": 254,
+      "transport": "host"
+    },
+    {
+      "a": 8706,
+      "b": 254,
+      "transport": "host"
+    }
+  ]
+}

@@ -320,6 +320,7 @@ TEST(ns, a_full_table_refuses_rather_than_overwrites) {
     }
     CHECK_EQ(placed, kNamespaceEntries);
     CHECK_EQ(ns.count(), kNamespaceEntries);
+    CHECK_EQ(ns.full_refusals(), 1u);  // counted, so a full table is no longer silent (section 15 question 2)
 }
 
 TEST(ns, lookup_cost_is_bounded_at_a_realistic_occupancy) {

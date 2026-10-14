@@ -5718,3 +5718,24 @@ installation; M18: Node-RED itself not installed).
 **M16, M17 and M18 ACCEPTED by the owner (2026-10-14, evening)**, each with its caveat (M16: Ingress not tested;
 M17: the owner's Home Assistant, not a fresh installation; M18: Node-RED itself not installed). 21 of 24 milestones
 are accepted; M5.1, M8.1 and M8.2 are built and wait on long runs or a hand on the hardware.
+
+**Session 45 (2026-10-15, past midnight): the four things left that needed no owner.**
+
+1. **Flash endurance, verified.** WROOM-1/1U datasheet v1.8, Table 6-8: "Program/erase cycles 100,000" (minimum),
+   retention 20 years (ledger row updated; the bench's flash die is unidentified -- IDF logs `detected chip: generic`).
+   Recomputed: one checkpointing actor ~41-48 years, but eight portable actors each writing a full changing
+   checkpoint a minute wear a board's six NVS pages out in ~2.2-2.6 years. **Fixed** (`d3f3c67`): a board spends at
+   most 7 NVS entries a minute on checkpoints (one full one, ~18-20 years), its actors in turn; `ck_nvs_deferred` counts
+   what waited.
+2. **Section 15 question 2, the namespace cap.** 128 is right for speed and memory, not as an unaccounted budget: a
+   table holds own resources, every package output and read-time replicas (bench: 31/40/40); the bench's package at 20
+   boards would need 130 everywhere. Raising to 256 does not fit internal RAM (5.6 KB against 2.2 KB). A full table was
+   silent and answered NOT_FOUND for a resource that exists; **fixed**: FULL, a refusal counter, `ns_used`/`ns_cap`/
+   `ns_full_refusals` on the `act` stats line. Still to build: `apply --plan` accounting, replica eviction.
+3. **Section 15 question 1, the Locality Contract.** The vent controller, joint controller and building monitor written
+   as package manifests (`manifests/q1-*.json`, by the session -- declarations, not running code): all pass; 50
+   resources L0 4 / L1 8 / L2 3 / L3 7 / L4 28. The classes carry weight; two author mistakes refused naming both ends;
+   the setpoint pattern (a resource tighter than its writer) recorded in DEVELOPING-APPS.md.
+4. **The PC's HELLO refusal of A** (every ~10 s since M14): the PC verified A's signed HELLO against the cable's
+   address while A signs for its radio MAC. **Fixed** (`d3f3c67`): counted as `cable_unverified`, not refused; on the
+   bench 0 refusals in 73 s. The homelab's clock: NTP inactive, 85-95 s behind -- the owner's to switch on.

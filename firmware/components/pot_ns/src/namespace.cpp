@@ -98,6 +98,7 @@ NsError Namespace::declare(const NsDecl& d) {
             return NsError::Ok;
         }
     }
+    ++full_refusals_;
     return NsError::Full;
 }
 

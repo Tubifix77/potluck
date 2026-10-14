@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "system": "vent",
+  "min_core_version": 1,
+  "nodes": [
+    {
+      "node_id": 4353,
+      "label": "duct",
+      "power": "mains",
+      "headroom_bytes": 49152,
+      "owns": [
+        {
+          "path": "potluck://vent/node-1101/duct/temp",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 1,
+          "staleness_bound_ms": 500,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://vent/node-1101/damper/command",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 1,
+          "staleness_bound_ms": 200,
+          "staleness_policy": "strict"
+        },
+        {
+          "path": "potluck://vent/node-1101/damper/position",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 1,
+          "staleness_bound_ms": 200,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://vent/node-1101/damper/target",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 1,
+          "staleness_bound_ms": 600000,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 4354,
+      "label": "room-north",
+      "power": "battery",
+      "headroom_bytes": 40960,
+      "owns": [
+        {
+          "path": "potluck://vent/node-1102/room/temp",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 3,
+          "staleness_bound_ms": 30000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://vent/node-1102/room/occupied",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 3,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 4355,
+      "label": "room-south",
+      "power": "battery",
+      "headroom_bytes": 40960,
+      "owns": [
+        {
+          "path": "potluck://vent/node-1103/room/temp",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 3,
+          "staleness_bound_ms": 30000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://vent/node-1103/room/occupied",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 3,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://vent/node-1103/room/setpoint",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    }
+  ],
+  "actors": [
+    {
+      "name": "damper_loop",
+      "module": "ext:vent/damper_loop",
+      "latency_class": 1,
+      "pin": 4353,
+      "needs": [
+        "potluck://vent/node-1101/damper/target",
+        "potluck://vent/node-1101/damper/position",
+        "potluck://vent/node-1101/damper/command",
+        "potluck://vent/node-1101/duct/temp"
+      ],
+      "headroom_bytes": 8192,
+      "priority": "critical",
+      "on_host_loss": "hold"
+    },
+    {
+      "name": "room_control",
+      "module": "ext:vent/room_control",
+      "latency_class": 3,
+      "needs": [
+        "potluck://vent/node-1102/room/temp",
+        "potluck://vent/node-1103/room/temp",
+        "potluck://vent/node-1102/room/occupied",
+        "potluck://vent/node-1103/room/occupied",
+        "potluck://vent/node-1101/damper/target",
+        "potluck://vent/node-1101/duct/temp"
+      ],
+      "headroom_bytes": 8192,
+      "priority": "normal",
+      "on_host_loss": "hold"
+    },
+    {
+      "name": "schedule",
+      "module": "ext:vent/schedule",
+      "latency_class": 4,
+      "needs": [
+        "potluck://vent/node-1103/room/setpoint"
+      ],
+      "headroom_bytes": 4096,
+      "priority": "normal",
+      "on_host_loss": "continue"
+    }
+  ],
+  "placement": {
+    "damper_loop": 4353,
+    "room_control": 4353,
+    "schedule": 4355
+  },
+  "links": [
+    {
+      "a": 4353,
+      "b": 4354,
+      "transport": "espnow"
+    },
+    {
+      "a": 4353,
+      "b": 4355,
+      "transport": "espnow"
+    },
+    {
+      "a": 4354,
+      "b": 4355,
+      "transport": "espnow"
+    }
+  ]
+}

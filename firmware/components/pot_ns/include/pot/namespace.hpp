@@ -238,6 +238,9 @@ class Namespace {
     NsError read(uint32_t hash, uint32_t now_ms, bool owner_alive, Reading& out) const;
 
     size_t count() const;
+    // Declarations refused because the table was full (section 15 question 2, 2026-10-15: a full table used
+    // to be silent -- a resource that exists then read as NOT_FOUND).
+    uint32_t full_refusals() const { return full_refusals_; }
     static constexpr size_t capacity() { return kNamespaceEntries; }
 
     NsEntry& slot(size_t i) { return entries_[i]; }
@@ -259,6 +262,7 @@ class Namespace {
     uint32_t outside_hash_[kMaxOutside];
     uint8_t outside_flags_[kMaxOutside];
     uint8_t outside_n_ = 0;
+    uint32_t full_refusals_ = 0;
 };
 
 static_assert(kNamespaceEntries > 0 && (kNamespaceEntries & (kNamespaceEntries - 1)) == 0,

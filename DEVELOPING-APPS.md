@@ -321,7 +321,10 @@ others into the owner's one package (below):
 - **`latency_class`** -- the deadline class of the actor's bindings, from ARCHITECTURE section 4: L0 under
   100 us (same silicon), L1 under 10 ms (same node), L2 under 20 ms (one wired hop), L3 under 500 ms (one
   radio hop), L4 best effort. An actor may only bind resources of its class or tighter, and the build refuses
-  a binding the transport cannot meet. Radio apps are typically L4 (passive-sensor's three actors all are).
+  a binding the transport cannot meet. Radio apps are typically L4 (passive-sensor's three actors all are);
+  control loops use L0-L2 (`manifests/q1-joint.json`, `q1-vent.json` are worked examples). A setpoint written from
+  afar but read by a tight loop is declared at its reader's class (L1, with a long `staleness_bound_ms`) and
+  written by a looser actor: a resource may be tighter than the actor binding it.
 - **`needs`** -- the resources it reads; a portable actor's gravity is higher on a node that owns them. **Every
   path in `needs` must be declared by some node's `owns` list** (or the manifest is refused: "...is neither a
   declared resource nor a binding"):

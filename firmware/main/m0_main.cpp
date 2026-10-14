@@ -2187,14 +2187,18 @@ void stats_task(void*) {
             served = g_node->ns_counters().writes_served;
             const uint32_t w_out = g_node->ns_counters().writes_outside;
             const uint32_t w_out_refused = g_node->ns_counters().writes_outside_refused;
+            const unsigned ns_used = static_cast<unsigned>(g_node->ns().count());
+            const unsigned ns_full = static_cast<unsigned>(g_node->ns().full_refusals());
             xSemaphoreGive(g_mutex);
             int32_t spv = 0;
             Quality spq;
             const bool has = sp.get_i32(spv, spq);
             std::printf("{\"t\":\"act\",\"node\":%u,\"setpoint\":%d,\"has_value\":%d,\"writes_served\":%u,"
-                        "\"writes_outside\":%u,\"writes_outside_refused\":%u}\n",
+                        "\"writes_outside\":%u,\"writes_outside_refused\":%u,\"ns_used\":%u,\"ns_cap\":%u,"
+                        "\"ns_full_refusals\":%u}\n",
                         static_cast<unsigned>(node_id), static_cast<int>(spv), has ? 1 : 0, served,
-                        static_cast<unsigned>(w_out), static_cast<unsigned>(w_out_refused));
+                        static_cast<unsigned>(w_out), static_cast<unsigned>(w_out_refused), ns_used,
+                        static_cast<unsigned>(kNamespaceEntries), ns_full);
             // M5.1: each peer's declared window (CR-3) and caps (CR-4), as this node holds them.
             const Node::ChannelCounters chc = g_node->channel_counters();
             std::printf("{\"t\":\"peers\",\"node\":%u,\"own_period_ms\":%u,\"own_busy\":%d,\"channel\":%u,"

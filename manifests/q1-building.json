@@ -1,0 +1,546 @@
+{
+  "schema": 1,
+  "system": "office",
+  "min_core_version": 1,
+  "nodes": [
+    {
+      "node_id": 13057,
+      "label": "room-1",
+      "power": "battery",
+      "headroom_bytes": 40960,
+      "owns": [
+        {
+          "path": "potluck://office/node-3301/air/temp",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3301/air/humidity",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3301/air/co2",
+          "unit": "ppm",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3301/room/occupied",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 13058,
+      "label": "room-2",
+      "power": "battery",
+      "headroom_bytes": 40960,
+      "owns": [
+        {
+          "path": "potluck://office/node-3302/air/temp",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3302/air/humidity",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3302/air/co2",
+          "unit": "ppm",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3302/room/occupied",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 13059,
+      "label": "room-3",
+      "power": "battery",
+      "headroom_bytes": 40960,
+      "owns": [
+        {
+          "path": "potluck://office/node-3303/air/temp",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3303/air/humidity",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3303/air/co2",
+          "unit": "ppm",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3303/room/occupied",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3303/water/leak",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 3,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 13060,
+      "label": "room-4",
+      "power": "battery",
+      "headroom_bytes": 40960,
+      "owns": [
+        {
+          "path": "potluck://office/node-3304/air/temp",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3304/air/humidity",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3304/air/co2",
+          "unit": "ppm",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3304/room/occupied",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 13061,
+      "label": "room-5",
+      "power": "battery",
+      "headroom_bytes": 40960,
+      "owns": [
+        {
+          "path": "potluck://office/node-3305/air/temp",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3305/air/humidity",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3305/air/co2",
+          "unit": "ppm",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3305/room/occupied",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 13062,
+      "label": "room-6",
+      "power": "battery",
+      "headroom_bytes": 40960,
+      "owns": [
+        {
+          "path": "potluck://office/node-3306/air/temp",
+          "unit": "celsius",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3306/air/humidity",
+          "unit": "ratio",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3306/air/co2",
+          "unit": "ppm",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 120000,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3306/room/occupied",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        },
+        {
+          "path": "potluck://office/node-3306/water/leak",
+          "unit": "none",
+          "kind": "event",
+          "access": "read",
+          "latency_class": 3,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    },
+    {
+      "node_id": 13073,
+      "label": "siren",
+      "power": "mains",
+      "headroom_bytes": 49152,
+      "owns": [
+        {
+          "path": "potluck://office/node-3311/siren/on",
+          "unit": "none",
+          "kind": "sampled",
+          "access": "read_write",
+          "latency_class": 3,
+          "staleness_bound_ms": 1000,
+          "staleness_policy": "strict"
+        }
+      ]
+    },
+    {
+      "node_id": 254,
+      "label": "pc",
+      "kind": "host",
+      "power": "mains",
+      "headroom_bytes": 1048576,
+      "owns": [
+        {
+          "path": "potluck://office/node-00fe/report/daily",
+          "unit": "none",
+          "kind": "sampled",
+          "access": "read",
+          "latency_class": 4,
+          "staleness_bound_ms": 0,
+          "staleness_policy": "informative"
+        }
+      ]
+    }
+  ],
+  "actors": [
+    {
+      "name": "leak_alarm",
+      "module": "ext:office/leak_alarm",
+      "latency_class": 3,
+      "pin": 13073,
+      "needs": [
+        "potluck://office/node-3303/water/leak",
+        "potluck://office/node-3306/water/leak",
+        "potluck://office/node-3311/siren/on"
+      ],
+      "headroom_bytes": 4096,
+      "priority": "critical",
+      "on_host_loss": "continue"
+    },
+    {
+      "name": "air_summary",
+      "module": "ext:office/air_summary",
+      "latency_class": 4,
+      "needs": [
+        "potluck://office/node-3301/air/temp",
+        "potluck://office/node-3301/air/humidity",
+        "potluck://office/node-3301/air/co2",
+        "potluck://office/node-3302/air/temp",
+        "potluck://office/node-3302/air/humidity",
+        "potluck://office/node-3302/air/co2",
+        "potluck://office/node-3303/air/temp",
+        "potluck://office/node-3303/air/humidity",
+        "potluck://office/node-3303/air/co2",
+        "potluck://office/node-3304/air/temp",
+        "potluck://office/node-3304/air/humidity",
+        "potluck://office/node-3304/air/co2",
+        "potluck://office/node-3305/air/temp",
+        "potluck://office/node-3305/air/humidity",
+        "potluck://office/node-3305/air/co2",
+        "potluck://office/node-3306/air/temp",
+        "potluck://office/node-3306/air/humidity",
+        "potluck://office/node-3306/air/co2"
+      ],
+      "headroom_bytes": 8192,
+      "priority": "normal"
+    },
+    {
+      "name": "occupancy",
+      "module": "ext:office/occupancy",
+      "latency_class": 4,
+      "needs": [
+        "potluck://office/node-3301/room/occupied",
+        "potluck://office/node-3302/room/occupied",
+        "potluck://office/node-3303/room/occupied",
+        "potluck://office/node-3304/room/occupied",
+        "potluck://office/node-3305/room/occupied",
+        "potluck://office/node-3306/room/occupied"
+      ],
+      "headroom_bytes": 4096,
+      "priority": "normal"
+    },
+    {
+      "name": "history",
+      "module": "ext:office/history",
+      "latency_class": 4,
+      "pin": 254,
+      "needs": [
+        "potluck://office/node-3301/air/co2",
+        "potluck://office/node-3302/air/co2",
+        "potluck://office/node-3303/air/co2",
+        "potluck://office/node-3304/air/co2",
+        "potluck://office/node-3305/air/co2",
+        "potluck://office/node-3306/air/co2"
+      ],
+      "headroom_bytes": 262144,
+      "priority": "background"
+    }
+  ],
+  "placement": {
+    "leak_alarm": 13073,
+    "air_summary": 13057,
+    "occupancy": 13058,
+    "history": 254
+  },
+  "links": [
+    {
+      "a": 13057,
+      "b": 13073,
+      "transport": "espnow"
+    },
+    {
+      "a": 13058,
+      "b": 13073,
+      "transport": "espnow"
+    },
+    {
+      "a": 13059,
+      "b": 13073,
+      "transport": "espnow"
+    },
+    {
+      "a": 13060,
+      "b": 13073,
+      "transport": "espnow"
+    },
+    {
+      "a": 13061,
+      "b": 13073,
+      "transport": "espnow"
+    },
+    {
+      "a": 13062,
+      "b": 13073,
+      "transport": "espnow"
+    },
+    {
+      "a": 13057,
+      "b": 13058,
+      "transport": "espnow"
+    },
+    {
+      "a": 13057,
+      "b": 13059,
+      "transport": "espnow"
+    },
+    {
+      "a": 13057,
+      "b": 13060,
+      "transport": "espnow"
+    },
+    {
+      "a": 13057,
+      "b": 13061,
+      "transport": "espnow"
+    },
+    {
+      "a": 13057,
+      "b": 13062,
+      "transport": "espnow"
+    },
+    {
+      "a": 13058,
+      "b": 13059,
+      "transport": "espnow"
+    },
+    {
+      "a": 13058,
+      "b": 13060,
+      "transport": "espnow"
+    },
+    {
+      "a": 13058,
+      "b": 13061,
+      "transport": "espnow"
+    },
+    {
+      "a": 13058,
+      "b": 13062,
+      "transport": "espnow"
+    },
+    {
+      "a": 13059,
+      "b": 13060,
+      "transport": "espnow"
+    },
+    {
+      "a": 13059,
+      "b": 13061,
+      "transport": "espnow"
+    },
+    {
+      "a": 13059,
+      "b": 13062,
+      "transport": "espnow"
+    },
+    {
+      "a": 13060,
+      "b": 13061,
+      "transport": "espnow"
+    },
+    {
+      "a": 13060,
+      "b": 13062,
+      "transport": "espnow"
+    },
+    {
+      "a": 13061,
+      "b": 13062,
+      "transport": "espnow"
+    },
+    {
+      "a": 13057,
+      "b": 254,
+      "transport": "host"
+    },
+    {
+      "a": 13058,
+      "b": 254,
+      "transport": "host"
+    },
+    {
+      "a": 13059,
+      "b": 254,
+      "transport": "host"
+    },
+    {
+      "a": 13060,
+      "b": 254,
+      "transport": "host"
+    },
+    {
+      "a": 13061,
+      "b": 254,
+      "transport": "host"
+    },
+    {
+      "a": 13062,
+      "b": 254,
+      "transport": "host"
+    },
+    {
+      "a": 13073,
+      "b": 254,
+      "transport": "host"
+    }
+  ]
+}
