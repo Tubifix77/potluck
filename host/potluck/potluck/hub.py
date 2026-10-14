@@ -371,6 +371,7 @@ class Model:
         # with no console connected to any board (tools/m15_report.py --hub).
         self.telemetry_log = telemetry_log
         self.recorder = None  # M16: potluck.hubreplay.Recorder, when --record names a directory
+        self.pairing = None  # M17: potluck.hubauth.Pairing, when --listen serves the house network
         self.cluster = cluster
         self.package = package
         self.pull_period_ms = pull_period_ms
@@ -582,7 +583,8 @@ class Model:
                     "frames_rx": self.hub.stats.rx_frames, "frames_tx": self.hub.stats.tx_frames,
                     "pull_period_ms": self.pull_period_ms, "clock_error_ms": self._clock_error_ms(),
                     "telemetry_period_ms": self.telemetry_period_ms, "telemetry": dict(self.telemetry_counts),
-                    "relay": dict(self.hub.relay_counts), "retention": self._retention_json()},
+                    "relay": dict(self.hub.relay_counts), "retention": self._retention_json(),
+                    "pairing": self.pairing.pending() if self.pairing is not None else []},
             "cell": self._cell_json(boards),
             "boards": boards,
             "apps": apps,
@@ -784,7 +786,7 @@ def _version() -> str:
 
 # ---- the API ---------------------------------------------------------------------------------------------
 
-def serve_api(model: Model, addr: str, sessions=None, tls=None) -> ThreadingHTTPServer:
+def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) -> ThreadingHTTPServer:
     """The API. With `sessions` (potluck.hubauth.Sessions) every request but the login page needs a login, and a write
     needs the write right (M16); without, it is the PC's own user on 127.0.0.1. `tls`: an ssl.SSLContext."""
     host, _, p = addr.rpartition(":")
@@ -824,20 +826,33 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None) -> ThreadingHTTP
             self.wfile.write(body)
 
         def _who(self) -> tuple[str, str] | None:
-            """(name, right) of this request: the PC's own user without a login, else the session's."""
+            """(name, right) of this request: the PC's own user without a login, else a paired program's token (M17)
+            or the session's."""
             if sessions is None:
                 return "local", "write"
+            token = hubauth.bearer_token(self.headers.get("Authorization"))
+            if token is not None:
+                return sessions.users.check_token(token)
             return sessions.get(hubauth.cookie_token(self.headers.get("Cookie")))
 
         def _allowed(self, path: str) -> bool:
             if sessions is None or path in PUBLIC or self._who() is not None:
                 return True
+            if path.startswith("/api/pair/") and pairing is not None:
+                return True  # a program waiting for the owner's answer has no token yet (M17)
             self._json(401, {"error": "login", "result": "log in first"})
             return False
 
         def do_GET(self) -> None:
             path, _, query = self.path.partition("?")
             if not self._allowed(path):
+                return
+            if path.startswith("/api/pair/") and sessions is not None and pairing is not None:
+                got = pairing.fetch(path[len("/api/pair/"):])
+                if got is None:
+                    self._json(404, {"error": "not found", "result": "no such request (expired, or already fetched)"})
+                else:
+                    self._json(200, got)
                 return
             if path == "/api/whoami":
                 who = self._who()
@@ -907,6 +922,31 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None) -> ThreadingHTTP
                 # A page on another site can make a browser POST here with its cookie, but not with a custom header
                 # unless this server allowed it (CORS), which it never does.
                 self._json(403, {"ok": False, "result": "missing X-Potluck-Request"})
+                return
+            if self.path == "/api/pair" and sessions is not None and pairing is not None:
+                # M17: a program asks to be paired; the owner answers on the PC (POST /api/pairing on 127.0.0.1).
+                try:
+                    req = self._body()
+                except ValueError:
+                    req = {}
+                pid = pairing.request(str(req.get("name", "")), str(req.get("right", "look")), self.client_address[0])
+                if pid is None:
+                    self._json(429, {"ok": False, "result": "too many pairing requests waiting"})
+                    return
+                model.record("pair_request", None, {"name": req.get("name"), "from": self.client_address[0]})
+                self._json(202, {"pair_id": pid, "expires_in_s": hubauth.Pairing.TTL_S})
+                return
+            if self.path == "/api/pairing" and sessions is None and pairing is not None:
+                # The owner's answer -- the PC's own address only, never on --listen.
+                try:
+                    req = self._body()
+                    pid, approve = str(req["pair_id"]), bool(req["approve"])
+                except (ValueError, KeyError):
+                    self._json(400, {"ok": False, "result": "expected {\"pair_id\": ..., \"approve\": true|false}"})
+                    return
+                ok = pairing.answer(pid, approve)
+                model.record("pair_answer", None, {"pair_id": pid, "approve": approve, "ok": ok})
+                self._json(200 if ok else 404, {"ok": ok})
                 return
             if self.path == "/api/login" and sessions is not None:
                 try:
@@ -1032,6 +1072,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--record-hours", type=int, default=24, help="M16: how many hours of recording to keep")
     ap.add_argument("--replay", help="M16: serve this recording through the API instead of a cell (no port)")
     ap.add_argument("--speed", type=float, default=1.0, help="M16: replay speed")
+    ap.add_argument("--no-ha-entities", action="store_true",
+                    help="M17: do not publish the hub's own entities (board health, firmware) to the cluster's broker")
     a = ap.parse_args(argv)
     lan = None
     if a.listen:
@@ -1120,11 +1162,42 @@ def main(argv: list[str] | None = None) -> int:
 
         model.recorder = Recorder(a.record, a.record_hours)
     relay = serve_relay(hub, a.relay)
-    api = serve_api(model, a.api)
+    pairing = None
+    announcer = None
     if lan is not None:
-        serve_api(model, a.listen, sessions=lan[0], tls=lan[1])
+        from .hubauth import Pairing
+
+        pairing = Pairing(lan[0].users)  # M17: programs ask on --listen, the owner answers on 127.0.0.1
+        model.pairing = pairing
+    api = serve_api(model, a.api, pairing=pairing)
+    if lan is not None:
+        serve_api(model, a.listen, sessions=lan[0], tls=lan[1], pairing=pairing)
         print(f"[hub] dashboard for the network at https://{a.listen}/ (login required; "
-              f"{len(lan[0].users.users)} login(s))", flush=True)
+              f"{len(lan[0].users.users)} login(s), {len(lan[0].users.tokens)} paired program(s))", flush=True)
+        # M17: announced by multicast DNS, so Home Assistant finds it (hub_mdns.py).
+        import hashlib
+        import ssl
+
+        from .hub_mdns import Announcer, lan_ip
+
+        try:
+            der = ssl.PEM_cert_to_DER_cert(open(a.tls_cert, encoding="ascii").read())
+            towards = str((cluster.present or {}).get("broker", "192.168.0.1")).partition(":")[0] if cluster else \
+                "192.168.0.1"
+            ip = lan_ip(towards)
+            announcer = Announcer(cluster.system if cluster else "lab", model.cell_id, int(a.listen.rpartition(":")[2]),
+                                  hashlib.sha256(der).hexdigest(), ip)
+            announcer.start()
+            print(f"[hub] announced as {announcer.instance} at {ip}", flush=True)
+        except (OSError, ValueError) as exc:
+            print(f"[hub] not announced on the network: {exc}", flush=True)
+    extras = None
+    if cluster is not None and cluster.present and not a.no_ha_entities:
+        # M17: the hub's own entities in Home Assistant, on the presenter's devices (hub_extras.py).
+        from .hub_extras import Extras
+
+        extras = Extras(model, lambda m: print(f"[hub] {m}", flush=True))
+        extras.start()
     st = {"pid": os.getpid(), "port": a.port or a.tcp, "relay": a.relay, "api": a.api, "started": _hub_ms()}
     state_file().parent.mkdir(parents=True, exist_ok=True)
     state_file().write_text(json.dumps(st), encoding="utf-8")
@@ -1141,10 +1214,14 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[hub] standing down: the cell's hub lease is {lease.lost.holder_line()}", flush=True)
                 break
             model.pull()
-            if model.recorder is not None:
-                with model.lock:
-                    evs = list(model.events)
-                model.recorder.write(model.snapshot(), evs)
+            if model.recorder is not None or extras is not None:
+                snap = model.snapshot()
+                if model.recorder is not None:
+                    with model.lock:
+                        evs = list(model.events)
+                    model.recorder.write(snap, evs)
+                if extras is not None:
+                    extras.tick(snap)
             time.sleep(max(0.0, a.pull_ms / 1000 - (time.monotonic() - t0)))
     except KeyboardInterrupt:
         pass
@@ -1156,6 +1233,10 @@ def main(argv: list[str] | None = None) -> int:
             pass
         if lease is not None:
             lease.release()
+        if extras is not None:
+            extras.stop()
+        if announcer is not None:
+            announcer.stop()
         relay.shutdown()
         api.shutdown()
         hub.close()

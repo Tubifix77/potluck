@@ -3,6 +3,8 @@
     python -m potluck.hubauth add <name> --right look|write     (asks for the password twice; prints neither)
     python -m potluck.hubauth list
     python -m potluck.hubauth remove <name>
+    python -m potluck.hubauth tokens                  (M17: programs paired with the hub, such as Home Assistant)
+    python -m potluck.hubauth revoke <name>
 
 The hub's API on 127.0.0.1 is the PC's own user and needs no login. On any other address (`potluck.hub --listen
 0.0.0.0:8443`, a house's or a vehicle's network) it is served only over TLS, and every request but the login page
@@ -70,15 +72,43 @@ class Users:
     def __init__(self, path: Path | None = None) -> None:
         self.path = path or users_file()
         try:
-            self.users: dict[str, dict] = json.loads(self.path.read_text(encoding="utf-8")).get("users", {})
+            doc = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
-            self.users = {}
+            doc = {}
+        self.users: dict[str, dict] = doc.get("users", {})
+        # M17: paired programs' tokens -- 256 random bits each, kept as SHA-256 (no slow hash needed for those).
+        self.tokens: dict[str, dict] = doc.get("tokens", {})
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps({"users": self.users}, indent=1), encoding="utf-8")
+        tmp.write_text(json.dumps({"users": self.users, "tokens": self.tokens}, indent=1), encoding="utf-8")
         os.replace(tmp, self.path)
+
+    def add_token(self, name: str, right: str) -> str:
+        if right not in RIGHTS:
+            raise ValueError(f"right must be one of {', '.join(RIGHTS)}")
+        token = secrets.token_urlsafe(32)
+        base, k = name, 2
+        while name in self.tokens:  # a second Home Assistant gets "Home Assistant 2", never replaces the first
+            name, k = f"{base} {k}", k + 1
+        self.tokens[name] = {"right": right, "sha256": hashlib.sha256(token.encode()).hexdigest(),
+                             "at": int(time.time())}
+        return token
+
+    def check_token(self, token: str) -> tuple[str, str] | None:
+        try:  # a revoke from the command line counts at once: re-read the file when it changed
+            mtime = self.path.stat().st_mtime
+            if mtime != getattr(self, "_mtime", None):
+                self._mtime = mtime
+                self.tokens = json.loads(self.path.read_text(encoding="utf-8")).get("tokens", {})
+        except (OSError, ValueError):
+            pass
+        h = hashlib.sha256(token.encode()).hexdigest()
+        for name, rec in self.tokens.items():
+            if hmac.compare_digest(rec.get("sha256", ""), h):
+                return name, rec["right"]
+        return None
 
     def add(self, name: str, right: str, password: str, n: int = SCRYPT_N) -> None:
         if right not in RIGHTS:
@@ -142,6 +172,75 @@ class Sessions:
             self.sessions.pop(token or "", None)
 
 
+class Pairing:
+    """M17: a program asks for a token; the owner approves on the PC (HUB-API.md, "Announced on the network, and
+    paired"). Requests live 300 s; at most 4 wait at once; an approved token is handed over once."""
+
+    TTL_S, MAX_PENDING = 300, 4
+
+    def __init__(self, users: Users) -> None:
+        self.users = users
+        self.lock = threading.Lock()
+        self.reqs: dict[str, dict] = {}
+
+    def _expire(self) -> None:
+        now = time.monotonic()
+        for k in [k for k, r in self.reqs.items() if now - r["t"] > self.TTL_S]:
+            del self.reqs[k]
+
+    def request(self, name: str, right: str, addr: str) -> str | None:
+        name = (name or "a program")[:64]
+        right = right if right in RIGHTS else "look"
+        with self.lock:
+            self._expire()
+            if sum(1 for r in self.reqs.values() if r["state"] == "pending") >= self.MAX_PENDING:
+                return None
+            pid = secrets.token_urlsafe(12)
+            self.reqs[pid] = {"name": name, "right": right, "from": addr, "at": int(time.time() * 1000),
+                              "t": time.monotonic(), "state": "pending", "token": None}
+            return pid
+
+    def pending(self) -> list[dict]:
+        with self.lock:
+            self._expire()
+            return [{"pair_id": k, "name": r["name"], "right": r["right"], "from": r["from"], "at": r["at"]}
+                    for k, r in self.reqs.items() if r["state"] == "pending"]
+
+    def answer(self, pid: str, approve: bool) -> bool:
+        with self.lock:
+            self._expire()
+            r = self.reqs.get(pid)
+            if r is None or r["state"] != "pending":
+                return False
+            if approve:
+                r["token"] = self.users.add_token(r["name"], r["right"])
+                self.users.save()
+                r["state"] = "approved"
+            else:
+                r["state"] = "denied"
+            return True
+
+    def fetch(self, pid: str) -> dict | None:
+        with self.lock:
+            self._expire()
+            r = self.reqs.get(pid)
+            if r is None:
+                return None
+            out = {"state": r["state"]}
+            if r["state"] == "approved":
+                out.update(name=r["name"], right=r["right"], token=r["token"])
+                del self.reqs[pid]  # handed over once
+            elif r["state"] == "denied":
+                del self.reqs[pid]
+            return out
+
+
+def bearer_token(header: str | None) -> str | None:
+    if header and header.startswith("Bearer "):
+        return header[7:].strip() or None
+    return None
+
+
 def cookie_token(header: str | None) -> str | None:
     for part in (header or "").split(";"):
         k, _, v = part.strip().partition("=")
@@ -159,8 +258,24 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("list")
     a_rm = sub.add_parser("remove")
     a_rm.add_argument("name")
+    sub.add_parser("tokens")
+    a_rv = sub.add_parser("revoke")
+    a_rv.add_argument("name")
     a = ap.parse_args(argv)
     u = Users()
+    if a.cmd == "tokens":
+        for name, rec in sorted(u.tokens.items()):
+            print(f"{name}: {rec['right']} (paired {time.strftime('%Y-%m-%d %H:%M', time.localtime(rec.get('at', 0)))})")
+        if not u.tokens:
+            print(f"no paired programs ({u.path})")
+        return 0
+    if a.cmd == "revoke":
+        if u.tokens.pop(a.name, None) is None:
+            print(f"no paired program named {a.name}")
+            return 1
+        u.save()
+        print(f"revoked {a.name}; a running hub refuses it from its next request")
+        return 0
     if a.cmd == "list":
         for name, rec in sorted(u.users.items()):
             print(f"{name}: {rec['right']}")
