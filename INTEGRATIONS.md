@@ -15,7 +15,9 @@ the cell's [README](README.md); the hub's API, field by field, is [host/potluck/
    `STALE`, `UNAVAILABLE`, `NO_DATA`, `FAULTY` -- HUB-API.md, the model). Show the quality; when a resource is strict and
    not `GOOD`, there is no value to show (`null`), and the integration says "unavailable", never an old number.
 3. **Reads only what the package exposes, writes only what it allows, and never deploys.** The cluster file's `outside`
-   block says what systems outside the cell may read and write (DEVELOPING-APPS.md); nothing else reaches an integration.
+   block says what systems outside the cell may read and write (DEVELOPING-APPS.md). The hub's model holds every
+   resource, for the owner's own dashboard: an integration shows only those with `exposed: true`, and writes only those
+   with `outside_writable: true`.
    A write goes to the owning board, which checks again. There is no way to deploy through an integration: that is
    `potluck apply`, on the PC that holds the owner's keys.
 4. **Is a module the owner chooses.** Nothing runs unless the owner turns it on: a program they start, a board module
@@ -51,12 +53,14 @@ events as they happen. Use the stream: it counts once against your share, howeve
 board: `{node, label, state (alive | asleep | dead | unknown), since_at, ...}`. A board that is `dead` makes its
 resources `UNAVAILABLE`; one `asleep` declared a long window and is expected back.
 
-**4. Write** (only `outside_writable: true`): `POST /api/write {"path", "value"}`, a bool or a number. HUB-API.md lists
-every answer; show the `result` to the person who asked. The cluster file may name which programs may write a resource
+**4. Write** (only `outside_writable: true`): `POST /api/write {"path", "value"}`, a bool or a number -- the hub writes
+a number as the resource's own `type`. HUB-API.md lists every answer; show the `result` to the person who asked. The cluster file may name which programs may write a resource
 (`"writers": [...]`) -- by the name you paired with.
 
-**5. Report your state** at least every 30 s: `POST /api/integrations {"name", "state": "connected" | "disconnected" |
-"error" | "idle", "detail"}`. Stop reporting and the dashboard shows you `disconnected` after 60 s.
+**5. Report your state** at least every 30 s, under the name you paired with: `POST /api/integrations {"name", "state":
+"connected" | "disconnected" | "error" | "idle", "detail"}` -- `error` when you run but cannot do your job (a refused
+login), `disconnected` when you cannot reach the hub or your own system, `idle` when there is nothing to do. Stop
+reporting and the dashboard shows you `disconnected` after 60 s.
 
 **6. Stay within your share.** Requests 20 a second, writes 2 a second, per program. Over it you get `429` with
 `Retry-After`: wait that long. Only you are slowed; the cell and the other programs are not.

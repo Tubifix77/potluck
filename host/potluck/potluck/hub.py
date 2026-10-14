@@ -676,7 +676,9 @@ class Model:
         return {"path": path, "name": name, "owner": owner, "value": value, "unit": unit, "quality": r["quality"],
                 "age_ms": rd.age_ms + max(0, _hub_ms() - r["at"]), "latency_class": rd.latency_class,
                 "exposed": outside is not None, "outside_writable": outside == "read_write",
-                "safety_relevant": self._safety(path)}
+                "safety_relevant": self._safety(path),
+                # M18: what a write must be (a reader cannot tell 20 from 20.0 in JSON); null until it first has a value
+                "type": _TYPE_NAMES.get(rd.value.type)}
 
     def _safety(self, path: str) -> bool:
         if self.package is None:
@@ -1075,6 +1077,9 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
     return srv
 
 
+_TYPE_NAMES = {1: "bool", 2: "i32", 3: "u32", 4: "f32", 5: "i64", 6: "u64", 7: "f64", 8: "bytes"}
+
+
 def write_outside(model: Model, path: str, value: Any, by: str | None = None) -> tuple[int, dict]:
     """POST /api/write: only a resource the package lets the outside write, never a safety-relevant one; sent to the
     owning board as a WRITE marked from outside, which checks the package again. M18: a resource whose cluster file
@@ -1092,8 +1097,15 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
         return 403, {"ok": False, "result": "not writable from outside"}
     with model.lock:
         cur = model.resources.get(path)
+    # M18: a number is written as the resource's own type when the hub knows it, so a client never has to tell 20 from
+    # 20.0 (JSON cannot): 20 to a float resource is 20.0, 20.0 to an integer one is 20.
+    known = cur["reading"].value.type if cur is not None and cur.get("reading") is not None else 0
     if isinstance(value, bool):
         v = Value.of_bool(value)
+    elif isinstance(value, (int, float)) and known == 4:  # F32
+        v = Value.of_f32(float(value))
+    elif isinstance(value, (int, float)) and known in (2, 3) and float(value).is_integer():  # I32, U32
+        v = Value.of_u32(int(value)) if known == 3 and hasattr(Value, "of_u32") else Value.of_i32(int(value))
     elif isinstance(value, int):
         v = Value.of_i32(value)
     elif isinstance(value, float):

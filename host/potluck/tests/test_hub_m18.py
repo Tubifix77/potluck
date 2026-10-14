@@ -110,6 +110,38 @@ class Writers(unittest.TestCase):
         self.assertEqual((code, body["result"]), (403, "not writable by this program"))
         self.assertEqual(m.recorded[-1]["by"], "Node-RED")
 
+    def test_a_number_is_written_as_the_resources_own_type(self) -> None:
+        # From the Node-RED reader: JSON cannot tell 20 from 20.0, so the hub writes the type it knows the resource has.
+        from potluck.value import Reading, Value, ValueType
+
+        sent = []
+
+        class Cl:
+            outside = {"potluck://lab/node-7368/set/point": "read_write"}
+            writers = {}
+
+        class Hub:
+            peer_node_id = 0x6300
+
+            def _request(self, op, payload, h, timeout, dst):
+                sent.append(payload)
+                raise hb.RequestTimeout("test")
+
+        class M:
+            cluster = Cl()
+            hub = Hub()
+            lock = threading.Lock()
+            resources = {"potluck://lab/node-7368/set/point": {"reading": Reading(value=Value.of_f32(1.5)), "at": 0}}
+
+            def record(self, *a):
+                pass
+
+            def _safety(self, path):
+                return False
+
+        hb.write_outside(M(), "potluck://lab/node-7368/set/point", 20)
+        self.assertEqual(sent[-1][4], int(ValueType.F32))  # WritePayload's value_type byte
+
     def test_the_cluster_file_names_writers_only_for_a_read_write_resource(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             def cluster(outside):

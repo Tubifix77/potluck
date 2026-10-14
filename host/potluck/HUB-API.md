@@ -88,7 +88,14 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
 - `resource.quality` (section 4 rule 2; never omitted): `GOOD` (fresh), `STALE` (older than its staleness bound, still
   shown), `UNAVAILABLE` (its owner is dead or unreachable: no value), `NO_DATA` (never published yet), `FAULTY` (the
   owner says its sensor is broken: no value). `resource.age_ms` is the value's age at the model's `at`.
-- `integration.state`: `connected` | `disconnected` | `idle` | `off`.
+- `integration.state`: `connected` | `disconnected` | `idle` | `off` | `error` (a program's own report, M18: `error` --
+  it runs but cannot do its job, say its login was refused; `disconnected` -- it cannot reach the hub or the other
+  system; `idle` -- nothing to do; the cell's presenter is `off` when no board carries it).
+- `resource.owner`: the board that owns it now -- for a portable actor's output, the board running the actor, which
+  changes when the actor moves. `resource.type`: `bool` | `i32` | `u32` | `f32` | ... -- what it holds, `null` until it
+  first has a value. The model holds every resource the package names, for the owner's dashboard; an integration shows
+  only those with `exposed: true`. A strict resource (section 4) that is not `GOOD` arrives with `value: null` -- the hub
+  has already withheld the number; a client never needs to know which are strict.
 - `deploy.result`: `verified` | `confirmed` | `reverted` | `refused` | `failed` | `running`.
 
 ## GET /api/events?since=<seq>
@@ -114,7 +121,8 @@ write refused by the login's right adds `by`).
 
 ## GET /api/stream
 
-Server-sent events (`text/event-stream`): `event: model` with the full model once per pull period, `event: events` with
+Server-sent events (`text/event-stream`, each message one `event:` line and one `data:` line holding one JSON object,
+then a blank line; on connect the model comes first): `event: model` with the full model once per pull period, `event: events` with
 new events as they arrive, in the same shape as `GET /api/events` (`{api, next, events}`; at most the last 200 on connect).
 A dashboard needs nothing else; ten open streams cost the cell no more radio than one, since every viewer is served from
 the hub's one pull (M15).
@@ -129,7 +137,9 @@ three pull periods (at least 10 s) as dead; on a drop, poll `GET /api/model` and
 `{"path": "potluck://lab/node-7368/led/on", "value": true}` -> `{"ok": true, "result": "applied"}`. Only resources with
 `outside_writable: true`, and only a board's own resource (`.../node-XXXX/...`; an actor's output that moves between
 boards cannot be written from outside). `value` is a JSON bool or number -- an integer is written as a 32-bit integer, a
-number with a fraction as a 32-bit float; the owning board refuses a type that is not the resource's. The write reaches
+number with a fraction as a 32-bit float -- unless the hub knows the resource's `type`, when a number is written as
+that (20 to an `f32` resource is 20.0, 20.0 to an `i32` one is 20), so a client never has to tell them apart; the
+owning board refuses a type that is not the resource's. The write reaches
 the owning board marked as from outside, which checks the package again. Every answer is `{"ok", "result"}`:
 
 | status | result | why |
@@ -179,8 +189,11 @@ replays the cell byte for byte.
 
 With `--listen`, the hub announces itself by multicast DNS (RFC 6762/6763), so Home Assistant finds it with nothing
 typed: service type `_potluck._tcp.local.`, instance `Potluck <system> <cell id>`, port the `--listen` port, and TXT
-records `cell=<cell id>` (8 hex digits), `system=<name>`, `api=1`, `tls=1`, `fp=<SHA-256 of the hub's certificate,
-DER, 64 lowercase hex digits>`. A client checks the certificate it is served against `fp` -- the hub's certificate is
+records `txtvers=1`, `cell=<cell id>` (8 hex digits), `system=<name>`, `api=1`, `tls=1`, `fp=<SHA-256 of the hub's
+certificate, DER, 64 lowercase hex digits>`. It answers a querier on port 5353 by multicast and a one-shot query from
+any other port by unicast (RFC 6762 6.7). Where multicast does not reach (another network, a container), the same
+fingerprint is on the dashboard's hub card on the PC and in `GET /api/hello`; compare it there before trusting it, and
+the owner sees the asking address (`from`) before clicking Allow. A client checks the certificate it is served against `fp` -- the hub's certificate is
 self-signed, so the announcement is what it is checked against -- and the owner's approval below is what makes it
 trusted.
 
@@ -191,8 +204,10 @@ Pairing gives a program a token, approved by the owner on the PC, with nothing t
 
 - `POST /api/pair` (on `--listen`, no session needed, with `X-Potluck-Request: 1`) `{"name": "Home Assistant",
   "right": "look"}` -> `202 {"pair_id": "<id>", "expires_in_s": 300}`. At most 4 pending requests; more are `429`.
-- `GET /api/pair/<pair_id>` -> `{"state": "pending"}`, then `{"state": "approved", "name", "right", "token"}` (the
-  token is shown once), or `{"state": "denied"}`; `404` once it expired or was fetched.
+- `GET /api/pair/<pair_id>` (no session needed either) -> `{"state": "pending"}`, then `{"state": "approved", "name",
+  "right", "token"}` (the token is shown once), or `{"state": "denied"}`; `404` once it expired or was fetched. Pairing
+  exists only on `--listen`: on 127.0.0.1 there is nothing to pair (no login at all). A second program asking under a
+  name already paired gets that name with a number added (`Home Assistant 2`), so `hubauth revoke` can tell them apart.
 - The owner sees each pending request in the model (`hub.pairing`: `[{"pair_id", "name", "right", "from", "at"}]`) and
   on the dashboard's hub card, and answers on the PC: `POST /api/pairing {"pair_id": "<id>", "approve": true|false}` --
   on 127.0.0.1 only, never on `--listen`.
@@ -213,14 +228,15 @@ binary sensor per app. They are available while the hub is (`potluck/<cell>/hub`
 ## Integrations report their state, and each program has a share (M18)
 
 `POST /api/integrations {"name": "Node-RED", "state": "connected" | "disconnected" | "error" | "idle", "detail": "..."}`
--> `{"ok": true}` (any login or token; on 127.0.0.1 no login). The model then lists it in `integrations` beside the
+-> `{"ok": true}` (any login or token; on 127.0.0.1 no login). Report under one name, the one you paired with; a second
+report under the same name replaces the first. The model then lists it in `integrations` beside the
 cell's own presenter: `{"name", "kind": "program", "where": <who sent it>, "state", "since_at", "detail", "last_at"}`,
 and a report older than 60 s reads `disconnected` ("silent for N s"). Report at least every 30 s while running.
 
 Every program has a share of what the hub may ask of the cell, by who it is -- a login or token by name; on 127.0.0.1
 the `X-Potluck-Client: <name>` header it sends (send one), else its address: requests 20 a second (bursts of 40),
 writes 2 a second (bursts of 4). Over its share it gets `429 {"ok": false, "result": "slow down: ..."}` with
-`Retry-After: <seconds>`, and only it is slowed: every read is answered from the hub's one model and never reaches the
+`Retry-After: <whole seconds>` -- opening the stream included -- and only it is slowed: every read is answered from the hub's one model and never reaches the
 cell, and writes, which do, cannot crowd it. The open stream counts once, when it opens -- use it rather than polling.
 `hub.clients` in the model: `[{"name", "requests", "writes", "refused", "last_at"}]`, every program seen in the last
 10 minutes.
