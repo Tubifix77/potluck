@@ -1,0 +1,4 @@
+[hub] package: modules from app 'passive-sensor' (pot_passive_sensor)
+[hub] package: guest 'alarm' by 7, signature verified under the cluster CA
+[hub] dashboard for the network at https://127.0.0.1:8443/ (login required; 2 login(s))
+[hub] holding COM6; API http://127.0.0.1:8470/  relay 127.0.0.1:8471

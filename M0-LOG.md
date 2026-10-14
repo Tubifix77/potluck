@@ -5447,3 +5447,41 @@ untouched; the owner offered it), so the write and deploy attempts could be real
 | the module's flash and internal-RAM cost on the tightest board | about 64 KB flash, 1.9 KB static internal RAM (1.6 KB since moved to PSRAM) and 22 KB PSRAM by build difference (session 41); at run time 15.3 KB of internal heap on A with the access point up (207,319 -> 192,043 B free) | measured on A: the extender cannot carry the pocket while its hotspot is up (one access point per chip; the module stays idle there by design), so the tightest board that can carry it is a member with or without a station |
 
 The owner keeps A's access point for later tests (the owner's choice: test credentials until the boards go to real use).
+
+**M15's last two lines (2026-10-14, 04:39-05:06): no console, and a sleeping board -- M15 proposed for acceptance.**
+The hub now keeps every pull's health and links (`--telemetry-log`), and `tools/m15_report.py --hub` measures the radio
+from that alone (`ea76334`). **With no program reading any board's console** (the boards still on their USB cables for
+power), 20 minutes at telemetry every 10 s: loss over the six links 0.57 % (405 of 70,974 -- heartbeat and unicast
+sequence gaps together, as telemetry counts them; the consoles' heartbeat-only figure in phase 3 was 0.43 %), no RTT
+timeout, RTT p50 6 ms and p99 16-42 ms on the boards' own histograms since boot (`captures/m15nc-hub.jsonl.gz`).
+**A sleeping board:** no Potluck board sleeps yet, so B declared a long window with M5.1's runtime switch (`POT! window
+2000 30`, 60 s) and was held in reset (`captures/m15-sleep.jsonl.gz`, sampled every second from the hub's API). The hub
+read the declared window in B's telemetry within one pull. Held 40 s: **asleep** 10.7 s after the hold (three missed
+polls), never dead, A counting B alive throughout; alive again 8.7 s after release, on its default window. Held 90 s:
+asleep after 9 s, **dead at 69 s** -- the 60 s window ran out on A, and the hub's next 10 s pull of A said so -- alive
+9 s after release. With session 42's three phases (0.43 % against 0.42 % without the pull) and `pot_sim`'s 20 boards,
+every line of M15's acceptance has its evidence:
+
+| acceptance line | evidence | caveat |
+|---|---|---|
+| no console connected, the hub shows every board's link statistics, peer view, actor stats and modules, current within one pull period | 66 of 66 pulls answered (phase 3), 20 minutes with no console read; the hub's per-link counts agree with the consoles' (session 42); the dashboard draws them | the USB cables stayed in for power |
+| a sleeping board shows as asleep, not dead | held 40 s inside a declared 60 s window: asleep, never dead; held past it: dead when the window ran out | a declared window and a held reset, not a real sleep mode (Potluck has none yet) |
+| heartbeat round trips and delivery within M0's spread at the chosen rate, on the bench and in `pot_sim` at 20 boards | 10 s: 0.43 % against 0.42 % without the pull and 0.66 % with no hub, RTT p50 unchanged, slowest probe 60.2 ms (M0: none above 85 ms); `pot_sim` 26.0 % -> 28.8 % airtime | an RF-noisy house; the tail grew on probes C answers |
+| kill: no rate that leaves M0's figures carries layers 1-3 | does not fire: 10 s carries what the dashboard draws | |
+
+**M16, built further (`ea76334`) and measured:** `potluck.hub --listen` serves the dashboard beyond the PC over TLS and
+behind a login only (refused without both): logins with the look or write right (`potluck.hubauth`, scrypt at OWASP's
+setting, in the ledger), sessions in an HttpOnly, Secure, SameSite=Strict cookie, five failures lock an address out for
+a minute, every POST needs a header another site cannot add; no deploy right exists. `--record` keeps the model and
+events in hourly files, 24 h by default -- **about 0.5 MB an hour** for this cell (811 models over 27.8 min in
+219,629 B, `captures/m16-recording-*.jsonl.gz`, rotation shown at 05:00); `--replay` serves a recording through the same
+API with seek, speed and pause, so every tab works on it unchanged; the model states its retention and the hub's card
+shows it. **Ten dashboard streams cost the cell no more radio than one:** the hub's frames to the cable in 60 s were
+966 with one stream, 960 with ten, 968 with one again, every stream receiving the same 33 models
+(`captures/m16-ten-streams.jsonl`). In the browser at phone width (375 px): the first screen, the login page, a look-only
+login (its writable resource says so), and the replay -- of the recording above, B's sleep included -- labelled "replay,
+not live". Two faults found there and fixed: the hub sent its page files with no cache rule, so a browser kept running
+an old one after an upgrade; and a class's `display` beat the `hidden` attribute, showing the log-out button and the
+replay bar on the PC's own page. Owed for M16: a real phone on the house network through the login (the browser pane
+refuses a self-signed certificate, and opening the port in the PC's firewall is the owner's), and Home Assistant's
+Ingress when the hub runs on the Home Assistant machine (with M17).

@@ -1,0 +1,3 @@
+{"streams": 1, "frames_tx_60s": 966, "frames_rx_60s": 1182, "models_per_stream": [33]}
+{"streams": 10, "frames_tx_60s": 960, "frames_rx_60s": 1176, "models_per_stream": [33, 33, 33, 33, 33, 33, 33, 33, 33, 33]}
+{"streams": 1, "frames_tx_60s": 968, "frames_rx_60s": 1185, "models_per_stream": [33]}
