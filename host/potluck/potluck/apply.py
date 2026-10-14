@@ -967,7 +967,9 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
     of each `every` module -- one per link for a `{peer}` path; and replicas added when something reads them, never
     removed: on the cabled board, every board's outputs (apply's verify and the hub read them all through it); on a
     board that may present, every `outside` path. Returns ({board: {"fixed", "package", "own", "replicas", "total"}},
-    the `every` modules that declare no outputs -- their entries are made at run time and not counted here)."""
+    the modules that declare no outputs -- their entries are made at run time and not counted here; nor are the replicas
+    an aggregator reads, which no descriptor states -- bench 2026-10-15: plan 15/16/16, boards 31/40/40, the difference
+    exactly passive-sensor's undeclared outputs and rf_fusion's eight link replicas)."""
     from . import deploy as dp
     from . import guest as gs
     from . import modules as mods
@@ -992,6 +994,8 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
         elif a.module in ("builtin:ticker", "builtin:present") or (spec is not None and spec.placement == "portable"):
             package.add(rc.output_path(m, a))
             package.update(_outputs(m, spec, a, []))
+            if spec is not None and not spec.outputs:
+                silent.append(a.module)
         elif spec is not None and spec.placement == "every":
             every.append((spec, a))
             if not spec.outputs:
@@ -1005,7 +1009,9 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
             if a.module == "builtin:led_switch":
                 package.add(dp.led_switch_path(m.system, node))
             package.update(expand(spec, a, node))
-    own = {n: {p for spec, a in every for p in expand(spec, a, n)} for n in boards}
+            if spec is not None and not spec.outputs:
+                silent.append(a.module)
+    own ={n: {p for spec, a in every for p in expand(spec, a, n)} for n in boards}
     out_paths = {(p if p.startswith("potluck://") else f"potluck://{m.system}/{p.lstrip('/')}") for p in outside}
     result: dict[int, dict] = {}
     for n in boards:
