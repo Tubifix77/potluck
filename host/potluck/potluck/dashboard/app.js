@@ -296,7 +296,8 @@
       "<dt>Version</dt><dd><code>" + esc(hub.version) + "</code></dd><dt>Up</dt><dd>" + dur(hub.up_ms) + "</dd>" +
       "<dt>Frames</dt><dd>" + esc(num(hub.frames_rx)) + " rx, " + esc(num(hub.frames_tx)) + " tx</dd>" +
       "<dt>Pull period</dt><dd>" + num(hub.pull_period_ms, "ms") + "</dd><dt>Clock error</dt><dd>&plusmn;" +
-      num(hub.clock_error_ms, "ms") + "</dd>" + retentionRows(hub.retention) + clientRows(hub.clients) + "</dl>" +
+      num(hub.clock_error_ms, "ms") + "</dd>" + retentionRows(hub.retention) + clientRows(hub.clients) +
+      (hub.tls_fp ? "<dt>Certificate</dt><dd><code class=\"fp\">" + esc(hub.tls_fp.match(/../g).join(":").toUpperCase()) + "</code></dd>" : "") + "</dl>" +
       pairingBlock(hub.pairing) + "</div>";
     (m.boards || []).forEach(function (b) {
       var fw = b.firmware || {}, pk = b.package || {}, hp = b.heap || {}, mods = {};

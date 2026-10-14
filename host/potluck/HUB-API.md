@@ -67,6 +67,7 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
 }
 ```
 
+- `hub.link`: `up` | `down` (the cable to the cell). `hub.tls_fp`: with `--listen`, the SHA-256 of its certificate.
 - `board.state`: `alive` | `dead` | `asleep` (a declared long window, M5.1) | `unknown` (never heard since the hub started).
 - `board.heap`, `board.links`, `board.rssi` and `board.telemetry` come from M15's telemetry, pulled over the radio every
   `hub.telemetry_period_ms` (`--telemetry-ms`, default 10000; 0 never): `heap` adds `internal_total_kib` and `psram_min` (`signals.saturation.internal_ram` is the worst
@@ -182,6 +183,9 @@ records `cell=<cell id>` (8 hex digits), `system=<name>`, `api=1`, `tls=1`, `fp=
 DER, 64 lowercase hex digits>`. A client checks the certificate it is served against `fp` -- the hub's certificate is
 self-signed, so the announcement is what it is checked against -- and the owner's approval below is what makes it
 trusted.
+
+`GET /api/hello` (no login, on both addresses) -> `{"api": 1, "cell_id", "system", "version", "tls_fp"}`: who this
+hub is, before pairing -- nothing a client cannot also read from the announcement.
 
 Pairing gives a program a token, approved by the owner on the PC, with nothing typed on the program's side:
 

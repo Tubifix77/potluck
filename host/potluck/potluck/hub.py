@@ -375,6 +375,7 @@ class Model:
         from .hub_clients import FairShare, Reports
 
         self.fair = FairShare()  # M18: each program's share of what the hub may ask of the cell
+        self.tls_fp = None  # M17: SHA-256 of the --listen certificate, shown so a person can compare it
         self.reports = Reports()  # M18: what the integrations say of themselves
         self.cluster = cluster
         self.package = package
@@ -589,7 +590,7 @@ class Model:
                     "telemetry_period_ms": self.telemetry_period_ms, "telemetry": dict(self.telemetry_counts),
                     "relay": dict(self.hub.relay_counts), "retention": self._retention_json(),
                     "pairing": self.pairing.pending() if self.pairing is not None else [],
-                    "clients": self.fair.snapshot()},
+                    "clients": self.fair.snapshot(), "tls_fp": self.tls_fp},
             "cell": self._cell_json(boards),
             "boards": boards,
             "apps": apps,
@@ -797,7 +798,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
     host, _, p = addr.rpartition(":")
     from . import hubauth
 
-    PUBLIC = {"/", "/index.html", "/app.js", "/style.css", "/api/login", "/api/whoami"}
+    PUBLIC = {"/", "/index.html", "/app.js", "/style.css", "/api/login", "/api/whoami", "/api/hello"}
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
@@ -886,6 +887,14 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                     self._json(404, {"error": "not found", "result": "no such request (expired, or already fetched)"})
                 else:
                     self._json(200, got)
+                return
+            if path == "/api/hello":
+                # M17: who this hub is, with no login -- nothing secret: what it also announces on the network.
+                cl = getattr(model, "cluster", None)
+                self._json(200, {"api": API_VERSION, "cell_id": getattr(model, "cell_id", None),
+                                 "system": cl.system if cl is not None else None,
+                                 "version": getattr(model, "version", None),
+                                 "tls_fp": getattr(model, "tls_fp", None)})
                 return
             if path == "/api/whoami":
                 who = self._who()
@@ -1244,6 +1253,7 @@ def main(argv: list[str] | None = None) -> int:
 
         try:
             der = ssl.PEM_cert_to_DER_cert(open(a.tls_cert, encoding="ascii").read())
+            model.tls_fp = hashlib.sha256(der).hexdigest()
             towards = str((cluster.present or {}).get("broker", "192.168.0.1")).partition(":")[0] if cluster else \
                 "192.168.0.1"
             ip = lan_ip(towards)
