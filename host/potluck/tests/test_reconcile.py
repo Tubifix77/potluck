@@ -139,6 +139,18 @@ class HostPlacement(unittest.TestCase):
             self.assertNotIn(0x00FE, [n for n, _ in rc.eligible(m, m.actors[0])])
             dp.compile_image(m, 1)  # the hub key changes who is eligible, nothing on the wire
 
+    def test_apply_counts_every_portable_actor_and_knows_which_the_pc_may_hold(self):
+        # Every board's NODE_STATUS counts each portable actor of the package wherever it runs, so apply's verify does
+        # too; what the PC may hold only widens the count running on the boards (M0-LOG session 42: counted the other
+        # way, no board ever confirmed a package with such an actor).
+        from potluck import apply as ap
+
+        boards = [0x6300, 0x7368, 0x8160]
+        for hub, pc in ((True, 1), (False, 0)):
+            m = parse(self.present(hub))
+            self.assertEqual(ap.expected(m, boards)[1], 1)
+            self.assertEqual(ap.pc_runnable(m), pc)
+
     def test_the_hub_presenting_with_no_placement_host_is_refused(self):
         m = parse(self.present(True, host=False))
         with self.assertRaisesRegex(dp.DeployError, "needs a placement host"):

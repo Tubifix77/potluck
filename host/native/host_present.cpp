@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cinttypes>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <new>
@@ -95,6 +96,22 @@ uint64_t unix_ms() {
                                      .count());
 }
 
+// The node to ask about a resource this node has no entry for: its board, from the name ("node-7368/..."), or for a
+// portable actor's output ("act/...") any live board -- every board works the declaration out from the image.
+uint16_t describer(Node& node, const char* name, size_t len) {
+    if (len >= 10 && std::strncmp(name, "node-", 5) == 0 && name[9] == '/') {
+        char hex[5] = {name[5], name[6], name[7], name[8], 0};
+        const uint16_t id = static_cast<uint16_t>(std::strtoul(hex, nullptr, 16));
+        const PeerLink* q = node.peers().find_by_node_id(id);
+        if (q != nullptr && q->state == PeerState::Alive) return id;
+    }
+    for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+        const PeerLink& q = node.peers().slot(i);
+        if (q.state == PeerState::Alive && q.node_id != 0) return q.node_id;
+    }
+    return 0;
+}
+
 bool rule(size_t i, uint32_t& hash, uint8_t& flags, const char*& name, size_t& len) {
     if (g.svc.img == nullptr || i >= g.svc.img->outside_count) return false;
     outside_rule(*g.svc.img, i, hash, flags, &name, &len);
@@ -139,6 +156,7 @@ class HostPresentActor : public Actor {
         g.holding = true;
         g.svc.emit(line.c_str());
         next_ms_ = now_ms + 500;
+        now_ms_ = now_ms;
         primed_ = false;
         rediscover_ms_ = now_ms + kRediscoverMs;
         return true;
@@ -175,6 +193,7 @@ class HostPresentActor : public Actor {
         }
         if (static_cast<int32_t>(now - next_ms_) < 0) return;
         next_ms_ = now + cfg_.place.period_ms;
+        now_ms_ = now;
         publish_all();
     }
 
@@ -220,6 +239,7 @@ class HostPresentActor : public Actor {
             const NsEntry* e = node_.ns().find(hash);
             if (e == nullptr) {
                 missed_ = true;
+                describe(disc_cursor_ - 1, hash, name, len, now);
                 continue;
             }
             const Entity en = entity_of(*e, name, len);
@@ -249,9 +269,13 @@ class HostPresentActor : public Actor {
             if ((flags & kOutsideExposed) == 0) continue;
             Reading r;
             bool local = true;
-            if (node_.read(hash, r, &local) != NsError::Ok) continue;
+            const NsError rs = node_.read(hash, r, &local);
             const NsEntry* e = node_.ns().find(hash);
-            if (e == nullptr) continue;
+            if (e == nullptr) {
+                describe(i, hash, name, len, now_ms_);  // the board that knows its type says (ns_payloads.hpp)
+                continue;
+            }
+            if (rs != NsError::Ok) continue;
             ++entities;
             if (!local && e->owner_node != 0 && e->owner_node != self) node_.request_read(e->owner_node, hash);
             const StalenessPolicy pol = static_cast<StalenessPolicy>(e->staleness_policy);
@@ -311,8 +335,19 @@ class HostPresentActor : public Actor {
             Reading r;
             node_.read(hash, r);
             const NsEntry* e = node_.ns().find(hash);
+            if (e == nullptr) describe(i, hash, name, len, now_ms_);
             if (e != nullptr && e->owner_node != 0 && e->owner_node != self) node_.request_read(e->owner_node, hash);
         }
+    }
+
+    // M14: a resource of an actor type this PC build does not have -- an app's output, a board's LED switch -- has no
+    // entry here until a board describes it; at most one question a rule every 5 s.
+    void describe(size_t rule_i, uint32_t hash, const char* name, size_t len, uint32_t now) {
+        if (rule_i >= kMaxOutside) return;
+        if (asked_[rule_i] != 0 && static_cast<int32_t>(now - asked_[rule_i]) < 5000) return;
+        const uint16_t who = describer(node_, name, len);
+        if (who == 0) return;
+        if (node_.request_describe(who, hash) != 0) asked_[rule_i] = now == 0 ? 1 : now;
     }
 
     Node& node_;
@@ -325,6 +360,8 @@ class HostPresentActor : public Actor {
     bool primed_ = false;
     size_t entities_ = 0;
     unsigned long configs_ = 0, states_ = 0;
+    uint32_t now_ms_ = 0;
+    uint32_t asked_[kMaxOutside] = {};
 };
 
 bool check(const ActorDecl& d, const ActorEnv&, const char** why) {

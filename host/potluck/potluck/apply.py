@@ -883,11 +883,9 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
             for name, _t in gs.parse_outputs(a.config["outputs"], a.name):
                 reads.append(dp.guest_output_path(m.system, a.name, name))
         elif a.module in ("builtin:ticker", "builtin:present") or (spec is not None and spec.placement == "portable"):
-            # M14: one a placement host may run is not counted against the boards -- NODE_STATUS sees boards only,
-            # and the PC running it is the point (found on the bench, M0-LOG session 42: "3 running, the package
-            # has 4" with the ticker on the PC).
-            if not any((m.node(n) is not None and m.node(n).kind == "host") for n, _ in rc.eligible(m, a)):
-                portable += 1
+            # Every board's NODE_STATUS counts every portable actor of the package (portable_total), wherever it runs;
+            # the ones a placement host may run are pc_runnable(), for the count of those running on the boards.
+            portable += 1
             reads.append(rc.output_path(m, a))
             reads += _outputs(m, spec, a, [])
         elif spec is not None and spec.placement == "every":
@@ -912,6 +910,15 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
         for r in n.owns:
             reads.append(r.path)
     return pinned, portable, list(dict.fromkeys(reads))
+
+
+def pc_runnable(m) -> int:
+    """How many of the package's portable actors a placement host may hold -- while the PC is in the cell they run
+    there, not on a board (M14: the ticker drawn to the PC, the presenting role with present.hub)."""
+    from . import reconcile as rc
+
+    return sum(1 for a in m.actors if a.pin is None and not a.module.startswith("guest:")
+               and any(m.node(n) is not None and m.node(n).kind == "host" for n, _ in rc.eligible(m, a)))
 
 
 # ---- the command --------------------------------------------------------------------------------------
@@ -949,10 +956,12 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
         boards = [n for n, _ in c.boards] or [n.node_id for n in pkg.manifest.nodes if n.kind != "host"]
         if pkg is not None:
             pinned_want, portable_want, reads = expected(pkg.manifest, boards)
+            pc_may_run = pc_runnable(pkg.manifest)
             log(f"package: '{c.system}', {len(pkg.manifest.actors)} actor(s) ({portable_want} portable), "
                 f"image {len(pkg.image)} B, for {len(boards)} board(s)")
         else:
             pinned_want, portable_want, reads = {n: 0 for n in boards}, 0, []
+            pc_may_run = 0
             log(f"package: none -- firmware only, for {len(boards)} board(s)")
         reads = list(dict.fromkeys(reads + c.verify_reads))
         fwb = build_firmware(c, cache, log)
@@ -1136,13 +1145,18 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             if n not in done:
                 st = node_status(b, n)
                 problems.append(f"0x{n:04x} did not confirm package {counter}: " + (st.line() if st else "no answer"))
+        # On the boards: every portable actor, less those the PC holds while it is in the cell (M14; found on the bench,
+        # M0-LOG session 42 -- first "3 running, the package has 4" with the ticker on the PC, then, counted the other
+        # way, no board ever confirmed a package with such an actor).
         here = sum(s.portable_here for s in done.values())
-        if len(done) == len(boards) and here != portable_want:
+        lo = portable_want - pc_may_run
+        if len(done) == len(boards) and not lo <= here <= portable_want:
             # The reconciler may still be settling a move; give it one more look.
             time.sleep(10)
             here = sum((node_status(b, n) or done[n]).portable_here for n in boards)
-            if here != portable_want:
-                problems.append(f"{here} portable actor(s) running in the cell, the package has {portable_want}")
+            if not lo <= here <= portable_want:
+                problems.append(f"{here} portable actor(s) running on the boards, the package has {portable_want}"
+                                + (f" ({pc_may_run} of them the PC may hold)" if pc_may_run else ""))
         for p in reads:
             # GOOD, not merely a value: the cabled board answers a read of another board's output from its
             # copy and refreshes the copy as it does, so the first answer can be an older, STALE one.

@@ -606,3 +606,63 @@ TEST(m13, an_outside_write_aimed_at_a_replica_is_refused) {
     CHECK_EQ(holder.ns_counters().writes_outside_refused, 1u);
     CHECK_EQ(holder.ns_counters().writes_served, 0u);
 }
+
+TEST(m14, a_node_without_the_actor_type_learns_the_declaration_from_one_with_it) {
+    // The PC's node presenting an app's output: it has no actor type for it, so it asks a board to describe the
+    // entry, and declares the replica from the answer -- type, unit, bound, policy, owner -- exactly as the owner has it.
+    Cell2 c;
+    c.build(2);
+    c.start();
+    c.advance_ms(300);
+    Node& pc = *c.slots[0].node;
+    Node& board = *c.slots[1].node;
+    NsDecl d;
+    d.path_hash = kAdc0;
+    d.owner_node = board.config().node_id;
+    d.type = ValueType::Bool;
+    d.unit = Unit::None;
+    d.kind = ResourceKind::Sampled;
+    d.access = Access::ReadWrite;
+    d.latency_class = kClassL3;
+    d.staleness_bound_ms = 6000;
+    d.staleness_policy = StalenessPolicy::Strict;
+    CHECK_EQ(static_cast<int>(board.ns().declare(d)), static_cast<int>(NsError::Ok));
+    const uint32_t h[] = {kAdc0};
+    const uint8_t exposed[] = {kOutsideExposed | kOutsideWritable};
+    CHECK(pc.ns().set_outside(h, exposed, 1));
+    CHECK(pc.ns().find(kAdc0) == nullptr);
+
+    CHECK(pc.request_describe(board.config().node_id, kAdc0) != 0);
+    c.advance_ms(50);
+    const NsEntry* e = pc.ns().find(kAdc0);
+    CHECK(e != nullptr);
+    if (e == nullptr) return;
+    CHECK_EQ(e->owner_node, board.config().node_id);
+    CHECK_EQ(static_cast<int>(e->value.type), static_cast<int>(ValueType::Bool));
+    CHECK_EQ(e->staleness_bound_ms, 6000u);
+    CHECK_EQ(static_cast<int>(e->staleness_policy), static_cast<int>(StalenessPolicy::Strict));
+    CHECK_EQ(static_cast<int>(e->access), static_cast<int>(Access::ReadWrite));
+    CHECK_EQ(static_cast<uint32_t>(e->latency_class), static_cast<uint32_t>(kClassL3));
+    CHECK_EQ(static_cast<int>(e->outside), static_cast<int>(kOutsideExposed | kOutsideWritable));  // the package's
+    // and from then on an ordinary replica: a read fills it
+    CHECK_EQ(static_cast<int>(board.write_local(kAdc0, Value::of_bool(true))), static_cast<int>(NsError::Ok));
+    CHECK(pc.request_read(board.config().node_id, kAdc0) != 0);
+    c.advance_ms(50);
+    Reading r;
+    CHECK_EQ(static_cast<int>(pc.read(kAdc0, r)), static_cast<int>(NsError::Ok));
+    CHECK_EQ(static_cast<int>(r.quality), static_cast<int>(Quality::Good));
+}
+
+TEST(m14, a_described_entry_is_never_redeclared_and_an_unknown_one_declares_nothing) {
+    Cell2 c;
+    c.build(2);
+    c.start();
+    c.advance_ms(300);
+    Node& pc = *c.slots[0].node;
+    Node& board = *c.slots[1].node;
+    CHECK(pc.request_describe(board.config().node_id, path_hash("potluck://lab/nothing/here")) != 0);
+    c.advance_ms(50);
+    CHECK(pc.ns().find(path_hash("potluck://lab/nothing/here")) == nullptr);
+    CHECK_EQ(c.replies_to_0.back().reply_to, kReplyDescribe);
+    CHECK_EQ(static_cast<int>(c.replies_to_0.back().status), static_cast<int>(NsError::NotFound));
+}

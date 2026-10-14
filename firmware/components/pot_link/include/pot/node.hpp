@@ -397,6 +397,9 @@ class Node {
     // set. This is deliberately not a blocking call — a blocking read across a link whose p99 is
     // hundreds of milliseconds (§3) is how a control loop acquires a hidden deadline.
     uint16_t request_read(uint16_t peer_node_id, uint32_t path_hash);
+    // M14: ask `peer_node_id` to describe `path_hash` (ns_payloads.hpp, kReadDescribe); the answer declares a replica
+    // here if none exists, owned by the node the answer names. 0 if it could not be sent.
+    uint16_t request_describe(uint16_t peer_node_id, uint32_t path_hash);
     // M13: `from_outside` marks a write the presenting role passes on from a system outside the cell; the
     // owning board then applies the package's outside rules (WritePayload::flags, Namespace::write_outside).
     uint16_t request_write(uint16_t peer_node_id, uint32_t path_hash, const Value& v, bool from_outside = false);

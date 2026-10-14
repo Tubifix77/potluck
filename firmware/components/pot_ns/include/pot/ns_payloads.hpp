@@ -56,6 +56,16 @@ static_assert(offsetof(ReadPayload, flags) == 4, "READ offset");
 
 constexpr uint16_t kWriteFromOutside = 1u << 0;
 
+// M14: READ's flags bit 0 -- describe the entry rather than read it. A node that holds a resource it has no actor
+// type for (the PC's node presenting an app's output: pot_hostnode carries only the built-in types it runs) learns
+// the declaration from one that does, as boards already learn each other's outputs from the image (M8.2's adoption).
+// The answer is a REPLY with reply_to kReplyDescribe and, in place of a reading: timestamp_ms the staleness bound,
+// value_type the declared type, unit and latency_class the entry's, and value_raw = owner u16, policy u8, kind u8,
+// access u8 (value_len 5). A board before M14 ignores the flag and answers a reading (reply_to kOpRead), which the
+// asker drops.
+constexpr uint16_t kReadDescribe = 1u << 0;
+constexpr uint8_t kReplyDescribe = 0x15;  // the reserved LIST opcode's number: no frame carries it as an opcode
+
 struct WritePayload {
     uint32_t path_hash;
     uint8_t value_type;

@@ -1311,6 +1311,31 @@ uint16_t Node::request_read(uint16_t peer_node_id, uint32_t path_hash) {
     return msg_id;
 }
 
+uint16_t Node::request_describe(uint16_t peer_node_id, uint32_t path_hash) {
+    PeerLink* p = peers_.find_by_node_id(peer_node_id);
+    if (p == nullptr || departed_) {
+        return 0;
+    }
+    PendingNs* q = pending_claim();
+    if (q == nullptr) {
+        return 0;
+    }
+    const uint16_t msg_id = next_msg_id(*p);
+    q->msg_id = msg_id;  // registered before sending, as request_read() explains
+    q->peer_node = peer_node_id;
+    q->path_hash = path_hash;
+    q->sent_ms = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+    q->op = kReplyDescribe;
+    ReadPayload r{};
+    r.path_hash = path_hash;
+    r.flags = kReadDescribe;
+    if (!send_frame(p, p->mac, kOpRead, &r, sizeof(r), true, msg_id, p->node_id, false)) {
+        q->msg_id = 0;
+        return 0;
+    }
+    return msg_id;
+}
+
 uint16_t Node::request_write(uint16_t peer_node_id, uint32_t path_hash, const Value& v, bool from_outside) {
     PeerLink* p = peers_.find_by_node_id(peer_node_id);
     if (p == nullptr || departed_) {
@@ -1366,6 +1391,33 @@ void Node::handle_read(PeerLink* p, const Frame& f) {
     // peers would take 114 of §6's 128 namespace slots from the application.
     if (ns_.find(req.path_hash) == nullptr) {
         adopt_peer_sys_resource(req.path_hash);
+    }
+
+    if ((req.flags & kReadDescribe) != 0) {
+        // M14: the declaration, not a reading (ns_payloads.hpp). read() first, which adopts an actor output this node
+        // has not declared yet from the image, exactly as a reading would.
+        Reading r;
+        bool local = true;
+        (void)read(req.path_hash, r, &local);
+        const NsEntry* e = ns_.find(req.path_hash);
+        ReplyPayload rep{};
+        rep.path_hash = req.path_hash;
+        rep.reply_to = kReplyDescribe;
+        rep.status = static_cast<uint8_t>(e != nullptr ? NsError::Ok : NsError::NotFound);
+        if (e != nullptr) {
+            rep.timestamp_ms = e->staleness_bound_ms;
+            rep.unit = static_cast<uint16_t>(e->unit);
+            rep.latency_class = e->latency_class;
+            rep.value_type = static_cast<uint8_t>(e->value.type);
+            rep.value_len = 5;
+            rep.value_raw[0] = static_cast<uint8_t>(e->owner_node & 0xFF);
+            rep.value_raw[1] = static_cast<uint8_t>(e->owner_node >> 8);
+            rep.value_raw[2] = e->staleness_policy;
+            rep.value_raw[3] = e->kind;
+            rep.value_raw[4] = e->access;
+        }
+        send_frame(p, p->mac, kOpReply, &rep, sizeof(rep), false, f.hdr.msg_id, p->node_id, false);
+        return;
     }
 
     // Node::read, not ns_.read(..., true): the owner's liveness must decide, and a replica of a dead
@@ -1491,6 +1543,27 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
     const uint16_t worker = q->peer_node;
     q->msg_id = 0;
     ++ns_counters_.replies_matched;
+
+    if (op == kReplyDescribe) {
+        // M14: a declaration (ns_payloads.hpp). A board before M14 answers a reading instead: dropped.
+        if (rep.reply_to != kReplyDescribe || static_cast<NsError>(rep.status) != NsError::Ok || rep.value_len != 5 ||
+            ns_.find(asked_for) != nullptr || rep.path_hash != asked_for) {
+            return;
+        }
+        NsDecl d;
+        d.path_hash = asked_for;
+        d.owner_node = static_cast<uint16_t>(rep.value_raw[0] | (rep.value_raw[1] << 8));
+        if (d.owner_node == 0 || d.owner_node == kNodeBroadcast) d.owner_node = p->node_id;
+        d.type = static_cast<ValueType>(rep.value_type);
+        d.unit = static_cast<Unit>(rep.unit);
+        d.kind = static_cast<ResourceKind>(rep.value_raw[3]);
+        d.access = static_cast<Access>(rep.value_raw[4]);
+        d.latency_class = rep.latency_class;
+        d.staleness_bound_ms = rep.timestamp_ms;
+        d.staleness_policy = static_cast<StalenessPolicy>(rep.value_raw[2]);
+        (void)ns_.declare(d);
+        return;
+    }
 
     if (op == kOpCall) {
         // A call's answer is a result, not a reading: it names no resource this node holds, so it
