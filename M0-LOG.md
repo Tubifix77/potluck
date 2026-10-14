@@ -5706,3 +5706,11 @@ values (B's die temperature, A's uptime, presence, the switch) kept arriving eve
 all 39 entities were back in 3-5 s. **Fixed on the way:** the hub's model never filled `deploys`, so Home
 Assistant's "last deploy" read unknown after two rollouts; the hub now learns a deploy from the boards' counters
 moving (running, then verified or confirmed once every board it hears runs it).
+
+**M18's last line (2026-10-14, evening):** the Node-RED integration's client (`integrations/node-red/lib/client.js`,
+under Node.js 24; Node-RED itself is not installed) ran 90 s against the real hub on 127.0.0.1 while Home Assistant was
+paired; every state report was accepted, and the hub's model listed both integrations at once: "Home Assistant,
+connected, 3 of 3 boards alive" and "Node-RED, connected, stream, 3 resource(s)"; stopped, it reported disconnected
+(`captures/m18-both-integrations.txt`). Every M16-M18 line is now shown on the bench; proposed for acceptance with
+their caveats (M16: Ingress not testable on a Home Assistant in Docker; M17: the owner's Home Assistant, not a fresh
+installation; M18: Node-RED itself not installed).
