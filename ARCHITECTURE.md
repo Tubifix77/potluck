@@ -989,7 +989,7 @@ took 195 s to converge (now queued: 15 s). **The leases**: each side's lowest bo
 the cluster's lowest board, which apply already needs to reach, and stops if a renewal finds the lease lost; the hub
 lease stays per side, stated in the README's failure contract as a non-claim.
 
-*M14's last line, 2026-10-14 (M0-LOG session 42) -- built, shown, and M14 proposed for acceptance.* `present.hub` in
+*M14's last line, 2026-10-14 (M0-LOG session 42) -- built and shown; **M14 ACCEPTED** by the owner with its caveats.* `present.hub` in
 the cluster file lists the PC's placement node for the presenting role first by gravity, so the reconciler gives the PC
 the role while it is in the cell and a connected board takes it back when it goes -- one portable role, never two
 holders, no protocol of its own. `pot_hostnode` runs it from the board's own code (`present_core`), `potluck.hostnode`

@@ -5623,3 +5623,5 @@ carries it, and the bench should then see a package reach a board held off durin
 `pot_tests --emit-fuzz-corpus` / `--emit-serial-corpus`, as their message says). `tests/test_deploy.cpp`'s unused
 `partitioned` flag is gone; the cell that can be split is the new file's. No external fact was used, so nothing went into
 the zero-assumption ledger.
+
+**M14 ACCEPTED (2026-10-14, evening), by the owner, with its caveats** -- the PC switched off by killing its node's process, the measuring subscriber on the same PC, states paused about 3 s at each hand-back, and once two entities 10.9 s late at a takeover. Next: M16's remaining lines, M17, M18.

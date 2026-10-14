@@ -42,7 +42,7 @@ developer manual rewritten for it (blind reader: a new app written, tested and d
 whole-cell power cycle was a reset of every chip, not a hand power cut. Every milestone through M12 is built and
 14 of 17 accepted; what is left there is the list above, all the owner's to run. **NEXT: M13-M18 (planned 2026-10-11,
 ARCHITECTURE section 13, from BEYOND-M12.md and its picture beyond-m12-overview.html)** -- the cell presenting its
-resources to other systems: M13 the cell presents itself (presenting role, no PC; ACCEPTED 2026-10-14, M0-LOG session 42, with caveats), M13.1 a phone reaches the nearest board with no network (ACCEPTED 2026-10-14), M14 the hub (proposed 2026-10-14), M15 telemetry (ACCEPTED 2026-10-14), M16 the dashboard,
+resources to other systems: M13 the cell presents itself (presenting role, no PC; ACCEPTED 2026-10-14, M0-LOG session 42, with caveats), M13.1 a phone reaches the nearest board with no network (ACCEPTED 2026-10-14), M14 the hub (ACCEPTED 2026-10-14), M15 telemetry (ACCEPTED 2026-10-14), M16 the dashboard,
 M17 Home Assistant first-class, M18 the integration layer. The owner is the idea-giver; the evidence for what to show and
 which integrations came from primary sources (ledger).
 

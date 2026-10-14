@@ -60,9 +60,9 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 ## What works today
 
 Everything below runs on real ESP32-S3 boards and has passed a test written before it was tried -- each milestone
-has one, and a criterion that would have killed it. 17 of the 24 milestones so far are accepted (the latest: M13, the cell presenting its resources to Home Assistant with
-no PC; M13.1, a phone page with no network; M15, telemetry over the radio), five more are built (among them M14, the
-hub, and M16, the dashboard), and
+has one, and a criterion that would have killed it. 18 of the 24 milestones so far are accepted (the latest: M13, the cell presenting its resources to Home Assistant with
+no PC; M13.1, a phone page with no network; M14, the hub; M15, telemetry over the radio), four more are built (among
+them M16, the dashboard), and
 two (M17 Home Assistant first-class, M18 the integration layer) are planned; the full ledger,
 with every measurement and caveat, is [STATUS.md](STATUS.md).
 
