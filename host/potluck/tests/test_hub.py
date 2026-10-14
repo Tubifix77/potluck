@@ -294,6 +294,28 @@ class Telemetry(HubFixture):
             self.model.pull()
         self.assertEqual(self.model.boards[0x1001]["state"], "dead")
 
+    def test_every_pull_goes_to_the_telemetry_log_so_no_console_is_needed(self) -> None:
+        import io
+        import json
+        from unittest import mock
+
+        import test_telemetry as tt
+        from potluck import telemetry as tm
+
+        self.board_with_tel(0)
+        h = tm.parse_health(bytes.fromhex(tt.HEALTH_GOLDEN))
+        _, _, links = tm.parse_links(bytes.fromhex(tt.LINKS_GOLDEN))
+        self.model.telemetry_log = io.StringIO()
+        with mock.patch.object(self.model, "board_ids", return_value=[0x1001]), \
+                mock.patch.object(tm, "health", return_value=h), mock.patch.object(tm, "links", return_value=links), \
+                mock.patch.object(tm, "actors", return_value=[]), mock.patch.object(tm, "events", return_value=([], 1)):
+            self.model.pull_telemetry()
+        rec = json.loads(self.model.telemetry_log.getvalue())
+        self.assertEqual((rec["rec"], rec["node"], rec["epoch"]), ("tel", 0x1001, 344))
+        self.assertEqual(rec["links"][0], {"peer": 0x7368, "state": "alive", "rx_lost": 7, "rx_bcast": 40,
+                                           "rx_frames": 2000, "tx_cb_ok": 990, "tx_cb_fail": 10,
+                                           "rtt_p50_ms": 5.1, "rtt_p99_ms": 16.0, "rtt_timeouts": 0xFFFF})
+
 class RelayedFrames(unittest.TestCase):
     """M0-LOG session 42: with the cabled board relaying (M10), other boards' frames come down the cable too."""
 

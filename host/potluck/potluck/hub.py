@@ -28,7 +28,8 @@ integration (M17), the owner's programs (M18) -- reads that one model, so ten vi
 than one. Look is every GET; write is POST /api/write, only what the package lets the outside write, passed to the
 owning board marked from outside, which checks again; deploy is never here.
 
-Local only by default (127.0.0.1); the house network and phones are M16's login, not version 1's.
+Local only by default (127.0.0.1), with no login: the PC's own user. The house network and phones are `--listen`,
+over TLS and behind a login only (M16, potluck.hubauth). `--record` keeps the model for `--replay` (potluck.hubreplay).
 """
 
 from __future__ import annotations
@@ -364,8 +365,12 @@ class Model:
     DEAD_AFTER_MISSES = 3  # consecutive unanswered NODE_STATUS polls before the model calls a board dead
 
     def __init__(self, hub: Hub, *, cluster=None, package=None, pull_period_ms: int = 2000,
-                 telemetry_period_ms: int = 10000) -> None:
+                 telemetry_period_ms: int = 10000, telemetry_log=None) -> None:
         self.hub = hub
+        # M15: every pull's health and links as JSON lines (--telemetry-log), so the radio's figures can be measured
+        # with no console connected to any board (tools/m15_report.py --hub).
+        self.telemetry_log = telemetry_log
+        self.recorder = None  # M16: potluck.hubreplay.Recorder, when --record names a directory
         self.cluster = cluster
         self.package = package
         self.pull_period_ms = pull_period_ms
@@ -525,6 +530,15 @@ class Model:
                 continue
             self.telemetry_counts["replies"] += 1
             self.telemetry_counts["events"] += len(evs)
+            if self.telemetry_log is not None:
+                rec = {"rec": "tel", "host_ts": time.time(), "node": n, "epoch": h.boot_epoch, "up_s": h.uptime_s,
+                       "flags": h.flag_names(), "int_free": h.int_free, "int_min": h.int_min,
+                       "links": [{"peer": k.node, "state": k.state_name, "rx_lost": k.rx_lost, "rx_bcast": k.rx_bcast,
+                                  "rx_frames": k.rx_frames, "tx_cb_ok": k.tx_cb_ok, "tx_cb_fail": k.tx_cb_fail,
+                                  "rtt_p50_ms": k.rtt_p50_ms, "rtt_p99_ms": k.rtt_p99_ms,
+                                  "rtt_timeouts": k.rtt_timeouts} for k in ls]}
+                self.telemetry_log.write(json.dumps(rec) + "\n")
+                self.telemetry_log.flush()
             with self.lock:
                 b = self.boards.get(n)
                 if b is None:
@@ -568,7 +582,7 @@ class Model:
                     "frames_rx": self.hub.stats.rx_frames, "frames_tx": self.hub.stats.tx_frames,
                     "pull_period_ms": self.pull_period_ms, "clock_error_ms": self._clock_error_ms(),
                     "telemetry_period_ms": self.telemetry_period_ms, "telemetry": dict(self.telemetry_counts),
-                    "relay": dict(self.hub.relay_counts)},
+                    "relay": dict(self.hub.relay_counts), "retention": self._retention_json()},
             "cell": self._cell_json(boards),
             "boards": boards,
             "apps": apps,
@@ -578,6 +592,16 @@ class Model:
             "signals": self._signals_json(boards),
             "last_event_seq": events_tail[0]["seq"] if events_tail else 0,
         }
+
+    def _retention_json(self) -> dict:
+        """M16: how much history this hub keeps -- events in memory, and its recording on disk if it keeps one."""
+        with self.lock:
+            oldest = self.events[0]["at"] if self.events else None
+            held = len(self.events)
+        out = {"events_kept": self.events.maxlen, "events_held": held, "oldest_event_at": oldest, "recording": None}
+        if self.recorder is not None:
+            out["recording"] = self.recorder.retention()
+        return out
 
     def _clock_error_ms(self) -> int | None:
         if not self.rtts:
@@ -760,8 +784,13 @@ def _version() -> str:
 
 # ---- the API ---------------------------------------------------------------------------------------------
 
-def serve_api(model: Model, addr: str) -> ThreadingHTTPServer:
+def serve_api(model: Model, addr: str, sessions=None, tls=None) -> ThreadingHTTPServer:
+    """The API. With `sessions` (potluck.hubauth.Sessions) every request but the login page needs a login, and a write
+    needs the write right (M16); without, it is the PC's own user on 127.0.0.1. `tls`: an ssl.SSLContext."""
     host, _, p = addr.rpartition(":")
+    from . import hubauth
+
+    PUBLIC = {"/", "/index.html", "/app.js", "/style.css", "/api/login", "/api/whoami"}
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
@@ -769,18 +798,52 @@ def serve_api(model: Model, addr: str) -> ThreadingHTTPServer:
         def log_message(self, *a) -> None:  # quiet: the hub's own log is its events
             pass
 
-        def _json(self, code: int, obj: Any) -> None:
+        def setup(self) -> None:
+            if tls is not None:
+                self.request.settimeout(10)
+                self.request.do_handshake()
+                self.request.settimeout(None)
+            super().setup()
+
+        def end_headers(self) -> None:
+            if sessions is not None:
+                self.send_header("X-Frame-Options", "DENY")
+                self.send_header("Referrer-Policy", "no-referrer")
+                self.send_header("X-Content-Type-Options", "nosniff")
+            super().end_headers()
+
+        def _json(self, code: int, obj: Any, cookie: str | None = None) -> None:
             body = json.dumps(obj).encode()
             self.send_response(code)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
+            if cookie is not None:
+                self.send_header("Set-Cookie", cookie)
             self.end_headers()
             self.wfile.write(body)
 
+        def _who(self) -> tuple[str, str] | None:
+            """(name, right) of this request: the PC's own user without a login, else the session's."""
+            if sessions is None:
+                return "local", "write"
+            return sessions.get(hubauth.cookie_token(self.headers.get("Cookie")))
+
+        def _allowed(self, path: str) -> bool:
+            if sessions is None or path in PUBLIC or self._who() is not None:
+                return True
+            self._json(401, {"error": "login", "result": "log in first"})
+            return False
+
         def do_GET(self) -> None:
             path, _, query = self.path.partition("?")
-            if path == "/api/model":
+            if not self._allowed(path):
+                return
+            if path == "/api/whoami":
+                who = self._who()
+                self._json(200, {"api": API_VERSION, "login": sessions is not None,
+                                 "name": who[0] if who else None, "right": who[1] if who else None})
+            elif path == "/api/model":
                 self._json(200, model.snapshot())
             elif path == "/api/events":
                 since = None
@@ -829,16 +892,70 @@ def serve_api(model: Model, addr: str) -> ThreadingHTTPServer:
             self.send_response(200)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-cache")  # revalidate: an upgraded hub's page must not run old files
             self.end_headers()
             self.wfile.write(body)
 
+        def _body(self) -> dict:
+            n = int(self.headers.get("Content-Length", "0"))
+            if n > 4096:
+                raise ValueError("too large")
+            return json.loads(self.rfile.read(n) or b"{}")
+
         def do_POST(self) -> None:
+            if sessions is not None and self.headers.get("X-Potluck-Request") != "1":
+                # A page on another site can make a browser POST here with its cookie, but not with a custom header
+                # unless this server allowed it (CORS), which it never does.
+                self._json(403, {"ok": False, "result": "missing X-Potluck-Request"})
+                return
+            if self.path == "/api/login" and sessions is not None:
+                try:
+                    req = self._body()
+                    name, password = str(req["name"]), str(req["password"])
+                except (ValueError, KeyError):
+                    self._json(400, {"ok": False, "result": "expected {\"name\": ..., \"password\": ...}"})
+                    return
+                token, result = sessions.login(name, password, self.client_address[0])
+                model.record("login", None, {"name": name, "from": self.client_address[0],
+                                             "result": "ok" if token else result})
+                if token is None:
+                    self._json(403, {"ok": False, "result": result})
+                    return
+                self._json(200, {"ok": True, "name": name, "right": result},
+                           cookie=f"{hubauth.COOKIE}={token}; Path=/; HttpOnly; Secure; SameSite=Strict; "
+                                  f"Max-Age={hubauth.SESSION_S}")
+                return
+            if self.path == "/api/logout" and sessions is not None:
+                sessions.logout(hubauth.cookie_token(self.headers.get("Cookie")))
+                self._json(200, {"ok": True}, cookie=f"{hubauth.COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; "
+                                                     f"Max-Age=0")
+                return
+            if self.path == "/api/replay" and hasattr(model, "control"):
+                # M16: moving a replay (potluck.hubreplay) -- a look right is enough, it changes nothing in a cell.
+                if self._who() is None:
+                    self._json(401, {"error": "login", "result": "log in first"})
+                    return
+                try:
+                    req = self._body()
+                    model.control(seek_at=req.get("seek_at"), speed=req.get("speed"), paused=req.get("paused"))
+                except (ValueError, TypeError):
+                    self._json(400, {"ok": False, "result": "expected {seek_at, speed, paused}"})
+                    return
+                self._json(200, {"ok": True, "replay": model.snapshot()["hub"]["replay"]})
+                return
             if self.path != "/api/write":
                 self._json(404, {"error": "not found"})
                 return
+            who = self._who()
+            if who is None:
+                self._json(401, {"error": "login", "result": "log in first"})
+                return
+            if who[1] != "write":
+                model.record("outside_write", None, {"by": who[0], "result": "refused: this login may only look"})
+                self._json(403, {"ok": False, "result": "this login may look, not write"})
+                return
             try:
-                n = int(self.headers.get("Content-Length", "0"))
-                req = json.loads(self.rfile.read(n) or b"{}")
+                req = self._body()
                 path, value = req["path"], req["value"]
             except (ValueError, KeyError):
                 self._json(400, {"ok": False, "result": "expected {\"path\": ..., \"value\": ...}"})
@@ -846,6 +963,10 @@ def serve_api(model: Model, addr: str) -> ThreadingHTTPServer:
             self._json(*write_outside(model, path, value))
 
     srv = ThreadingHTTPServer((host or "127.0.0.1", int(p)), Handler)
+    if tls is not None:
+        # The handshake runs in the connection's own thread (Handler.setup), so a slow client never holds accept().
+        srv.socket = tls.wrap_socket(srv.socket, server_side=True, do_handshake_on_connect=False)
+        srv.handle_error = lambda request, client_address: None  # a scanner's failed handshake is not news
     srv.daemon_threads = True
     threading.Thread(target=srv.serve_forever, name="potluck-hub-api", daemon=True).start()
     return srv
@@ -901,7 +1022,49 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--pull-ms", type=int, default=2000)
     ap.add_argument("--telemetry-ms", type=int, default=10000,
                     help="M15: how often each board's telemetry is pulled over the radio (0: never)")
+    ap.add_argument("--telemetry-log", help="M15: append every pull's health and links to this file, as JSON lines")
+    ap.add_argument("--listen", help="M16: also serve the dashboard on this address (e.g. 0.0.0.0:8443) for phones on "
+                                     "the PC's own network -- TLS and a login only (potluck.hubauth)")
+    ap.add_argument("--tls-cert", help="M16: the certificate (PEM) --listen serves")
+    ap.add_argument("--tls-key", help="M16: its private key (PEM)")
+    ap.add_argument("--record", help="M16: keep the model and events, each pull period, in hourly files in this "
+                                     "directory (potluck.hubreplay)")
+    ap.add_argument("--record-hours", type=int, default=24, help="M16: how many hours of recording to keep")
+    ap.add_argument("--replay", help="M16: serve this recording through the API instead of a cell (no port)")
+    ap.add_argument("--speed", type=float, default=1.0, help="M16: replay speed")
     a = ap.parse_args(argv)
+    lan = None
+    if a.listen:
+        # Refused before anything is touched: never a dashboard on the network without encryption and a login.
+        import ssl
+
+        from .hubauth import Sessions, Users
+
+        users = Users()
+        if not (a.tls_cert and a.tls_key):
+            print("hub: --listen needs --tls-cert and --tls-key: the dashboard is never served unencrypted beyond "
+                  "this PC")
+            return 2
+        if not users.users:
+            print(f"hub: --listen needs at least one login: python -m potluck.hubauth add <name> --right look "
+                  f"({users.path} has none)")
+            return 2
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        try:
+            ctx.load_cert_chain(a.tls_cert, a.tls_key)
+        except (OSError, ssl.SSLError) as exc:
+            print(f"hub: the certificate or key could not be loaded: {exc}")
+            return 2
+        lan = (Sessions(users), ctx)
+    if a.replay:
+        from .hubreplay import serve_replay
+
+        try:
+            return serve_replay(a.replay, a.api, a.speed, a.listen, *(lan or (None, None)))
+        except (OSError, ValueError) as exc:
+            print(f"hub: {exc}")
+            return 2
     cluster = package = None
     if a.cluster:
         from .apply import ApplyError, default_cache, load_cluster, plan_package
@@ -926,7 +1089,8 @@ def main(argv: list[str] | None = None) -> int:
     hub = Hub(open_transport(port=a.port, tcp=a.tcp, baud=a.baud))
     hub.start()
     model = Model(hub, cluster=cluster, package=package, pull_period_ms=a.pull_ms,
-                  telemetry_period_ms=a.telemetry_ms)
+                  telemetry_period_ms=a.telemetry_ms,
+                  telemetry_log=open(a.telemetry_log, "a", encoding="utf-8") if a.telemetry_log else None)
     lease = None
     if hub.hello(timeout=3.0) is None:
         print(f"hub: no board answers on {a.port or a.tcp}; serving anyway, and retrying")
@@ -951,8 +1115,16 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"REFUSED, nothing changed: {exc} -- one resident hub per cell")
                 hub.close()
                 return 2
+    if a.record:
+        from .hubreplay import Recorder
+
+        model.recorder = Recorder(a.record, a.record_hours)
     relay = serve_relay(hub, a.relay)
     api = serve_api(model, a.api)
+    if lan is not None:
+        serve_api(model, a.listen, sessions=lan[0], tls=lan[1])
+        print(f"[hub] dashboard for the network at https://{a.listen}/ (login required; "
+              f"{len(lan[0].users.users)} login(s))", flush=True)
     st = {"pid": os.getpid(), "port": a.port or a.tcp, "relay": a.relay, "api": a.api, "started": _hub_ms()}
     state_file().parent.mkdir(parents=True, exist_ok=True)
     state_file().write_text(json.dumps(st), encoding="utf-8")
@@ -969,6 +1141,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[hub] standing down: the cell's hub lease is {lease.lost.holder_line()}", flush=True)
                 break
             model.pull()
+            if model.recorder is not None:
+                with model.lock:
+                    evs = list(model.events)
+                model.recorder.write(model.snapshot(), evs)
             time.sleep(max(0.0, a.pull_ms / 1000 - (time.monotonic() - t0)))
     except KeyboardInterrupt:
         pass

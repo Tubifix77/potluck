@@ -40,6 +40,15 @@ h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
 .conn .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--idle); }
 .conn.ok .dot { background: var(--ok); } .conn.warn .dot { background: var(--warn); } .conn.bad .dot { background: var(--bad); }
 .conn.bad { color: var(--bad); }
+[hidden] { display: none !important; }  /* a class's display never shows what the page hid */
+.banner.replay { background: var(--role-bg); color: var(--role); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.banner.replay input[type=range] { flex: 1 1 100%; }
+.who { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.login { max-width: 360px; margin: 48px auto; padding: 20px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.login form { display: grid; gap: 12px; }
+.login label { display: grid; gap: 4px; }
+.login input { font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); }
+.login button { font: inherit; padding: 8px; }
 
 main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 32px; }
 .foot { max-width: 1100px; margin: 0 auto; padding: 0 16px 24px; }

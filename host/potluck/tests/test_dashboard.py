@@ -340,7 +340,9 @@ class PageTest(unittest.TestCase):
 
     def test_page_uses_only_the_contract_and_never_deploys(self):
         js = self.read("app.js")
-        self.assertEqual(set(re.findall(r'"(api/[a-z]+)', js)), {"api/stream", "api/model", "api/events", "api/write"})
+        self.assertEqual(set(re.findall(r'"(api/[a-z]+)', js)), {"api/stream", "api/model", "api/events", "api/write",
+                                                                  "api/whoami", "api/login", "api/logout",
+                                                                  "api/replay"})  # M16
         self.assertNotIn("http://", js)
         self.assertNotIn("https://", js)
         self.assertNotRegex(js + self.read("index.html"), r"api/deploy|potluck\.apply")

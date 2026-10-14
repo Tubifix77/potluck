@@ -3,7 +3,9 @@
 `potluck-hub` (M14) holds the cable to the cell and keeps **one model** of it. Everything else reads that model through
 this API: the dashboard (M16), Home Assistant's integration (M17), the owner's own programs (M18). It is served on the
 PC, by default on `127.0.0.1:8470` only; reaching it from the house network or a phone is a switch the owner turns on,
-behind a login, encrypted (ARCHITECTURE section 13, M16 -- not in version 1's mock).
+behind a login, encrypted (ARCHITECTURE section 13, M16): `potluck.hub --listen 0.0.0.0:8443 --tls-cert <pem>
+--tls-key <pem>`, with logins made by `python -m potluck.hubauth add <name> --right look|write`. The hub refuses
+`--listen` without both. On 127.0.0.1 there is no login: that is the PC's own user.
 
 Three rights, kept apart: **look** (every GET), **write** (`POST /api/write`, only what the package lets the outside
 write, never a safety-relevant resource -- the owning board checks again), **deploy** (never through this API: only
@@ -116,6 +118,28 @@ since every viewer is served from the hub's one pull (M15).
 `{"ok": false, "result": "not writable from outside"}`. Only resources with `outside_writable: true`; a login with the
 look right only gets `403`. The write reaches the owning board marked as from outside, which checks the package again.
 
-## GET /api/replay?from=<at>&to=<at> (M16, later)
+## Logins (M16): POST /api/login, POST /api/logout, GET /api/whoami
 
-The model as it was, from the hub's recording (section 7.6). Not in version 1's mock.
+Only on `--listen`. `POST /api/login {"name", "password"}` -> `{"ok": true, "name", "right"}` and a session cookie
+(`potluck_session`, HttpOnly, Secure, SameSite=Strict, 12 hours, in the hub's memory: a restarted hub asks again), or
+`403` with the reason; five failures from one address in five minutes refuse it for a minute. Without a session every
+request but the page's own files, the login and `whoami` is `401`. Every POST must carry `X-Potluck-Request: 1`, which
+a page on another site cannot add, so it cannot write through a logged-in browser. `GET /api/whoami` ->
+`{"login": true|false, "name", "right"}` -- `login: false` on 127.0.0.1. Passwords are kept as scrypt (N=2^17, r=8,
+p=1, a random salt each) in `%LOCALAPPDATA%/potluck/hub-users.json`. There is no deploy right to log in with.
+
+## Retention (M16): `hub.retention` in the model
+
+`{"events_kept": 5000, "events_held": <n>, "oldest_event_at": <at>, "recording": null | {"recording": <dir>,
+"hours": 24, "files": <n>, "bytes": <n>, "since_file": <name>}}` -- how much history this hub keeps: the last 5000
+events in memory, and with `--record <dir>` every pull period's model and the new events in hourly files, the last
+`--record-hours` (default 24) kept. The dashboard shows it on the hub's card.
+
+## Replay (M16): POST /api/replay
+
+`potluck.hub --replay <dir>/hub-<date>.jsonl.gz` serves a recording through this same API instead of a cell, so every
+tab works on it unchanged; the model then carries `hub.replay` = `{"file", "from_at", "to_at", "position_at",
+"speed", "paused", "models"}`, times on the recording's clock. `POST /api/replay {"seek_at": <at>, "speed": <x>,
+"paused": <bool>}` moves it (any login; it changes nothing in a cell). Writes are `403`: there is no cell behind it.
+The recording is the model the dashboard showed, not the radio's frames -- those are section 7.6's capture, which
+replays the cell byte for byte.

@@ -9,7 +9,8 @@
   var POLL_MS = 2000, RETRY_STREAM_MS = 15000, MAX_EVENTS = 2000;
   var S = {
     model: null, recvAt: 0, mode: "connecting", es: null, pollTimer: null, retryTimer: null,
-    events: [], seen: {}, next: null, writes: {}, tab: "cell", focus: "", evDirty: true, evOptions: ""
+    events: [], seen: {}, next: null, writes: {}, tab: "cell", focus: "", evDirty: true, evOptions: "",
+    who: { login: false, name: "local", right: "write" }  // M16: who this page is, from api/whoami
   };
 
   // ---- helpers ------------------------------------------------------------------------------------------------
@@ -31,7 +32,12 @@
     return Math.floor(h / 24) + " d";
   }
   // The hub's clock now: the model's `at` plus what has passed here since it arrived.
-  function hubNow() { return S.model ? S.model.at + (Date.now() - S.recvAt) : Date.now(); }
+  function replay() { return S.model && S.model.hub && S.model.hub.replay; }
+  function hubNow() {
+    var r = replay();
+    if (r) return r.position_at + (r.paused ? 0 : (Date.now() - S.recvAt) * r.speed);  // the recording's clock
+    return S.model ? S.model.at + (Date.now() - S.recvAt) : Date.now();
+  }
   // A span showing how long ago a hub-clock time was; the ticker keeps it current.
   function ago(at, pre, post) {
     if (at == null) return "-";
@@ -243,6 +249,15 @@
   }
 
   // ---- layer 4: tabs ------------------------------------------------------------------------------------------
+  function retentionRows(r) {  // M16: how much history the hub keeps, said where the hub is described
+    if (!r) return "";
+    var h = "<dt>History</dt><dd>" + esc(num(r.events_held)) + " of " + esc(num(r.events_kept)) + " events kept" +
+      (r.oldest_event_at ? ", since " + clock(r.oldest_event_at) : "") + "</dd>";
+    var rec = r.recording;
+    h += "<dt>Recording</dt><dd>" + (rec ? "the last " + esc(rec.hours) + " h, " + mb(rec.bytes) + " in " + esc(rec.files) +
+      " file" + (rec.files === 1 ? "" : "s") : "off (start the hub with --record to replay later)") + "</dd>";
+    return h;
+  }
   function renderCell(m) {
     var cell = m.cell || {}, hub = m.hub || {}, all = [];
     (m.boards || []).forEach(function (b) { (b.modules || []).forEach(function (md) { if (all.indexOf(md.name) < 0) all.push(md.name); }); });
@@ -257,7 +272,7 @@
       "<dt>Version</dt><dd><code>" + esc(hub.version) + "</code></dd><dt>Up</dt><dd>" + dur(hub.up_ms) + "</dd>" +
       "<dt>Frames</dt><dd>" + esc(num(hub.frames_rx)) + " rx, " + esc(num(hub.frames_tx)) + " tx</dd>" +
       "<dt>Pull period</dt><dd>" + num(hub.pull_period_ms, "ms") + "</dd><dt>Clock error</dt><dd>&plusmn;" +
-      num(hub.clock_error_ms, "ms") + "</dd></dl></div>";
+      num(hub.clock_error_ms, "ms") + "</dd>" + retentionRows(hub.retention) + "</dl></div>";
     (m.boards || []).forEach(function (b) {
       var fw = b.firmware || {}, pk = b.package || {}, hp = b.heap || {}, mods = {};
       (b.modules || []).forEach(function (md) { mods[md.name] = md; });
@@ -311,6 +326,8 @@
     var w = S.writes[r.path], res = "";
     if (w) res = '<span class="wres ' + (w.pending ? "idle" : w.ok ? "ok" : "bad") + '">' + esc(w.pending ? "sending" : w.text) +
       (w.pending ? "" : " " + '<span class="age-local" data-t="' + w.t + '">' + dur(Date.now() - w.t) + "</span> ago") + "</span>";
+    if (replay()) return '<span class="muted small">writable; this is a replay</span>';
+    if (S.who.right !== "write") return '<span class="muted small">writable; this login may only look</span>';
     var dis = w && w.pending ? " disabled" : "";
     var p = esc(r.path), c;
     if (typeof r.value === "boolean")
@@ -440,7 +457,7 @@
     document.title = "Potluck " + (c.system || "cell");
     var first = !S.rendered;
     S.rendered = true;
-    renderStatus(m); renderSignals(m); renderUse(m); renderTab(); tick();
+    renderReplay(m); renderStatus(m); renderSignals(m); renderUse(m); renderTab(); tick();
     if (first && S.focus) route(true);  // a link with a focus, opened fresh: scroll to it once the model is here
   }
   function onEvents(obj) {
@@ -478,7 +495,10 @@
     };
   }
   function getJSON(url) {
-    return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(url + ": " + r.status); return r.json(); });
+    return fetch(url, { cache: "no-store" }).then(function (r) {
+      if (r.status === 401) { showLogin("Your session ended: log in again."); throw new Error("login"); }
+      if (!r.ok) throw new Error(url + ": " + r.status); return r.json();
+    });
   }
   function pollOnce() {
     getJSON("api/model").then(function (m) {
@@ -498,7 +518,7 @@
   function sendWrite(path, value) {
     S.writes[path] = { pending: true, t: Date.now() };
     if (S.model && S.tab === "data") renderData(S.model);
-    fetch("api/write", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: path, value: value }) })
+    fetch("api/write", { method: "POST", headers: { "Content-Type": "application/json", "X-Potluck-Request": "1" }, body: JSON.stringify({ path: path, value: value }) })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (b) {
           S.writes[path] = { ok: r.ok && b.ok === true, text: b.result || (r.ok ? "done" : "HTTP " + r.status), t: Date.now() };
@@ -532,6 +552,7 @@
     var late = S.model && modelLate();
     var mode = S.mode === "live" && late ? "late" : S.mode;
     var text = { connecting: "connecting", live: "live", polling: "polling every 2 s", lost: "no answer from the hub", late: "stream quiet" }[mode];
+    if (replay() && (mode === "live" || mode === "polling")) { text = "replay, not live"; mode = "polling"; }
     $("conn").className = "conn " + ({ live: "ok", polling: "warn", lost: "bad", late: "bad", connecting: "idle" }[mode]);
     $("conn-text").textContent = text + (S.model ? ", model " + dur(modelAge()) + " old" : "");
     var b = $("stale-banner");
@@ -541,9 +562,62 @@
     } else b.hidden = true;
   }
 
-  window.addEventListener("hashchange", function () { route(true); });
-  if (!location.hash) history.replaceState(null, "", "#cell");
-  route(false);
-  startStream();
-  setInterval(tick, 1000);
+  // ---- replay (M16): a recording served through the same API, moved from here --------------------------------------
+  function renderReplay(m) {
+    var r = m.hub && m.hub.replay, bar = $("replay-bar");
+    bar.hidden = !r;
+    if (!r) return;
+    var span = Math.max(1, r.to_at - r.from_at);
+    $("replay-text").textContent = "Replay of " + r.file + ": " + clock(r.position_at) + " (" + dur(r.position_at - r.from_at) +
+      " of " + dur(span) + ")" + (r.paused ? ", paused" : "");
+    $("replay-play").textContent = r.paused ? "Play" : "Pause";
+    if (document.activeElement !== $("replay-seek")) $("replay-seek").value = Math.round(1000 * (r.position_at - r.from_at) / span);
+    if (document.activeElement !== $("replay-speed")) $("replay-speed").value = String(r.speed);
+  }
+  $("replay-play").addEventListener("click", function () { var r = replay(); if (r) post("api/replay", { paused: !r.paused }); });
+  $("replay-speed").addEventListener("change", function () { post("api/replay", { speed: Number($("replay-speed").value) }); });
+  $("replay-seek").addEventListener("change", function () {
+    var r = replay(); if (!r) return;
+    var at = r.from_at + Math.round((r.to_at - r.from_at) * Number($("replay-seek").value) / 1000);
+    post("api/replay", { seek_at: at }).then(function () { location.reload(); });  // the events start again from there
+  });
+
+  // ---- the login (M16): only when the hub serves this page beyond its own PC --------------------------------------
+  function showLogin(msg) {
+    if (S.es) { S.es.close(); S.es = null; }
+    stopPolling(); clearTimeout(S.retryTimer);
+    $("main").hidden = true; $("login").hidden = false; $("who").hidden = true;
+    $("login-msg").textContent = msg || "";
+    $("conn").className = "conn idle"; $("conn-text").textContent = "log in to see the cell";
+  }
+  function post(url, body) {
+    return fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "X-Potluck-Request": "1" }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { b.status = r.status; return b; }); });
+  }
+  $("login-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    $("login-msg").textContent = "checking";
+    post("api/login", { name: $("login-name").value, password: $("login-password").value }).then(function (b) {
+      $("login-password").value = "";
+      if (b.ok) location.reload(); else $("login-msg").textContent = b.result || "refused";
+    }).catch(function () { $("login-msg").textContent = "no answer from the hub"; });
+  });
+  $("logout").addEventListener("click", function () { post("api/logout", {}).then(function () { location.reload(); }); });
+  function start() {
+    window.addEventListener("hashchange", function () { route(true); });
+    if (!location.hash) history.replaceState(null, "", "#cell");
+    route(false);
+    startStream();
+    setInterval(tick, 1000);
+  }
+  fetch("api/whoami", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; })
+    .then(function (w) {
+      if (w.login) {
+        if (!w.name) { showLogin(""); return; }
+        S.who = w;
+        $("who").hidden = false;
+        $("who-text").textContent = w.name + " (" + (w.right === "write" ? "look and write" : "look only") + ")";
+      }
+      start();  // a hub before M16 has no api/whoami: the page runs as before
+    });
 })();

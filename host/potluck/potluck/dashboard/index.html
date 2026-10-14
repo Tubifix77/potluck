@@ -25,10 +25,28 @@
   <div class="brand"><span class="logo" aria-hidden="true"></span><span>Potluck</span>
     <span id="cell-name" class="muted"></span></div>
   <div id="conn" class="conn" role="status" aria-live="polite"><span class="dot"></span><span id="conn-text">connecting</span></div>
+  <div id="who" class="who" hidden><span id="who-text" class="small"></span>
+    <button id="logout" type="button" class="small">Log out</button></div>
 </header>
 
-<main>
+<section id="login" class="login" hidden aria-labelledby="login-h">
+  <h2 id="login-h">Log in to the cell</h2>
+  <form id="login-form" autocomplete="on">
+    <label>Name <input id="login-name" name="username" autocomplete="username" required></label>
+    <label>Password <input id="login-password" name="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Log in</button>
+    <p id="login-msg" class="small muted" role="alert"></p>
+  </form>
+</section>
+
+<main id="main">
   <div id="stale-banner" class="banner bad" hidden></div>
+  <div id="replay-bar" class="banner replay" hidden>
+    <span id="replay-text"></span>
+    <span class="replay-ctl"><button id="replay-play" type="button">Pause</button>
+      <label class="small">speed <select id="replay-speed"><option>1</option><option>4</option><option>16</option><option>60</option></select></label></span>
+    <input id="replay-seek" type="range" min="0" max="1000" value="0" aria-label="Position in the recording">
+  </div>
 
   <section id="status" aria-labelledby="status-h">
     <h2 id="status-h" class="sr-only">Is anything broken?</h2>
