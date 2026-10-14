@@ -5485,3 +5485,5 @@ an old one after an upgrade; and a class's `display` beat the `hidden` attribute
 replay bar on the PC's own page. Owed for M16: a real phone on the house network through the login (the browser pane
 refuses a self-signed certificate, and opening the port in the PC's firewall is the owner's), and Home Assistant's
 Ingress when the hub runs on the Home Assistant machine (with M17).
+
+**M13.1 and M15 ACCEPTED (2026-10-14, midday), by the owner, with their caveats** -- M13.1: a laptop's Wi-Fi stood in for the phone and a held reset for an unplug; M15: the USB cables stayed in for power, and a declared window with a held reset stood in for a real sleep mode. The PC was restarted overnight by Windows Update (KB5127648, 05:14-05:19, System log events 1074 and 109); no Potluck process was running and nothing was lost. A restarted at about 12:13 (boot epoch 289, five restarts since 03:59); B and C ran through the PC's reboots, so it was not the reboot -- most likely another program opening COM3.

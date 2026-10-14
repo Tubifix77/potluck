@@ -943,7 +943,7 @@ unplugged; the hotspot's cost of the build rule comes from one speed test.
 
 *M13.1 built, 2026-10-12 (M0-LOG session 41) -- not on the bench.* `pot_pocket`: a portable core renders the page and its JSON from a snapshot (host-tested: which board is dead and since when, values with quality and age and no number when there is none, another cell's refused frames, names escaped, a full snapshot fits, nothing on the page can send anything back); the board half makes the access point beside the station (APSTA, on the cell's channel, WPA2, at most two phones -- soft-AP and ESP-NOW share the encryption key slots) only when the owner has set a name and password, serves `/` and `/status.json` with ESP-IDF's HTTP server from a copy of the snapshot the link task fills once a second, and answers every other method 405. Cost, with the Wi-Fi station, by the difference of two builds: about 64 KB flash, 1.9 KB static internal RAM (1.6 KB of it the station's scan records, since moved to PSRAM) and 22 KB PSRAM; core unchanged. Owed: everything on the bench -- the access point's password is the owner's to set, and the test is a phone.
 
-*M13.1 on the bench, 2026-10-14 (M0-LOG session 42) -- proposed for acceptance.* The owner's name and password on A
+*M13.1 on the bench, 2026-10-14 (M0-LOG session 42) -- **ACCEPTED** by the owner with its caveats.* The owner's name and password on A
 (`tools/pocket_set.py`); the homelab laptop's Wi-Fi as the phone. Joined, the page showed all three boards (180 of 180
 fetches over 15 min); B held in reset showed dead about 1.2 s later and alive 6.8 s after release; POST, PUT, DELETE,
 PATCH refused 405 and every other path 404; a wrong password did not join. Heartbeat loss 0.88 % with the page open
@@ -998,7 +998,7 @@ station. The hub's per-link figures, from the radio alone, agree with the consol
 the default. **Owed:** a sleeping board shown asleep (no board on the bench declares a long window), and a run with no
 console connected at all.
 
-*M15, 2026-10-14 (M0-LOG session 42): the last two lines, and proposed for acceptance.* With no console read, from the
+*M15, 2026-10-14 (M0-LOG session 42): the last two lines -- **ACCEPTED** by the owner with its caveats.* With no console read, from the
 hub's own telemetry log (`--telemetry-log`, `tools/m15_report.py --hub`): 0.57 % loss over 20 minutes (heartbeat and
 unicast gaps together), no RTT timeout. A board that declared a 60 s window (M5.1's runtime switch) and was held in
 reset showed **asleep** after three missed polls and never dead while inside its window, and **dead** when the window
