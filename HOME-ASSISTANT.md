@@ -77,15 +77,16 @@ There are two paths, and you want both:
      ],
      "actors": [
        {"name": "led_7368", "module": "builtin:led_switch", "latency_class": 3, "pin": 29544,
-        "config": {"r": 255, "g": 140, "b": 0}}
+        "config": {"r": 0, "g": 0, "b": 255}}
      ]
    }
    ```
 
    `system` is your cell's name. Add `"ha-led.json"` to the list in the cluster file's `package.manifests`. While the
-   switch is on, the board's status LED shows the colour in `config` (orange here) instead of its usual green; the
-   status colours purple (updating), yellow (searching) and red (a problem) still win, so a board that is not green
-   shows no change ([what the colours mean](GETTING-STARTED.md#3-build-and-flash-potluck-onto-each-board)).
+   switch is on, the board's status LED shows the colour in `config` (blue here) instead of its usual green. Pick
+   blue, cyan or white: purple, yellow, red and green are the board's own status colours, and an app colour in one
+   of their hues (orange counts as yellow) is shown white. The status colours purple (updating), yellow (searching)
+   and red (a problem) still win, so a board that is not green shows no change ([what the colours mean](GETTING-STARTED.md#3-build-and-flash-potluck-onto-each-board)).
 3. **Say what Home Assistant may see**, in the cluster file. Add `present` to `firmware.modules` -- keep the modules
    already there -- and, if no board is an extender, `wifi`; name your broker; list every resource another system may
    read or write:
@@ -225,7 +226,7 @@ actions:
           entity_id: switch.lab_node_7368_led_on
 ```
 
-Save it, and run it once from its three dots > Run actions to see the LED change colour. The write goes from the
+Save it, and run it once from its three dots > Run actions to see the LED turn blue. The write goes from the
 presenting board to the LED's board, marked as from outside the cell, and that board checks the package again. A
 resource not listed as `read_write` in `outside` cannot be written from Home Assistant at all.
 
