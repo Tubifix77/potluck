@@ -71,6 +71,13 @@ class Announce(unittest.TestCase):
         self.assertIsNone(self.a.answer(bytes(resp)))
         self.assertTrue(all(ttl == 0 for _n, _t, ttl, _d in parse_rrs(self.a.full(ttl_scale=0))))
 
+    def test_a_one_shot_resolver_gets_its_id_its_question_and_short_ttls(self) -> None:
+        q = bytearray(query("_potluck._tcp.local.", md.TYPE_PTR))
+        q[0:2] = b"\x12\x34"
+        resp = self.a.answer(bytes(q), legacy=True)  # RFC 6762 6.7: a query from a port other than 5353
+        self.assertEqual(struct.unpack("!HHH", resp[:6]), (0x1234, 0x8400, 1))
+        self.assertTrue(all(ttl <= 10 for _n, _t, ttl, _d in parse_rrs(resp)))
+
     def test_a_name_with_a_pointer_loop_is_refused_not_followed(self) -> None:
         bad = struct.pack("!HHHHHH", 0, 0, 1, 0, 0, 0) + bytes([0xC0, 12]) + struct.pack("!HH", 12, 1)
         with self.assertRaises(ValueError):

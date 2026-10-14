@@ -87,13 +87,17 @@ class Announcer:
         self.counts = {"queries": 0, "answers": 0}
 
     # ---- records ----
-    def records(self, ttl_scale: int = 1) -> dict[int, bytes]:
+    def records(self, ttl_scale: int = 1, ttl_max: int | None = None) -> dict[int, bytes]:
+        def ttl(t: int) -> int:
+            t *= ttl_scale
+            return min(t, ttl_max) if ttl_max is not None else t
+
         srv = struct.pack("!HHH", 0, 0, self.port) + encode_name(self.host)
         return {
-            TYPE_PTR: rr(SERVICE, TYPE_PTR, TTL_OTHER * ttl_scale, encode_name(self.instance)),
-            TYPE_SRV: rr(self.instance, TYPE_SRV, TTL_HOST * ttl_scale, srv),
-            TYPE_TXT: rr(self.instance, TYPE_TXT, TTL_OTHER * ttl_scale, txt_rdata(self.txt)),
-            TYPE_A: rr(self.host, TYPE_A, TTL_HOST * ttl_scale, socket.inet_aton(self.ip)),
+            TYPE_PTR: rr(SERVICE, TYPE_PTR, ttl(TTL_OTHER), encode_name(self.instance)),
+            TYPE_SRV: rr(self.instance, TYPE_SRV, ttl(TTL_HOST), srv),
+            TYPE_TXT: rr(self.instance, TYPE_TXT, ttl(TTL_OTHER), txt_rdata(self.txt)),
+            TYPE_A: rr(self.host, TYPE_A, ttl(TTL_HOST), socket.inet_aton(self.ip)),
         }
 
     def response(self, answers: list[bytes], additionals: list[bytes] = ()) -> bytes:
@@ -104,11 +108,13 @@ class Announcer:
         r = self.records(ttl_scale)
         return self.response([r[TYPE_PTR]], [r[TYPE_SRV], r[TYPE_TXT], r[TYPE_A]])
 
-    def answer(self, query: bytes) -> bytes | None:
-        """The response to one query, or None if it asks nothing of ours."""
+    def answer(self, query: bytes, legacy: bool = False) -> bytes | None:
+        """The response to one query, or None if it asks nothing of ours. `legacy`: the query came from a port other
+        than 5353 -- a one-shot resolver (RFC 6762 6.7): answered by unicast with its ID, its question, TTLs of 10 s
+        at most."""
         if len(query) < 12:
             return None
-        _id, flags, qd, _an, _ns, _ar = struct.unpack("!HHHHHH", query[:12])
+        qid, flags, qd, _an, _ns, _ar = struct.unpack("!HHHHHH", query[:12])
         if flags & 0x8000:
             return None  # a response, not a query
         at, wanted = 12, set()
@@ -127,10 +133,14 @@ class Announcer:
                 wanted.add(TYPE_A)
         if not wanted:
             return None
-        r = self.records()
+        r = self.records(ttl_max=10 if legacy else None)
         answers = [r[t] for t in (TYPE_PTR, TYPE_SRV, TYPE_TXT, TYPE_A) if t in wanted]
         extra = [r[t] for t in (TYPE_SRV, TYPE_TXT, TYPE_A) if t not in wanted and TYPE_PTR in wanted]
-        return self.response(answers, extra)
+        if not legacy:
+            return self.response(answers, extra)
+        question = query[12:at]
+        hdr = struct.pack("!HHHHHH", qid, 0x8400, qd, len(answers), 0, len(extra))
+        return hdr + question + b"".join(answers) + b"".join(extra)
 
     # ---- the socket ----
     def start(self) -> None:
@@ -158,19 +168,26 @@ class Announcer:
                 return
         while not self.stop_evt.is_set():
             try:
-                data, _addr = self.sock.recvfrom(9000)
+                data, addr = self.sock.recvfrom(9000)
             except socket.timeout:
                 continue
             except OSError:
                 return
+            legacy = addr[1] != MDNS_PORT
             try:
-                resp = self.answer(data)
+                resp = self.answer(data, legacy=legacy)
             except ValueError:
                 continue
             self.counts["queries"] += 1
             if resp is not None:
                 self.counts["answers"] += 1
-                self._send(resp)
+                if legacy:
+                    try:
+                        self.sock.sendto(resp, addr)  # straight back to a one-shot resolver (RFC 6762 6.7)
+                    except OSError:
+                        pass
+                else:
+                    self._send(resp)
 
     def stop(self) -> None:
         if self.sock is None:
