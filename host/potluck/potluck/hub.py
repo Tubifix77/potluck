@@ -1149,9 +1149,10 @@ def main(argv: list[str] | None = None) -> int:
                   "this PC")
             return 2
         if not users.users:
-            print(f"hub: --listen needs at least one login: python -m potluck.hubauth add <name> --right look "
-                  f"({users.path} has none)")
-            return 2
+            # M17: a program pairs with a token approved on this PC, so no login is needed for that -- but nobody can
+            # log in on the page until one exists.
+            print(f"[hub] no login yet ({users.path}): programs can pair (approve them on http://{a.api}/); for a "
+                  f"phone or another computer's browser: python -m potluck.hubauth add <name> --right look", flush=True)
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ctx.minimum_version = ssl.TLSVersion.TLSv1_2
         try:
