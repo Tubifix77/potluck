@@ -205,3 +205,24 @@ delivery as diagnostic sensors, and its firmware as an update entity (installed 
 the cell; no command topic, so Home Assistant installs nothing); and on the cell's device, apps working and a problem
 binary sensor per app. They are available while the hub is (`potluck/<cell>/hub`, `online`/`offline`, its will
 `offline`): with the PC off they go unavailable and the boards' resources stay live through the cell's own presenter.
+
+## Integrations report their state, and each program has a share (M18)
+
+`POST /api/integrations {"name": "Node-RED", "state": "connected" | "disconnected" | "error" | "idle", "detail": "..."}`
+-> `{"ok": true}` (any login or token; on 127.0.0.1 no login). The model then lists it in `integrations` beside the
+cell's own presenter: `{"name", "kind": "program", "where": <who sent it>, "state", "since_at", "detail", "last_at"}`,
+and a report older than 60 s reads `disconnected` ("silent for N s"). Report at least every 30 s while running.
+
+Every program has a share of what the hub may ask of the cell, by who it is -- a login or token by name; on 127.0.0.1
+the `X-Potluck-Client: <name>` header it sends (send one), else its address: requests 20 a second (bursts of 40),
+writes 2 a second (bursts of 4). Over its share it gets `429 {"ok": false, "result": "slow down: ..."}` with
+`Retry-After: <seconds>`, and only it is slowed: every read is answered from the hub's one model and never reaches the
+cell, and writes, which do, cannot crowd it. The open stream counts once, when it opens -- use it rather than polling.
+`hub.clients` in the model: `[{"name", "requests", "writes", "refused", "last_at"}]`, every program seen in the last
+10 minutes.
+
+A writable resource may name the programs that may write it, in the cluster file:
+`"outside": {"node-7368/led/on": {"mode": "read_write", "writers": ["Home Assistant"]}}`. Through the hub, any other
+program gets `403 {"ok": false, "result": "not writable by this program"}`; the owner on the PC (127.0.0.1) always
+may. The cell's own presenter (M13) writes over MQTT, which the boards cannot tell from the hub's writes, so a writers
+list is the hub's rule, not the boards'.

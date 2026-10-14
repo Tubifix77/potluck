@@ -249,6 +249,30 @@
   }
 
   // ---- layer 4: tabs ------------------------------------------------------------------------------------------
+  // M18: every program using the hub, with what it asked and what was refused (each has a share).
+  function clientRows(cs) {
+    if (!cs || !cs.length) return "";
+    return "<dt>Programs</dt><dd>" + cs.map(function (c) {
+      return esc(c.name) + " " + esc(num(c.requests)) + " asks" + (c.refused ? ", " + badge(c.refused + " slowed", "warn") : "");
+    }).join("<br>") + "</dd>";
+  }
+  // M17: a program asking to be paired (Home Assistant); only the PC's own page may answer.
+  function pairingBlock(ps) {
+    if (!ps || !ps.length) return "";
+    var local = !S.who.login;
+    return '<div class="pairing"><h4>Asking to connect</h4>' + ps.map(function (p) {
+      return '<div class="pair-req"><span>' + esc(p.name) + ' <span class="muted small">(' + esc(p.right) + ", from " +
+        esc(p.from) + ")</span></span>" + (local ? ' <button type="button" data-pair="' + esc(p.pair_id) +
+        '" data-approve="1">Allow</button> <button type="button" data-pair="' + esc(p.pair_id) +
+        '" data-approve="0">Refuse</button>' : ' <span class="muted small">answer on the hub\'s PC</span>') + "</div>";
+    }).join("") + "</div>";
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target;
+    if (!b.matches || !b.matches("button[data-pair]")) return;
+    b.disabled = true;
+    post("api/pairing", { pair_id: b.getAttribute("data-pair"), approve: b.getAttribute("data-approve") === "1" });
+  });
   function retentionRows(r) {  // M16: how much history the hub keeps, said where the hub is described
     if (!r) return "";
     var h = "<dt>History</dt><dd>" + esc(num(r.events_held)) + " of " + esc(num(r.events_kept)) + " events kept" +
@@ -272,7 +296,8 @@
       "<dt>Version</dt><dd><code>" + esc(hub.version) + "</code></dd><dt>Up</dt><dd>" + dur(hub.up_ms) + "</dd>" +
       "<dt>Frames</dt><dd>" + esc(num(hub.frames_rx)) + " rx, " + esc(num(hub.frames_tx)) + " tx</dd>" +
       "<dt>Pull period</dt><dd>" + num(hub.pull_period_ms, "ms") + "</dd><dt>Clock error</dt><dd>&plusmn;" +
-      num(hub.clock_error_ms, "ms") + "</dd>" + retentionRows(hub.retention) + "</dl></div>";
+      num(hub.clock_error_ms, "ms") + "</dd>" + retentionRows(hub.retention) + clientRows(hub.clients) + "</dl>" +
+      pairingBlock(hub.pairing) + "</div>";
     (m.boards || []).forEach(function (b) {
       var fw = b.firmware || {}, pk = b.package || {}, hp = b.heap || {}, mods = {};
       (b.modules || []).forEach(function (md) { mods[md.name] = md; });

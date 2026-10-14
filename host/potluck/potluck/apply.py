@@ -270,6 +270,8 @@ class Cluster:
     board_modules: tuple[str, ...] = ()
     #: M13: the cluster file's `present` block -- the presenting role's broker, keep-alive and period -- or None.
     present: dict[str, Any] | None = None
+    #: M18: resource path -> the programs that may write it through the hub; absent: any program with the write right.
+    writers: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -413,16 +415,30 @@ def load_cluster(path: str) -> Cluster:
     if not isinstance(outside_raw, dict):
         raise ApplyError("outside: an object of resource path -> \"read\" or \"read_write\"")
     outside = {}
+    writers: dict[str, tuple[str, ...]] = {}
     for path, mode in outside_raw.items():
         # A path may leave out the cluster's prefix: "node-7368/hw/die_temp" is potluck://<system>/node-7368/...
         full = path if str(path).startswith("potluck://") else f"potluck://{system}/{str(path).lstrip('/')}"
+        if isinstance(mode, dict):
+            # M18: {"mode": "read_write", "writers": ["Home Assistant", ...]} -- which programs may write it through
+            # the hub (by the name they logged in or were paired with).
+            names = mode.get("writers", [])
+            if not isinstance(names, list) or not all(isinstance(n, str) and n for n in names):
+                raise ApplyError(f"outside['{path}'].writers: a list of program names")
+            if names:
+                writers[full] = tuple(names)
+            mode = mode.get("mode")
         if mode not in ("read", "read_write"):
             raise ApplyError(f"outside['{path}']: \"read\" or \"read_write\", not {mode!r}")
+        if full in writers and mode != "read_write":
+            raise ApplyError(f"outside['{path}']: writers name who may write it, so its mode is \"read_write\"")
         outside[full] = mode
-    return Cluster(p, system, doc.get("port"), int(doc.get("baud", 921600)), boards, keys, fwd, potluck, extender,
-                   apps, extra_cfg, manifests, modules, _rel(base, pkg.get("guests_root", ".")),
-                   float(ver.get("timeout_s", 240)), list(ver.get("read", [])), outside, tuple(board_modules),
-                   dict(present) if present else None)
+    cl = Cluster(p, system, doc.get("port"), int(doc.get("baud", 921600)), boards, keys, fwd, potluck, extender,
+                 apps, extra_cfg, manifests, modules, _rel(base, pkg.get("guests_root", ".")),
+                 float(ver.get("timeout_s", 240)), list(ver.get("read", [])), outside, tuple(board_modules),
+                 dict(present) if present else None)
+    cl.writers = writers
+    return cl
 
 
 # ---- sources: git archive into a cache, never a live tree ---------------------------------------------

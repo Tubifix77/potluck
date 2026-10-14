@@ -43,6 +43,8 @@ h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
 [hidden] { display: none !important; }  /* a class's display never shows what the page hid */
 .banner.replay { background: var(--role-bg); color: var(--role); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .banner.replay input[type=range] { flex: 1 1 100%; }
+.pairing { margin-top: 10px; padding: 8px; border: 1px solid var(--warn); border-radius: 6px; background: var(--warn-bg); }
+.pair-req { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
 .who { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .login { max-width: 360px; margin: 48px auto; padding: 20px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
 .login form { display: grid; gap: 12px; }

@@ -372,6 +372,10 @@ class Model:
         self.telemetry_log = telemetry_log
         self.recorder = None  # M16: potluck.hubreplay.Recorder, when --record names a directory
         self.pairing = None  # M17: potluck.hubauth.Pairing, when --listen serves the house network
+        from .hub_clients import FairShare, Reports
+
+        self.fair = FairShare()  # M18: each program's share of what the hub may ask of the cell
+        self.reports = Reports()  # M18: what the integrations say of themselves
         self.cluster = cluster
         self.package = package
         self.pull_period_ms = pull_period_ms
@@ -584,12 +588,13 @@ class Model:
                     "pull_period_ms": self.pull_period_ms, "clock_error_ms": self._clock_error_ms(),
                     "telemetry_period_ms": self.telemetry_period_ms, "telemetry": dict(self.telemetry_counts),
                     "relay": dict(self.hub.relay_counts), "retention": self._retention_json(),
-                    "pairing": self.pairing.pending() if self.pairing is not None else []},
+                    "pairing": self.pairing.pending() if self.pairing is not None else [],
+                    "clients": self.fair.snapshot()},
             "cell": self._cell_json(boards),
             "boards": boards,
             "apps": apps,
             "resources": resources,
-            "integrations": self._integrations_json(boards, resources),
+            "integrations": self._integrations_json(boards, resources) + self.reports.snapshot(),
             "deploys": list(self.deploys),
             "signals": self._signals_json(boards),
             "last_event_seq": events_tail[0]["seq"] if events_tail else 0,
@@ -843,9 +848,37 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             self._json(401, {"error": "login", "result": "log in first"})
             return False
 
+        def _client(self) -> str:
+            """M18: whose share a request is -- a login or token by name; on 127.0.0.1 what the program calls itself
+            (X-Potluck-Client), else its address and port's host."""
+            if sessions is not None:
+                who = self._who()
+                if who is not None:
+                    return who[0]
+            return self.headers.get("X-Potluck-Client", "")[:64] or self.client_address[0]
+
+        def _fair(self, kind: str) -> bool:
+            fair = getattr(model, "fair", None)  # a replay has none: nothing behind it to protect
+            if fair is None:
+                return True
+            wait = fair.take(self._client(), kind)
+            if wait <= 0:
+                return True
+            body = json.dumps({"ok": False, "result": f"slow down: this program is over its share ({kind}s; "
+                                                      f"HUB-API.md, fair share)"}).encode()
+            self.send_response(429)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Retry-After", str(max(1, int(wait + 0.999))))
+            self.end_headers()
+            self.wfile.write(body)
+            return False
+
         def do_GET(self) -> None:
             path, _, query = self.path.partition("?")
             if not self._allowed(path):
+                return
+            if path.startswith("/api/") and not self._fair("read"):
                 return
             if path.startswith("/api/pair/") and sessions is not None and pairing is not None:
                 got = pairing.fetch(path[len("/api/pair/"):])
@@ -923,6 +956,25 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 # unless this server allowed it (CORS), which it never does.
                 self._json(403, {"ok": False, "result": "missing X-Potluck-Request"})
                 return
+            if not self._fair("read"):
+                return
+            if self.path == "/api/integrations":
+                # M18: an integration says how it is; any login or token may (it changes nothing in the cell).
+                if self._who() is None:
+                    self._json(401, {"error": "login", "result": "log in first"})
+                    return
+                try:
+                    req = self._body()
+                    ok = model.reports.report(str(req["name"]), str(req["state"]), str(req.get("detail", "")),
+                                              self._client())
+                except (ValueError, KeyError, AttributeError):
+                    ok = False
+                if not ok:
+                    self._json(400, {"ok": False, "result": "expected {\"name\", \"state\": connected|disconnected|"
+                                                            "error|idle, \"detail\"}"})
+                    return
+                self._json(200, {"ok": True})
+                return
             if self.path == "/api/pair" and sessions is not None and pairing is not None:
                 # M17: a program asks to be paired; the owner answers on the PC (POST /api/pairing on 127.0.0.1).
                 try:
@@ -994,13 +1046,15 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 model.record("outside_write", None, {"by": who[0], "result": "refused: this login may only look"})
                 self._json(403, {"ok": False, "result": "this login may look, not write"})
                 return
+            if not self._fair("write"):
+                return
             try:
                 req = self._body()
                 path, value = req["path"], req["value"]
             except (ValueError, KeyError):
                 self._json(400, {"ok": False, "result": "expected {\"path\": ..., \"value\": ...}"})
                 return
-            self._json(*write_outside(model, path, value))
+            self._json(*write_outside(model, path, value, by=None if sessions is None else who[0]))
 
     srv = ThreadingHTTPServer((host or "127.0.0.1", int(p)), Handler)
     if tls is not None:
@@ -1012,11 +1066,18 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
     return srv
 
 
-def write_outside(model: Model, path: str, value: Any) -> tuple[int, dict]:
+def write_outside(model: Model, path: str, value: Any, by: str | None = None) -> tuple[int, dict]:
     """POST /api/write: only a resource the package lets the outside write, never a safety-relevant one; sent to the
-    owning board as a WRITE marked from outside, which checks the package again."""
+    owning board as a WRITE marked from outside, which checks the package again. M18: a resource whose cluster file
+    names its writers may be written only by those programs (`by`: the login or token's name; None is the PC's own
+    user on 127.0.0.1, the owner)."""
     cl = model.cluster
     mode = cl.outside.get(path) if cl is not None else None
+    writers = getattr(cl, "writers", {}).get(path) if cl is not None else None
+    if writers and by is not None and by not in writers:
+        model.record("outside_write", None, {"resource": path, "path": path, "value": value, "by": by,
+                                             "result": "refused: not one of its writers"})
+        return 403, {"ok": False, "result": "not writable by this program"}
     if mode != "read_write" or model._safety(path):
         model.record("outside_write", None, {"resource": path, "path": path, "value": value, "result": "refused: not writable from outside"})
         return 403, {"ok": False, "result": "not writable from outside"}
