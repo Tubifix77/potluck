@@ -5747,3 +5747,7 @@ verify and the hub read through it; a board that may present: the `outside` path
 A module that declares no outputs is named (passive-sensor's rf_link makes its six per link at run time: its descriptor
 should list them as `{peer}` outputs). `host/potluck/tests/test_ns_budget.py`. The homelab's clock: NTP switched on at
 the owner's word, now in step with the PC (it was 95 s behind).
+On the bench after the rollout (firmware `e1a1af9`, package 70): the boards report `ns_used` 31/40/40 of 128 (the
+census's figures), no full refusals, no deferred checkpoint writes. `apply --plan` predicted 15/16/16: the difference is
+exactly what it cannot see -- passive-sensor's rf_link (13 per board) and rf_fusion (3) make outputs their descriptor
+does not declare (the plan names both), and rf_fusion's holder reads eight link replicas no descriptor states.
