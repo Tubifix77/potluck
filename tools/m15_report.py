@@ -11,7 +11,9 @@ on what happened in it, not on totals since boot.
 
 from __future__ import annotations
 
+import gzip
 import json
+import os
 import sys
 
 # link_stats.hpp's kRttBucketEdgeUs: upper edges in microseconds; the last bucket is everything above.
@@ -33,6 +35,12 @@ def pct(hist: list[int], p: float) -> str:
     return "-"
 
 
+def lines(path: str):
+    if not os.path.exists(path) and os.path.exists(path + ".gz"):  # committed captures are compressed
+        return gzip.open(path + ".gz", "rt", encoding="utf-8")
+    return open(path, encoding="utf-8")
+
+
 def main(argv: list[str]) -> int:
     base = argv[0]
     marks = []
@@ -47,7 +55,7 @@ def main(argv: list[str]) -> int:
         for b, node in names.items():
             first: dict[int, dict] = {}
             last: dict[int, dict] = {}
-            for line in open(f"{base}-{b}.jsonl", encoding="utf-8"):
+            for line in lines(f"{base}-{b}.jsonl"):
                 if '"link"' not in line:
                     continue
                 r = json.loads(line)

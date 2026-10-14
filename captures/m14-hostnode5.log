@@ -1,0 +1,46 @@
+# package: modules from app 'passive-sensor' (pot_passive_sensor)
+# package: guest 'alarm' by 7, signature verified under the cluster CA
+# through potluck-hub at 127.0.0.1:8471
+{"t":"host_boot","node":254,"epoch":1791937266,"portable":1,"pub":"5cbeb457d157bba2"}
+{"t":"event","node":254,"at_ms":102,"kind":"peer_refused","peer":25344,"a":5,"b":0}
+{"t":"event","node":254,"at_ms":102,"kind":"peer_discovered","peer":25344,"a":283,"b":0}
+{"t":"event","node":254,"at_ms":102,"kind":"version_pinned","peer":25344,"a":2,"b":1446}
+{"t":"event","node":254,"at_ms":102,"kind":"peer_alive","peer":25344,"a":0,"b":0}
+{"t":"event","node":254,"at_ms":102,"kind":"actor_owner","peer":25344,"a":1245650351,"b":25}
+{"t":"event","node":254,"at_ms":165,"kind":"peer_discovered","peer":33120,"a":359,"b":0}
+{"t":"event","node":254,"at_ms":165,"kind":"version_pinned","peer":33120,"a":2,"b":1446}
+{"t":"event","node":254,"at_ms":165,"kind":"peer_alive","peer":33120,"a":0,"b":0}
+{"t":"event","node":254,"at_ms":181,"kind":"peer_discovered","peer":29544,"a":216,"b":0}
+{"t":"event","node":254,"at_ms":181,"kind":"version_pinned","peer":29544,"a":2,"b":1446}
+{"t":"event","node":254,"at_ms":181,"kind":"peer_alive","peer":29544,"a":0,"b":0}
+{"t":"rec_counters","node":254,"up_ms":2012,"sent":10,"received":12,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":3020,"sent":14,"received":15,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":4034,"sent":18,"received":20,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":5042,"sent":22,"received":24,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":6045,"sent":29,"received":27,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"event","node":254,"at_ms":6061,"kind":"actor_owner","peer":0,"a":1245650351,"b":0}
+{"t":"event","node":254,"at_ms":6061,"kind":"actor_started","peer":254,"a":1245650351,"b":26}
+{"t":"event","node":254,"at_ms":6061,"kind":"actor_owner","peer":254,"a":1245650351,"b":26}
+{"t":"rec_counters","node":254,"up_ms":7052,"sent":35,"received":32,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":8062,"sent":39,"received":37,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":9068,"sent":43,"received":40,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":10078,"sent":47,"received":44,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"event","node":254,"at_ms":10794,"kind":"peer_refused","peer":25344,"a":5,"b":0}
+{"t":"rec_counters","node":254,"up_ms":11089,"sent":51,"received":49,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":12100,"sent":55,"received":52,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":13106,"sent":59,"received":56,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"event","node":254,"at_ms":13122,"kind":"probe_timeout","peer":29544,"a":22,"b":0}
+{"t":"rec_counters","node":254,"up_ms":14118,"sent":62,"received":61,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":15124,"sent":66,"received":64,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":16138,"sent":70,"received":68,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":17149,"sent":74,"received":73,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":18159,"sent":78,"received":76,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":19165,"sent":82,"received":80,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":20168,"sent":86,"received":85,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":21182,"sent":90,"received":88,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":22191,"sent":93,"received":92,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"event","node":254,"at_ms":22796,"kind":"peer_refused","peer":25344,"a":5,"b":0}
+{"t":"rec_counters","node":254,"up_ms":23200,"sent":97,"received":97,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":24210,"sent":101,"received":100,"malformed":0,"unknown_peer":0,"views":3,"send_failures":0}
+# the link closed (the hub stopped?): stopping
+# cable frames in 1236, out 479

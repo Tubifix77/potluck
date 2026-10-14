@@ -84,8 +84,8 @@ with every measurement and caveat, is [STATUS.md](STATUS.md).
 - **Potluck shares the radio**: a board can be a cluster member and a Wi-Fi extender at the same time.
 - **Record and replay** a session byte for byte, to see exactly what happened.
 
-Not there yet: a dashboard and integrations with other systems such as Home Assistant (milestones M13-M18, planned
-in [BEYOND-M12.md](BEYOND-M12.md)), a few long soak tests, and the limits listed at the end of the
+Not there yet: the dashboard's login and phone layout (M16), Home Assistant as a first-class integration and an
+integration layer for other systems (M17, M18; the reasoning is in [BEYOND-M12.md](BEYOND-M12.md)), a few long soak tests, and the limits listed at the end of the
 [getting-started guide](GETTING-STARTED.md) (up to 20 boards in a radio cell, ESP32-S3 boards and PCs only, one
 package per cluster).
 

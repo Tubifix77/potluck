@@ -13,14 +13,20 @@ timeline -- every actor_started / actor_stopped -- and the longest time two node
 
 from __future__ import annotations
 
+import gzip
 import json
+import os
 import sys
 
 
 def load(path: str) -> list[dict]:
     out = []
     try:
-        for line in open(path, encoding="utf-8", errors="replace"):
+        if not os.path.exists(path) and os.path.exists(path + ".gz"):  # committed captures are compressed
+            f = gzip.open(path + ".gz", "rt", encoding="utf-8", errors="replace")
+        else:
+            f = open(path, encoding="utf-8", errors="replace")
+        for line in f:
             try:
                 out.append(json.loads(line))
             except ValueError:

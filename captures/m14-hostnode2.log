@@ -1,0 +1,14 @@
+# package: modules from app 'passive-sensor' (pot_passive_sensor)
+# package: guest 'alarm' by 7, signature verified under the cluster CA
+{"t":"host_boot","node":254,"epoch":1791934066,"portable":1,"pub":"5cbeb457d157bba2"}
+{"t":"rec_counters","node":254,"up_ms":2002,"sent":0,"received":0,"malformed":0,"unknown_peer":0,"views":0,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":3014,"sent":0,"received":0,"malformed":0,"unknown_peer":0,"views":0,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":4025,"sent":0,"received":0,"malformed":0,"unknown_peer":0,"views":0,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":5030,"sent":0,"received":0,"malformed":0,"unknown_peer":0,"views":0,"send_failures":0}
+{"t":"event","node":254,"at_ms":6013,"kind":"actor_started","peer":254,"a":1245650351,"b":1}
+{"t":"event","node":254,"at_ms":6013,"kind":"actor_owner","peer":254,"a":1245650351,"b":1}
+{"t":"rec_counters","node":254,"up_ms":6044,"sent":0,"received":0,"malformed":0,"unknown_peer":0,"views":0,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":7054,"sent":0,"received":0,"malformed":0,"unknown_peer":0,"views":0,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":8064,"sent":0,"received":0,"malformed":0,"unknown_peer":0,"views":0,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":9075,"sent":0,"received":0,"malformed":0,"unknown_peer":0,"views":0,"send_failures":0}
+{"t":"rec_counters","node":254,"up_ms":10082,"sent":0,"received":0,"malformed":0,"unknown_peer":0,"views":0,"send_failures":0}

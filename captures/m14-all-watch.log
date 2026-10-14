@@ -1,0 +1,40 @@
+02:10:15  NO_DATA (age 0 ms, class L4)
+02:10:17  972 s  [GOOD, age 5449 ms, ts 972528, class L4]
+02:10:19  972 s  [GOOD, age 7534 ms, ts 972528, class L4]
+02:10:21  972 s  [GOOD, age 9654 ms, ts 972528, class L4]
+02:10:23  972 s  [GOOD, age 11750 ms, ts 972528, class L4]
+02:10:25  983 s  [GOOD, age 2838 ms, ts 983627, class L4]
+02:10:27  983 s  [GOOD, age 4887 ms, ts 983627, class L4]
+02:10:30  TIMEOUT
+02:10:32  983 s  [GOOD, age 10056 ms, ts 983627, class L4]
+02:10:35  983 s  [GOOD, age 12154 ms, ts 983627, class L4]
+02:10:37  994 s  [GOOD, age 3154 ms, ts 994726, class L4]
+02:10:39  994 s  [GOOD, age 5254 ms, ts 994726, class L4]
+02:10:41  994 s  [GOOD, age 7352 ms, ts 994726, class L4]
+02:10:43  994 s  [GOOD, age 9452 ms, ts 994726, class L4]
+02:10:45  994 s  [GOOD, age 11555 ms, ts 994726, class L4]
+02:10:47  1005 s  [GOOD, age 2592 ms, ts 1005819, class L4]
+02:10:50  TIMEOUT
+02:10:53  TIMEOUT
+02:10:56  TIMEOUT
+02:10:58  1005 s  [GOOD, age 13762 ms, ts 1005819, class L4]
+02:11:00  1016 s  [GOOD, age 4780 ms, ts 1016916, class L4]
+02:11:03  1016 s  [GOOD, age 6872 ms, ts 1016916, class L4]
+02:11:05  1016 s  [GOOD, age 8961 ms, ts 1016916, class L4]
+02:11:07  1016 s  [GOOD, age 11062 ms, ts 1016916, class L4]
+02:11:09  1016 s  [GOOD, age 13162 ms, ts 1016916, class L4]
+02:11:11  1028 s  [GOOD, age 4163 ms, ts 1028015, class L4]
+02:11:13  1028 s  [GOOD, age 6263 ms, ts 1028015, class L4]
+02:11:15  1028 s  [GOOD, age 8398 ms, ts 1028015, class L4]
+02:11:17  1028 s  [GOOD, age 10468 ms, ts 1028015, class L4]
+02:11:19  1028 s  [GOOD, age 12665 ms, ts 1028015, class L4]
+02:11:21  1039 s  [GOOD, age 3663 ms, ts 1039100, class L4]
+02:11:24  TIMEOUT
+02:11:27  1039 s  [GOOD, age 8807 ms, ts 1039100, class L4]
+02:11:29  1039 s  [GOOD, age 10898 ms, ts 1039100, class L4]
+02:11:31  1039 s  [GOOD, age 12981 ms, ts 1039100, class L4]
+02:11:33  1050 s  [GOOD, age 3991 ms, ts 1050186, class L4]
+02:11:35  1050 s  [GOOD, age 6095 ms, ts 1050186, class L4]
+02:11:37  1050 s  [GOOD, age 8230 ms, ts 1050186, class L4]
+02:11:40  TIMEOUT
+02:11:42  1050 s  [GOOD, age 13352 ms, ts 1050186, class L4]

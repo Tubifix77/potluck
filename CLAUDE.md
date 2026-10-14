@@ -60,6 +60,16 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-14 (03:45): **M13 proposed for acceptance; M14's and M15's bench runs done** (M0-LOG session 42, end).
+>
+> M13's evidence, line by line, is the table at the end of M0-LOG session 42 -- the owner decides. The build rule
+> (aggregation off where a cell presents) costs B's hotspot about a quarter of its download and a third of its upload
+> (owner's phone: 12.2 / 10.4 Mbps against 16-18 / 16-17). M15 at 10 s: heartbeat loss 0.43 % against 0.42 % without
+> the pull; the slowest probe 60.2 ms. M14: M10's handover through the hub 608-660 ms. Bench: firmware `3995681`
+> (counter 32), package 64 from `keys/desk-m14.json`, C presenting over TLS, A's relay off, no hub, host node or agent
+> running. **Monitoring is the owner's daily manual check -- no background watchers.** Open: M14's hub presenting in
+> the cell's place (not built); M15's sleeping board and no-console run; M16's login, phone layout and replay.
+>
 > ## HANDOVER, 2026-10-14 (00:30): **the presenting stall's cause found -- AMPDU transmit aggregation** (M0-LOG session 42, end).
 >
 > With `CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n` on every board (package 58 from `keys/desk-m13-noampdu.json`, firmware

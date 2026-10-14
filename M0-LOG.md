@@ -5379,3 +5379,50 @@ firmware rollout left C's presenter connected (the broker logged nothing; packag
 own declaration changed); the hub killed: the cell and C's presenting untouched, the ticker failed over to A, the agent
 and host node stopped, the restarted hub caught up in seconds (3 boards, 9 of 9 apps, 192 board events back-filled).
 Not built: the hub presenting in the cell's place.
+
+**M15 on the bench (2026-10-14, 02:22-03:29) [MEASURE]: the hub's telemetry pull, every 10 s, costs the cell no
+heartbeat delivery.** Firmware `3995681` (counter 32), package 64, C presenting over TLS throughout, A's relay off, no
+host node or agent; the three consoles captured JSON-only; three 20-minute phases on the same boards
+(`tools/m15_report.py captures/m15`, `captures/m15-report.txt`):
+
+| phase | heartbeat loss, six links | RTT p50 | RTT p99 (range over links) | probes over 42 ms |
+|---|---|---|---|---|
+| 1. no hub | 0.66 % (473 of 71,430) | 4-8 ms | 11-30 ms | 3 of 2,381 |
+| 2. resident hub, no telemetry | 0.42 % (303 of 72,918) | 4-8 ms | 8-42 ms | 6 of 2,430 |
+| 3. resident hub, telemetry every 10 s | 0.43 % (310 of 71,383) | 4-8 ms | 8-60 ms | 10 of 2,378 |
+
+M0's soak (unicast heartbeats, before M4 moved liveness to broadcast beacons): p50 4-6 ms, p99 16-22 ms, none above
+85 ms; phase 3's slowest probe 60.2 ms. Delivery with telemetry is phase 2's, the median unchanged. The tail grew on
+the two links whose probes C answers -- 8 of ~790 over 42 ms, against 1-3 in the earlier phases -- while C's own
+turnaround stayed at a 16 ms maximum, so the wait is in C's transmit path: C's radio carries its station (TLS to the
+broker) and, every 10 s, a telemetry reply of several frames. That is a reading, not a measurement. The hub answered
+66 of 66 pulls when checked four minutes in, no failure; its per-link counts agree with the consoles' (its "lost" is
+heartbeat plus unicast sequence gaps, so it reads 0-12 above the console's heartbeat count). **The kill does not fire:**
+10 s carries what the dashboard draws for layers 1-3 and leaves delivery where it was; 10 s stays the default. The PC
+crashed at 03:03 (an unrelated game) between phases 2 and 3: the boards ran on, none rebooted, and phase 3 was run again
+from 03:09. Owed for M15's acceptance: a board that declares a long window shown asleep (none on the bench does); and
+"with no console connected" taken literally -- here the consoles were connected to measure; the hub's figures came over
+the radio alone and matched them. The M14 captures went into the repository with these (`captures/m14-*`, compressed;
+`tools/m10_report.py` and `tools/m15_report.py` read the `.gz` files).
+
+**The extender's hotspot with aggregation off (2026-10-14, the owner's phone).** Google's speed test on B's hotspot,
+the cell presenting: 12.2 Mbps down, 10.4 up, 12 ms ping -- against 16-18 / 16-17 Mbps and 7-11 ms idle with
+aggregation on (session 30, three fast.com runs). About a quarter less down, a third less up; one run on another tool on
+another day, in an RF-noisy house, so the size is rough; still within the 5-15 Mbps M5.1 took as the reference NAT
+router's range. This is the cost of M13's build rule, paid by any cell that presents.
+
+**M13 proposed for acceptance (2026-10-14).** Each acceptance line against its evidence:
+
+| acceptance line | evidence | caveat |
+|---|---|---|
+| no PC; Home Assistant shows each board as a device and the exposed resources as entities with the right types and units, nothing else | 3 devices, 4 entities (presence binary_sensor, uptime duration, die temperature, LED switch), nothing unexposed (session 41) | no Potluck PC in the path; the desk PC stayed on, powering the boards and reading their consoles; Home Assistant runs on the homelab laptop (review item 13 allows it). The exposed set is B's die temperature and A's uptime rather than A's die temperature: the package's choice |
+| an automation changes B's LED, the board shows it, the write is on the event topic | 17 switches from Home Assistant, each reaching B and announced; the light follows (after `8e7fce4`) | by the owner's hand from Home Assistant's switch, not an automation: the same MQTT command |
+| writes not declared writable, or safety-relevant, refused; anything resembling a deploy refused | read-only, unknown-hash and wrong-type writes refused with reasons by the presenter; C refused an outside write to its own `act/setpoint` | a deploy has no topic: the presenter subscribes only to `potluck/<cell>/+/set` and maps declared hashes to WRITE -- refused by construction, shown through the unknown hash |
+| a board unplugged turns its entities unavailable within its death window, back when it returns | A reset: its entities down within about a second, back in about 4 s | a reset, not an unplug; seen at the broker |
+| two presenters, the presenting one unplugged: the other presents within M6's failover time, never twice | C held in reset: B's first state 0.68 s after C's last message; failover 0.68-4.3 s, one presenter at a time (`availability_mode: any`) | a reset held, not an unplug |
+| a cluster file without the module builds without it; `apply --plan` shows its cost | both (session 41) | |
+| heartbeat round trips and delivery within M0's spread while presenting; 20 boards in `pot_sim` | aggregation off, 13 h 19 min presenting: delivery 99.2-99.9 % a link, p50 4-8 ms, p99 16-22 ms; same-session A/B 0.47 % / 0.28 % (15 min each); M15's phases with C presenting over TLS 0.42-0.66 %; `pot_sim` 20 boards 26.0 -> 28.0 % airtime | the A/B is short; RF-noisy house |
+| flash and internal-RAM cost, with and without TLS, on the tightest board | 134 KB flash, 661 B static internal RAM, 23.8 KB PSRAM; runtime 7.8 KB plain, 34 KB with TLS on B (low-water 114,403 B); C 24.7 KB with TLS | B's internal low-water since its 01:53 boot read 87,099 B in telemetry after the M14 bench's rollout and package changes; which event set it is not recorded |
+| kill: the MQTT client fits; presenting leaves the radio its M0 figures | memory half does not fire; radio half fired (the wedge) and is answered: AMPDU transmit aggregation off, 13 h 19 min presenting with no stall against twelve with it on; since, C over TLS from 01:56 with one connection, 12,039 messages, none failed, no `tx_dead` on any board | the answer costs the extender's hotspot about a quarter to a third of its throughput (above) |
+
+Not part of M13 and not built: the hub presenting in the cell's place (M14's last line). The decision is the owner's.

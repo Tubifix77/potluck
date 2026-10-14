@@ -1,0 +1,3 @@
+[hub] package: modules from app 'passive-sensor' (pot_passive_sensor)
+[hub] package: guest 'alarm' by 7, signature verified under the cluster CA
+REFUSED, nothing changed: the cell's hub lease is held by "hub on DESKTOP-10TE4PU" (on board 0x6300, 41 s left unless renewed) -- one resident hub per cell

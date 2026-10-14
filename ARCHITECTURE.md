@@ -924,6 +924,18 @@ does not clear the wedge (`CONFIG_POT_TX_DEAD_SOFT_S`, on the bench the same mor
 60 s fail-stop is the right recovery and M13 needs the wedge not to form, or the line's other route -- the hub
 presenting from the PC (M14). M13 is not accepted while this stands.
 
+*M13, 2026-10-14 (M0-LOG session 42): the wedge's cause found, and M13 proposed for acceptance.* The wedge is AMPDU
+transmit aggregation (`CONFIG_ESP_WIFI_AMPDU_TX_ENABLED`) on a board that presents over its own station: with it off
+on every board, C presented 13 h 19 min with no stall and no reboot (120,894 messages, none failed), against twelve
+stall records with it on the same day. `apply` now builds a cell that presents with aggregation off on every board (a
+cluster file that names the key keeps its choice; `--plan` says so). Its cost is the extender's hotspot: 12.2 Mbps
+down and 10.4 up on the owner's phone, against 16-18 and 16-17 with aggregation on (one Google speed test against
+three fast.com runs on another day: about a quarter less down and a third less up). **TLS's cost:** 24.7 KB of
+internal heap on C while connected (the handshake's low-water 26.8 KB below plain MQTT's), PSRAM unchanged; on the
+tightest board -- B, the extender with passive-sensor's actors -- presenting over TLS took 34 KB for the MQTT client
+and TLS together, low-water 114,403 B. The kill line's memory half does not fire; its radio half fired and is
+answered by the build rule.
+
 *M13.1 built, 2026-10-12 (M0-LOG session 41) -- not on the bench.* `pot_pocket`: a portable core renders the page and its JSON from a snapshot (host-tested: which board is dead and since when, values with quality and age and no number when there is none, another cell's refused frames, names escaped, a full snapshot fits, nothing on the page can send anything back); the board half makes the access point beside the station (APSTA, on the cell's channel, WPA2, at most two phones -- soft-AP and ESP-NOW share the encryption key slots) only when the owner has set a name and password, serves `/` and `/status.json` with ESP-IDF's HTTP server from a copy of the snapshot the link task fills once a second, and answers every other method 405. Cost, with the Wi-Fi station, by the difference of two builds: about 64 KB flash, 1.9 KB static internal RAM (1.6 KB of it the station's scan records, since moved to PSRAM) and 22 KB PSRAM; core unchanged. Owed: everything on the bench -- the access point's password is the owner's to set, and the test is a phone.
 
 **M14 — The hub: one program on the PC owns the link.** *(Planned 2026-10-11, revised 2026-10-12. Section 7.1's bridge and agent, as one service.)* Today each tool opens the serial port itself, so only one can run at a time (M0-RUNBOOK section 14): the PC can be a placement host, or offer a service, or be watched, never all three. What changes: `potluck-hub` owns the port and is the PC's identity in the cell (enrolled, as `pot_hostnode` is). **On demand** (basic) it starts with a tool and holds the cable while the tool runs -- `apply`, `fw`, `potctl` need nothing more. **Resident** (optional, the owner's choice) it records every frame (section 7.6), holds **the presentation** -- nodes, resources with their tuple, capacity, apps, actors, modules, integrations, clients, events, one model -- serves it through one API, and runs the agent's services (M8) and the placement host (M10) as its clients. **Who presents to other systems is the owner's setting**: the cell's presenting role (M13) by default, the hub only if configured, never both, so another system never sees a device twice and a laptop on the cable takes nothing away. One resident hub per cell -- a second is refused by name; `apply` holds the cell's deploy lock, so two PCs never race for one counter. Frames below the hub stay untranslated (ADR-004). *Accept:* M8's service, M10's placement host, a `potctl watch` and an `apply --plan` run at the same time through one cabled board; an on-demand `apply` from a laptop, with the cell presenting to Home Assistant, leaves every Home Assistant device untouched; a second resident hub, and a second `apply` while one runs, are refused before anything changes, naming the first; killing the hub leaves the cell and its presenting role untouched, and its restart catches up; with the hub configured to present, switching the PC off and on hands the presentation to the cell's role and back with each device at most briefly unavailable and never duplicated. *Kill:* if a hub in the path breaks M10's measured handover (0.63-0.69 s) or M8's service deadlines.
@@ -938,10 +950,19 @@ hub on one PC is refused from its state file. Advisory and in RAM: an old tool i
 arbiter that reboots forgets until the next renewal. **M10's placement host as the hub's node client:** its frames
 pass byte for byte, the hub silent for it while attached and for its death window after; msg_ids split
 (`NodeConfig::msg_id_max`, the hub from 0x8000) rather than renumbered, since a host node's frames are tagged over
-the header. **Owed:** the bench runs (M8's service, M10's placement host, a watch and a plan at once; a second hub
-and a second apply refused on hardware; the hub killed and restarted; M10's handover through the hub), and the hub
-presenting in the cell's place -- not built, since handing the presentation between the cell's role and a PC needs a
-protocol of its own.
+the header. **Owed:** the hub presenting in the cell's place -- not built, since handing the presentation between the cell's role and a PC
+needs a protocol of its own.
+
+*M14 on the bench, 2026-10-14 (M0-LOG session 42).* Through one resident hub on the cable, at once: M8's service
+(~1 call/s), M10's placement host (the PC took the ticker 6 s after joining), a `potctl watch`, `apply --plan`, live
+package changes and a firmware rollout, every board alive in the hub's model. **M10's handover through the hub: three
+kills of the placement host, failover to A 608, 645 and 660 ms after its last frame** (M10 measured 629-687 ms; the
+kill line does not fire), never two runners. A second hub on the PC refused naming the first; a hub as if on another
+PC refused by the cell's lease; a second `apply` refused before anything changed, naming the first; package changes
+left C's presenter connected. The hub killed: the cell and its presenting untouched, the ticker failed over, the
+agent and host node stopped; its restart caught up in seconds. Seven faults found and fixed on the way -- among them
+a firmware bug since M13 (`portable_header` never reset the placement rule, so two boards ranked one actor
+differently), found because the boards' views disagreed in telemetry.
 
 **M15 — Telemetry over the cell.** *(Planned 2026-10-11, revised 2026-10-12. Optional on the boards: a cell with no hub never needs it.)* Most of what a board knows about itself it prints to its USB console, which no deployed board has. What changes: the resident hub pulls, at a rate it is given, a board's link statistics, peer view, reconciler and actor stats, module states and recent events over the radio -- the way `NODE_STATUS` already carries the inventory -- reusing the counters the stats lines keep, buffers in PSRAM, and serves every viewer and integration from one pull, so they never multiply the radio's load. A board that has declared a long window (asleep, M5.1) is asked when it next reports, not chased. *Accept:* with no console connected to any board, the hub shows every board's link statistics, peer view, actor stats and modules, current within one pull period, and a sleeping board as asleep, not dead; the cell's heartbeat round trips and delivery stay within M0's measured spread at the chosen rate, measured on the bench **[MEASURE]** and carried to 20 boards in `pot_sim`. *Kill:* if no rate that leaves M0's figures intact carries enough to show section 5 of BEYOND-M12.md's layers 1-3.
 
@@ -954,6 +975,15 @@ saturation), turns the boards' events into its own, and shows a quiet board that
 `pot_sim --scenario telemetry` at 20 boards: the airtime floor 26.0 % without the pull, 28.8 % pulling every 10 s,
 40.1 % every 2 s; no deaths; a pull of the whole cell 0.8 s. **Owed:** the bench [MEASURE] -- M0's round trips and
 delivery at the chosen rate, with no console connected.
+
+*M15 on the bench, 2026-10-14 (M0-LOG session 42).* Three 20-minute phases on the same three boards, C presenting over
+TLS: heartbeat loss over the six links 0.66 % with no hub, 0.42 % with the resident hub and no telemetry, **0.43 %
+with the hub pulling telemetry every 10 s**; RTT p50 4-8 ms in all three; p99 8-60 ms with telemetry against 8-42 ms
+without, the slowest probe 60.2 ms (M0: none above 85 ms) -- the tail grew only on probes C answers (8 of ~790 over
+42 ms), C's own turnaround unchanged, so the wait is in the transmit path of a board whose radio also carries its
+station. The hub's per-link figures, from the radio alone, agree with the consoles'. The kill does not fire at 10 s,
+the default. **Owed:** a sleeping board shown asleep (no board on the bench declares a long window), and a run with no
+console connected at all.
 
 **M16 — The dashboard: monitor everything, from a desk or a phone.** *(Planned 2026-10-11, from the owner's first two needs: "monitor everything that happens with Potluck", "not only from a PC"; revised 2026-10-12.)* A web page the resident hub serves, laid out for a phone as well as a desk, drawn in layers settled by the field's methods (BEYOND-M12.md section 5): **(1)** the first screen answers "is anything broken?" -- every app working or not (judged as `apply` verifies), boards and PCs alive N of M (asleep boards as asleep), every integration connected or not, the last change and its result, the PC's own link, and another cell sharing the channel; **(2)** the cell's four golden signals (latency, traffic, errors, saturation; Google SRE); **(3)** every resource's utilization, saturation and errors (the USE method): radio links, the 20-peer table, namespace entries, actor slots, internal RAM, PSRAM, cores, flash, the serial link, each integration's link; **(4)** drill-down tabs -- cell, resources, apps, data, programs and integrations, deploys, logs and events on one clock, replay -- with every board's modules shown as on and active, on and idle, or not on the board. Reached on the PC's own local network -- a house's, or a vehicle's -- behind a login the owner sets, encrypted, never a port opened to the internet; and, when the hub runs on the Home Assistant machine, inside Home Assistant through Ingress. **Three rights, kept apart**: to look, to write what the package allows, and to deploy -- the last only on the PC that holds the owner's keys, never from a phone. History is timestamped by the PC's clock. *Accept:* on a phone and on a desk, the first screen shows a board pulled from power as dead within its death window, a stale output as stale, a reverted deploy as reverted; every number on it leads to the tab that explains it; ten dashboard sessions open at once cost the cell no more radio than one; a login that may look cannot write, and none from a phone can deploy; a recorded session replays through the same tabs; how much history the hub keeps, and how large a report it holds, is decided and shown (BEYOND-M12.md question 4). *Kill:* none of its own -- it stands on M14 and M15; if those cannot carry it, it shrinks to what they carry.
 

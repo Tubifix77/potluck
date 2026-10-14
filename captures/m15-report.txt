@@ -1,0 +1,61 @@
+M15 BENCH [MEASURE], 2026-10-14 02:22-03:29 (M0-LOG session 42). Firmware 3995681-a90c96 (counter 32), package 64 from
+keys/desk-m14.json, C presenting over TLS throughout, A's relay off, no host node or agent. Phases: 1 no hub; 2 the resident
+hub, no telemetry (inventory polls only); 3 the hub pulling telemetry every 10 s. The PC crashed at 03:03 (an unrelated
+game); the boards ran on, unrebooted, and phase 3 was rerun from 03:09. Ignore the "gap-crash" phase: its first sample
+predates the crash and its next follows the restart, so it spans 6 minutes the consoles did not see.
+
+== phase1-nohub  (20.0 min)
+  6300 <- 7368: heartbeats  11887, lost  125 (1.05 %)   RTT n= 396 p50    4-6 ms p99   16-22 ms
+  6300 <- 8160: heartbeats  11887, lost   60 (0.50 %)   RTT n= 396 p50    6-8 ms p99   22-30 ms
+  7368 <- 6300: heartbeats  11905, lost   91 (0.76 %)   RTT n= 397 p50    6-8 ms p99   22-30 ms
+  7368 <- 8160: heartbeats  11904, lost   34 (0.29 %)   RTT n= 397 p50    6-8 ms p99   16-22 ms
+  8160 <- 6300: heartbeats  11924, lost   91 (0.76 %)   RTT n= 397 p50    4-6 ms p99   11-16 ms
+  8160 <- 7368: heartbeats  11923, lost   72 (0.60 %)   RTT n= 398 p50    4-6 ms p99   11-16 ms
+  all links: heartbeat loss 0.66 % (473 of 71430)
+== phase2-hub-notelemetry  (20.5 min)
+  6300 <- 7368: heartbeats  12182, lost   31 (0.25 %)   RTT n= 406 p50    4-6 ms p99   11-16 ms
+  6300 <- 8160: heartbeats  12183, lost   45 (0.37 %)   RTT n= 406 p50    4-6 ms p99   16-22 ms
+  7368 <- 6300: heartbeats  12128, lost   80 (0.66 %)   RTT n= 404 p50    6-8 ms p99   11-16 ms
+  7368 <- 8160: heartbeats  12128, lost   48 (0.40 %)   RTT n= 404 p50    6-8 ms p99   11-16 ms
+  8160 <- 6300: heartbeats  12149, lost   80 (0.66 %)   RTT n= 405 p50    4-6 ms p99    8-11 ms
+  8160 <- 7368: heartbeats  12148, lost   19 (0.16 %)   RTT n= 405 p50    4-6 ms p99   30-42 ms
+  all links: heartbeat loss 0.42 % (303 of 72918)
+== gap-crash  (6.2 min)
+  6300 <- 7368: heartbeats   3744, lost    7 (0.19 %)   RTT n= 125 p50    4-6 ms p99   16-22 ms
+  6300 <- 8160: heartbeats   3743, lost    6 (0.16 %)   RTT n= 125 p50    4-6 ms p99     6-8 ms
+  7368 <- 6300: heartbeats   3783, lost   11 (0.29 %)   RTT n= 126 p50    6-8 ms p99    8-11 ms
+  7368 <- 8160: heartbeats   3783, lost    7 (0.19 %)   RTT n= 126 p50    4-6 ms p99    8-11 ms
+  8160 <- 6300: heartbeats   3790, lost   11 (0.29 %)   RTT n= 127 p50    4-6 ms p99    8-11 ms
+  8160 <- 7368: heartbeats   3789, lost    4 (0.11 %)   RTT n= 126 p50    4-6 ms p99    8-11 ms
+  all links: heartbeat loss 0.20 % (46 of 22632)
+== phase3-hub-telemetry10s  (20.0 min)
+  6300 <- 7368: heartbeats  11853, lost   35 (0.30 %)   RTT n= 395 p50    4-6 ms p99   16-22 ms
+  6300 <- 8160: heartbeats  11852, lost   43 (0.36 %)   RTT n= 395 p50    4-6 ms p99   42-60 ms
+  7368 <- 6300: heartbeats  11912, lost   79 (0.66 %)   RTT n= 397 p50    6-8 ms p99   11-16 ms
+  7368 <- 8160: heartbeats  11911, lost   52 (0.44 %)   RTT n= 396 p50    6-8 ms p99   42-60 ms
+  8160 <- 6300: heartbeats  11928, lost   79 (0.66 %)   RTT n= 398 p50    4-6 ms p99    8-11 ms
+  8160 <- 7368: heartbeats  11927, lost   22 (0.18 %)   RTT n= 397 p50    4-6 ms p99   11-16 ms
+  all links: heartbeat loss 0.43 % (310 of 71383)
+
+RTT tail per link (probe counts above 22/30/42/60 ms):
+== phase1-nohub
+  a <- 7368: >22ms 3, >30ms 3, >42ms 1, >60ms 0
+  a <- 8160: >22ms 26, >30ms 2, >42ms 1, >60ms 0
+  b <- 6300: >22ms 5, >30ms 3, >42ms 1, >60ms 0
+  b <- 8160: >22ms 2, >30ms 1, >42ms 0, >60ms 0
+  c <- 6300: >22ms 1, >30ms 1, >42ms 0, >60ms 0
+  c <- 7368: >22ms 2, >30ms 0, >42ms 0, >60ms 0
+== phase2-hub-notelemetry
+  a <- 7368: >22ms 2, >30ms 0, >42ms 0, >60ms 0
+  a <- 8160: >22ms 3, >30ms 3, >42ms 1, >60ms 0
+  b <- 6300: >22ms 3, >30ms 3, >42ms 2, >60ms 0
+  b <- 8160: >22ms 4, >30ms 3, >42ms 1, >60ms 0
+  c <- 6300: >22ms 0, >30ms 0, >42ms 0, >60ms 0
+  c <- 7368: >22ms 6, >30ms 5, >42ms 2, >60ms 0
+== phase3-hub-telemetry10s
+  a <- 7368: >22ms 3, >30ms 3, >42ms 1, >60ms 0
+  a <- 8160: >22ms 6, >30ms 6, >42ms 4, >60ms 1
+  b <- 6300: >22ms 2, >30ms 1, >42ms 1, >60ms 0
+  b <- 8160: >22ms 8, >30ms 6, >42ms 4, >60ms 0
+  c <- 6300: >22ms 1, >30ms 1, >42ms 0, >60ms 0
+  c <- 7368: >22ms 1, >30ms 0, >42ms 0, >60ms 0
