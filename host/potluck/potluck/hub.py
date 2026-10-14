@@ -361,6 +361,8 @@ def _hub_ms() -> int:
 class Model:
     """What the hub knows, kept by the poller and read by the API. One lock; snapshots are plain JSON values."""
 
+    DEAD_AFTER_MISSES = 3  # consecutive unanswered NODE_STATUS polls before the model calls a board dead
+
     def __init__(self, hub: Hub, *, cluster=None, package=None, pull_period_ms: int = 2000,
                  telemetry_period_ms: int = 10000) -> None:
         self.hub = hub
@@ -430,7 +432,14 @@ class Model:
                 b = self.boards.setdefault(n, {"state": "unknown", "since_at": _hub_ms(), "last_ok": None})
                 prev = b["state"]
                 if st is None:
-                    tel = b.get("tel") or {}
+                    b["misses"] = b.get("misses", 0) + 1
+                tel = b.get("tel") or {}
+                if st is None and b["misses"] < self.DEAD_AFTER_MISSES and prev in ("alive", "asleep"):
+                    # One unanswered poll is a busy cable, not a dead board (found on the bench, M0-LOG session 42:
+                    # with a placement host, the agent, a watch and a plan at once, single polls timed out and the
+                    # model flickered dead/alive).
+                    self.errors.append(time.monotonic())
+                elif st is None:
                     if prev == "asleep" and self._cabled_sees_dead(n):
                         # Asleep is a declared long window, not forever: once the cabled board's own view has
                         # declared it dead (its window ran out), so does the hub (found by review).
@@ -445,6 +454,7 @@ class Model:
                         b["state"] = "unknown"
                     self.errors.append(time.monotonic())
                 else:
+                    b["misses"] = 0
                     self.rtts.append(time.monotonic() - t0)
                     if prev != "alive":
                         b["state"], b["since_at"] = "alive", _hub_ms()

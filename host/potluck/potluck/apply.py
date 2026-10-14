@@ -881,7 +881,11 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
             for name, _t in gs.parse_outputs(a.config["outputs"], a.name):
                 reads.append(dp.guest_output_path(m.system, a.name, name))
         elif a.module in ("builtin:ticker", "builtin:present") or (spec is not None and spec.placement == "portable"):
-            portable += 1
+            # M14: one a placement host may run is not counted against the boards -- NODE_STATUS sees boards only,
+            # and the PC running it is the point (found on the bench, M0-LOG session 42: "3 running, the package
+            # has 4" with the ticker on the PC).
+            if not any((m.node(n) is not None and m.node(n).kind == "host") for n, _ in rc.eligible(m, a)):
+                portable += 1
             reads.append(rc.output_path(m, a))
             reads += _outputs(m, spec, a, [])
         elif spec is not None and spec.placement == "every":
@@ -901,6 +905,8 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
         for n in boards:
             pinned[n] += 1  # the cluster-name actor
     for n in m.nodes:
+        if n.kind == "host":
+            continue  # the PC's own resources (a service, a placement host's uptime): served by programs, not boards
         for r in n.owns:
             reads.append(r.path)
     return pinned, portable, list(dict.fromkeys(reads))

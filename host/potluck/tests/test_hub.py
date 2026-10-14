@@ -284,10 +284,14 @@ class Telemetry(HubFixture):
 
         self.model.telemetry_period_ms = 0
         self.board_with_tel(tm.HEALTH_LONG_WINDOW)
-        self.model.pull()  # FakeNode answers no NODE_STATUS: the board is quiet
+        for _ in range(hb.Model.DEAD_AFTER_MISSES - 1):
+            self.model.pull()  # FakeNode answers no NODE_STATUS: the board is quiet -- one miss is not enough
+            self.assertEqual(self.model.boards[0x1001]["state"], "alive")
+        self.model.pull()
         self.assertEqual(self.model.boards[0x1001]["state"], "asleep")
         self.board_with_tel(0)
-        self.model.pull()
+        for _ in range(hb.Model.DEAD_AFTER_MISSES):
+            self.model.pull()
         self.assertEqual(self.model.boards[0x1001]["state"], "dead")
 
 class RelayedFrames(unittest.TestCase):

@@ -156,6 +156,13 @@ def main(argv: list[str] | None = None) -> int:
         next_report = time.monotonic() + 10
         while end is None or time.monotonic() < end:
             time.sleep(0.2)
+            if getattr(bridge.transport, "closed_by_peer", False):
+                # Through potluck-hub, and the hub went away (M14): this agent's link to the cell is gone. Say so and
+                # stop rather than linger unheard -- start it again with the hub (found on the bench, M0-LOG
+                # session 42).
+                print("# the link closed (the hub stopped?): stopping; start the agent again with the hub",
+                      file=sys.stderr, flush=True)
+                return 4
             if time.monotonic() >= next_report:
                 next_report += 10
                 s = agent.stats

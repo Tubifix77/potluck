@@ -109,6 +109,12 @@ def main(argv: list[str] | None = None) -> int:
         while not stop.is_set():
             chunk = port.read(4096)
             if not chunk:
+                if getattr(port, "closed_by_peer", False):
+                    # Through potluck-hub, and the hub went away: the cell has already declared this node dead
+                    # (its frames stopped with the hub). Stop rather than run on unheard (M0-LOG session 42).
+                    print("# the link closed (the hub stopped?): stopping", flush=True)
+                    stop.set()
+                    return
                 continue
             for frame in r.feed(chunk):
                 counts["cable_rx"] += 1
