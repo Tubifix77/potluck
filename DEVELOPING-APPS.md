@@ -283,8 +283,11 @@ it (the task watchdog watches the idle task).
 
 - **`outputs`** (optional, but give it): the paths an actor of the module publishes, under `potluck://<system>/`,
   with `{node}` for `node-<id>` of the node it runs on and `{actor}` for its name -- `"{node}/hello/peers"`,
-  `"act/{actor}/out"`. `potluck apply` reads every one back before it says VERIFIED; an output it is not told
-  about it cannot check.
+  `"act/{actor}/out"`, and `{peer}` for one output per other board (`"{node}/link/{peer}/rssi"`). `potluck apply`
+  reads every one back before it says VERIFIED (the `{peer}` ones excepted), and counts them all in each board's
+  namespace table: a board holds 128 entries -- its built-ins, every output in the package, its own, and the replicas
+  its role reads -- and `apply --plan` prints the count per board and refuses a package that would not fit. An
+  output it is not told about it can neither check nor count.
 - **`requires`** (optional): Potluck's board modules your component needs in the same image -- `sandbox`,
   `extender`, and from M13 `wifi`, `present`, `pocket`. `potluck apply` refuses a cluster file that builds your
   component without them, naming what to add to its `firmware.modules`.

@@ -34,7 +34,7 @@ are M5.1's two 24 h soaks, M8.1's "value moves when B is warmed", M8.2's 30 min 
 physical cable pull (M10) and a hand power cut (M11, M12) -- all the owner's to run; the flash endurance figure is verified
 (min 100,000 cycles, WROOM-1 datasheet v1.8) and checkpoints now have a board-wide wear budget (~18-20 years);
 section 15's questions 1 (the classes carry weight: three control/monitor apps use L0-L4) and 2 (128 stays; a full
-table now answers FULL and is counted; `apply --plan` accounting still to build) were run 2026-10-15; B's power-on transmit stall a
+table now answers FULL and is counted; `apply --plan` counts every board's entries and refuses over 128) were run 2026-10-15; B's power-on transmit stall a
 known limitation (its trigger, a power-on, never retried). A second MCU family -- the proof of "hardware-agnostic"
 beyond the PC node -- is the next edition's.
 **M12 ACCEPTED (2026-10-11, M0-LOG session 39)** -- Potluck as a platform: one image, `potluck apply

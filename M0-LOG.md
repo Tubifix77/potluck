@@ -5739,3 +5739,11 @@ are accepted; M5.1, M8.1 and M8.2 are built and wait on long runs or a hand on t
 4. **The PC's HELLO refusal of A** (every ~10 s since M14): the PC verified A's signed HELLO against the cable's
    address while A signs for its radio MAC. **Fixed** (`d3f3c67`): counted as `cable_unverified`, not refused; on the
    bench 0 refusals in 73 s. The homelab's clock: NTP inactive, 85-95 s behind -- the owner's to switch on.
+
+**The namespace accounting, built (2026-10-15, the owner's go-ahead):** `apply --plan` prints, per board, its
+namespace entries against 128 -- built-ins, the package's outputs, its own (a module's `{peer}` outputs, one per
+link, new in the descriptor), and the replicas its role reads (the cabled board: every board's outputs, which the
+verify and the hub read through it; a board that may present: the `outside` paths) -- and refuses a package over 128.
+A module that declares no outputs is named (passive-sensor's rf_link makes its six per link at run time: its descriptor
+should list them as `{peer}` outputs). `host/potluck/tests/test_ns_budget.py`. The homelab's clock: NTP switched on at
+the owner's word, now in step with the PC (it was 95 s behind).

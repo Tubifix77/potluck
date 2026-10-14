@@ -898,6 +898,8 @@ def _outputs(m, spec, a, nodes: list[int]) -> list[str]:
         return []
     out = []
     for t in spec.outputs:
+        if "{peer}" in t:
+            continue  # one per link: counted by ns_budget, not read back (6 x N x (N-1) reads would swamp a verify)
         t = t.replace("{actor}", a.name)
         for n in (nodes if "{node}" in t else [None]):
             out.append(f"potluck://{m.system}/" + (t.replace("{node}", f"node-{n:04x}") if n is not None else t))
@@ -948,6 +950,76 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
         for r in n.owns:
             reads.append(r.path)
     return pinned, portable, list(dict.fromkeys(reads))
+
+
+#: pot/namespace.hpp's kNamespaceEntries: every board's table, own resources and replicas alike.
+NS_CAP = 128
+#: The six built-ins every board declares (pot_ns sys_resources.cpp) and M5's act/setpoint (m0_main.cpp).
+NS_FIXED = ("sys/heap-free", "sys/heap-largest", "sys/uptime", "sys/boot-epoch", "sys/peers-alive", "sys/rssi")
+
+
+def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple[int, ...] = (),
+              outside: tuple[str, ...] = ()) -> tuple[dict[int, dict], list[str]]:
+    """Section 15 question 2 (2026-10-15): how many namespace entries each board's table will hold, against NS_CAP.
+
+    A table holds (from the firmware): its built-ins; every pinned actor's outputs in the package, declared on every
+    board at load (actor_runtime.cpp); every portable actor's outputs, on every board (reconcile.cpp); its own outputs
+    of each `every` module -- one per link for a `{peer}` path; and replicas added when something reads them, never
+    removed: on the cabled board, every board's outputs (apply's verify and the hub read them all through it); on a
+    board that may present, every `outside` path. Returns ({board: {"fixed", "package", "own", "replicas", "total"}},
+    the `every` modules that declare no outputs -- their entries are made at run time and not counted here)."""
+    from . import deploy as dp
+    from . import guest as gs
+    from . import modules as mods
+    from . import reconcile as rc
+
+    def expand(spec, a, n: int) -> list[str]:
+        out = []
+        for t in (spec.outputs if spec is not None else ()):
+            t = t.replace("{actor}", a.name).replace("{node}", f"node-{n:04x}")
+            for p in ([q for q in boards if q != n] if "{peer}" in t else [None]):
+                out.append(f"potluck://{m.system}/" + (t.replace("{peer}", f"node-{p:04x}") if p is not None else t))
+        return out
+
+    package: set[str] = set()
+    every: list[tuple] = []
+    silent: list[str] = []
+    for a in m.actors:
+        spec = mods.get(a.module)
+        if a.module.startswith("guest:"):
+            package.update(dp.guest_output_path(m.system, a.name, name)
+                           for name, _t in gs.parse_outputs(a.config["outputs"], a.name))
+        elif a.module in ("builtin:ticker", "builtin:present") or (spec is not None and spec.placement == "portable"):
+            package.add(rc.output_path(m, a))
+            package.update(_outputs(m, spec, a, []))
+        elif spec is not None and spec.placement == "every":
+            every.append((spec, a))
+            if not spec.outputs:
+                silent.append(a.module)
+        else:
+            node = m.placement_of(a)
+            if node is None:
+                continue
+            if a.module == "builtin:die_temp":
+                package.add(dp.die_temp_path(m.system, node))
+            if a.module == "builtin:led_switch":
+                package.add(dp.led_switch_path(m.system, node))
+            package.update(expand(spec, a, node))
+    own = {n: {p for spec, a in every for p in expand(spec, a, n)} for n in boards}
+    out_paths = {(p if p.startswith("potluck://") else f"potluck://{m.system}/{p.lstrip('/')}") for p in outside}
+    result: dict[int, dict] = {}
+    for n in boards:
+        fixed = {f"potluck://{m.system}/node-{n:04x}/{s}" for s in NS_FIXED} | {"act/setpoint"}
+        held = fixed | package | own[n]
+        extra: set[str] = set()
+        if n == cabled:
+            extra |= {p for q in boards if q != n for p in own[q]}
+        if n in presenters:
+            extra |= out_paths
+        extra -= held
+        result[n] = {"fixed": len(fixed), "package": len(package - fixed), "own": len(own[n] - fixed - package),
+                     "replicas": len(extra), "total": len(held | extra)}
+    return result, sorted(set(silent))
 
 
 def pc_runnable(m) -> int:
@@ -1045,6 +1117,26 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             now = sorted({x for st in inv.values() if st is not None for x in st.actors})
             log(f"plan: package '{c.system}' replaces what runs now ({', '.join(now) or 'nothing'}) with "
                 f"{', '.join(a.name + ' (' + a.module + ')' for a in pkg.manifest.actors)}")
+            # Section 15 question 2: every board's namespace table, counted before anything is sent.
+            presenters = tuple(n for n in boards if c.present and inv[n] is not None and
+                               any(mm == "present" and "no network" not in (r or "") for mm, _s, r in inv[n].modules))
+            budget, silent = ns_budget(pkg.manifest, boards, cabled, presenters, tuple(c.outside))
+            for n in boards:
+                u = budget[n]
+                log(f"plan: namespace 0x{n:04x}: {u['total']} of {NS_CAP} entries ({u['fixed']} built-in, "
+                    f"{u['package']} the package's, {u['own']} its own"
+                    + (f", {u['replicas']} replicas it reads" if u['replicas'] else "") + ")"
+                    + ("  -- lookups slow past 7/8 full" if NS_CAP * 7 // 8 < u['total'] <= NS_CAP else ""))
+            if silent:
+                log(f"plan: namespace: {', '.join(silent)} declare(s) no outputs -- what they make at run time is not "
+                    f"counted (a module lists its outputs in potluck-modules.json, `{{peer}}` for one per link)")
+            over = [n for n in boards if budget[n]["total"] > NS_CAP]
+            if over:
+                print("REFUSED, nothing changed: " + ", ".join(f"0x{n:04x} would need {budget[n]['total']}"
+                                                             for n in over)
+                      + f" namespace entries, over the {NS_CAP} a board holds -- fewer outputs, fewer boards, or "
+                        f"fewer per-link resources")
+                return 2
             runs_guest = "guest" in now
             has_guest = any(a.module.startswith("guest:") for a in pkg.manifest.actors)
             if runs_guest != has_guest or (has_guest and not all(st is not None and st.pkg_counter for st in inv.values())):
