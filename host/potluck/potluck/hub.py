@@ -399,7 +399,7 @@ class Model:
     def record(self, kind: str, board: int | None, detail: dict) -> None:
         with self.lock:
             self.seq += 1
-            self.events.append({"seq": self.seq, "at": _hub_ms(), "board": f"{board:04x}" if board else None,
+            self.events.append({"seq": self.seq, "at": _hub_ms(), "board": f"{board:04x}" if board else "hub",
                                 "kind": kind, "detail": detail})
 
     # which boards, which resources
@@ -564,7 +564,7 @@ class Model:
 
     def _event_locked(self, kind: str, board: int | None, detail: dict) -> None:
         self.seq += 1
-        self.events.append({"seq": self.seq, "at": _hub_ms(), "board": f"{board:04x}" if board else None,
+        self.events.append({"seq": self.seq, "at": _hub_ms(), "board": f"{board:04x}" if board else "hub",
                             "kind": kind, "detail": detail})
 
     # the JSON the API serves (HUB-API.md)
@@ -1018,7 +1018,7 @@ def write_outside(model: Model, path: str, value: Any) -> tuple[int, dict]:
     cl = model.cluster
     mode = cl.outside.get(path) if cl is not None else None
     if mode != "read_write" or model._safety(path):
-        model.record("outside_write", None, {"path": path, "value": value, "result": "refused: not writable from outside"})
+        model.record("outside_write", None, {"resource": path, "path": path, "value": value, "result": "refused: not writable from outside"})
         return 403, {"ok": False, "result": "not writable from outside"}
     with model.lock:
         cur = model.resources.get(path)
@@ -1039,12 +1039,12 @@ def write_outside(model: Model, path: str, value: Any) -> tuple[int, dict]:
         raw = model.hub._request(fr.Op.WRITE, Write(path_hash=h, value=v, from_outside=True).encode(), h,
                                  timeout=2.0, dst=owner if owner != model.hub.peer_node_id else None)
     except RequestTimeout:
-        model.record("outside_write", owner, {"path": path, "value": value, "result": "no answer"})
+        model.record("outside_write", owner, {"resource": path, "path": path, "value": value, "result": "no answer"})
         return 504, {"ok": False, "result": "the owning board did not answer"}
     from .value import NsError
     ok = raw.status == NsError.OK
     result = "applied" if ok else NsError.name_of(raw.status).lower()
-    model.record("outside_write", owner, {"path": path, "value": value, "result": result})
+    model.record("outside_write", owner, {"resource": path, "path": path, "value": value, "result": result})
     del cur
     return (200 if ok else 403), {"ok": ok, "result": result}
 

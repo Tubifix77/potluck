@@ -84,12 +84,18 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
 - `app.working`: as `potluck apply` verifies -- running where the package says (portable: exactly once in the cell),
   and every output GOOD. `detail` says why not.
 - `resource.value`: a number, a bool, or `null` when it has none to show (strict and not GOOD, or no value at all).
+- `resource.quality` (section 4 rule 2; never omitted): `GOOD` (fresh), `STALE` (older than its staleness bound, still
+  shown), `UNAVAILABLE` (its owner is dead or unreachable: no value), `NO_DATA` (never published yet), `FAULTY` (the
+  owner says its sensor is broken: no value). `resource.age_ms` is the value's age at the model's `at`.
 - `integration.state`: `connected` | `disconnected` | `idle` | `off`.
 - `deploy.result`: `verified` | `confirmed` | `reverted` | `refused` | `failed` | `running`.
 
 ## GET /api/events?since=<seq>
 
-Events in order, on the hub's clock, with a sequence number for paging. `since` omitted: the last 200.
+Events in order, on the hub's clock, with a sequence number for paging. `since` omitted: the last 200. `since` is
+inclusive (events with `seq >= since`): pass the previous answer's `next` to get only what is new. `board` is a node id,
+or `"hub"` for the hub's own events. A restarted hub numbers its events from 1 again -- a `next` lower than the last one
+seen, or `hub.up_ms` going down, means the hub restarted; start again from what it sends.
 
 ```json
 {"api": 1, "next": 5512, "events": [
@@ -102,21 +108,37 @@ Kinds include every node event the boards keep, pulled by M15's telemetry and pr
 `board_peer_rebooted`, `board_actor_started`, `board_channel_changed`, ...; detail `{peer, a, b, board_ms, board_seq}`,
 `at` the hub's clock when pulled), the hub's own (`hub_started`, `board_alive`, `board_dead`, `board_asleep`,
 `board_rebooted`, `relay_client`, `host_node`, `hub_lease_lost`, `telemetry_unsupported`), deploys (`deploy`), and
-outside writes (`outside_write`, with resource, value and result).
+outside writes (`outside_write`, detail `{resource, value, result}`; `path` carries the same as `resource`, and a
+write refused by the login's right adds `by`).
 
 ## GET /api/stream
 
 Server-sent events (`text/event-stream`): `event: model` with the full model once per pull period, `event: events` with
 new events as they arrive, in the same shape as `GET /api/events` (`{api, next, events}`; at most the last 200 on connect).
-A write to a path that is not writable from outside, or unknown, is `403`; malformed, `400`; an owning board that does not
-answer, `504`. A dashboard needs nothing else; ten open streams cost the cell no more radio than one,
-since every viewer is served from the hub's one pull (M15).
+A dashboard needs nothing else; ten open streams cost the cell no more radio than one, since every viewer is served from
+the hub's one pull (M15).
+
+The stream takes no `since`: every reconnect sends up to the last 200 events again, so a client drops the ones it has by
+`seq`. No `retry:` field is sent. What the dashboard does, and a client should: treat a stream that sends no model for
+three pull periods (at least 10 s) as dead; on a drop, poll `GET /api/model` and `GET /api/events?since=<next>` every
+2 s, and try the stream again every 15 s.
 
 ## POST /api/write
 
-`{"path": "potluck://lab/node-7368/led/on", "value": true}` -> `{"ok": true, "result": "applied"}`, or `403` with
-`{"ok": false, "result": "not writable from outside"}`. Only resources with `outside_writable: true`; a login with the
-look right only gets `403`. The write reaches the owning board marked as from outside, which checks the package again.
+`{"path": "potluck://lab/node-7368/led/on", "value": true}` -> `{"ok": true, "result": "applied"}`. Only resources with
+`outside_writable: true`, and only a board's own resource (`.../node-XXXX/...`; an actor's output that moves between
+boards cannot be written from outside). `value` is a JSON bool or number -- an integer is written as a 32-bit integer, a
+number with a fraction as a 32-bit float; the owning board refuses a type that is not the resource's. The write reaches
+the owning board marked as from outside, which checks the package again. Every answer is `{"ok", "result"}`:
+
+| status | result | why |
+|---|---|---|
+| 200 | `applied` | the owning board applied it |
+| 400 | `expected {"path": ..., "value": ...}` / `a bool or a number` / `only a board's own resource can be written from outside` | the request |
+| 403 | `not writable from outside` | the package does not allow it, or it is safety-relevant |
+| 403 | `this login may look, not write` | the login's or token's right is `look` |
+| 403 | the board's refusal, lowercased (`type_mismatch`, `not_outside_writable`, ...) | the owning board checked and refused |
+| 504 | `the owning board did not answer` | no answer in 2 s |
 
 ## Logins (M16): POST /api/login, POST /api/logout, GET /api/whoami
 
@@ -125,8 +147,16 @@ Only on `--listen`. `POST /api/login {"name", "password"}` -> `{"ok": true, "nam
 `403` with the reason; five failures from one address in five minutes refuse it for a minute. Without a session every
 request but the page's own files, the login and `whoami` is `401`. Every POST must carry `X-Potluck-Request: 1`, which
 a page on another site cannot add, so it cannot write through a logged-in browser. `GET /api/whoami` ->
-`{"login": true|false, "name", "right"}` -- `login: false` on 127.0.0.1. Passwords are kept as scrypt (N=2^17, r=8,
-p=1, a random salt each) in `%LOCALAPPDATA%/potluck/hub-users.json`. There is no deploy right to log in with.
+`{"api": 1, "login": true|false, "name", "right"}` -- `login: false` on 127.0.0.1; `name` and `right` are `null` when
+nobody is logged in. Passwords are kept as scrypt (N=2^17, r=8, p=1, a random salt each) in
+`%LOCALAPPDATA%/potluck/hub-users.json`. There is no deploy right to log in with.
+
+What the refusals look like: no session, `401 {"error": "login", "result": "log in first"}`; a wrong login,
+`403 {"ok": false, "result": "<reason>"}`; a POST without the header (the login's own included),
+`403 {"ok": false, "result": "missing X-Potluck-Request"}`; an unknown path, `404 {"error": "not found"}`. The cookie
+is set as `potluck_session=<token>; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=43200`. The hub's certificate is
+its own (self-signed): a program trusts it by the file given to `--tls-cert` (Python: `ssl.create_default_context(
+cafile=...)`; Node: `NODE_EXTRA_CA_CERTS`), or by its SHA-256 fingerprint, which the hub announces (below).
 
 ## Retention (M16): `hub.retention` in the model
 
