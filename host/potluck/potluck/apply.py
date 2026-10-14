@@ -834,6 +834,28 @@ def sign_and_compile(c: Cluster, pkg: Package, counter: int, keep: Path | None =
     return img + dp.image_trailer(img, dk.secret, bcert)
 
 
+LEASE_MIN_BOARD_ID = 0x0100  # pot/lease.hpp's kLeaseMinBoardId: ids below it are hosts
+
+
+def lease_counts(arbiter: int, boards) -> str | None:
+    """Whether a deploy lease granted by `arbiter` excludes every other apply; None if it does, else why not.
+
+    The cell's arbiter is the lowest live board the cabled board hears (pot/lease.hpp). In a partition each side has
+    one, and each grants its own lease: two PCs, one on each side, would both deploy at the cell's floor + 1 -- one
+    counter, two packages (tests/test_deploy_partition.cpp; M0-LOG session 43). Only one side can hold the cluster's
+    lowest board, so only a lease granted there counts. It costs nothing apply did not already ask for: every board of
+    the cluster file must answer the inventory before the lease is taken."""
+    lowest = min((n for n in boards if n >= LEASE_MIN_BOARD_ID), default=None)  # a host never arbitrates
+    if lowest is None or arbiter == lowest:
+        return None
+    if arbiter < lowest:
+        return (f"board 0x{arbiter:04x} granted the cell's deploy lease and is not in the cluster file -- put it in, "
+                f"or take it out of the cell")
+    return (f"the cell's deploy lease was granted by board 0x{arbiter:04x}, not by the cluster's lowest board "
+            f"0x{lowest:04x}: the board on the cable does not hear 0x{lowest:04x} -- a partition? Then a PC on the "
+            f"other side could hold a lease of its own. Try again when the cell is whole")
+
+
 def send_package(b, node: int, img: bytes, counter: int, digest8: bytes, log) -> tuple[int, int]:
     """BEGIN, CHUNKs, COMMIT through the cabled board, passed on to the cell. (peers_ok, peers_failed)."""
     from . import deploy as dp
@@ -1025,6 +1047,10 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             print(f"REFUSED, nothing changed: {exc}")
             return 2
         if lease.supported and lease.reply is not None:
+            why = lease_counts(lease.reply.arbiter, boards)
+            if why is not None:
+                print(f"REFUSED, nothing changed: {why}")
+                return 2
             log(f"lease: the cell's deploy lease is ours (board 0x{lease.reply.arbiter:04x} holds it)")
         uptime0 = {n: (inv[n].uptime_s if inv[n] else None) for n in boards}
         t_uptime0 = time.monotonic()
@@ -1047,6 +1073,10 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                 trailer = fwm.fw_trailer(img, counter, dk.secret, bcert)
                 t0 = time.monotonic()
                 for n in order:
+                    if lease.lost is not None:
+                        print(f"FAILED: the cell's deploy lease is now {lease.lost.holder_line()} -- stopped before "
+                              f"firmware to 0x{n:04x}")
+                        return 1
                     t1 = time.monotonic()
                     r = fwm.send_image(b, n, img, counter, trailer)
                     if r["status"] != "ok":
@@ -1111,6 +1141,9 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             print(f"FAILED before sending the package: {exc}")
             return 1
         digest8 = bytes.fromhex(pkg.manifest.digest())[:8]
+        if lease.lost is not None:
+            print(f"FAILED: the cell's deploy lease is now {lease.lost.holder_line()} -- stopped before the package")
+            return 1
         t0 = time.monotonic()
         try:
             ok, failed = send_package(b, cabled, signed, counter, digest8, log)

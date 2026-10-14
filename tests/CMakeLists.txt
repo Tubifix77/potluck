@@ -49,6 +49,7 @@ add_executable(pot_tests
   test_ns_wire.cpp
   test_work_units.cpp
   test_deploy.cpp
+  test_deploy_partition.cpp
   test_can.cpp
   test_trust.cpp
   test_auth.cpp

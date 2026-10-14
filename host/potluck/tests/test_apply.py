@@ -314,5 +314,28 @@ class BoardModules(unittest.TestCase):
         self.assertEqual(lines[2], "Potluck core: 61,520 B of 65,536 B static internal RAM (4,016 B left)")
 
 
+class LeaseInAPartition(unittest.TestCase):
+    """M0-LOG session 43: each side of a split has an arbiter of its own (tests/test_deploy_partition.cpp,
+    [lease_partition]), so a deploy lease counts only when the cluster's lowest board granted it."""
+
+    BOARDS = [0x100 + i for i in range(8)]
+
+    def test_the_lowest_boards_lease_counts(self):
+        self.assertIsNone(ap.lease_counts(0x100, self.BOARDS))
+        self.assertIsNone(ap.lease_counts(0x6300, [0x8160, 0x6300, 0x7368]))  # the bench: A is the lowest
+
+    def test_a_lease_from_another_sides_arbiter_does_not(self):
+        why = ap.lease_counts(0x104, self.BOARDS)
+        self.assertIn("0x0104", why)
+        self.assertIn("0x0100", why)
+        self.assertIn("partition", why)
+
+    def test_a_lower_board_outside_the_cluster_file_is_named(self):
+        self.assertIn("not in the cluster file", ap.lease_counts(0x0101, [0x0102, 0x0103]))
+
+    def test_a_host_in_the_list_is_not_the_lowest_board(self):
+        self.assertIsNone(ap.lease_counts(0x6300, [0x00FE, 0x6300, 0x7368]))
+
+
 if __name__ == "__main__":
     unittest.main()

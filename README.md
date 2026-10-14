@@ -379,6 +379,19 @@ runtime states them. Here they are:
   sides lasts, each side presents. Home Assistant sees one device per board -- the ids are the cell's,
   not the presenter's -- but its values may come from either side until the heal, and an entity whose
   board is across the split reads as unavailable from one side only.
+- **A package deployed during a partition reaches only the side it was sent into** (since M12): the board on
+  the cable passes it to the boards it can hear, and `potluck apply` reports the others as not confirmed. They keep
+  the package they had; nothing rolls back. When the cell heals, the boards that missed it fetch it from a peer
+  about 5 s after they hear each other again, and try it as they would any package (in simulation, eight boards
+  split in half were all on the new package 15 s after the heal). A board that refused the package keeps the one
+  before it and is not sent it again.
+- **Leases belong to a side while a partition lasts** (since M14): each side's lowest board grants them, so two
+  resident hubs, one on each side, can both run, each serving what its side hears. After the heal, the hub whose
+  lease is not on the cell's lowest board loses it at its next renewal (20 s by default) and stands down.
+  `potluck apply` counts a deploy lease only when the cluster's lowest board granted it, so of two PCs on two sides
+  of a split, at most one deploys. A deploy that skips the lease (`potluck.ctl deploy`, tools before M14) is not
+  refused. If two packages are signed at the same counter, one on each side, the whole cell runs the one with the
+  higher package digest once it has healed: one choice for the whole cell, not the newer package.
 
 None of the above is a certified safety function — `SAFE_STATE` (the reserved everyone-freeze
 broadcast), the staleness rules and the locality contract are availability and honesty features, not

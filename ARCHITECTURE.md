@@ -977,6 +977,18 @@ agent and host node stopped; its restart caught up in seconds. Seven faults foun
 a firmware bug since M13 (`portable_header` never reset the placement rule, so two boards ranked one actor
 differently), found because the boards' views disagreed in telemetry.
 
+*Deploys and leases in a partition, 2026-10-14 (M0-LOG session 43; host tests, not on the bench).* The boards' deploy
+server, push and catch-up moved from `m0_main.cpp` into `pot/package_agent.hpp` so a split cell could be tested with
+them (`tests/test_deploy_partition.cpp`: eight Nodes, a PC on a cable, splits of 4+4 and 3+3+2). A package sent into
+one side stays there and nothing rolls back; at the heal the rest fetch it. Three faults found and fixed: a receive cut
+off by the split blocked the board's catch-up until the next deploy (now abandoned after 15 s without a step); two
+packages signed at one counter, one per side, left the cell mixed for good (now the higher digest wins at one counter,
+the announce carrying it -- 8 bytes appended, which boards before it ignore); and a busy peer dropped asks, so a 4+4 heal
+took 195 s to converge (now queued: 15 s). **The leases**: each side's lowest board is an arbiter, so both sides grant
+-- the deploy lock does not hold across a split. Decided (not a wire change): `apply` counts a deploy lease only from
+the cluster's lowest board, which apply already needs to reach, and stops if a renewal finds the lease lost; the hub
+lease stays per side, stated in the README's failure contract as a non-claim.
+
 **M15 — Telemetry over the cell.** *(Planned 2026-10-11, revised 2026-10-12. Optional on the boards: a cell with no hub never needs it.)* Most of what a board knows about itself it prints to its USB console, which no deployed board has. What changes: the resident hub pulls, at a rate it is given, a board's link statistics, peer view, reconciler and actor stats, module states and recent events over the radio -- the way `NODE_STATUS` already carries the inventory -- reusing the counters the stats lines keep, buffers in PSRAM, and serves every viewer and integration from one pull, so they never multiply the radio's load. A board that has declared a long window (asleep, M5.1) is asked when it next reports, not chased. *Accept:* with no console connected to any board, the hub shows every board's link statistics, peer view, actor stats and modules, current within one pull period, and a sleeping board as asleep, not dead; the cell's heartbeat round trips and delivery stay within M0's measured spread at the chosen rate, measured on the bench **[MEASURE]** and carried to 20 boards in `pot_sim`. *Kill:* if no rate that leaves M0's figures intact carries enough to show section 5 of BEYOND-M12.md's layers 1-3.
 
 *M15 built, 2026-10-13 (M0-LOG session 42) -- not on the bench.* TELEMETRY answers four binary sections, each under the

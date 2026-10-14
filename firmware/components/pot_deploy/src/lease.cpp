@@ -4,6 +4,9 @@
 
 #include <cstring>
 
+#include "pot/link_stats.hpp"
+#include "pot/membership.hpp"
+
 namespace pot {
 
 namespace {
@@ -155,6 +158,18 @@ uint16_t lease_arbiter(uint16_t self, const uint16_t* alive, size_t n) {
         if (alive[i] >= kLeaseMinBoardId && alive[i] < best) best = alive[i];
     }
     return best;
+}
+
+uint16_t lease_arbiter_of(const PeerTable& peers, uint16_t self, const uint8_t* host_mac) {
+    uint16_t alive[kMaxPeers];
+    size_t n = 0;
+    for (size_t i = 0; i < PeerTable::capacity() && n < kMaxPeers; ++i) {
+        const PeerLink& q = peers.slot(i);
+        if (q.state == PeerState::Alive && (host_mac == nullptr || std::memcmp(q.mac, host_mac, kMacLen) != 0)) {
+            alive[n++] = q.node_id;
+        }
+    }
+    return lease_arbiter(self, alive, n);
 }
 
 }  // namespace pot

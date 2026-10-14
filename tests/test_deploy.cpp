@@ -314,8 +314,7 @@ struct DSlot {
 
 struct DCell {
     std::vector<DSlot> slots;
-    uint32_t now_us = 0;
-    bool partitioned = false;
+    uint32_t now_us = 0;  // a cell that can be split: tests/test_deploy_partition.cpp
 
     void build(size_t n) {
         slots.resize(n);
@@ -352,7 +351,6 @@ struct DCell {
     static int32_t send(void* ctx, const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
         DSlot* from = static_cast<DSlot*>(ctx);
         DCell* c = from->cell;
-        if (c->partitioned) return 0;
         const bool bcast = std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0;
         for (size_t i = 0; i < c->slots.size(); ++i) {
             if (i == from->index) continue;

@@ -103,4 +103,11 @@ class LeaseTable {
 // (ids below kLeaseMinBoardId) left out.
 uint16_t lease_arbiter(uint16_t self, const uint16_t* alive, size_t n);
 
+class PeerTable;
+// The same over a board's peer table: its Alive peers, the cable's host (`host_mac`) left out -- what the firmware's
+// LEASE handler picks. In a partition each side's boards pick that side's lowest board, so each side has an arbiter of
+// its own and grants its own leases (tests/test_lease.cpp, [lease_partition]); `potluck apply` therefore counts a
+// deploy lease only when its arbiter is the cluster's lowest board (host/potluck/potluck/apply.py).
+uint16_t lease_arbiter_of(const PeerTable& peers, uint16_t self, const uint8_t* host_mac);
+
 }  // namespace pot

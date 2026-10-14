@@ -48,6 +48,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_deploy/src/fw.cpp"
   "${POT_FIRMWARE}/components/pot_deploy/src/node_status.cpp"
   "${POT_FIRMWARE}/components/pot_deploy/src/lease.cpp"
+  "${POT_FIRMWARE}/components/pot_deploy/src/package_agent.cpp"
   "${POT_FIRMWARE}/components/pot_can/src/can_profile.cpp"
   "${POT_FIRMWARE}/components/pot_trust/src/trust.cpp"
   "${POT_FIRMWARE}/components/pot_trust/src/hello_auth.cpp"

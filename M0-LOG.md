@@ -5487,3 +5487,94 @@ refuses a self-signed certificate, and opening the port in the PC's firewall is 
 Ingress when the hub runs on the Home Assistant machine (with M17).
 
 **M13.1 and M15 ACCEPTED (2026-10-14, midday), by the owner, with their caveats** -- M13.1: a laptop's Wi-Fi stood in for the phone and a held reset for an unplug; M15: the USB cables stayed in for power, and a declared window with a held reset stood in for a real sleep mode. The PC was restarted overnight by Windows Update (KB5127648, 05:14-05:19, System log events 1074 and 109); no Potluck process was running and nothing was lost. A restarted at about 12:13 (boot epoch 289, five restarts since 03:59); B and C ran through the PC's reboots, so it was not the reboot -- most likely another program opening COM3.
+
+## Session 43 -- 2026-10-14 (afternoon): a deploy and the cell's leases in a partition (host tests; the boards untouched)
+
+**The question** (the owner's, after session 42's `[partition8]`): two partition cases were untested -- a package
+change while the cell is split, and the cell's leases (M14) when each side has a lowest board of its own. Host work
+only: another session had the boards (COM3-6) and the homelab, and nothing here touched them.
+
+**Making the deploy path testable.** The boards' deploy server, the push that passes a committed package on to the
+radio peers, and M12's catch-up lived in `firmware/main/m0_main.cpp`, which no host test compiles: they had only ever
+been tested on the bench. They moved, as they were, into `pot::PackageAgent` (`pot/package_agent.hpp`, in pot_deploy,
+which now requires pot_link); `m0_main.cpp` keeps what is the chip's -- taking a package into the running actors
+(`apply_live`, now a hook), the trial's heartbeat count, the reboot -- and is 235 lines shorter. The arbiter choice for
+a LEASE with target 0 became `lease_arbiter_of()` beside `lease_arbiter()`, for the same reason.
+`tests/test_deploy_partition.cpp` runs eight real `pot::Node`s with their agents on a simulated channel that can be cut
+into groups (3 ms latency, no loss), and a PC as a Node of its own on one board's "cable", sending BEGIN/CHUNK/COMMIT
+as `potluck apply` does (the COMMIT waits 30 s, like `send_package`). Every simulated millisecond it checks that no
+board's anti-downgrade floor and no board's running counter goes down. Stand-ins for the firmware's glue: taking a
+package (noting what runs; a board can be told to refuse one counter), the trial (100 of the node's own beacons, as
+the firmware counts them), a reboot (the node rebuilt with its store kept). Unsigned images (no verifier), as in
+`test_deploy.cpp`.
+
+**What a split does to a deploy.** 4+4, everyone on package 1, a deploy of 2 through board 0 three seconds after the
+cut: the cabled board passes it to the boards it holds alive -- its own side -- and the PC hears "3 passed on, 0
+failed". The other side is not in the list at all, so it is `apply`'s verify, not the reply, that finds them (as not
+confirmed). Five minutes of split: one side confirmed 2, the other stayed on 1; nothing moved, nothing rolled back. At
+the heal the boards behind ask a peer (catch-up) and take the package on trial.
+
+**Three faults, found by these tests and fixed in the agent:**
+1. *A receive nobody finishes.* With the cut landing mid-push (the cabled board passing the 552-byte image to a
+   far-side board), the pusher times out and goes on (the PC hears 3 passed on, 4 failed), but the far board's
+   receiver stayed "in progress" until the next BEGIN, which might never come. A board in that state neither asks for a
+   package nor serves one, so after the heal it stayed on the old package for good (with the fix taken out: not
+   settled after 600 s). Now a receive with no step for 15 s is abandoned (`kRxStaleMs`; the host's steps time out at
+   3 s, and a live transfer steps every few ms).
+2. *One counter, two packages.* Two PCs, one on each side, each holding its side's deploy lease (below), each signing
+   the floor + 1 it sees -- the same counter. At the heal every board's floor equalled every announce, so nobody asked,
+   and the cell stayed half one package and half the other, permanently and silently (with the fix taken out: not
+   settled after 600 s, no ask). Now the higher package digest wins at one counter: a board running its floor's counter
+   asks a peer announcing that counter with a higher digest, and refuses -- at COMMIT, before anything is written -- a
+   package at its floor with a lower one (DOWNGRADE). **A wire change, recorded here with its reason:** the announce
+   (CAST `potluck:sys/package/v1`, kind 1) grows from 5 to 13 bytes, the running package's 8-byte digest appended. It
+   goes there because the announce is the only message that says what a board runs; a board before this change reads
+   only the first 5 bytes (`len < 5` is its one check) and still serves an ask by counter, so a mixed-firmware cell
+   converges through the new boards, and the ask needs no change. A board whose trial reverted runs a counter below its
+   floor and asks for nothing at it (a test: it refused the package once and was never sent it again over five more
+   minutes), so a package that crashed a board is not fetched again. The choice is arbitrary but the same everywhere:
+   the cell ends on one package, not on the newer one, and the README says so.
+3. *An ask while busy.* After a heal every board behind hears the same announces at the same moment and asks the same
+   peer; a peer busy passing the package to one of them dropped the rest, which waited out their 45 s cooldown and the
+   next minute's announce: the 4+4 heal took **195 s** to converge. A busy peer now queues an ask (one per asker,
+   dropped after the asker's cooldown) and serves it when free: **15 s** (5 s to the first announce after the peers
+   revive, then the 10 s trial).
+
+Each fix was taken out again (a mutation) and the test that covers it failed. With all three in: a 4+4 split with the
+deploy on one side, 15.1 s from the heal to the whole cell confirmed (4 asks, 4 catch-ups, none twice); the same with
+the cut mid-push, 15.2 s; two packages at one counter, 15.2 s to the higher digest and nothing flipping back over five
+minutes; a side deployed twice (counters 2 and 3) against the other side's 2: the cell on 3; three sides with three
+packages at one counter, two sides meeting first: the higher of those two on five boards, then the highest on all
+eight. No board's floor or running counter ever went down. A perfect channel: the protocol's floor, not the radio's.
+
+**The leases in a split** (`[lease_partition]`): whole, both cabled boards pick 0x0100 and the second PC is refused,
+named; split 4+4, board 5's side picks 0x0104 and **both PCs hold "the" deploy lease** -- each would sign the same
+counter (fault 2 is what follows). Healed, PC 2's renewal reaches 0x0100, which holds PC 1's: HELD, naming it, so the
+lease is lost; 0x0104 keeps PC 2's entry in RAM until it expires, asked by nobody.
+
+**Decided: change `apply`, state the hub's case -- no wire change.** A quorum lease (an arbiter that grants only while
+it hears a majority) would need the boards to know the cell's size -- a wire change -- and would refuse a lease to a
+legitimately small cell. But `apply` already refuses to change anything unless every board of the cluster file answers
+its inventory, so it already needs the whole cell: requiring that the deploy lease come from **the cluster's lowest
+board** costs it nothing it did not already need, and only one side of any split can hold that board. So `apply` counts
+a deploy lease only when its arbiter is the cluster's lowest board (`lease_counts`: refused with a reason naming both
+boards; a lower board missing from the cluster file is named as that), and stops before each firmware board and before
+the package if a renewal found the lease lost (until now `apply` never read `lease.lost`). With fault 2 fixed, what is
+left -- a deploy that skips the lease (`potluck.ctl deploy`, tools before M14), or an arbiter that reboots and forgets --
+converges anyway, on one package. The **hub lease** stays per side: a hub watches, and a hub on each side of a split,
+each serving what its side hears, is more use than one refused; after the heal the one whose lease is not on the cell's
+lowest board loses it at its next renewal (20 s) and stands down (the lost-lease renewal is tested in `test_lease.py`). The hub presenting, where two
+would matter, is not built. Both are in the README's failure contract. A cost of the apply rule: in a cell where the
+cabled board does not hear the lowest board directly (only through a relay), `apply` now refuses where it went on
+before; the refusal says why.
+
+**Firmware.** The default configuration builds (not the bench's all-in image) (`tools\build_firmware.ps1`). Against HEAD built the same way from a `git archive`
+export: image 869,956 -> 870,916 B (+960 B), PSRAM 49,652 -> 50,100 B (+448 B: the agent, with its queue of asks, lives
+there like the buffer it works in), Potluck's core 63,152 -> 63,031 B of 65,536 B static internal RAM (-121 B). Not on the boards and not yet run on one: the next firmware rollout
+carries it, and the bench should then see a package reach a board held off during a deploy (M12's 22 s) as before.
+
+**Gates.** `tools\run_host_tests.ps1`: 456 cases, 0 failures. Every Python suite, one file at a time: all pass
+(`test_differential.py` and `test_serial_diff.py` need their git-ignored corpora generated first in a fresh worktree --
+`pot_tests --emit-fuzz-corpus` / `--emit-serial-corpus`, as their message says). `tests/test_deploy.cpp`'s unused
+`partitioned` flag is gone; the cell that can be split is the new file's. No external fact was used, so nothing went into
+the zero-assumption ledger.

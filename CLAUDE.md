@@ -60,6 +60,14 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-14 (afternoon): **deploys and leases in a partition, host-tested; three deploy faults fixed** (M0-LOG session 43).
+>
+> The deploy server, push and catch-up moved from `m0_main.cpp` into `pot/package_agent.hpp` (host-tested in
+> `tests/test_deploy_partition.cpp`). Fixed: a receive cut off mid-push blocked catch-up for good (abandoned after 15 s);
+> two packages at one counter stayed mixed (the higher digest wins; the announce carries the digest, 13 bytes); a busy
+> peer dropped asks (queued: a 4+4 heal 195 s -> 15 s). `apply` counts a deploy lease only from the cluster's lowest
+> board. **Not on the boards yet** -- the next firmware rollout carries it; check catch-up on the bench then.
+>
 > ## HANDOVER, 2026-10-14 (03:45): **M13 ACCEPTED (with caveats); M14's and M15's bench runs done** (M0-LOG session 42, end).
 >
 > M13's evidence, line by line, and its caveats are at the end of M0-LOG session 42; the owner accepted. The build rule
