@@ -5674,3 +5674,35 @@ modules already there", a resource exists only if an actor produces it (`apply` 
 producers), 2.4 GHz and the cell following the router's channel, the console commands written out, the certificate's
 directory and address, who provides what in path B, a YAML automation, and HACS's empty list just after its own setup
 (the owner met it). HUB-API's title no longer calls it a contract written before either side was built.
+
+**M17 on the bench, in the owner's Home Assistant (2026-10-14, evening).** HACS had been set up minutes before and its
+first custom-repository add was lost (its list was empty while it loaded the catalogue); added again, it installed
+the integration. After a restart Home Assistant showed "Discovered: Potluck lab (ef76cc2e)"; Add, Submit, the owner's
+Allow on the dashboard, and the config entry (source zeroconf, unique id ef76cc2e) made the device Potluck hub (lab)
+with its five entities. At the owner's request the session wrote the automation itself
+(`/config/automations.yaml`, the empty original kept as `automations.yaml.pre-potluck`; Home Assistant restarted to
+load it): "Potluck LED test (M17)", an MQTT trigger on `potluck-test/led` switching `switch.lab_node_7368_led_on`.
+Fired at 20:43:35: the hub read `node-7368/led/on = true`, B's `led_switch` counted one change.
+
+**The LED, found on the way.** The first firing changed nothing visible: B and C were red, and had been for hours,
+because each still held the PC's placement node (0x00FE, M14's host node, stopped that afternoon) as a dead peer --
+5,000 probes into nothing, every 3 s -- and red outranked the switch's colour. The owner then gave the LED its
+meaning (he had never been told it): **purple updating, yellow searching, red disconnected / dead / stalled, green on
+the Potluck network.** Built that way (`ac487c0`, `072cdf8`, `b384e80`): a dead peer reds the LED for
+`CONFIG_POT_STATUS_LED_DEAD_RED_S` (600 s) after its last frame, not for ever; blue is gone; purple while firmware or
+a package arrives (only while its bytes still arrive) or runs on trial; red too when this board's own sends fail for
+over 3 s; a deployed Led actor no longer recolours healthy. A's "blinking purple" was not that actor but
+passive-sensor's presence indicator (magenta, blinking while someone moves) -- so an app may now show only blue or
+cyan in green's place, anything else drawn blue. White was tried first and looked light purple on these LEDs at
+brightness 24. After the rollouts the owner saw all three steady blue (presence, him sitting; B also its switch).
+passive-sensor's magenta is drawn blue until that project picks blue itself (no session of it was open).
+
+**Catch-up on the boards, first time:** both package pushes (68, 69) reached one peer and failed to the other; the
+third board fetched it from a peer by itself and confirmed in about 62 s (session 43's host test: about 22 s).
+
+**The PC off (M17's line):** the hub stopped at 20:45:25 (PC clock; the homelab's runs 85 s behind). On Home
+Assistant's clock the hub device and every hub-made diagnostic went unavailable within about 15 s; the boards' own
+values (B's die temperature, A's uptime, presence, the switch) kept arriving every 2 s through C. Started again,
+all 39 entities were back in 3-5 s. **Fixed on the way:** the hub's model never filled `deploys`, so Home
+Assistant's "last deploy" read unknown after two rollouts; the hub now learns a deploy from the boards' counters
+moving (running, then verified or confirmed once every board it hears runs it).

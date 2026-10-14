@@ -473,6 +473,7 @@ class Model:
                         self._event_locked("board_rebooted", n, {"up_s": st.uptime_s})
                     b["epoch_up"] = st.uptime_s
                     b["last_ok"] = time.monotonic()
+                    self._note_deploy_locked(n, b.get("status"), st)
                     b["status"] = st
                     b["cabled"] = n == cabled
                 if prev != b["state"]:
@@ -567,6 +568,40 @@ class Model:
                 return k.state_name == "dead"
         return False
 
+    def _note_deploy_locked(self, n: int, old, st) -> None:
+        """Under self.lock: a board's firmware or package counter moved -- a deploy, whoever ran it (`apply` through
+        this hub, or a board catching up from a peer). The hub sends no deploy itself, so this is where `deploys`
+        learns of one (it stayed empty until 2026-10-14). One entry per (kind, counter), settled once every board
+        the hub hears runs it confirmed."""
+        if old is None:
+            return  # the hub's first look at this board: what it runs is not news
+        for kind, before, now in (("firmware", old.fw_running, st.fw_running), ("package", old.pkg_counter, st.pkg_counter)):
+            if now == before or not now:
+                continue
+            d = next((x for x in self.deploys if x["kind"] == kind and x["counter"] == now), None)
+            if d is None:
+                d = {"at": _hub_ms(), "kind": kind, "counter": now, "result": "running", "detail": ""}
+                self.deploys.append(d)
+                del self.deploys[:-20]
+            d.setdefault("_boards", set()).add(n)
+        self._settle_deploys_locked(n, st)
+
+    def _settle_deploys_locked(self, n: int, st) -> None:
+        for d in self.deploys:
+            if d["result"] != "running":
+                continue
+            others = {m: b.get("status") for m, b in self.boards.items() if b.get("state") == "alive" and m != n}
+            others[n] = st
+            on = [m for m, s in others.items() if s is not None and
+                  (s.fw_running if d["kind"] == "firmware" else s.pkg_counter) == d["counter"]]
+            d["detail"] = f"{len(on)} of {len(others)} board(s)"
+            settled = len(on) == len(others) and all(
+                (others[m].fw_state == "confirmed") if d["kind"] == "firmware" else not others[m].pending for m in on)
+            if settled:
+                d["result"] = "confirmed" if d["kind"] == "firmware" else "verified"
+                d["detail"] = f"{'live' if d['kind'] == 'package' else 'confirmed'} on {len(on)} board(s)"
+                self._event_locked("deploy", None, {k: v for k, v in d.items() if not k.startswith("_")})
+
     def _event_locked(self, kind: str, board: int | None, detail: dict) -> None:
         self.seq += 1
         self.events.append({"seq": self.seq, "at": _hub_ms(), "board": f"{board:04x}" if board else "hub",
@@ -578,6 +613,7 @@ class Model:
             boards = [self._board_json(n, b) for n, b in sorted(self.boards.items())]
             resources = [self._resource_json(p, r) for p, r in self.resources.items()]
             events_tail = list(self.events)[-1:]
+            deploys = [{k: v for k, v in d.items() if not k.startswith("_")} for d in self.deploys]
         apps = self._apps_json(boards, resources)
         return {
             "api": API_VERSION,
@@ -596,7 +632,7 @@ class Model:
             "apps": apps,
             "resources": resources,
             "integrations": self._integrations_json(boards, resources) + self.reports.snapshot(),
-            "deploys": list(self.deploys),
+            "deploys": deploys,
             "signals": self._signals_json(boards),
             "last_event_seq": events_tail[0]["seq"] if events_tail else 0,
         }

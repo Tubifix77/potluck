@@ -158,5 +158,44 @@ class Writers(unittest.TestCase):
                 cluster({"node-7368/led/on": {"mode": "read", "writers": ["x"]}})
 
 
+class Deploys(unittest.TestCase):
+    """The model's `deploys` (and Home Assistant's "last deploy") learn of a deploy from the boards' counters moving:
+    the hub sends none itself. It stayed empty on the bench through two rollouts (2026-10-14)."""
+
+    def model(self) -> hb.Model:
+        import collections
+        m = object.__new__(hb.Model)
+        m.lock = threading.Lock()
+        m.boards, m.deploys, m.seq, m.events = {}, [], 0, collections.deque(maxlen=100)
+        return m
+
+    @staticmethod
+    def st(fw, pkg, fw_state="confirmed", pending=0):
+        from types import SimpleNamespace
+        return SimpleNamespace(fw_running=fw, pkg_counter=pkg, fw_state=fw_state, pending=pending)
+
+    def test_a_package_moving_board_by_board_is_running_then_verified(self) -> None:
+        m = self.model()
+        for n in (1, 2):
+            m.boards[n] = {"state": "alive", "status": self.st(34, 67)}
+        with m.lock:
+            m._note_deploy_locked(1, m.boards[1]["status"], self.st(34, 68, pending=1))
+            m.boards[1]["status"] = self.st(34, 68, pending=1)
+        self.assertEqual([(d["kind"], d["counter"], d["result"]) for d in m.deploys], [("package", 68, "running")])
+        with m.lock:
+            m._note_deploy_locked(1, m.boards[1]["status"], self.st(34, 68))
+            m.boards[1]["status"] = self.st(34, 68)
+            m._note_deploy_locked(2, m.boards[2]["status"], self.st(34, 68))
+            m.boards[2]["status"] = self.st(34, 68)
+        self.assertEqual((m.deploys[0]["result"], m.deploys[0]["detail"]), ("verified", "live on 2 board(s)"))
+        self.assertEqual([e["kind"] for e in m.events], ["deploy"])
+
+    def test_the_first_look_at_a_board_is_not_a_deploy(self) -> None:
+        m = self.model()
+        with m.lock:
+            m._note_deploy_locked(1, None, self.st(34, 68))
+        self.assertEqual(m.deploys, [])
+
+
 if __name__ == "__main__":
     unittest.main()
