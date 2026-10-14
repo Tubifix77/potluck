@@ -5625,3 +5625,33 @@ carries it, and the bench should then see a package reach a board held off durin
 the zero-assumption ledger.
 
 **M14 ACCEPTED (2026-10-14, evening), by the owner, with its caveats** -- the PC switched off by killing its node's process, the measuring subscriber on the same PC, states paused about 3 s at each hand-back, and once two entities 10.9 s late at a takeover. Next: M16's remaining lines, M17, M18.
+
+## Session 44 -- 2026-10-14 (evening): M16's, M17's and M18's remaining lines, in parallel
+
+The owner accepted M14 and asked for M16-M18, in parallel where possible. Four agents ran beside this session: the
+evidence for M18's second integration, a Node.js example program, the Home Assistant integration, and a reader building
+the Node-RED integration from the documents alone. M17's design rests on one fact, fetched verbatim from Home
+Assistant's developer docs (ledger): **a device belongs to one config entry, and the same identifier from two config
+entries is two devices**. So the boards stay the MQTT devices the cell's presenter creates -- what keeps them live with
+the PC off -- and the hub adds to them over MQTT (`hub_extras.py`), never a second device; the integration
+(`custom_components/potluck`) finds the hub (`hub_mdns.py`, RFC 6762/6763), pairs with the owner's approval on the PC
+(`POST /api/pair`, `POST /api/pairing` on 127.0.0.1 only, bearer tokens), and shows the hub's own health on a service
+device. From Home Assistant 2026.10.1's own source: an MQTT update entity without a command topic offers no install.
+
+**On the bench:** the hub on the house network (`--listen` over TLS, the certificate for 192.168.0.7), announced and
+answered from the homelab (once a one-shot query from another port got a unicast reply, RFC 6762 6.7 -- the first
+version only multicast); the owner's Home Assistant registered the hub's 28 entities on the existing board devices.
+HACS 2.0.5 installed into it (the owner's choice: the real installation, not a fresh one); the owner's GitHub sign-in
+and pairing are next.
+
+**M18:** INTEGRATIONS.md is the interface. The Node.js example (`examples/programs/node`) found 13 places HUB-API.md was
+not enough, fixed, and two real mismatches fixed in the hub (outside_write's detail named `resource`; the hub's own
+events `board: "hub"`). The reader built `integrations/node-red` from INTEGRATIONS.md and HUB-API.md alone and needed
+no hub change (the kill line not hit); its twelve unclear places fixed, and one additive field (`resource.type`; a write
+now sends a number as the resource's own type). Against the real hub it received the exposed resources with quality and
+its reports were accepted ("Node-RED, program, connected"). **Fair share**, measured (`captures/m18-share-bench.jsonl`):
+a client pulling `GET /api/model` from four threads for 60 s sent 52,207 requests, was served 20.7 a second and told to
+wait 50,967 times; the dashboard's stream got a model every 2.0 s throughout, and the hub's frames to the cell were 16.3
+a second against 16.2 without it. A writable resource may name its writers (the hub's rule; the boards cannot tell an
+MQTT write from the hub's). Node-RED next by published evidence: 13.0 % of Home Assistant installations that report
+add-ons, 17.3 % of ioBroker's (ledger).
