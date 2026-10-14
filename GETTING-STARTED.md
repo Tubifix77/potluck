@@ -250,6 +250,7 @@ ESP-IDF's own `idf.py -p COM7 monitor` works too, but resets the board when it o
 | what you see | why, and what to do |
 |---|---|
 | A board seems dead over USB | It is on the socket labelled USB. Use **UART**. |
+| A board's LED is red | It hears a peer losing over half its heartbeats, or one that died in the last 10 minutes (a peer gone longer no longer counts: a PC switched off does not leave the boards red). The hub's dashboard names the peer. |
 | LEDs stay blue after enrolling | The certificate takes effect at the next boot: press RST. Still blue: the board's console log shows `peer_refused` for a board from another CA -- enrol it with *your* CA. |
 | `enrol` times out | Another program holds the board's port (a serial monitor): close it. |
 | The build fails at once in `export.ps1` | You ran it from Windows PowerShell 5.1; use `pwsh`. |

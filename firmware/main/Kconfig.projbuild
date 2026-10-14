@@ -243,8 +243,8 @@ config POT_STATUS_LED_GPIO
         The colour is this node's own view of the cell, for reading without a console:
           green   every peer heard, heartbeat loss under 10 % over the last two seconds
           yellow  every peer heard, but some peer losing 10-50 %
-          red     some peer losing over 50 %, or declared dead
-          blue    no peer has been heard since power-up
+          red     some peer losing over 50 %, or declared dead within POT_STATUS_LED_DEAD_RED_S
+          blue    no peer has been heard since power-up, or every peer heard is long dead
         At power-up it shows red, green, blue for half a second each, in that order. If the
         order on the board differs, the LED's byte order is not GRB and the colours above lie.
 
@@ -254,6 +254,16 @@ config POT_STATUS_LED_GPIO_ALT
     default 38
     help
         See POT_STATUS_LED_GPIO: the other board revision's LED pin.
+
+config POT_STATUS_LED_DEAD_RED_S
+    int "Seconds a dead peer keeps the status LED red (0: for ever)"
+    range 0 86400
+    default 600
+    help
+        Counted from the last frame heard from the peer. After it, the LED judges the peers still
+        alive. A peer that left for good -- the PC's placement node when the PC is switched off --
+        otherwise keeps every board red for as long as it runs. The hub, the dashboard and Home
+        Assistant keep showing the dead peer.
 
 config POT_TRIAL_HEARTBEATS
     int "Heartbeats a newly deployed slot must send before it is confirmed (section 7.4)"

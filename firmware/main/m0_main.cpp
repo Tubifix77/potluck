@@ -790,8 +790,14 @@ struct Snap {
 };
 Snap g_hist[kMaxPeers][2];
 
+// How long a dead peer keeps the LED red, from the last frame heard from it. A peer that left for
+// good -- the PC's placement node when the PC is switched off -- otherwise kept every board red for
+// as long as they ran (2026-10-14: B and C red for hours after the M14 host node stopped). The hub,
+// the dashboard and Home Assistant keep showing the dead peer; 0 keeps the LED red for ever.
+constexpr uint32_t kDeadRedMs = static_cast<uint32_t>(CONFIG_POT_STATUS_LED_DEAD_RED_S) * 1000u;
+
 // Called with g_mutex held: reads the peer table, touches nothing in it.
-Colour assess(const Node& n) {
+Colour assess(const Node& n, uint32_t now_ms) {
     bool any = false;
     bool dead = false;
     uint32_t worst_ppm = 0;
@@ -802,6 +808,7 @@ Colour assess(const Node& n) {
         g_hist[i][1] = g_hist[i][0];
         g_hist[i][0] = now;
         if (p.state == PeerState::Dead) {
+            if (kDeadRedMs != 0 && now_ms - p.last_rx_ms > kDeadRedMs) continue;  // gone: not this LED's news
             any = true;
             dead = true;
             continue;
@@ -1837,7 +1844,7 @@ void link_task(void*) {
         if (static_cast<int32_t>(nt - next_assess_ms) >= 0) {
             next_assess_ms = nt + status_led::kUpdateMs;
             xSemaphoreTake(g_mutex, portMAX_DELAY);
-            colour = status_led::assess(*g_node);
+            colour = status_led::assess(*g_node, nt);
             xSemaphoreGive(g_mutex);
         }
         if (static_cast<int32_t>(nt - next_led_ms) >= 0) {
