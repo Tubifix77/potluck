@@ -1,0 +1,4 @@
+phase1-quiet-start 1791943235
+phase2-page-open-start 1791944156
+phase3-dead-board-start 1791945071
+phase3-end 1791945155

@@ -1,0 +1,36 @@
+M13.1 BENCH, 2026-10-14 04:00-04:33 (M0-LOG session 42). Firmware 3995681 (counter 32), package 64; the owner's access-point name
+and password given to A (0x6300) with tools/pocket_set.py; the homelab laptop's Wi-Fi as the phone (its wired link, Home
+Assistant's and the broker's, untouched). Phases: 1 A's access point up, nobody on it; 2 the laptop joined, the page and
+status.json fetched every 5 s (an open browser); 3 B held in reset 20 s (B's console capture stopped for it).
+
+== phase1-quiet  (15.3 min)
+  6300 <- 7368: heartbeats   9031, lost  117 (1.30 %)   RTT n= 452 p50    4-6 ms p99   16-22 ms
+  6300 <- 8160: heartbeats   9030, lost   24 (0.27 %)   RTT n= 451 p50    4-6 ms p99   22-30 ms
+  7368 <- 6300: heartbeats   9125, lost   52 (0.57 %)   RTT n= 304 p50   8-11 ms p99   16-22 ms
+  7368 <- 8160: heartbeats   9125, lost   22 (0.24 %)   RTT n= 304 p50   8-11 ms p99   16-22 ms
+  8160 <- 6300: heartbeats   9140, lost   52 (0.57 %)   RTT n= 305 p50    4-6 ms p99    8-11 ms
+  8160 <- 7368: heartbeats   9141, lost   66 (0.72 %)   RTT n= 304 p50    4-6 ms p99    8-11 ms
+  all links: heartbeat loss 0.61 % (333 of 54592)
+== phase2-page-open  (15.2 min)
+  6300 <- 7368: heartbeats   9033, lost  131 (1.45 %)   RTT n= 448 p50    6-8 ms p99   22-30 ms
+  6300 <- 8160: heartbeats   9032, lost   33 (0.37 %)   RTT n= 451 p50    4-6 ms p99   16-22 ms
+  7368 <- 6300: heartbeats   9034, lost   57 (0.63 %)   RTT n= 299 p50    6-8 ms p99   30-42 ms
+  7368 <- 8160: heartbeats   9034, lost   83 (0.92 %)   RTT n= 301 p50    6-8 ms p99   16-22 ms
+  8160 <- 6300: heartbeats   9029, lost   57 (0.63 %)   RTT n= 301 p50    4-6 ms p99   11-16 ms
+  8160 <- 7368: heartbeats   9029, lost  114 (1.26 %)   RTT n= 298 p50    4-6 ms p99   16-22 ms
+  all links: heartbeat loss 0.88 % (475 of 54191)
+== phase3-dead-board  (1.4 min)
+  6300 <- 7368: the peer rebooted in the phase, skipped
+  6300 <- 8160: heartbeats    764, lost    8 (1.05 %)   RTT n=  38 p50    6-8 ms p99   60-85 ms
+  7368 <- 6300: heartbeats    112, lost    2 (1.79 %)   RTT n=   2 p50    6-8 ms p99   11-16 ms
+  7368 <- 8160: heartbeats    113, lost    1 (0.88 %)   RTT n=   2 p50    4-6 ms p99     6-8 ms
+  8160 <- 6300: heartbeats    672, lost    8 (1.19 %)   RTT n=  22 p50    4-6 ms p99  85-110 ms
+  8160 <- 7368: the peer rebooted in the phase, skipped
+  all links: heartbeat loss 1.14 % (19 of 1661)
+
+Page poll (captures/m131-poll.jsonl): 180 fetches, 180 answered, all three boards alive in every one; slowest page 51 ms.
+Refusals (10 of 10): POST /, PUT /status.json, DELETE /, PATCH /, POST /status.json -> 405; GET and POST /deploy,
+GET /write?node=7368&value=1, GET /api/model, GET /../etc -> 404. A wrong password with the right name: not joined.
+B held in reset (captures/m131-dead.txt, laptop clock 71.5 s behind the PC's): dead on the page ~1.2 s after the hold,
+alive again 6.8 s after release. A's pocket status: 434 pages, 5 refused; internal heap 192,043 B free with the access point
+up against 207,319 B before it (15.3 KB).

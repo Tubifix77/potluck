@@ -5430,3 +5430,20 @@ Not part of M13 and not built: the hub presenting in the cell's place (M14's las
 **M13 ACCEPTED (2026-10-14), by the owner, with the caveats above:** the desk PC on (power and consoles, nothing of
 Potluck's in the path), the LED switched by hand rather than by an automation, resets for unplugs, and the hotspot's
 cost from one speed test. Not redone: a real power pull and a Home Assistant automation.
+
+**M13.1 on the bench (2026-10-14, 04:00-04:33): proposed for acceptance.** The owner made an access-point name and
+password and gave them to A with the new `tools/pocket_set.py` (like `wifi_set.py`: from a file, printing neither --
+`923b0b8`); the homelab laptop's Wi-Fi stood in for the phone (its wired link, which Home Assistant and the broker use,
+untouched; the owner offered it), so the write and deploy attempts could be real requests. Captures
+`captures/m131-*`, `captures/m131-report.txt`.
+
+| acceptance line | evidence | caveat |
+|---|---|---|
+| no PC and no other network: a phone joins with the owner's password; the page shows all three boards | the laptop joined A's access point (192.168.4.2); `/` and `/status.json` showed A, B and C alive with four values; 180 of 180 fetches answered over 15 min, all three alive in each, the slowest 51 ms | a laptop, not a phone (the same WPA2 join and HTTP); A has no station, so the page used no other network, but C was presenting over the house Wi-Fi beside it, and the desk PC powered the boards |
+| a board unplugged shows dead within its death window, alive again when it returns | B held in reset 20 s: dead on the page about 1.2 s after (the page's snapshot refreshes once a second; the window is 600 ms), alive 6.8 s after release (B's boot and rejoin) | a reset held, not an unplug |
+| a request that tries to write or deploy is refused | 10 of 10: POST, PUT, DELETE, PATCH -> 405; `/deploy` (GET and POST), `/write?...`, `/api/model`, `/../etc` -> 404; A counted 5 refused | |
+| a phone without the password sees nothing | the same name with a made-up password: not joined | |
+| heartbeats within M0's spread while a phone keeps the page open | same session, 15 min each: heartbeat loss over six links 0.61 % with the access point up and nobody on it, **0.88 % with the page open**; RTT p50 4-8 ms in both, p99 8-30 ms against 11-42 ms; no board declared dead | a small measured cost, as presenting's (M13: 0.47 % against 0.28 %); above tonight's other runs on this bench (0.42-0.66 %); an RF-noisy house |
+| the module's flash and internal-RAM cost on the tightest board | about 64 KB flash, 1.9 KB static internal RAM (1.6 KB since moved to PSRAM) and 22 KB PSRAM by build difference (session 41); at run time 15.3 KB of internal heap on A with the access point up (207,319 -> 192,043 B free) | measured on A: the extender cannot carry the pocket while its hotspot is up (one access point per chip; the module stays idle there by design), so the tightest board that can carry it is a member with or without a station |
+
+The owner keeps A's access point for later tests (the owner's choice: test credentials until the boards go to real use).
