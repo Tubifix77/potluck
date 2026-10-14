@@ -646,7 +646,7 @@ void Node::refuse(uint16_t claimed_id, HelloAuthError e, CertError ce) {
 }
 
 Node::AuthOutcome Node::authenticate_hello(PeerLink* p, const uint8_t mac[kMacLen], const Frame& f,
-                                           const HelloPayload& h, PeerAuth& out) {
+                                           const HelloPayload& h, PeerAuth& out, bool cable) {
     if (!trust_->enrolled) {
         if (!require_auth_) return AuthOutcome::Legacy;
         refuse(h.node_id, HelloAuthError::NotEnrolled, CertError::Ok);
@@ -701,6 +701,13 @@ Node::AuthOutcome Node::authenticate_hello(PeerLink* p, const uint8_t mac[kMacLe
     heavy(&verify_job, &job);
     const HelloAuth& r = job.result;
     if (r.error != HelloAuthError::Ok) {
+        if (cable && r.error == HelloAuthError::BadSignature) {
+            // A board's HELLO is signed for its radio MAC; at the cable's far end (the PC) it arrives from the
+            // cable's address, so its signature cannot verify there. The cable is trusted anyway (section 9.3):
+            // not a refusal -- the PC logged one every ~10 s for no reason (M0-LOG session 42).
+            ++auth_counters_.cable_unverified;
+            return AuthOutcome::Refused;
+        }
         refuse(h.node_id, r.error, r.cert_error);
         return AuthOutcome::Refused;
     }
@@ -958,7 +965,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         // signature that fails on the cable leaves it what it always was: trusted, unverified.
         const bool cable = is_trusted_link(src_mac);
         if (!cable || f.payload_len >= kHelloSignedLen) {
-            outcome = authenticate_hello(p, rx_orig_mac_, f, h, fresh);
+            outcome = authenticate_hello(p, rx_orig_mac_, f, h, fresh, cable);
             if (outcome == AuthOutcome::Refused || outcome == AuthOutcome::Ignore) {
                 if (!cable) return;  // a refused stranger never gets a peer slot; a known peer's state is untouched
                 outcome = AuthOutcome::Legacy;  // the cable: as if it had not signed

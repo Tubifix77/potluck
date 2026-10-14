@@ -261,6 +261,9 @@ class Node {
         uint32_t bcast_dropped;  // a broadcast of an opcode that may not be broadcast unauthenticated
         uint32_t beacon_epoch_ignored;  // a beacon claiming an epoch no signed HELLO has shown
         uint32_t tag_us_max;     // longest tag check
+        // A signed HELLO over the cable whose signature binds another MAC: a board signs for its radio MAC,
+        // which the PC at the cable's far end never sees -- expected there, so counted, not refused.
+        uint32_t cable_unverified;
     };
     const AuthCounters& auth_counters() const { return auth_counters_; }
 
@@ -646,7 +649,7 @@ class Node {
     // ---- M5 ---------------------------------------------------------------------------------
     enum class AuthOutcome : uint8_t { Fresh, Cached, Legacy, Ignore, Refused };
     AuthOutcome authenticate_hello(PeerLink* p, const uint8_t mac[kMacLen], const Frame& f,
-                                   const HelloPayload& h, PeerAuth& out);
+                                   const HelloPayload& h, PeerAuth& out, bool cable = false);
     void refuse(uint16_t claimed_id, HelloAuthError e, CertError ce);
     bool is_trusted_link(const uint8_t mac[kMacLen]) const;
     uint16_t next_msg_id(PeerLink& p);  // 1..cfg_.msg_id_max, per peer

@@ -437,6 +437,21 @@ size_t g_retain_n = 0;
 uint32_t g_writes = 0;       // NVS writes done this boot (the wear figure)
 uint32_t g_write_errors = 0;
 int g_last_error = 0;        // the last esp_err_t a write or commit returned (0 = none)
+uint32_t g_deferred = 0;     // writes held back by the board's wear budget (each stays queued, the newest kept)
+
+// The board's wear budget, in NVS entries a minute. A checkpoint costs 2 + ceil((8 + len) / 32) entries (a
+// blob's header, its data, its index; ledger rows on the NVS layout): 3 for a small one, 7 for a full 128 B.
+// The interval above holds one actor to one write a minute, but eight portable actors on a board each writing
+// a full changing checkpoint wear its six NVS pages to the flash's rated 100,000 cycles in ~2.2-2.6 years
+// (WROOM-1 datasheet v1.8, Table 6-8; computed 2026-10-15). Seven entries a minute -- one full checkpoint --
+// keeps a board at ~18-20 years whatever its actors do; the actors share it in turn, so with many busy ones
+// each checkpoint is older when the power goes, never lost.
+constexpr uint32_t kWearEntriesPerMin = 7;
+constexpr uint32_t kWearBurst = 14;
+uint32_t g_wear_tokens = kWearBurst;
+uint32_t g_wear_refill_ms = 0;
+size_t g_wear_cursor = 0;
+uint32_t entries_of(size_t len) { return 2u + static_cast<uint32_t>((8u + len + 31u) / 32u); }
 
 void key_name(char* out, uint32_t key) { std::snprintf(out, 12, "k%08x", static_cast<unsigned>(key)); }
 
@@ -501,9 +516,26 @@ void flush() {
     size_t n_out = 0, n_keep = 0;
     bool retain_due = false;
     xSemaphoreTake(g_mutex, portMAX_DELAY);
-    for (Pending& p : g_q) {
-        if (p.used) { s_out[n_out++] = p; p.used = false; }
+    const uint32_t now = now_ms_();
+    if (g_wear_refill_ms == 0) g_wear_refill_ms = now;
+    const uint32_t per_entry_ms = 60000u / kWearEntriesPerMin;
+    while (now - g_wear_refill_ms >= per_entry_ms) {
+        g_wear_refill_ms += per_entry_ms;
+        if (g_wear_tokens < kWearBurst) ++g_wear_tokens;
     }
+    for (size_t k = 0; k < kMaxPortable; ++k) {  // in turn from where the last flush stopped, so none starves
+        Pending& p = g_q[(g_wear_cursor + k) % kMaxPortable];
+        if (!p.used) continue;
+        const uint32_t cost = entries_of(p.len);
+        if (cost > g_wear_tokens) {
+            ++g_deferred;
+            continue;
+        }
+        g_wear_tokens -= cost;
+        s_out[n_out++] = p;
+        p.used = false;
+    }
+    g_wear_cursor = (g_wear_cursor + 1) % kMaxPortable;
     if (g_retain_due) {
         retain_due = true;
         g_retain_due = false;
@@ -2237,14 +2269,14 @@ void stats_task(void*) {
                 nvs_get_stats(nullptr, &nvs_st);  // M12: how full the store the checkpoints share is
                 std::printf("{\"t\":\"rec\",\"node\":%u,\"up_ms\":%u,\"settled\":%d,\"sent\":%u,\"received\":%u,"
                             "\"malformed\":%u,\"views\":%u,\"replies_fenced\":%u,\"ck_persisted\":%u,"
-                            "\"ck_restored\":%u,\"ck_nvs_writes\":%u,\"ck_nvs_errors\":%u,\"ck_nvs_last_err\":%d,"
+                            "\"ck_restored\":%u,\"ck_nvs_writes\":%u,\"ck_nvs_deferred\":%u,\"ck_nvs_errors\":%u,\"ck_nvs_last_err\":%d,"
                             "\"nvs_used\":%u,\"nvs_available\":%u,\"actors\":[",
                             static_cast<unsigned>(node_id), static_cast<unsigned>(now_ms_()), settled ? 1 : 0,
                             static_cast<unsigned>(rc.sets_sent), static_cast<unsigned>(rc.sets_received),
                             static_cast<unsigned>(rc.sets_malformed), static_cast<unsigned>(rc.view_changes),
                             static_cast<unsigned>(fenced_replies), static_cast<unsigned>(rc.checkpoints_persisted),
                             static_cast<unsigned>(rc.checkpoints_restored), static_cast<unsigned>(ck_persist::g_writes),
-                            static_cast<unsigned>(ck_persist::g_write_errors), ck_persist::g_last_error,
+                            static_cast<unsigned>(ck_persist::g_deferred), static_cast<unsigned>(ck_persist::g_write_errors), ck_persist::g_last_error,
                             static_cast<unsigned>(nvs_st.used_entries), static_cast<unsigned>(nvs_st.available_entries));
                 for (size_t i = 0; i < na; ++i) {
                     std::printf("%s{\"key\":%u,\"running\":%d,\"term\":%u,\"owner\":%u,\"owner_term\":%u,"

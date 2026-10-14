@@ -1027,3 +1027,40 @@ TEST(auth, a_host_that_signs_on_the_cable_is_verified_so_it_can_be_relayed) {
     CHECK(pa != nullptr && pa->verified);
 }
 
+TEST(auth, at_the_pc_a_boards_hello_signed_for_its_radio_mac_is_trusted_and_not_refused) {
+    // The other end of the cable: the PC's node trusts the cable's address, and the board's HELLO arrives from it,
+    // signed for the board's radio MAC. Its signature cannot verify against the cable's address -- expected, so the
+    // board is admitted as the cable always admits, and no refusal is logged (the PC logged one every ~10 s).
+    TestCa ca(1);
+    AuthCell c;
+    std::vector<std::unique_ptr<Identity>> ids;
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x00FE, 0x44)));
+    c.build(std::move(ids), true);
+    AuthNode& an = c.nodes[0];
+    delete an.node;
+    NodeConfig cfg;
+    cfg.node_id = 0x00FE;
+    cfg.boot_epoch = 1;
+    const uint8_t self_mac[6] = {0x02, 0, 0, 0, 0, 0xFE};
+    const uint8_t cable_mac[6] = {0x02, 0, 0, 0, 0, 0x01};
+    std::memcpy(cfg.mac, self_mac, kMacLen);
+    cfg.has_trusted_mac = true;
+    std::memcpy(cfg.trusted_mac, cable_mac, 6);
+    an.node = new Node(cfg, an.hal);
+    an.node->set_trust(an.id.get(), true);
+    an.node->start();
+    Identity board = enrolled_identity(ca, 0x6300, 0x11);
+    uint8_t base[kHelloBaseLen], sh[kHelloSignedLen];
+    base_hello(0x6300, 1, base);
+    CHECK(hello_sign(board, kMacA, base, sh));  // for its radio MAC
+    inject_hello(*an.node, cable_mac, 0x6300, sh, sizeof(sh), c.now_us);
+    c.advance_ms(50);
+    CHECK(peer_by_id(*an.node, 0x6300) != nullptr);
+    CHECK_EQ(refusals_of(an, 0x6300, HelloAuthError::BadSignature), static_cast<size_t>(0));
+    CHECK_EQ(an.node->auth_counters().cable_unverified, 1u);
+    // The same HELLO from a radio MAC is still refused, with its reason.
+    inject_hello(*an.node, kMacB, 0x6300, sh, sizeof(sh), c.now_us);
+    c.advance_ms(50);
+    CHECK(refusals_of(an, 0x6300, HelloAuthError::BadSignature) >= 1u);
+}
+
