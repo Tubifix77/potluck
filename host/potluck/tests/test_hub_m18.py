@@ -27,7 +27,7 @@ class Api(HubFixture):
         host, _, port = self.api_addr.rpartition(":")
         c = http.client.HTTPConnection(host, int(port), timeout=5)
         c.request(method, path, body=json.dumps(body) if body is not None else None,
-                  headers={"Content-Type": "application/json", "X-Potluck-Client": client})
+                  headers={"Content-Type": "application/json", "X-Potluck-Client": client, "X-Potluck-Request": "1"})
         r = c.getresponse()
         data = r.read()
         retry = r.getheader("Retry-After")
@@ -163,6 +163,28 @@ class Writers(unittest.TestCase):
             self.assertEqual(c.writers, {"potluck://lab/node-7368/led/on": ("Home Assistant",)})
             with self.assertRaisesRegex(ap.ApplyError, "writers name who may write it"):
                 cluster({"node-7368/led/on": {"mode": "read", "writers": ["x"]}})
+
+
+class LocalAddress(HubFixture):
+    """M20 review #5: the PC's own address has no login, so a page elsewhere must not be able to use it -- a POST needs
+    X-Potluck-Request (which a browser sends cross-site only if the server allowed it, which it never does), and any
+    request must name 127.0.0.1 or localhost as its Host (DNS rebinding)."""
+
+    def raw(self, method, path, headers):
+        host, _, port = self.api_addr.rpartition(":")
+        c = http.client.HTTPConnection(host, int(port), timeout=5)
+        c.request(method, path, body=json.dumps({"pair_id": "x", "approve": True}) if method == "POST" else None,
+                  headers=headers)
+        r = c.getresponse()
+        r.read()
+        c.close()
+        return r.status
+
+    def test_a_post_without_the_header_and_a_foreign_host_are_refused(self) -> None:
+        self.assertEqual(self.raw("POST", "/api/pairing", {"Content-Type": "text/plain"}), 403)
+        self.assertEqual(self.raw("GET", "/api/model", {"Host": "attacker.example:8470"}), 403)
+        self.assertEqual(self.raw("GET", "/api/model", {"Host": "127.0.0.1:8470"}), 200)
+        self.assertEqual(self.raw("GET", "/api/model", {"Host": "localhost"}), 200)
 
 
 class Deploys(unittest.TestCase):

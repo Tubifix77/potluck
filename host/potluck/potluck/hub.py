@@ -913,8 +913,22 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             self.wfile.write(body)
             return False
 
+        def _local_host_ok(self) -> bool:
+            """On the PC's own address (no logins: whoever is there is the owner), only a request that names it: a page
+            elsewhere could otherwise reach it through DNS rebinding (a name of its own resolving to 127.0.0.1).
+            M20 review #5."""
+            if sessions is not None:
+                return True
+            host = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]").lower()
+            if host in ("127.0.0.1", "localhost", "::1"):
+                return True
+            self._json(403, {"ok": False, "result": "this address answers only to 127.0.0.1 or localhost"})
+            return False
+
         def do_GET(self) -> None:
             path, _, query = self.path.partition("?")
+            if not self._local_host_ok():
+                return
             if not self._allowed(path):
                 return
             if path.startswith("/api/") and not self._fair("read"):
@@ -998,9 +1012,12 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             return json.loads(self.rfile.read(n) or b"{}")
 
         def do_POST(self) -> None:
-            if sessions is not None and self.headers.get("X-Potluck-Request") != "1":
-                # A page on another site can make a browser POST here with its cookie, but not with a custom header
-                # unless this server allowed it (CORS), which it never does.
+            if not self._local_host_ok():
+                return
+            if self.headers.get("X-Potluck-Request") != "1":
+                # A page on another site can make a browser POST here -- with its cookie behind a login, or to the PC's
+                # own address with no login at all (it used to be exempt: M20 review #5) -- but not with a custom
+                # header unless this server allowed it (CORS), which it never does.
                 self._json(403, {"ok": False, "result": "missing X-Potluck-Request"})
                 return
             if not self._fair("read"):

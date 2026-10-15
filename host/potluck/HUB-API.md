@@ -160,7 +160,9 @@ Only on `--listen`. `POST /api/login {"name", "password"}` -> `{"ok": true, "nam
 (`potluck_session`, HttpOnly, Secure, SameSite=Strict, 12 hours, in the hub's memory: a restarted hub asks again), or
 `403` with the reason; five failures from one address in five minutes refuse it for a minute. Without a session every
 request but the page's own files, the login and `whoami` is `401`. Every POST must carry `X-Potluck-Request: 1`, which
-a page on another site cannot add, so it cannot write through a logged-in browser. `GET /api/whoami` ->
+a page on another site cannot add, so it cannot write through a logged-in browser -- on 127.0.0.1 too, where there is
+no login to protect it (since 2026-10-15); and 127.0.0.1 answers only a request whose `Host` is 127.0.0.1 or localhost
+(`403` otherwise), so a page elsewhere cannot reach it through a name of its own that resolves there. `GET /api/whoami` ->
 `{"api": 1, "login": true|false, "name", "right"}` -- `login: false` on 127.0.0.1; `name` and `right` are `null` when
 nobody is logged in. Passwords are kept as scrypt (N=2^17, r=8, p=1, a random salt each) in
 `%LOCALAPPDATA%/potluck/hub-users.json`. There is no deploy right to log in with.

@@ -56,7 +56,7 @@ class Recording(unittest.TestCase):
         def call(method, path, body=None):
             c = http.client.HTTPConnection(host, int(port), timeout=5)
             c.request(method, path, body=json.dumps(body) if body is not None else None,
-                      headers={"Content-Type": "application/json"})
+                      headers={"Content-Type": "application/json", "X-Potluck-Request": "1"})
             r = c.getresponse()
             out = (r.status, json.loads(r.read()))
             c.close()
