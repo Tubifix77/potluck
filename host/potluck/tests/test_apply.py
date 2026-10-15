@@ -98,6 +98,13 @@ class ClusterFile(unittest.TestCase):
             self.cluster(boards=[{"node": "0100"}, {"node": "0100"}])
         with self.assertRaisesRegex(ap.ApplyError, "unknown key"):
             self.cluster(colour="blue")
+        with self.assertRaisesRegex(ap.ApplyError, "room name"):
+            self.cluster(boards=[{"node": "0100", "room": ""}])
+
+    def test_a_board_may_name_its_room(self):
+        # M20: where a board lives, for people; `label` stays its identity
+        c = self.cluster(boards=[{"node": "0100", "label": "A", "room": "Living room"}, {"node": "0200", "label": "B"}])
+        self.assertEqual(c.rooms, {0x0100: "Living room"})
 
     def test_fragments_are_matched_by_label_renumbered_and_rehomed(self):
         c = self.cluster()

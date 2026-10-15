@@ -155,10 +155,13 @@ class Api(HubFixture):
     def test_an_outside_write_the_package_does_not_allow_is_refused(self) -> None:
         body = json.dumps({"path": "potluck://lab/node-1001/sys/uptime", "value": 1}).encode()
         req = urllib.request.Request(f"http://{self.api_addr}/api/write", data=body, method="POST",
-                                     headers={"Content-Type": "application/json"})
+                                     headers={"Content-Type": "application/json", "X-Potluck-Request": "1"})
         with self.assertRaises(urllib.error.HTTPError) as cm:
             urllib.request.urlopen(req, timeout=5)
         self.assertEqual(cm.exception.code, 403)
+        reason = json.loads(cm.exception.read())["result"]
+        cm.exception.close()
+        self.assertNotIn("X-Potluck-Request", reason)  # refused by the package, not for a missing header
 
     def test_the_stream_sends_the_model(self) -> None:
         with urllib.request.urlopen(f"http://{self.api_addr}/api/stream", timeout=5) as r:

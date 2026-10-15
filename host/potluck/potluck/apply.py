@@ -272,6 +272,8 @@ class Cluster:
     present: dict[str, Any] | None = None
     #: M18: resource path -> the programs that may write it through the hub; absent: any program with the write right.
     writers: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    #: M20: the room each board lives in (a board's `room`), shown by the dashboard -- not its identity, which is `label`.
+    rooms: dict[int, str] = field(default_factory=dict)
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -316,11 +318,17 @@ def load_cluster(path: str) -> Cluster:
             not system.isascii() or not system.isprintable():
         raise ApplyError("system: a cluster name is 1..31 printable ASCII characters, without spaces or '/'")
     boards = []
+    rooms: dict[int, str] = {}
     for i, bd in enumerate(doc.get("boards", [])):
         if not isinstance(bd, dict) or "node" not in bd:
             raise ApplyError(f"boards[{i}]: {{\"node\": \"<hex id>\", \"label\": \"...\"}}")
         nid = int(bd["node"], 16) if isinstance(bd["node"], str) else int(bd["node"])
         boards.append((nid, str(bd.get("label", f"node-{nid:04x}"))))
+        room = bd.get("room")  # M20: where the board lives, for people; its identity stays `label`
+        if room is not None:
+            if not isinstance(room, str) or not 1 <= len(room) <= 40 or not room.isprintable():
+                raise ApplyError(f"boards[{i}].room: a room name, 1..40 printable characters")
+            rooms[nid] = room
     if len({n for n, _ in boards}) != len(boards) or len({lab for _, lab in boards}) != len(boards):
         raise ApplyError("boards: a node id or a label appears twice")
     keys_raw = doc.get("keys", {})
@@ -438,6 +446,7 @@ def load_cluster(path: str) -> Cluster:
                  float(ver.get("timeout_s", 240)), list(ver.get("read", [])), outside, tuple(board_modules),
                  dict(present) if present else None)
     cl.writers = writers
+    cl.rooms = rooms
     return cl
 
 

@@ -319,7 +319,8 @@
       var since = b.state === "dead" ? ago(b.since_at, "dead for ") : b.state === "asleep" ? ago(b.since_at, "asleep for ") :
         b.state === "alive" ? ago(b.since_at, "up since ", " ago") : "never heard";
       h += '<div class="card board ' + (STATE_CLS[b.state] || "") + '" id="' + fid(b.node) + '"><h3>' + esc(b.label || "") +
-        " <code>" + esc(b.node) + "</code> " + sbadge(b.state) + (b.cabled ? " " + badge("cabled", "idle") : "") + "</h3>" +
+        " <code>" + esc(b.node) + "</code> " + sbadge(b.state) + (b.cabled ? " " + badge("cabled", "idle") : "") +
+        (b.room ? ' <span class="small muted">' + esc(b.room) + "</span>" : "") + "</h3>" +
         '<p class="small muted">' + since + (b.silent_ms ? ", silent " + dur(b.silent_ms) + " at the snapshot" : "") + "</p><dl>" +
         "<dt>Firmware</dt><dd><code>" + esc(fw.version) + "</code> #" + esc(fw.counter) + " " + sbadge(fw.state || "unknown") + "</dd>" +
         "<dt>Package</dt><dd>#" + esc(pk.counter) + " " + sbadge(pk.state || "unknown") +

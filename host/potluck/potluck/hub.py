@@ -420,6 +420,10 @@ class Model:
                     return lab
         return f"node-{node:04x}"
 
+    def room_of(self, node: int) -> str | None:
+        """M20: the room the cluster file puts this board in, or None."""
+        return getattr(self.cluster, "rooms", {}).get(node) if self.cluster is not None else None
+
     def resource_paths(self) -> list[str]:
         if self.package is None:
             return []
@@ -655,7 +659,8 @@ class Model:
 
     def _board_json(self, n: int, b: dict) -> dict:
         st = b.get("status")
-        out = {"node": f"{n:04x}", "label": self.label_of(n), "state": b["state"], "since_at": b["since_at"],
+        out = {"node": f"{n:04x}", "label": self.label_of(n), "room": self.room_of(n), "state": b["state"],
+               "since_at": b["since_at"],
                "silent_ms": int((time.monotonic() - b["last_ok"]) * 1000) if b.get("last_ok") else None,
                "rssi": None, "cabled": bool(b.get("cabled"))}
         if st is not None:
