@@ -72,10 +72,12 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > Assistant's broker tested from the PC, per resource hidden/visible/controllable); `"?"` outputs, `kMaxOutputs` 12,
 > `"peers": {"nearest": K}`, `per_room`. pot_sim `--scenario d20|perlink`. **passive-sensor's session** (the owner told it
 > to catch up and take the job) owns sensing only -- the map, pot_sim and hub_mock are Potluck's; its D20 (evidence at the
-> edge, a fusion per room) builds against `67f8f5d` and comes back as a commit to deploy. **Bench:** firmware `08d0f9c`
-> (counter 43), package 76 from `keys/desk-m14-hub.json` with passive-sensor `830f6ce`; board positions ROUGH (from the
-> owner's drawing, 13 m assumed; `keys/desk-m14-hub.json.pre-plan` is the file before); the hub resident on today's
-> code (`captures/hub-6.log`). **Owed by the owner:** drag the boards to their real places on the Plan tab and draw the
+> edge, a fusion per room) is DEPLOYED: **Bench:** firmware `000e187` (counters A 46, B 44, C 47 -- the console-rollout
+> tests; `apply` picks the next), package 77 from `keys/desk-m14-hub.json` with passive-sensor `b5dc141`, all three boards
+> in room "Room" (`rf_fusion_room` on A); board positions ROUGH (from the owner's drawing, 13 m assumed; `.pre-plan` and
+> `.pre-d20` beside the file are the versions before); the hub resident on today's code (`captures/hub-7.log`). A rollout
+> through a board's own cable at 115200 works (~150 s a board) but once failed on the board on the cable -- not reproduced;
+> run the next one with `POTLUCK_CONSOLE_TEXT` (+ `_SAFE=1` for B or C). **Owed by the owner:** drag the boards to their real places on the Plan tab and draw the
 > rooms; passive-sensor's PS-1 walk (~40 min); whether to push to GitHub (today's commits are local). Next for Potluck:
 > the packaged installer and tray icon, a firmware rollout through the console's 115200 baud, then M19.
 >
