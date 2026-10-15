@@ -5,6 +5,7 @@
 // frame is rejected rather than parsed; and the encoding round-trips exactly, including the awkward
 // inputs — all zeros, no zeros, and a run of exactly 254 non-zero bytes where COBS changes gear.
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -304,6 +305,84 @@ TEST(serial, the_frame_size_ceiling_matches_the_5_3_profile) {
     const size_t n = write_serial_frame(big.data(), big.size(), wire.data(), wire.size());
     CHECK(n > 0);
     CHECK(n <= kSerialFrameMax);
+}
+
+// ------------------------------------------------------------------------------------------
+// M20: the frame link sharing the console with text (ConsoleDemux).
+// ------------------------------------------------------------------------------------------
+namespace {
+
+std::string demux_text;
+std::vector<std::vector<uint8_t>> demux_frames;
+
+void demux_on_text(void*, const uint8_t* t, size_t n) { demux_text.append(reinterpret_cast<const char*>(t), n); }
+void demux_on_frame(void*, const uint8_t* f, size_t n) { demux_frames.emplace_back(f, f + n); }
+
+// A frame as a sender on the console writes it: 0x00, then the frame (which ends in its own 0x00).
+std::vector<uint8_t> console_wire(const std::vector<uint8_t>& payload) {
+    std::vector<uint8_t> wire(kSerialFrameMax + 1);
+    wire[0] = 0;
+    const size_t n = write_serial_frame(payload.data(), payload.size(), wire.data() + 1, wire.size() - 1);
+    wire.resize(n + 1);
+    return wire;
+}
+
+void demux_feed(ConsoleDemux& d, const std::vector<uint8_t>& bytes, size_t step) {
+    for (size_t i = 0; i < bytes.size(); i += step) {
+        d.feed(bytes.data() + i, std::min(step, bytes.size() - i), demux_on_frame, demux_on_text, nullptr);
+    }
+}
+
+}  // namespace
+
+TEST(serial, console_demux_separates_logs_typed_lines_and_frames_at_any_read_size) {
+    const std::vector<uint8_t> f1{1, 0, 2, '\n', 0, 0, 3}, f2(300, 0x0A);  // zeros and newlines inside frames
+    std::vector<uint8_t> in;
+    const std::string a = "I (120) pot: booted\r\n", b = "POT! identify 20\n";
+    in.insert(in.end(), a.begin(), a.end());
+    const auto w1 = console_wire(f1);
+    in.insert(in.end(), w1.begin(), w1.end());
+    in.insert(in.end(), b.begin(), b.end());
+    const auto w2 = console_wire(f2);
+    in.insert(in.end(), w2.begin(), w2.end());
+    in.insert(in.end(), w1.begin(), w1.end());  // back to back
+    for (size_t step : {size_t{1}, size_t{7}, size_t{64}, in.size()}) {
+        ConsoleDemux d;
+        demux_text.clear();
+        demux_frames.clear();
+        demux_feed(d, in, step);
+        CHECK(demux_text == a + b);
+        CHECK_EQ(demux_frames.size(), size_t{3});
+        CHECK(demux_frames[0] == f1 && demux_frames[1] == f2 && demux_frames[2] == f1);
+        CHECK_EQ(d.stats().bad_chunks, 0u);
+        CHECK(!d.in_frame());
+    }
+}
+
+TEST(serial, console_demux_hands_a_broken_chunk_back_as_text_and_resyncs) {
+    const std::vector<uint8_t> f{9, 8, 7};
+    auto w = console_wire(f);
+    std::vector<uint8_t> in(w.begin() + 1, w.end());  // the opening zero lost: its closing zero opens instead
+    const std::string typed = "POT! x\n";
+    in.insert(in.end(), typed.begin(), typed.end());  // ...so this is captured as a chunk
+    in.insert(in.end(), w.begin(), w.end());           // and the next frame's opening zero closes it
+    in.insert(in.end(), w.begin(), w.end());
+    ConsoleDemux d;
+    demux_text.clear();
+    demux_frames.clear();
+    demux_feed(d, in, 5);
+    CHECK_EQ(d.stats().bad_chunks, 1u);
+    CHECK(demux_text.find("POT! x\n") != std::string::npos);  // not lost: handed back as text
+    CHECK_EQ(demux_frames.size(), size_t{1});                   // one frame lost to the resync, the next one whole
+    CHECK(demux_frames[0] == f);
+    // A text line far longer than any frame never wedges the demux.
+    ConsoleDemux d2;
+    std::vector<uint8_t> junk(1, 0);
+    junk.insert(junk.end(), kSerialFrameMax + 50, 'x');
+    junk.push_back(0);
+    demux_feed(d2, junk, 64);
+    CHECK_EQ(d2.stats().too_long, 1u);
+    CHECK(!d2.in_frame());
 }
 
 // ------------------------------------------------------------------------------------------

@@ -9,15 +9,19 @@
 // special case in the code.
 //
 // ---------------------------------------------------------------------------------------------
-// WHY A SEPARATE UART, NOT THE CONSOLE
+// TWO UARTS: AN ADAPTER'S, AND THE CONSOLE (M20)
 // ---------------------------------------------------------------------------------------------
 // The console carries human-readable logs and the statistics stream, and ESP-IDF's logging writes
-// to it from any task at any time. Interleaving binary frames with that would corrupt both. So the
-// frame link gets its own UART, and the console keeps doing what it does — which also means a
-// bridge and a human can watch the same node at once.
+// to it from any task at any time, so until M20 the frame link had a UART of its own: UART1 on two
+// spare GPIOs, reached with a USB-serial adapter (M0-RUNBOOK.md says which pins).
 //
-// On the ESP32-S3-DevKitC-1 the console is UART0 on the "UART" USB-C port. UART1 on two spare GPIOs
-// is the frame link, reachable with any USB-serial adapter. M0-RUNBOOK.md says which pins.
+// M20 carries frames on the console too -- the board's own USB cable, no adapter. Text never holds a
+// 0x00 and a COBS frame holds none inside, so a frame written as 0x00, frame, 0x00 in one driver call
+// (printf goes through the same driver, which serialises writers) stays separable from the logs, and
+// typed `POT! ...` lines from frames (pot::ConsoleDemux). Replies go to the UART the host was last
+// heard on.
+//
+// On the ESP32-S3-DevKitC-1 the console is UART0 on the "UART" USB-C port.
 
 #pragma once
 
@@ -66,5 +70,12 @@ struct SerialPortStats {
     uint32_t rx_queue_dropped;  // ours, not the link's — never folded into a link figure
 };
 SerialPortStats serial_port_stats();
+
+// M20: the frame link on the console UART as well. The console task owns that UART's driver and reads it;
+// it calls attach once, then hands every byte it reads to feed, which passes text on to `on_text` (the
+// console's line reader) and frames to the same queue serial_port_rx_pop serves.
+bool serial_console_attach(int uart_num);
+void serial_console_feed(const uint8_t* data, size_t len, ConsoleDemux::TextFn on_text, void* text_ctx);
+ConsoleDemux::Stats serial_console_stats();
 
 }  // namespace pot

@@ -401,7 +401,7 @@ paths are relative to the file):
 |---|---|
 | `system` | the cluster's name (section 6) |
 | `port` | the serial port of the PC's adapter, wired to one of the boards (`--port` overrides it) |
-| `boards` | every board: its node id in hex (the last two bytes of its MAC) and a label |
+| `boards` | every board: its node id in hex and a label (and optionally a `room`); the id is the one its certificate names -- the last two bytes of its MAC unless the cell assigned another at enrolment (`potluck.enrol --node-id`, or the next free one when two boards share one) |
 | `keys` | the owner's CA certificate and deploy key ([GETTING-STARTED.md](GETTING-STARTED.md) makes them) |
 | `firmware` | Potluck at a commit (`potluck`), its optional board modules by name (`modules`: `sandbox`; `wifi` -- Potluck's own Wi-Fi station, which puts the board on the house network, the owner giving it the network with `tools/wifi_set.py <port> <file>`; `present` -- the cell presenting itself to an MQTT broker; `pocket` -- the board's own access point and a read-only page for a phone in reach (M0-RUNBOOK section 16); each one costs flash and RAM, and some open the cell to the outside, so none is in an image unless named -- `"extra": ["CONFIG_POT_WASM=y"]` still means `sandbox`), extra Kconfig lines (`extra`), and `extender` if a board should be a Wi-Fi extender: `{"git": ..., "rev": ..., "components": "firmware/components"}`, like an app. Every board gets the same image; a board becomes an extender only if it holds Wi-Fi credentials, the others are ordinary members. Or `{"image": ..., "elf": ...}` for a build made elsewhere, or `null` to leave the firmware alone |
 | `apps` | each app: `git` (a local repository or a URL), `rev` (a commit or a tag), `components` (built into the firmware; every `potluck-modules.json` under it is loaded), `manifests` (its fragments) |
@@ -464,7 +464,8 @@ board rebooting, the guest's count carrying on; a fresh firmware build adds abou
 ### On your own boards
 
 The commands in this manual use an example cell; nothing in Potluck is about three boards: list as many as you
-have. A board's id is the last two bytes of its MAC; the board on the cable is the one your USB-serial adapter
+have. A board's id is the one its certificate names -- by default the last two bytes of its MAC, but the cell may
+assign another at enrolment, so an app takes ids from the runtime, never from a MAC; the board on the cable is the one your USB-serial adapter
 is wired to. On boards you just flashed, both counters start at 0 -- `apply` takes them from there. Your images
 contain only what the cluster file builds in: an image without an app's component removes that app from the
 boards it lands on (the package that names its actors is then refused there, and the board runs on without

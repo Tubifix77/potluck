@@ -138,4 +138,37 @@ class SerialReassembler {
     Stats stats_{};
 };
 
+// M20: the frame link sharing the console UART with text -- ESP-IDF's logs one way, typed `POT! ...` lines the
+// other. A sender writes every frame as 0x00, the COBS frame, 0x00 in one driver call; text never holds a 0x00. So
+// outside a frame bytes are text and go to `on_text` at once (the console's line reader keeps working), a 0x00
+// opens a frame and the next closes it. A closed chunk that is not a good frame is handed to `on_text` after all,
+// followed by a newline, so a lost byte costs a line, never the console. An empty chunk (two zeros) means the
+// stream had lost sync -- the zero just seen was a frame's opening one -- so the demux stays in the frame.
+class ConsoleDemux {
+  public:
+    using FrameFn = SerialReassembler::FrameFn;
+    using TextFn = void (*)(void* ctx, const uint8_t* text, size_t len);
+
+    void reset();
+    void feed(const uint8_t* data, size_t len, FrameFn on_frame, TextFn on_text, void* ctx);
+
+    struct Stats {
+        uint32_t frames_ok;
+        uint32_t bad_chunks;  // closed chunks that were no frame: handed back as text
+        uint32_t too_long;
+        uint32_t resyncs;     // empty chunks
+        uint32_t text_bytes;
+    };
+    const Stats& stats() const { return stats_; }
+    bool in_frame() const { return in_frame_; }
+
+  private:
+    uint8_t chunk_[kSerialFrameMax];
+    uint8_t frame_[kEspNowV2LinkMtu + kCrcBytes];
+    size_t n_ = 0;
+    bool in_frame_ = false;
+    bool overflow_ = false;
+    Stats stats_{};
+};
+
 }  // namespace pot

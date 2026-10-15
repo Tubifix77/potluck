@@ -55,20 +55,31 @@ EXT_RAM_BSS_ATTR SerialRxSlot g_scratch;
 StaticTask_t g_reader_tcb;
 StackType_t g_reader_stack[3072 / sizeof(StackType_t)];
 
+// M20: the frame link on the console UART beside the logs (ConsoleDemux). Which UART the host was last heard
+// on is where replies go: the dedicated one (an adapter on GPIO17/18) or the console (the board's own USB cable).
+EXT_RAM_BSS_ATTR ConsoleDemux g_console_demux;
+int g_console_uart = -1;
+bool g_host_on_console = false;
+bool ensure_queue();
+
 // Called by the reassembler for each good frame.
-void on_frame(void* /*ctx*/, const uint8_t* frame, size_t len) {
-    if (len == 0 || len > sizeof(g_scratch.data)) {
+void on_frame(void* ctx, const uint8_t* frame, size_t len) {
+    g_host_on_console = ctx != nullptr;  // the console's demux passes a non-null ctx
+    // Two tasks call this (the dedicated UART's reader and the console's): each has its own scratch slot.
+    EXT_RAM_BSS_ATTR static SerialRxSlot console_scratch;
+    SerialRxSlot& slot = ctx != nullptr ? console_scratch : g_scratch;
+    if (len == 0 || len > sizeof(slot.data)) {
         return;
     }
-    g_scratch.recv_us = static_cast<uint32_t>(esp_timer_get_time());
-    g_scratch.len = static_cast<uint16_t>(len);
-    g_scratch.reserved0 = 0;
-    std::memcpy(g_scratch.data, frame, len);
+    slot.recv_us = static_cast<uint32_t>(esp_timer_get_time());
+    slot.len = static_cast<uint16_t>(len);
+    slot.reserved0 = 0;
+    std::memcpy(slot.data, frame, len);
 
     // Zero timeout, for the same reason the ESP-NOW callback uses one: blocking here would stall
     // the reader and let the UART's own buffer overflow, turning a full queue into lost bytes
     // rather than a lost frame. A dropped frame is counted; lost bytes desynchronise the stream.
-    if (xQueueSend(g_rx_queue, &g_scratch, 0) != pdTRUE) {
+    if (xQueueSend(g_rx_queue, &slot, 0) != pdTRUE) {
         ++g_stats.rx_queue_dropped;
     }
 }
@@ -80,7 +91,7 @@ void reader_task(void*) {
     for (;;) {
         const int n = uart_read_bytes(static_cast<uart_port_t>(g_cfg.uart_num), buf, sizeof(buf), pdMS_TO_TICKS(50));
         if (n > 0) {
-            g_reassembler.feed(buf, static_cast<size_t>(n), &on_frame, nullptr);
+            g_reassembler.feed(buf, static_cast<size_t>(n), &on_frame, nullptr);  // null ctx: the dedicated UART
             g_stats.framing = g_reassembler.stats();
         }
     }
@@ -120,14 +131,11 @@ bool serial_port_start(const SerialPortConfig& cfg) {
         return false;
     }
 
-    g_rx_queue = xQueueCreateStatic(kSerialRxSlots, sizeof(SerialRxSlot), g_rx_storage, &g_rx_ctrl);
-    if (g_rx_queue == nullptr) {
-        ESP_LOGW(kTag, "could not create the serial rx queue");
+    if (!ensure_queue()) {
         return false;
     }
 
     g_reassembler.reset();
-    g_stats = SerialPortStats{};
     g_running = true;
 
     // Priority 5: below the link task, so frame handling still wins, and above the stats task, so a
@@ -141,23 +149,75 @@ bool serial_port_start(const SerialPortConfig& cfg) {
     return true;
 }
 
-bool serial_port_running() { return g_running; }
+namespace {
+bool ensure_queue() {
+    if (g_rx_queue != nullptr) {
+        return true;
+    }
+    g_rx_queue = xQueueCreateStatic(kSerialRxSlots, sizeof(SerialRxSlot), g_rx_storage, &g_rx_ctrl);
+    if (g_rx_queue == nullptr) {
+        ESP_LOGW(kTag, "could not create the serial rx queue");
+        return false;
+    }
+    g_stats = SerialPortStats{};
+    return true;
+}
+}  // namespace
+
+bool serial_console_attach(int uart_num) {
+    if (!ensure_queue()) {
+        return false;
+    }
+    g_console_demux.reset();
+    g_console_uart = uart_num;
+    ESP_LOGI(kTag, "frame link also on the console, UART%d, beside the logs", uart_num);
+    return true;
+}
+
+void serial_console_feed(const uint8_t* data, size_t len, ConsoleDemux::TextFn on_text, void* text_ctx) {
+    if (g_console_uart < 0) {
+        if (on_text != nullptr) on_text(text_ctx, data, len);
+        return;
+    }
+    // The frame callback's ctx marks the console; on_text gets the caller's own.
+    struct Both {
+        ConsoleDemux::TextFn text;
+        void* ctx;
+    } both{on_text, text_ctx};
+    g_console_demux.feed(
+        data, len, &on_frame,
+        [](void* c, const uint8_t* t, size_t n) {
+            auto* b = static_cast<Both*>(c);
+            if (b->text != nullptr) b->text(b->ctx, t, n);
+        },
+        &both);
+}
+
+ConsoleDemux::Stats serial_console_stats() { return g_console_demux.stats(); }
+
+bool serial_port_running() { return g_running || g_console_uart >= 0; }
 
 int32_t serial_port_send(const uint8_t* frame, size_t len) {
-    if (!g_running) {
+    const bool console = g_console_uart >= 0 && (g_host_on_console || !g_running);
+    if (!g_running && !console) {
         return -1;
     }
-    // Framed on the stack: kSerialFrameMax is ~1.5 KB and the link task's stack is 4 KB. A static
-    // buffer would be shared with the reader task and need a lock for no benefit, since only the
-    // link task sends.
-    EXT_RAM_BSS_ATTR static uint8_t wire[kSerialFrameMax];
-    const size_t n = write_serial_frame(frame, len, wire, sizeof(wire));
+    // Framed in PSRAM: kSerialFrameMax is ~1.5 KB. Only the link task sends, so one buffer needs no lock.
+    // wire[0] is the console's opening zero (ConsoleDemux); the dedicated UART is sent from wire + 1, as before.
+    EXT_RAM_BSS_ATTR static uint8_t wire[kSerialFrameMax + 1];
+    wire[0] = kSerialDelimiter;
+    const size_t n = write_serial_frame(frame, len, wire + 1, sizeof(wire) - 1);
     if (n == 0) {
         ++g_stats.tx_errors;
         return -2;
     }
-    const int written = uart_write_bytes(static_cast<uart_port_t>(g_cfg.uart_num), wire, n);
-    if (written != static_cast<int>(n)) {
+    // One driver call, so neither a log line nor anything else lands inside the frame: printf goes through the
+    // same driver once the console has called uart_vfs_dev_use_driver, and the driver serialises its writers.
+    const int uart = console ? g_console_uart : g_cfg.uart_num;
+    const uint8_t* out = console ? wire : wire + 1;
+    const size_t out_n = console ? n + 1 : n;
+    const int written = uart_write_bytes(static_cast<uart_port_t>(uart), out, out_n);
+    if (written != static_cast<int>(out_n)) {
         ++g_stats.tx_errors;
         return -3;
     }

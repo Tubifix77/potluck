@@ -2859,24 +2859,43 @@ void console_task(void*) {
         for (;;) serve_jobs(portMAX_DELAY);  // still the crypto worker: the node depends on it
     }
     uart_vfs_dev_use_driver(uart);  // printf now goes through the same driver, so the two never race
-    static char line[400];
-    size_t n = 0;
-    bool overflow = false;
+    // The text the console reads, a line at a time; with M20's frame link on this UART, only what is not a frame.
+    struct Lines {
+        char line[400];
+        size_t n;
+        bool overflow;
+    };
+    static Lines lines{};
+    auto on_text = [](void* ctx, const uint8_t* t, size_t len) {
+        auto* l = static_cast<Lines*>(ctx);
+        for (size_t i = 0; i < len; ++i) {
+            const uint8_t c = t[i];
+            if (c == '\n') {
+                if (!l->overflow) handle(l->line, l->n);
+                std::memset(l->line, 0, l->n);  // M6.1: a line may have carried a Wi-Fi password; keep no copy
+                l->n = 0;
+                l->overflow = false;
+            } else if (l->n < sizeof(l->line)) {
+                l->line[l->n++] = static_cast<char>(c);
+            } else {
+                l->overflow = true;  // longer than any command: drop the whole line, never a prefix of it
+            }
+        }
+    };
+#if CONFIG_POT_SERIAL_LINK
+    serial_console_attach(uart);  // M20: frames over the board's own USB cable, beside the logs
+#endif
+    static uint8_t buf[64];
     for (;;) {
-        uint8_t c = 0;
         serve_jobs(0);
         // 10 ms, so a queued crypto job waits at most that long behind an idle console.
-        if (uart_read_bytes(static_cast<uart_port_t>(uart), &c, 1, pdMS_TO_TICKS(10)) != 1) continue;
-        if (c == '\n') {
-            if (!overflow) handle(line, n);
-            std::memset(line, 0, n);  // M6.1: a line may have carried a Wi-Fi password; keep no copy
-            n = 0;
-            overflow = false;
-        } else if (n < sizeof(line)) {
-            line[n++] = static_cast<char>(c);
-        } else {
-            overflow = true;  // longer than any command: drop the whole line, never a prefix of it
-        }
+        const int got = uart_read_bytes(static_cast<uart_port_t>(uart), buf, sizeof(buf), pdMS_TO_TICKS(10));
+        if (got <= 0) continue;
+#if CONFIG_POT_SERIAL_LINK
+        serial_console_feed(buf, static_cast<size_t>(got), on_text, &lines);
+#else
+        on_text(&lines, buf, static_cast<size_t>(got));
+#endif
     }
 }
 

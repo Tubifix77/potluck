@@ -227,4 +227,73 @@ void SerialReassembler::feed(const uint8_t* data, size_t len, FrameFn on_frame, 
     }
 }
 
+void ConsoleDemux::reset() {
+    n_ = 0;
+    in_frame_ = false;
+    overflow_ = false;
+    stats_ = Stats{};
+}
+
+void ConsoleDemux::feed(const uint8_t* data, size_t len, FrameFn on_frame, TextFn on_text, void* ctx) {
+    if (data == nullptr) {
+        return;
+    }
+    size_t text_from = 0;  // the start of the run of text bytes in `data` not yet handed on
+    for (size_t i = 0; i < len; ++i) {
+        const uint8_t b = data[i];
+        if (!in_frame_) {
+            if (b != kSerialDelimiter) {
+                continue;  // text: handed on as a run below
+            }
+            if (i > text_from && on_text != nullptr) {
+                on_text(ctx, data + text_from, i - text_from);
+                stats_.text_bytes += static_cast<uint32_t>(i - text_from);
+            }
+            in_frame_ = true;
+            n_ = 0;
+            overflow_ = false;
+            continue;
+        }
+        if (b != kSerialDelimiter) {
+            if (n_ < sizeof(chunk_)) {
+                chunk_[n_++] = b;
+            } else {
+                overflow_ = true;
+            }
+            text_from = i + 1;
+            continue;
+        }
+        // The closing zero.
+        if (n_ == 0 && !overflow_) {
+            ++stats_.resyncs;  // two zeros: this one opens the frame
+            text_from = i + 1;
+            continue;
+        }
+        size_t got = 0;
+        if (overflow_) {
+            ++stats_.too_long;
+        } else if (read_serial_frame(chunk_, n_, frame_, sizeof(frame_), got) == SerialError::Ok) {
+            ++stats_.frames_ok;
+            if (on_frame != nullptr) {
+                on_frame(ctx, frame_, got);
+            }
+        } else {
+            ++stats_.bad_chunks;
+            if (on_text != nullptr) {
+                static const uint8_t kNewline = '\n';
+                on_text(ctx, chunk_, n_);
+                on_text(ctx, &kNewline, 1);
+            }
+        }
+        in_frame_ = false;
+        n_ = 0;
+        overflow_ = false;
+        text_from = i + 1;
+    }
+    if (!in_frame_ && len > text_from && on_text != nullptr) {
+        on_text(ctx, data + text_from, len - text_from);
+        stats_.text_bytes += static_cast<uint32_t>(len - text_from);
+    }
+}
+
 }  // namespace pot
