@@ -5783,3 +5783,17 @@ that had already passed, MAC-derived node ids that collide -- all adopted into s
 dropped from 40 entries to **31** -- its eight link replicas from the minutes it held rf_fusion and a peer's built-in
 gone -- exactly the plan's prediction for B. C stays at 40 because it runs rf_fusion and still reads the eight link
 values (in use, so kept); A holds 33 (plan 32).
+
+**M20 planned: Potluck for everyone** (the owner, 2026-10-15: "more like the Google Home app"; both a Steam-like store
+and built-in apps, built-ins first; the hybrid -- one engine, the friendly layer inside Potluck and optional, the bundle
+a release artifact built from the two private app repositories). Three research agents (onboarding: Matter, Google
+Home, Espressif provisioning, ESP Web Tools, Improv; catalogs: HACS, Home Assistant apps, GitHub topics, Sigstore and
+attestations; position from radio links: RTI needs 28-34 nodes, four links picked among four trained spots), quotes
+spot-checked against raw text, registered (ledger "M20 research"). The owner added integrations as library entries
+(Home Assistant as the gateway many apps will use). External review: fifteen findings, fourteen adopted, one corrected
+(a developer reaches the built-ins through the cluster file with the release image as prebuilt firmware, so private
+repositories do not make it a fork) -- enrolment stays by cable (ADR-007), the CA key on the hub's PC encrypted at rest
+(sections 9.3 and 9.4 amended in place), the frame link over the board's own USB, a packaged hub. **Fixed now, from the
+review:** the hub's own address (127.0.0.1, no login) accepted a POST from any web page and any Host -- a page elsewhere
+could have approved a pairing; every POST there needs X-Potluck-Request and the Host must be 127.0.0.1 or localhost
+(`c9a4065`, hub restarted).
