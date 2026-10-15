@@ -660,6 +660,8 @@
         S.who = w;
         $("who").hidden = false;
         $("who-text").textContent = w.name + " (" + (w.right === "write" ? "look and write" : "look only") + ")";
+      } else if (w.api) {
+        $("add-boards").hidden = false;  // M20: the setup wizard lives on the PC's own address only
       }
       start();  // a hub before M16 has no api/whoami: the page runs as before
     });

@@ -31,6 +31,9 @@ from pathlib import Path
 from typing import Callable
 
 #: USB ids of serial chips seen on ESP32-S3 boards; the rest of the candidates are asked all the same.
+#: One cell's boards: ESP-NOW's peer table holds 20 (ESP_NOW_MAX_TOTAL_PEER_NUM, esp_now.h; ledger) -- 19 other
+#: boards and the PC's placement node. Past it is M19's cells of cells.
+MAX_BOARDS = 20
 KNOWN = {(0x1A86, 0x55D3): "CH343", (0x10C4, 0xEA60): "CP2102", (0x303A, None): "ESP32-S3 USB"}
 NEED_FLASH_MB = 16
 
@@ -226,6 +229,28 @@ def set_wifi(port: str, ssid: str, password: str, opener: Callable | None = None
     if d.get("result") != "sta_saved":
         raise SetupError(f"the board did not save it ({d.get('result')})")
     return True  # it takes effect at the board's next boot
+
+
+def reset(port: str, opener: Callable | None = None) -> dict:
+    """Restart the board, as esptool's hard reset does (RTS pulls EN low, DTR stays off so it boots its firmware):
+    an enrolment under a new id and a saved Wi-Fi take effect at the next boot."""
+    if opener is None:
+        import serial
+
+        def opener(p):
+            s = serial.Serial()
+            s.port, s.baudrate = p, 115200
+            s.dtr = s.rts = False
+            s.open()
+            return s
+    s = opener(port)
+    try:
+        s.rts = True
+        time.sleep(0.1)
+        s.rts = False
+    finally:
+        s.close()
+    return {"reset": port}
 
 
 def enrol_board(port: str, ca_key: str, registry: str, node_id: int | None = None) -> dict:

@@ -994,6 +994,8 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                         return
                     parts = st.flash_parts(build)
                     jid = jobs.start("flash", port, lambda pct: st.flash(port, parts, pct) or {"flashed": str(build)})
+                elif path == "/api/setup/reset":
+                    jid = jobs.start("reset", port, lambda pct: st.reset(port))
                 elif path == "/api/setup/wifi":
                     ssid, pw = str(req["ssid"]), str(req["password"])
                     jid = jobs.start("wifi", port, lambda pct: {"saved": st.set_wifi(port, ssid, pw)})
@@ -1079,6 +1081,13 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                         self._json(200, {"version": v, "build": str(st.cell_build(v))})
                     except st.SetupError as exc:
                         self._json(409, {"ok": False, "version": v, "result": str(exc)})
+                elif path == "/api/setup/cell":
+                    cl, keys = getattr(model, "cluster", None), cell_keys()
+                    self._json(200, {"system": cl.system if cl is not None else None,
+                                     "boards": [{"node": f"{n:04x}", "label": lab, "room": model.room_of(n)}
+                                                for n, lab in (cl.boards if cl is not None else [])],
+                                     "max_boards": st.MAX_BOARDS,
+                                     "vault": bool(keys) and (Path(keys[0]).parent / "vault.json").exists()})
                 elif path == "/api/setup/jobs":
                     self._json(200, {"jobs": setup_jobs().all()})
                 elif path.startswith("/api/setup/jobs/"):

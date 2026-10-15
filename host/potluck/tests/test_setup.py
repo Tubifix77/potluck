@@ -134,6 +134,20 @@ class Console(unittest.TestCase):
         with self.assertRaises(st.SetupError):
             st.set_wifi("COM5", "x", "short", opener=lambda p: fw)
 
+    def test_a_reset_pulses_rts_and_leaves_dtr_alone(self):
+        seen = []
+
+        class Pins:
+            dtr = False
+
+            def __setattr__(self, k, v):
+                seen.append((k, v))
+
+            def close(self):
+                seen.append("closed")
+        st.reset("COM5", opener=lambda p: Pins())
+        self.assertEqual(seen, [("rts", True), ("rts", False), "closed"])
+
 
 class ClusterFile(unittest.TestCase):
     def setUp(self):

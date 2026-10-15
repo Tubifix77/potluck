@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Add boards</title>
+<link rel="stylesheet" href="style.css">
+<script src="setup.js" defer></script>
+</head>
+<body>
+<!--
+  M20's setup wizard, "Add boards" (ARCHITECTURE section 13, M20). Served by the hub; its API (/api/setup/*) exists
+  only on the PC's own address, so on a phone this page says so and does nothing.
+
+  Landmarks (tests/test_dashboard.py checks them; keep them):
+    #steps        the step list; each step a <section class="step" data-step="...">
+    #s-count #s-plug #s-install #s-join #s-rooms #s-done
+    #boards       the new boards, one card each (.nb[data-port])
+-->
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true"></span><span>Potluck</span>
+    <span id="cell-name" class="muted"></span></div>
+  <a href="./" class="small">Back to the dashboard</a>
+</header>
+
+<main class="wizard">
+  <p id="w-msg" class="banner" role="alert" hidden></p>
+  <ol id="steps" class="steps">
+    <li data-for="s-count">How many</li><li data-for="s-plug">Plug in</li><li data-for="s-install">Install</li>
+    <li data-for="s-join">Join the cell</li><li data-for="s-rooms">Rooms</li><li data-for="s-done">Done</li>
+  </ol>
+
+  <section id="s-count" class="step" data-step="count">
+    <h2>Add boards to <span class="cell"></span></h2>
+    <p>The cell has <b id="n-now">0</b> board(s). New boards get exactly what the others run: the same firmware, the
+      same keys, the same apps.</p>
+    <label>How many are you adding? <input id="n-add" type="number" min="1" value="1" inputmode="numeric"></label>
+    <p id="n-over" class="note warn" hidden></p>
+    <p class="calm">You can always add more later.</p>
+    <button id="go-plug" type="button">Next</button>
+  </section>
+
+  <section id="s-plug" class="step" data-step="plug" hidden>
+    <h2>Plug in the new boards</h2>
+    <p>Plug each new board into this PC with a USB cable. Each one shows up below, and Potluck checks what it is.</p>
+    <p id="plug-count" class="small muted" aria-live="polite"></p>
+    <div id="boards" class="nbs" aria-live="polite"></div>
+    <details id="old-ports" class="small" hidden>
+      <summary>Already plugged in when this page opened (<span id="n-old">0</span>), not touched</summary>
+      <p class="muted">Checking a board restarts it, so these are left alone. If one of them is new, say so.</p>
+      <ul id="old-list"></ul>
+    </details>
+    <button id="go-install" type="button" disabled>Next</button>
+  </section>
+
+  <section id="s-install" class="step" data-step="install" hidden>
+    <h2>Install Potluck</h2>
+    <p id="fw-what">Finding the cell's firmware...</p>
+    <button id="do-install" type="button" disabled>Install on the new boards</button>
+  </section>
+
+  <section id="s-join" class="step" data-step="join" hidden>
+    <h2>Join the cell</h2>
+    <p>Each board gets its own key, signed by the cell, and a place in the cell's file.</p>
+    <label id="pp-row" hidden>Your passphrase <input id="pp" type="password" autocomplete="current-password"></label>
+    <details class="small">
+      <summary>Boards that connect to the house Wi-Fi (only a board that presents or extends needs it)</summary>
+      <p class="muted">Sent to the board over its cable and kept only there. Leave empty to skip.</p>
+      <label>Network <input id="wifi-ssid" autocomplete="off"></label>
+      <label>Password <input id="wifi-pw" type="password" autocomplete="off"></label>
+    </details>
+    <button id="do-join" type="button">Join</button>
+  </section>
+
+  <section id="s-rooms" class="step" data-step="rooms" hidden>
+    <h2>Where does each board live?</h2>
+    <p>Press <b>Show me</b>: that board's light blinks blue. Then say which room it is in.</p>
+    <div id="rooms" class="nbs"></div>
+    <p class="calm">A room is only a name for you; you can change it later.</p>
+    <button id="go-done" type="button">Next</button>
+  </section>
+
+  <section id="s-done" class="step" data-step="done" hidden>
+    <h2>Bring them into the cell</h2>
+    <p>The cell sends the new boards its apps and checks that every board runs them.</p>
+    <button id="do-apply" type="button">Bring them in</button>
+    <pre id="apply-out" class="out" hidden></pre>
+    <p id="done-msg" class="note ok" hidden></p>
+  </section>
+</main>
+</body>
+</html>

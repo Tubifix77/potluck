@@ -338,11 +338,23 @@ class PageTest(unittest.TestCase):
         # nothing from the network: every script and stylesheet is a file next to the page
         self.assertTrue(all(r and "//" not in r for r in p.refs), p.refs)
 
+    def test_the_setup_wizard_has_its_steps_and_speaks_only_to_api_setup(self):
+        p = _Ids()
+        p.feed(self.read("setup.html"))
+        want = {"steps", "s-count", "s-plug", "s-install", "s-join", "s-rooms", "s-done", "boards"}
+        self.assertTrue(want <= p.ids, want - p.ids)
+        self.assertTrue(all(r and "//" not in r for r in p.refs), p.refs)
+        js = self.read("setup.js")
+        self.assertEqual({u.split("/")[1] for u in re.findall(r'"(api/[a-z/]+)', js)}, {"setup"})
+        self.assertNotIn("localStorage", js)  # the passphrase and Wi-Fi password are never kept by the page
+        self.assertIn("calm", self.read("setup.html"))  # "you can always add more later" (M20)
+
     def test_page_uses_only_the_contract_and_never_deploys(self):
         js = self.read("app.js")
         self.assertEqual(set(re.findall(r'"(api/[a-z]+)', js)), {"api/stream", "api/model", "api/events", "api/write",
                                                                   "api/whoami", "api/login", "api/logout",
-                                                                  "api/replay", "api/pairing"})  # M16, M17
+                                                                  "api/replay", "api/pairing",  # M16, M17
+                                                              "api/integrations"})  # M18's Forget
         self.assertNotIn("http://", js)
         self.assertNotIn("https://", js)
         self.assertNotRegex(js + self.read("index.html"), r"api/deploy|potluck\.apply")

@@ -254,3 +254,28 @@ A writable resource may name the programs that may write it, in the cluster file
 program gets `403 {"ok": false, "result": "not writable by this program"}`; the owner on the PC (127.0.0.1) always
 may. The cell's own presenter (M13) writes over MQTT, which the boards cannot tell from the hub's writes, so a writers
 list is the hub's rule, not the boards'.
+
+## The setup wizard (M20): /api/setup/*
+
+The owner's actions on boards plugged into the PC, served **only on 127.0.0.1** (on `--listen` every one is 404) and,
+like every POST there, only with `X-Potluck-Request` and a `Host` of 127.0.0.1, localhost or ::1. The page is
+`setup.html` ("Add boards" on the dashboard). Board actions are jobs: a POST answers `202 {"ok": true, "job": <id>}`
+and `GET /api/setup/jobs/<id>` follows it -- `{"id", "kind", "port", "state": "running" | "done" | "failed", "pct",
+"result", "error", "lines"}`; one job at a time per port (else 409). `GET /api/setup/jobs` lists them.
+
+| call | what |
+|---|---|
+| `GET /api/setup/cell` | `{"system", "boards": [{"node", "label", "room"}], "max_boards": 20, "vault": <keys sealed>}` |
+| `GET /api/setup/ports` | USB serial ports, `[{"port", "vid", "pid", "chip", "description"}]`, without the hub's own |
+| `GET /api/setup/build` | `{"version", "build"}`: the firmware most boards run and its build on this PC (409 if none) |
+| `POST /api/setup/probe {"port"}` | job: chip, flash, PSRAM, MAC, and whether it can run Potluck -- **restarts the board** |
+| `POST /api/setup/flash {"port", "build"}` | job: writes that build (only one under the hub's build cache; else 403) |
+| `POST /api/setup/enrol {"port", "passphrase"?}` | job: a key signed by the cell's CA and a node id from its registry; `result.node` |
+| `POST /api/setup/wifi {"port", "ssid", "password"}` | job: the house Wi-Fi into the board (kept only there; never logged) |
+| `POST /api/setup/reset {"port"}` | job: restarts the board (a new id and a saved Wi-Fi take effect then) |
+| `POST /api/setup/identify {"port", "seconds"?}` | job: the board's light blinks blue (default 20 s, at most 300) |
+| `POST /api/setup/board {"node", "label"?, "room"?}` | adds the board to the cluster file or sets its room (`""` clears it); the file's previous version is kept as `<file>.bak`, and a change `apply` would refuse is never written (409) |
+| `POST /api/setup/apply` | job: `potluck apply <cluster file>`; its output in `lines`; done on VERIFIED, failed otherwise |
+
+The hub's own serial port is refused (409). The passphrase unlocks the cell's sealed keys for that one enrolment and
+they are locked again after it.
