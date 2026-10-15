@@ -193,9 +193,8 @@ struct ActorKind {
     // on the other boards but adopted when first read, like an every-node one -- so they cost a reader one entry
     // while it reads, not every board an entry per board (and an adopted replica nobody reads is evicted).
     bool outputs_on_demand = false;
-    // M19: portable kinds only. Called by the reconciler when this node becomes, or stops being, one of the two the
-    // actor's ranking puts first among the live eligible nodes, or the one running it -- the foreman and its standby,
-    // which are members of the parent cell (pot/foreman.hpp). nullptr: the type has no such role.
+    // M19: portable kinds only. Called by the reconciler when this node starts, or stops, running the actor -- the
+    // foreman, which is a member of the parent cell while it holds the role (pot/foreman.hpp). nullptr: no such role.
     void (*membership)(const ActorDecl& decl, Node& node, bool member) = nullptr;
 };
 

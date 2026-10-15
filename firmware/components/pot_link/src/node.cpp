@@ -352,6 +352,39 @@ void Node::handle_channel(PeerLink* p, const Frame& f) {
 // frames. So it carries it: back on the old channel for a moment, it announces the move there (move_cell, signed),
 // and its own announced move brings it home. Each board in two cells carries a change once (it carries only when it
 // retunes), so a tree of any depth follows, level by level, and nothing loops.
+// M19: the table had no forget, and that was fine while a cell's boards were the cell's for good. In a tree a
+// foreman role moves -- every handover puts another board into the upper cell, and a board that leaves it stays in
+// the others' tables, dead -- so a full table gives the slot of a dead peer to a newcomer: one that no longer shares
+// a cell first, then the one silent longest. A live (or suspect) peer is never touched.
+bool Node::reclaim_dead_peer() {
+    const uint32_t now = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
+    size_t victim = kMaxPeers;
+    bool victim_foreign = false;
+    uint32_t oldest = 0;
+    for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+        const PeerLink& q = peers_.slot(i);
+        if (q.state != PeerState::Dead) continue;
+        const bool foreign = !shares_group(peer_groups_[i]);
+        const uint32_t age = now - q.last_rx_ms;
+        if (victim == kMaxPeers || (foreign && !victim_foreign) || (foreign == victim_foreign && age > oldest)) {
+            victim = i;
+            victim_foreign = foreign;
+            oldest = age;
+        }
+    }
+    if (victim == kMaxPeers) return false;
+    PeerLink& q = peers_.slot(victim);
+    if (!relayed_[victim] && hal_.del_peer != nullptr) hal_.del_peer(hal_.ctx, q.mac);
+    q.reset();
+    auth_[victim] = PeerAuth{};
+    relayed_[victim] = false;
+    peer_groups_[victim] = 0;
+    move_rx_last_[victim] = 0;
+    peer_caps_[victim] = 0;
+    ++peers_reclaimed_;
+    return true;
+}
+
 void Node::carry_move(uint8_t from) {
     if (from == 0 || from == channel_ || (groups_ & 0xFF) == 0 || (groups_ >> 8) == 0 || departed_) return;
     carry_from_ = from;
@@ -1083,7 +1116,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
 
     if (p == nullptr) {
         const size_t in_use = kMaxPeers - peers_.count_in_state(PeerState::Free);
-        if (in_use >= kMaxUnicastPeers) {
+        if (in_use >= kMaxUnicastPeers && !reclaim_dead_peer()) {
             // §3's twenty-peer ceiling minus the broadcast entry. A hardware limit to report, not
             // a container to grow.
             ++counters_.peer_table_full;

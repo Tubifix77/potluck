@@ -261,21 +261,23 @@ int32_t Tree::send(void* ctx, const uint8_t mac[kMacLen], const uint8_t* data, s
 
 }  // namespace
 
-TEST(foreman, the_role_and_its_standby_join_the_upper_cell_and_the_members_stay_home) {
+TEST(foreman, the_role_joins_the_upper_cell_and_the_standby_and_members_stay_home) {
     Tree t;
     t.build();
     t.run(10000);
     const int f1 = t.foreman_of(1), f2 = t.foreman_of(2);
     CHECK(f1 == 0x100 || f1 == 0x101);
     CHECK(f2 == 0x200 || f2 == 0x201);
-    // the foreman and the standby are in cell 3 as well; the third board only in its own
-    CHECK_EQ(t.by_id(0x100).node->groups(), static_cast<uint16_t>(1 | 3 << 8));
-    CHECK_EQ(t.by_id(0x101).node->groups(), static_cast<uint16_t>(1 | 3 << 8));
+    const uint16_t s1 = f1 == 0x100 ? 0x101 : 0x100, s2 = f2 == 0x200 ? 0x201 : 0x200;
+    // the foreman is in cell 3 as well; the standby (warm, ranked second) and the third board only in their own
+    CHECK_EQ(t.by_id(static_cast<uint16_t>(f1)).node->groups(), static_cast<uint16_t>(1 | 3 << 8));
+    CHECK_EQ(t.by_id(s1).node->groups(), static_cast<uint16_t>(1));
     CHECK_EQ(t.by_id(0x102).node->groups(), static_cast<uint16_t>(1));
     CHECK_EQ(t.by_id(0x202).node->groups(), static_cast<uint16_t>(2));
-    CHECK(t.by_id(0x100).rec->view(0).standby != 0);
-    // the upper cell: the four role holders hear each other; a member hears only its own cell
-    CHECK(t.alive_at(t.by_id(0x100), 0x200) && t.alive_at(t.by_id(0x101), 0x201));
+    CHECK_EQ(t.by_id(static_cast<uint16_t>(f1)).rec->view(0).standby, s1);
+    // the upper cell: the two foremen hear each other; everyone else only their own cell
+    CHECK(t.alive_at(t.by_id(static_cast<uint16_t>(f1)), static_cast<uint16_t>(f2)));
+    CHECK(!t.alive_at(t.by_id(s1), static_cast<uint16_t>(f2)) && !t.alive_at(t.by_id(s2), static_cast<uint16_t>(f1)));
     CHECK(!t.alive_at(t.by_id(0x102), 0x200) && !t.alive_at(t.by_id(0x202), 0x101));
     CHECK(t.alive_at(t.by_id(0x102), 0x100));
 }
@@ -285,7 +287,7 @@ TEST(foreman, the_upper_cell_reads_the_summary_and_a_referral_with_the_tuple) {
     t.build();
     t.run(10000);
     const uint16_t f1 = static_cast<uint16_t>(t.foreman_of(1));
-    FNode& reader = t.by_id(0x200);  // cell 2's, in the upper cell
+    FNode& reader = t.by_id(static_cast<uint16_t>(t.foreman_of(2)));  // cell 2's foreman, in the upper cell
     t.run(3000);
     Reading r = t.read_fresh(reader, cell_hash(1, "alive"));
     uint32_t alive = 0;
@@ -294,12 +296,14 @@ TEST(foreman, the_upper_cell_reads_the_summary_and_a_referral_with_the_tuple) {
     float v = 0;
     Quality q;
     CHECK(r.get_f32(v, q) && v == 25.0f);  // 0x102's 25.0, the warmest of cell 1
-    CHECK_EQ(reader.node->ns().find(cell_hash(1, "t_max"))->owner_node, f1);
+    const NsEntry* tm = reader.node->ns().find(cell_hash(1, "t_max"));
+    CHECK(tm != nullptr && tm->owner_node == f1);
     // a referral: 0x102 is no peer of 0x200; cell 1's foreman answers for it, under its own identity
     CHECK(reader.node->ns().find(temp_hash(0x102)) == nullptr);
     CHECK(reader.node->request_referral(f1, temp_hash(0x102)) != 0);
     t.run(100);
-    CHECK_EQ(reader.node->ns().find(temp_hash(0x102))->owner_node, f1);
+    const NsEntry* ref = reader.node->ns().find(temp_hash(0x102));
+    CHECK(ref != nullptr && ref->owner_node == f1);
     t.read_fresh(reader, temp_hash(0x102));  // the first answer primes the foreman's own replica
     r = t.read_fresh(reader, temp_hash(0x102));
     CHECK(r.get_f32(v, q) && v == 25.0f && r.quality == Quality::Good);
@@ -312,22 +316,23 @@ TEST(foreman, a_dead_foreman_hands_the_role_to_the_standby_within_the_upper_wind
     t.run(10000);
     const uint16_t f1 = static_cast<uint16_t>(t.foreman_of(1));
     const uint16_t standby = f1 == 0x100 ? 0x101 : 0x100;
-    FNode& reader = t.by_id(0x200);
+    FNode& reader = t.by_id(static_cast<uint16_t>(t.foreman_of(2)));  // cell 2's foreman
     t.read_fresh(reader, cell_hash(1, "alive"));
     t.by_id(f1).down = true;
     uint32_t back_ms = 0;
     for (uint32_t ms = 0; ms < 15000 && back_ms == 0; ms += 250) {
         Reading r = t.read_fresh(reader, cell_hash(1, "alive"));
         uint32_t alive = 0;
-        if (r.quality == Quality::Good && r.value.as_u32(alive) && alive == 2u &&
-            reader.node->ns().find(cell_hash(1, "alive"))->owner_node == standby) {
+        const NsEntry* e = reader.node->ns().find(cell_hash(1, "alive"));
+        if (r.quality == Quality::Good && r.value.as_u32(alive) && alive == 2u && e != nullptr &&
+            e->owner_node == standby) {
             back_ms = ms + 100;
         }
         t.run(150);
     }
     std::printf("    the standby took the role and the summary was GOOD again at the reader after %u ms\n",
                 static_cast<unsigned>(back_ms));
-    CHECK(back_ms > 0 && back_ms <= 15000);  // the upper window (5 s) plus 10 s
+    CHECK(back_ms > 0 && back_ms <= 15000);  // the upper window (5 s) plus 10 s, admission to the upper cell included
     CHECK_EQ(t.foreman_of(1), static_cast<int>(standby));
     // and with cell 1's last eligible board gone too, a referral to it reads Unavailable -- never an old value
     reader.node->request_referral(standby, temp_hash(0x102));
@@ -373,8 +378,8 @@ TEST(foreman, the_host_compilers_foreman_declaration_parses_here) {
 }
 
 TEST(foreman, a_channel_move_in_one_cell_is_carried_to_the_whole_tree) {
-    // Review of M19 #7: cell 1 moves to channel 6. Its foreman and standby carry the move to the upper cell, whose
-    // other two members carry it to cell 2 -- whose third board never heard cell 1 at all.
+    // Review of M19 #7: cell 1 moves to channel 6. Its foreman carries the move to the upper cell, whose other member
+    // (cell 2's foreman) carries it to cell 2 -- whose other boards never heard cell 1 at all.
     Tree t;
     t.channels = true;
     t.build();
@@ -383,7 +388,8 @@ TEST(foreman, a_channel_move_in_one_cell_is_carried_to_the_whole_tree) {
     t.run(8000);
     for (FNode& n : t.nodes) CHECK_EQ(static_cast<int>(n.ch), 6);
     CHECK(t.by_id(0x100).node->channel_counters().moves_carried + t.by_id(0x101).node->channel_counters().moves_carried >= 1);
-    CHECK(t.alive_at(t.by_id(0x202), 0x200) && t.alive_at(t.by_id(0x200), 0x100));
+    CHECK(t.alive_at(t.by_id(0x202), 0x200));
+    CHECK(t.alive_at(t.by_id(static_cast<uint16_t>(t.foreman_of(2))), static_cast<uint16_t>(t.foreman_of(1))));
     CHECK_EQ(t.by_id(0x102).node->channel_counters().moves_carried, 0u);  // in one cell: nothing to carry
     // and it does not keep going: a second look later finds no new carries
     uint32_t before = 0, after = 0;

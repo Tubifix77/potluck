@@ -182,28 +182,30 @@ class ClusterFile(unittest.TestCase):
         return self.cluster(boards=boards, cells=cells, **kw)
 
     def test_the_peer_budget_counts_both_memberships_and_names_the_board_over_it(self):
-        # Review of M19 #6: three cells of nine under one upper cell fit; the PC takes one on the cabled board's cells
+        # Review of M19 #6: a foreman holds its cell and one seat per sibling cell in the upper cell (the standby joins
+        # on taking the role); the PC takes one on the cabled board's cells
         c = self.tree([9, 9, 9])
         self.assertEqual(ap.cell_numbers(c), {"cell0": 1, "cell1": 2, "cell2": 3, "tree": 4})
         b = ap.peer_budget(c, cabled=0x100)
-        self.assertEqual(b[0x100], {"peers": 8 + 4 + 1, "cells": {"cell0": 8, "tree": 4}, "host": 1})  # 2 cells x 2
+        self.assertEqual(b[0x100], {"peers": 8 + 2 + 1, "cells": {"cell0": 8, "tree": 2}, "host": 1})
         self.assertEqual(b[0x102]["peers"], 8 + 1)       # a member, in the cabled board's cell
-        self.assertEqual(b[0x109]["peers"], 8 + 4)       # a foreman-eligible board of cell1: no PC
+        self.assertEqual(b[0x109]["peers"], 8 + 2)       # a foreman-eligible board of cell1: no PC
         self.assertEqual(b[0x10b]["peers"], 8)
-        self.assertTrue(any("c0b0 (0x0100): 13 of 19 (cell0 8, tree 4, the PC 1)" in x for x in ap.check_peers(c, 0x100)))
-        # a cell of ten with three eligible boards each, eight such cells: a foreman would hold 9 + 7 x 3 + 1
-        c = self.tree([10] * 8, eligible=3)
-        with self.assertRaisesRegex(ap.ApplyError, r"c0b0 \(0x0100\) would need 31 unicast peers;.*and 21 more.*over the 19"):
+        self.assertTrue(any("c0b0 (0x0100): 11 of 19 (cell0 8, tree 2, the PC 1)" in x for x in ap.check_peers(c, 0x100)))
+        # the accept's tree: ten cells of ten under one upper cell fit -- 9 + 9, and the PC on the cabled cell
+        c = self.tree([10] * 10)
+        b = ap.peer_budget(c, 0x100)
+        self.assertEqual((b[0x100]["peers"], b[0x10a]["peers"]), (9 + 9 + 1, 9 + 9))
+        ap.check_peers(c, 0x100)
+        # eleven do not: the cabled cell's foremen would hold 9 + 10 + 1 (the others 9 + 10: just)
+        c = self.tree([10] * 11)
+        with self.assertRaisesRegex(ap.ApplyError, r"c0b0 \(0x0100\) would need 20 unicast peers; c0b1 \(0x0101\) would need 20"):
             ap.check_peers(c, 0x100)
-        # Review #6's own shape: a level holds 8 base cells plus the upper cell's foreman and standby -- with two
-        # eligible boards a cell and cells of nine: 8 + 7 x 2 + 2 + the PC = 25, still too many; with one standby in
-        # the upper cell's own boards and cells of six, it fits
-        with self.assertRaises(ap.ApplyError):
-            ap.check_peers(self.tree([9] * 8, upper=2), 0x100)
+        # an upper cell's own boards count in it too
         c = self.tree([6] * 4, upper=2)
-        self.assertEqual(ap.peer_budget(c, 0x100)[0x100]["peers"], 5 + 3 * 2 + 2 + 1)
+        self.assertEqual(ap.peer_budget(c, 0x100)[0x100]["peers"], 5 + 3 + 2 + 1)
         up = [n for n, lab in c.boards if lab == "up0"][0]
-        self.assertEqual(ap.peer_budget(c, 0x100)[up]["cells"], {"tree": 1 + 4 * 2})
+        self.assertEqual(ap.peer_budget(c, 0x100)[up]["cells"], {"tree": 1 + 4})
         # a board in no cell is everyone's peer
         c = self.cluster(boards=[{"node": "0100", "cells": ["a"]}, {"node": "0200"}])
         self.assertEqual(ap.peer_budget(c, 0x100)[0x100]["peers"], 1 + 1)

@@ -70,6 +70,8 @@ struct NodeHal {
     // Add a peer to the transport's own peer list, if it has one. ESP-NOW requires this before a
     // unicast can be sent. May be null when the transport does not care.
     bool (*add_peer)(void* ctx, const uint8_t mac[kMacLen]) = nullptr;
+    // M19: take a peer off the transport's list again (a dead peer's slot reclaimed). May be null.
+    bool (*del_peer)(void* ctx, const uint8_t mac[kMacLen]) = nullptr;
 
     uint32_t (*now_ms)(void* ctx) = nullptr;
     uint32_t (*now_us)(void* ctx) = nullptr;
@@ -323,6 +325,8 @@ class Node {
     uint16_t groups() const { return groups_; }
     bool shares_group(uint16_t theirs) const;
     uint32_t group_refusals() const { return group_refusals_; }
+    // M19: dead peers whose slot a full table gave to a newcomer (NodeCounters is a fixed 64 B, section 6).
+    uint32_t peers_reclaimed() const { return peers_reclaimed_; }
     uint32_t heartbeat_period_ms() const { return cfg_.hb_period_ms; }
 
     // ---- M5.1 (CR-1): moving the cell, and finding it again -----------------------------------
@@ -756,6 +760,8 @@ class Node {
     uint8_t carry_from_ = 0;
     bool pending_from_peer_ = false;  // the pending move was a peer's (handle_channel), not this board's own
     void carry_move(uint8_t from);
+    bool reclaim_dead_peer();  // M19: free the slot of the deadest peer, preferring one that left our cells
+    uint32_t peers_reclaimed_ = 0;
     uint32_t pending_channel_at_ms_ = 0;
     uint32_t move_tx_ = 0;
     uint32_t move_rx_last_[kMaxPeers]{};

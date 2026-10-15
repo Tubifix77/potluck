@@ -769,13 +769,10 @@ void Reconciler::tick(uint32_t now) {
             resolve_owner(i);
         }
         run(i, now);
-        if (slots_[i].kind != nullptr && slots_[i].kind->membership != nullptr) {
-            // M19: the one running it, and the first two of the ranking -- the foreman and its standby.
-            uint16_t ranked[kMaxEligible];
-            const size_t n = rank_for(slots_[i].cfg, ranked);
-            const uint16_t self = node_.config().node_id;
-            membership(i, slots_[i].running || (n > 0 && ranked[0] == self) || (n > 1 && ranked[1] == self));
-        }
+        // M19: the one running it. The standby (second in the ranking, ActorView::standby) stays warm in its own cell
+        // -- it holds the checkpoint and takes the role at once -- and joins the parent when it does: one seat in
+        // the upper cell per child cell, so ten cells of ten fit a board's nineteen peers (ARCHITECTURE section 13).
+        if (slots_[i].kind != nullptr && slots_[i].kind->membership != nullptr) membership(i, slots_[i].running);
     }
     persist_tick(now);  // M12
     if (dirty_) {

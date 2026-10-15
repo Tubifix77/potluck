@@ -1102,3 +1102,25 @@ TEST(node, a_foreman_judges_its_cell_mates_by_their_window_and_its_fellow_foreme
     c.advance_ms(2000);
     CHECK_EQ(c.nodes[0].node->peers().count_in_state(PeerState::Alive), static_cast<size_t>(2));
 }
+
+TEST(node, a_full_table_gives_a_dead_peers_slot_to_a_newcomer_and_never_a_live_ones) {
+    // M19: a foreman role moves, so boards come and go in an upper cell; the table used to keep the dead for ever
+    TestCell c;
+    c.build(21, BeaconMode::BroadcastBeacon);
+    c.deaf.emplace_back(0, 20);  // the newcomer, out of node 0's range for now
+    c.start_all();
+    c.advance_ms(4000);
+    Node& n = *c.nodes[0].node;
+    CHECK_EQ(n.peers().count_in_state(PeerState::Alive), static_cast<size_t>(19));  // full
+    for (size_t i = 1; i <= 3; ++i) c.deaf.emplace_back(0, i);  // three go quiet...
+    c.advance_ms(6000);
+    CHECK_EQ(n.peers().count_in_state(PeerState::Alive), static_cast<size_t>(16));
+    c.deaf.erase(c.deaf.begin());  // ...and the newcomer comes into range
+    c.advance_ms(3000);
+    const PeerLink* p = n.peers().find_by_node_id(0x100 + 20);
+    CHECK(p != nullptr && p->state == PeerState::Alive);
+    CHECK_EQ(n.peers_reclaimed(), 1u);
+    CHECK_EQ(n.peers().count_in_state(PeerState::Alive), static_cast<size_t>(17));
+    CHECK(n.peers().find_by_node_id(0x101) == nullptr || n.peers().find_by_node_id(0x102) == nullptr ||
+          n.peers().find_by_node_id(0x103) == nullptr);  // one of the dead gave its slot
+}

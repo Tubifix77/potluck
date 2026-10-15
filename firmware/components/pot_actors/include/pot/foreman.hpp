@@ -4,8 +4,10 @@
 // A role, not a board (ARCHITECTURE section 13, M19; Review of M19 #4): one portable actor per federating cell,
 // eligible on the boards the cluster file marks "foreman": true. The reconciler (M6) places it by its ranking, fences
 // it by term -- so never two foremen of a cell for longer than its claims take to meet -- and hands it over. Whoever
-// runs it, and the board ranked second (the standby, kept warm), is a member of the parent cell: the reconciler calls
-// the kind's membership hook, which sets the node's role group (Node::set_role_group). Everyone else in the cell, and
+// runs it is a member of the parent cell: the reconciler calls the kind's membership hook, which sets the node's role
+// group (Node::set_role_group). The board ranked second is the standby: warm in its own cell (it holds the role's
+// checkpoint and starts it the moment the foreman is gone) and a member of the parent from then on -- one seat in the
+// upper cell per child cell, so a cell of ten under an upper cell of ten fits a board's nineteen peers. Everyone else in the cell, and
 // every member of the parent, keeps the declaration too (the image's scope section lists it under both cells), so the
 // summary's entries are declared there, owned by whoever holds the role.
 //

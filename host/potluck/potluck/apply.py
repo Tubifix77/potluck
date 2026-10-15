@@ -312,9 +312,10 @@ FOREMAN_PERIOD_MS = 2000
 FOREMAN_MAX_MEMBERS = 20
 FOREMAN_MAX_EXPORTS = 7
 EXPORT_KINDS = ("copy", "max", "min", "sum", "avg", "count")
-#: M19 (Review of M19 #6): what one child cell puts into its upper cell at worst -- the foreman, the standby, and
-#: during a handover a second foreman until the first one drops out.
-CHILD_SEATS = 3
+#: M19 (Review of M19 #6): what one child cell puts into its upper cell -- its foreman. The standby stays warm in its
+#: own cell and joins on taking the role; a handover's newcomer takes the old foreman's slot once it is dead (a full
+#: table reclaims a dead peer's, node.cpp), which the handover's bound -- the upper window plus 10 s -- allows.
+CHILD_SEATS = 1
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -946,9 +947,8 @@ def foreman_cells(c: Cluster) -> dict[str, list[int]]:
 
 def peer_budget(c: Cluster, cabled: int | None = None) -> dict[int, dict[str, Any]]:
     """M19 (Review of M19 #6): every board's unicast peers at worst, against PEER_CAP. A board's peers are the
-    boards of every cell it can be in -- its own, and the parent of its cell when it may hold the foreman role (or
-    the standby) -- where a cell's members are the boards that name it plus, from each child cell, up to
-    CHILD_SEATS foreman-eligible boards (foreman, standby, a second foreman during a handover). A board in no cell
+    boards of every cell it can be in -- its own, and the parent of its cell when it may hold the foreman role --
+    where a cell's members are the boards that name it plus, from each child cell, CHILD_SEATS (its foreman). A board in no cell
     is admitted by every board, and admits every board. The PC (hub or host node, reached through the cabled board
     and its relay) takes one more on each board of the cabled board's cells; `cabled` None: on every board.
     Returns, per board: {"peers": total, "cells": {cell: count}, "host": 0|1}."""

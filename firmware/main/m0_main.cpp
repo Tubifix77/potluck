@@ -345,6 +345,18 @@ int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t 
     return radio_send(mac, data, len);
 }
 
+// M19: a reclaimed peer's radio entry. The bus and the cable keep no list.
+bool hal_del_peer(void*, const uint8_t mac[kMacLen]) {
+#if CONFIG_POT_SERIAL_LINK
+    if (std::memcmp(mac, kHostMac, kMacLen) == 0) return true;
+#endif
+#if CONFIG_POT_CAN
+    uint16_t can_node = 0;
+    if (can_mac_node(mac, can_node)) return true;
+#endif
+    return espnow_del_peer(mac);
+}
+
 bool hal_add_peer(void*, const uint8_t mac[kMacLen]) {
 #if CONFIG_POT_CAN
     {
@@ -3639,6 +3651,7 @@ extern "C" void app_main(void) {
     hal.ctx = nullptr;
     hal.send = &hal_send;
     hal.add_peer = &hal_add_peer;
+    hal.del_peer = &hal_del_peer;  // M19
     hal.now_ms = &hal_now_ms;
     hal.now_us = &hal_now_us;
     hal.free_dram = &hal_free_dram;
