@@ -1134,6 +1134,16 @@ What the evidence settled, and how it amends the owner's sketch:
 
 **The order of building M19 and M20** (planned with the owner, 2026-10-15: M20 uses so much of M19 that the two are sequenced together, and "a lot of changes would pop up along the way"; the plans above are the skeleton). **Step 1, the groundwork both need: node ids assigned by the cell's CA at enrolment** (Review of M19 #10, Review of M20 #2) -- the enrol step keeps the id the chip's MAC gives unless it collides with one the cell already has, and a board uses the id its certificate names; a registry of the cell's ids refuses duplicates. (A cell's identity for admission comes from the owner-signed package, which already says where each board belongs -- no certificate change -- and is built with M19.) **Step 2, M20 for up to twenty boards** -- the installer, the setup wizard, the library, the room view, Home Assistant as a library entry, the key backup -- all testable on the three bench boards. **Step 3, M19** -- groups, a window per membership, the foreman role, summaries and referrals -- in `pot_sim` and with stub cells through the cable. **Step 4, M20's large setup** -- the survey, groups, chargers, and Add boards growing past twenty -- on M19.
 
+*Step 2 under way, 2026-10-15 (M0-LOG session 45).* Built: the setup wizard in the dashboard (`setup.html`) -- a first run
+that makes the cell (keys sealed in the vault under the owner's passphrase, an empty cluster file) and attaches the hub
+to the first board, and Add boards (plug in, check, install the cell's firmware, join with the cell's registry, Wi-Fi,
+rooms, `apply`), the hub's side at `/api/setup/*` on 127.0.0.1 only; **the frame link over the board's own USB console,
+beside the logs -- M20's kill line, which did not fire** (2,196 reads over C's cable in two minutes, no timeout); the
+floor plan (rooms, the boards' positions held by the boards themselves as `node-<id>/sys/pos/{x,y}` from the signed
+package, zoom and pan, a 100 x 100 m default) and the position kind an app publishes -- an estimated zone, never a
+point -- with passive-sensor's fusion as its first user. Not yet: the library toggles, Home Assistant's broker test, the
+packaged installer and tray icon, a firmware rollout through the console's 115200 baud.
+
 ## 14. Risk register
 
 | Risk | Likelihood | Impact | Mitigation |
