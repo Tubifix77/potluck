@@ -258,9 +258,9 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "cannot read %s\n", image_path);
         return 1;
     }
-    DeployImage img{};
+    static DeployImage img;
     const char* why = "";
-    if (!parse_image(imgbytes.data(), imgbytes.size(), img, &why)) {
+    if (!parse_image(imgbytes.data(), imgbytes.size(), img, &why, node_id)) {
         std::fprintf(stderr, "image refused: %s\n", why);
         return 1;
     }

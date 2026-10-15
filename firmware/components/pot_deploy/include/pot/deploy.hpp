@@ -62,6 +62,15 @@ uint32_t crc32(const uint8_t* data, size_t len, uint32_t seed = 0);
 //          ...  the CA certificate, DER
 // Public, and pinned by the owner's signature on the package like everything else in it. A package whose presenter
 // does not use TLS is built as version 1-3.
+//
+// Version 5 (M19, a tree of cells: one package for the whole tree, scoped per cell -- Review of M19 #3) is version 4
+// with ca_len possibly 0, then the scope section:
+//          1    count               the image's actor_count
+//          ...  count x (cell u8, also u8)   the cell each actor belongs to (0: every cell) and a second one (0:
+//               none; a foreman role's: its cell's parent, where its summary is read)
+// It lists up to 255 actors; a board keeps those that are its own, every cell's, or one of its cells' -- its cells
+// being those its own position actor names, plus the parent of a cell whose foreman role it may hold -- and refuses
+// the image if that is more than kMaxActors.
 // ---------------------------------------------------------------------------------------------
 
 constexpr uint32_t kImageMagic = 0x44544F50u;  // "POTD"
@@ -69,10 +78,22 @@ constexpr uint8_t kImageVersion = 1;
 constexpr uint8_t kImageVersionGuests = 2;  // M7
 constexpr uint8_t kImageVersionOutside = 3;  // M13
 constexpr uint8_t kImageVersionBrokerCa = 4;  // M13: TLS to the broker
+constexpr uint8_t kImageVersionCells = 5;  // M19: a tree's package, scoped per cell
 constexpr size_t kMaxBrokerCa = 1024;  // DER: a P-256 CA is ~400 B, an RSA-2048 one ~900 B
 constexpr size_t kImageHeaderLen = 24;
+// The declarations a node keeps. 16 until M20: a cell of twenty boards with a position each needs more, and M19's
+// tree more again; a board without PSRAM keeps the old table (two copies of it live in the actor runtime).
+#if defined(__has_include)
+#if __has_include("sdkconfig.h")
+#include "sdkconfig.h"
+#endif
+#endif
+#if defined(CONFIG_IDF_TARGET) && !defined(CONFIG_SPIRAM)
 constexpr size_t kMaxActors = 16;
-// Without guests an image is at most 24 + 16 x (4 + 255) bytes, and usually under 200. M7's guests
+#else
+constexpr size_t kMaxActors = 64;
+#endif
+// Without guests an image used to be at most 24 + 16 x (4 + 255) bytes, and usually under 200. M7's guests
 // carry their code, so the limit is 32 KB: the receive buffer lives in PSRAM on the boards (the first
 // cut, 2048 B in internal RAM, had cost 4 KB of committed headroom for buffers 90 % empty), and a slot
 // partition holds 64 KB.
@@ -145,7 +166,13 @@ bool apply_outside(const DeployImage& img, Namespace& ns);
 // Parses and validates. `why` names the first problem, for the log. Unknown actor types are
 // rejected: a node that silently skipped an actor it does not have would report a deployment it
 // is not running.
-bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why);
+//
+// `keep_for` (M19): which declarations land in out.actors -- kKeepAll every one (refused over kMaxActors), kKeepNone
+// none (a validity check: the receiver, the package agent), or a node id: that node's scope, for a version-5 image
+// (older versions keep every one).
+constexpr uint16_t kKeepAll = 0;
+constexpr uint16_t kKeepNone = 0xFFFF;
+bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why, uint16_t keep_for = kKeepAll);
 
 // Where the image in `data` ends, by its own header: 24 + body_len for version 1, plus the guest
 // section for version 2 (M7). What follows is the M5 signature trailer. 0 if the header or the guest

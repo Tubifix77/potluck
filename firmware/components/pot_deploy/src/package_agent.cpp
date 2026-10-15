@@ -250,9 +250,9 @@ void PackageAgent::announce(uint32_t now) {
 void PackageAgent::catchup_start(uint16_t peer, uint32_t now) {
     size_t len = 0;
     if (!store_.read_slot(state_.active, buf_, cap_, len)) return;
-    DeployImage img{};
+    static DeployImage img;  // off the link task's stack; validated, nothing kept
     const size_t extent = image_extent(buf_, len);
-    if (extent == 0 || extent > len || !parse_image(buf_, extent, img, nullptr)) return;
+    if (extent == 0 || extent > len || !parse_image(buf_, extent, img, nullptr, kKeepNone)) return;
     push_ = Push{};
     push_.catchup = true;
     push_.begin.image_len = static_cast<uint32_t>(len);

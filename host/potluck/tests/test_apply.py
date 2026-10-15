@@ -207,6 +207,22 @@ class ClusterFile(unittest.TestCase):
         self.assertEqual(ap.peer_budget(c, 0x100)[0x100]["peers"], 1 + 1)
         self.assertEqual(ap.check_peers(self.cluster(), 0x100), [])  # no cells: one cell, as before
 
+    def test_a_trees_package_is_one_image_each_board_keeps_its_cells_of(self):
+        # Review of M19 #3: 27 boards' positions are more than a board keeps (64 since M20, 16 before), and more than
+        # it needs; a version-5 image lists them all and each board keeps its own cell's
+        c = self.tree([9, 9, 9])
+        m = mf.parse(ap.compose(c, []))
+        img = dp.compile_image(m, 5)
+        self.assertEqual(img[4], dp.IMAGE_VERSION_CELLS)
+        _, _, count, _, _, _, body_len = struct.unpack_from("<IBBHI8sI", img)
+        body = img[dp.IMAGE_HEADER_LEN:dp.IMAGE_HEADER_LEN + body_len]
+        scope = dp.scope_of(body, count)
+        self.assertEqual(img[-(1 + 2 * count):], bytes([count]) + b"".join(bytes(p) for p in scope))
+        kept = dp.kept_per_board(body, count, scope)
+        self.assertEqual(set(kept.values()), {9 + 1})  # its cell's nine positions and the cluster's name
+        # a package with no cells is byte for byte what it was
+        self.assertNotEqual(dp.compile_image(mf.parse(ap.compose(self.cluster(), [])), 5)[4], dp.IMAGE_VERSION_CELLS)
+
     def test_a_foreman_is_a_board_of_one_federating_cell(self):
         with self.assertRaisesRegex(ap.ApplyError, "exactly one cell"):  # two memberships at most, the role adds one
             self.cluster(boards=[{"node": "0100", "cells": ["a", "b"], "foreman": True}], cells={"a": {"parent": "t"}})

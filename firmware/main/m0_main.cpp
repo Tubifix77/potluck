@@ -947,6 +947,8 @@ BootOutcome g_outcome = BootOutcome::NoDeployment;
 #if CONFIG_POT_WASM
 constexpr size_t kImageBufLen = kMaxImageLen;  // M7: guests carry their code
 EXT_RAM_BSS_ATTR uint8_t g_guest_pool[kMaxImageLen];  // PSRAM; the guest task reads the modules here
+#elif CONFIG_SPIRAM
+constexpr size_t kImageBufLen = kMaxImageLen;  // M19/M20: a cell of twenty placed boards, a tree's package (PSRAM)
 #elif CONFIG_POT_PRESENT
 constexpr size_t kImageBufLen = 2048;  // M13: the outside section's names and the broker's CA (deploy.py's limit)
 #else
@@ -1017,8 +1019,9 @@ bool load_and_apply(const char** why) {
     // image is its first part. A slot written before M12 holds the image alone, and its extent is all of it.
     const size_t extent = image_extent(g_image, len);
     if (extent != 0 && extent <= len) len = extent;
-    DeployImage img{};
-    if (!parse_image(g_image, len, img, why)) {
+    static DeployImage img;  // M19: 64 declarations, off the boot stack
+    img = DeployImage{};
+    if (!parse_image(g_image, len, img, why, g_node_id)) {  // M19: this board's cells only
         return false;
     }
     g_actor_env.trial_window_ms = kTrialHeartbeats * static_cast<uint32_t>(CONFIG_POT_HB_PERIOD_MS);
@@ -1137,7 +1140,7 @@ bool apply_live(DeployStatus* refused) {
     *refused = DeployStatus::Ok;
     const char* why = "?";
     const size_t extent = image_extent(g_rx.image(), g_rx.image_len());
-    if (extent == 0 || !parse_image(g_rx.image(), extent, img, &why)) return false;
+    if (extent == 0 || !parse_image(g_rx.image(), extent, img, &why, g_node_id)) return false;
 #if CONFIG_POT_WASM
     if (!guest_library().same_guests(img)) {
         ESP_LOGI(kTag, "deploy: the package changes a guest's code - rebooting into it");
@@ -2572,7 +2575,7 @@ void image_job(void* a) {
     // whole, before it is written. Static: this worker's 4 KB stack also holds the Ed25519 check.
     static DeployImage img;
     const char* why = nullptr;
-    if (j.e == CertError::Ok && parse_image(j.img, j.n, img, &why) && img.guest_count > 0) {
+    if (j.e == CertError::Ok && parse_image(j.img, j.n, img, &why, kKeepNone) && img.guest_count > 0) {
         uint8_t which = 0;
         j.e = guest_image_check(img, g_id_boot.ca_pub, &which);
         if (j.e != CertError::Ok) ESP_LOGW(kTag, "deploy: guest %u's author signature failed", static_cast<unsigned>(which));

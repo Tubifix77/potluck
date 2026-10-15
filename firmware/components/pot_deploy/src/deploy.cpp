@@ -45,7 +45,8 @@ size_t image_extent(const uint8_t* data, size_t len) {
     if (body > len - kImageHeaderLen) return 0;
     size_t at = kImageHeaderLen + body;
     const uint8_t v = data[4];
-    if (v != kImageVersionGuests && v != kImageVersionOutside && v != kImageVersionBrokerCa) return at;
+    if (v != kImageVersionGuests && v != kImageVersionOutside && v != kImageVersionBrokerCa && v != kImageVersionCells)
+        return at;
     if (at >= len) return 0;  // the guest count
     const uint8_t n = data[at++];
     for (uint8_t g = 0; g < n; ++g) {
@@ -64,15 +65,126 @@ size_t image_extent(const uint8_t* data, size_t len) {
         if (len - at - 6 < nl) return 0;
         at += 6 + nl;
     }
-    if (v != kImageVersionBrokerCa) return at;
+    if (v != kImageVersionBrokerCa && v != kImageVersionCells) return at;
     if (len - at < 2) return 0;  // the CA's length
     const uint16_t cl = rd16(data + at);
     at += 2;
     if (cl > len - at) return 0;
-    return at + cl;
+    at += cl;
+    if (v != kImageVersionCells) return at;
+    if (at >= len) return 0;  // M19: the scope section's count, then two bytes an actor
+    const size_t sc = data[at];
+    if (len - at - 1 < 2 * sc) return 0;
+    return at + 1 + 2 * sc;
 }
 
-bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why) {
+namespace {
+// One declaration, judged by its type alone (the cross-checks against the image's sections are parse_image's).
+bool check_decl(const ActorDecl& a, const char*& w) {
+    switch (a.type) {
+        case ActorType::Led:
+            if (a.cfg_len != kLedCfgLen) {
+                w = "led config has the wrong length";
+                return false;
+            }
+            break;
+        case ActorType::Fault:
+            if (a.cfg_len != kFaultCfgLen) {
+                w = "fault config has the wrong length";
+                return false;
+            }
+            break;
+        case ActorType::Ticker: {
+            TickerConfig tc{};
+            if (a.node_id != kPortableNode || !ticker_config(a, tc)) {
+                w = "ticker must be portable, with 1..8 distinct eligible nodes";
+                return false;
+            }
+            break;
+        }
+        case ActorType::SvcClient: {
+            SvcClientConfig sc{};
+            if (a.node_id == kPortableNode || a.node_id == kEveryNode || !svc_client_config(a, sc)) {
+                w = "svc_client must be pinned, with a valid service, provider and period";
+                return false;
+            }
+            break;
+        }
+        case ActorType::DieTemp: {
+            DieTempConfig dc{};
+            if (a.node_id == kPortableNode || a.node_id == kEveryNode || !die_temp_config(a, dc)) {
+                w = "die_temp must be pinned, with an output and a period of 200..60000 ms";
+                return false;
+            }
+            break;
+        }
+        case ActorType::McLender: {
+            McLenderConfig mc{};
+            if (a.node_id == kPortableNode || !mc_lender_config(a, mc)) {
+                w = "mc_lender must be pinned or on every node, with 1..4 slots";
+                return false;
+            }
+            break;
+        }
+        case ActorType::McJob: {
+            McJobConfig mj{};
+            if (a.node_id == kPortableNode || a.node_id == kEveryNode || !mc_job_config(a, mj)) {
+                w = "mc_job must be pinned, with an output, 1..4096 units and 1000..100000000 samples";
+                return false;
+            }
+            break;
+        }
+        case ActorType::Guest: {
+            // M7: portable, then the index of its program in the guest section, checked below.
+            TickerConfig pc{};
+            size_t hl = 0;
+            if (a.node_id != kPortableNode || !portable_header(a, pc, hl) || a.cfg_len != hl + 1) {
+                w = "guest must be portable: the portable header, then a guest index";
+                return false;
+            }
+            break;
+        }
+        case ActorType::Present: {
+            PresentConfig pc{};
+            if (a.node_id != kPortableNode || !present_config(a, pc)) {
+                w = "present must be portable: the portable header, then broker address, port and keep-alive";
+                return false;
+            }
+            break;
+        }
+        case ActorType::LedSwitch:
+            // M13: pinned; pot/led_switch.hpp judges the rest (the row's check).
+            if (a.node_id == kPortableNode || a.node_id == kEveryNode || a.cfg_len != 8) {
+                w = "led_switch must be pinned, with an output, a colour and a blink period";
+                return false;
+            }
+            break;
+        case ActorType::Position:
+            // M20: pinned; pot/position.hpp judges the rest (the row's check).
+            if (a.node_id == kPortableNode || a.node_id == kEveryNode || a.cfg_len != 40) {
+                w = "position must be pinned, with its outputs, x, y, a room and its nearest boards";
+                return false;
+            }
+            break;
+        case ActorType::Cluster:
+            // M12: every node, a name of 1..31 characters; pot/cluster.hpp judges the characters.
+            if (a.node_id != kEveryNode || a.cfg_len == 0 || a.cfg_len > 31) {
+                w = "cluster must be on every node, with a name of 1..31 characters";
+                return false;
+            }
+            break;
+        default:
+            if (is_external_type(a.type)) {
+                break;  // M8.2: an external component's; its registration row judges the config
+            }
+            w = "unknown actor type";
+            return false;
+    }
+    return true;
+}
+}  // namespace
+
+bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why, uint16_t keep_for) {
     const char* dummy = nullptr;
     const char*& w = (why != nullptr) ? *why : dummy;
     if (data == nullptr || len < kImageHeaderLen) {
@@ -88,15 +200,16 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
         return false;
     }
     if (data[4] != kImageVersion && data[4] != kImageVersionGuests && data[4] != kImageVersionOutside &&
-        data[4] != kImageVersionBrokerCa) {
+        data[4] != kImageVersionBrokerCa && data[4] != kImageVersionCells) {
         w = "unknown image version";
         return false;
     }
-    const bool v4 = data[4] == kImageVersionBrokerCa;
+    const bool v5 = data[4] == kImageVersionCells;
+    const bool v4 = data[4] == kImageVersionBrokerCa || v5;
     const bool v3 = data[4] == kImageVersionOutside || v4;
     const bool v2 = data[4] == kImageVersionGuests || v3;
     const uint8_t count = data[5];
-    if (count > kMaxActors) {
+    if (!v5 && count > kMaxActors) {  // M19: a tree's image lists up to 255; each board keeps its cells' (below)
         w = "more actors than kMaxActors";
         return false;
     }
@@ -112,7 +225,8 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
     out.broker_ca_len = 0;
     out.rollback_counter = rd32(data + 8);
     std::memcpy(out.package_digest, data + 12, sizeof(out.package_digest));
-    out.actor_count = count;
+    const uint8_t* scope = nullptr;  // M19: version 5's scope section
+    out.actor_count = 0;
 
     size_t at = kImageHeaderLen;
     for (uint8_t i = 0; i < count; ++i) {
@@ -120,7 +234,7 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
             w = "actor declaration truncated";
             return false;
         }
-        ActorDecl& a = out.actors[i];
+        ActorDecl a{};
         a.node_id = rd16(data + at);
         a.type = static_cast<ActorType>(data[at + 2]);
         a.cfg_len = data[at + 3];
@@ -135,105 +249,7 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
             w = "actor declarations overrun body_len";
             return false;
         }
-        switch (a.type) {
-            case ActorType::Led:
-                if (a.cfg_len != kLedCfgLen) {
-                    w = "led config has the wrong length";
-                    return false;
-                }
-                break;
-            case ActorType::Fault:
-                if (a.cfg_len != kFaultCfgLen) {
-                    w = "fault config has the wrong length";
-                    return false;
-                }
-                break;
-            case ActorType::Ticker: {
-                TickerConfig tc{};
-                if (a.node_id != kPortableNode || !ticker_config(a, tc)) {
-                    w = "ticker must be portable, with 1..8 distinct eligible nodes";
-                    return false;
-                }
-                break;
-            }
-            case ActorType::SvcClient: {
-                SvcClientConfig sc{};
-                if (a.node_id == kPortableNode || a.node_id == kEveryNode || !svc_client_config(a, sc)) {
-                    w = "svc_client must be pinned, with a valid service, provider and period";
-                    return false;
-                }
-                break;
-            }
-            case ActorType::DieTemp: {
-                DieTempConfig dc{};
-                if (a.node_id == kPortableNode || a.node_id == kEveryNode || !die_temp_config(a, dc)) {
-                    w = "die_temp must be pinned, with an output and a period of 200..60000 ms";
-                    return false;
-                }
-                break;
-            }
-            case ActorType::McLender: {
-                McLenderConfig mc{};
-                if (a.node_id == kPortableNode || !mc_lender_config(a, mc)) {
-                    w = "mc_lender must be pinned or on every node, with 1..4 slots";
-                    return false;
-                }
-                break;
-            }
-            case ActorType::McJob: {
-                McJobConfig mj{};
-                if (a.node_id == kPortableNode || a.node_id == kEveryNode || !mc_job_config(a, mj)) {
-                    w = "mc_job must be pinned, with an output, 1..4096 units and 1000..100000000 samples";
-                    return false;
-                }
-                break;
-            }
-            case ActorType::Guest: {
-                // M7: portable, then the index of its program in the guest section, checked below.
-                TickerConfig pc{};
-                size_t hl = 0;
-                if (a.node_id != kPortableNode || !portable_header(a, pc, hl) || a.cfg_len != hl + 1) {
-                    w = "guest must be portable: the portable header, then a guest index";
-                    return false;
-                }
-                break;
-            }
-            case ActorType::Present: {
-                PresentConfig pc{};
-                if (a.node_id != kPortableNode || !present_config(a, pc)) {
-                    w = "present must be portable: the portable header, then broker address, port and keep-alive";
-                    return false;
-                }
-                break;
-            }
-            case ActorType::LedSwitch:
-                // M13: pinned; pot/led_switch.hpp judges the rest (the row's check).
-                if (a.node_id == kPortableNode || a.node_id == kEveryNode || a.cfg_len != 8) {
-                    w = "led_switch must be pinned, with an output, a colour and a blink period";
-                    return false;
-                }
-                break;
-            case ActorType::Position:
-                // M20: pinned; pot/position.hpp judges the rest (the row's check).
-                if (a.node_id == kPortableNode || a.node_id == kEveryNode || a.cfg_len != 40) {
-                    w = "position must be pinned, with its outputs, x, y, a room and its nearest boards";
-                    return false;
-                }
-                break;
-            case ActorType::Cluster:
-                // M12: every node, a name of 1..31 characters; pot/cluster.hpp judges the characters.
-                if (a.node_id != kEveryNode || a.cfg_len == 0 || a.cfg_len > 31) {
-                    w = "cluster must be on every node, with a name of 1..31 characters";
-                    return false;
-                }
-                break;
-            default:
-                if (is_external_type(a.type)) {
-                    break;  // M8.2: an external component's; its registration row judges the config
-                }
-                w = "unknown actor type";
-                return false;
-        }
+        if (!check_decl(a, w)) return false;
     }
     if (at != kImageHeaderLen + body_len) {
         w = "trailing bytes after the last actor";
@@ -324,23 +340,79 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
             }
             const uint16_t cl = rd16(data + at);
             at += 2;
-            if (cl == 0 || cl > kMaxBrokerCa || len - at < cl) {
+            if ((cl == 0 && !v5) || cl > kMaxBrokerCa || len - at < cl) {
                 w = "broker CA is not 1..1024 bytes, or truncated";
                 return false;
             }
-            out.broker_ca = data + at;
+            out.broker_ca = cl != 0 ? data + at : nullptr;
             out.broker_ca_len = cl;
             at += cl;
         }
+        if (v5) {
+            // M19: the scope section -- each actor's cell and a second one, in declaration order.
+            if (len - at < 1 || data[at] != count || len - at - 1 < 2u * count) {
+                w = "scope section missing, truncated, or not one entry per actor";
+                return false;
+            }
+            scope = data + at + 1;
+            at += 1 + 2u * count;
+        }
         if (at != len) {
-            w = v4   ? "trailing bytes after the broker CA"
+            w = v5   ? "trailing bytes after the scope section"
+                : v4 ? "trailing bytes after the broker CA"
                 : v3 ? "trailing bytes after the outside section"
                      : "trailing bytes after the last guest";
             return false;
         }
     }
+    // The node's cells (M19): those its own position actor names, and the parent of a cell whose foreman role it
+    // may hold (a portable actor of its cell, with a second cell, that lists it as eligible).
+    uint8_t mine[4] = {};
+    size_t n_mine = 0;
+    auto in_mine = [&](uint8_t c) {
+        for (size_t k = 0; k < n_mine; ++k)
+            if (mine[k] == c) return true;
+        return false;
+    };
+    auto decl_at = [&](size_t& p, ActorDecl& a) {
+        a.node_id = rd16(data + p);
+        a.type = static_cast<ActorType>(data[p + 2]);
+        a.cfg_len = data[p + 3];
+        a.cfg = data + p + 4;
+        p += 4 + a.cfg_len;
+    };
+    if (scope != nullptr && keep_for != kKeepAll && keep_for != kKeepNone) {
+        size_t p = kImageHeaderLen;
+        for (uint8_t i = 0; i < count; ++i) {
+            ActorDecl a{};
+            decl_at(p, a);
+            if (a.type == ActorType::Position && a.node_id == keep_for && a.cfg_len >= 38) {
+                for (size_t k = 36; k < 38; ++k)
+                    if (a.cfg[k] != 0 && !in_mine(a.cfg[k])) mine[n_mine++] = a.cfg[k];
+            }
+        }
+        p = kImageHeaderLen;
+        for (uint8_t i = 0; i < count; ++i) {
+            ActorDecl a{};
+            decl_at(p, a);
+            TickerConfig pc{};
+            size_t hl = 0;
+            const uint8_t cell = scope[2 * i], also = scope[2 * i + 1];
+            if (a.node_id != kPortableNode || also == 0 || !in_mine(cell) || in_mine(also) || n_mine >= 4 ||
+                !portable_header(a, pc, hl)) {
+                continue;
+            }
+            for (uint8_t k = 0; k < pc.count; ++k)
+                if (pc.node[k] == keep_for) {
+                    mine[n_mine++] = also;
+                    break;
+                }
+        }
+    }
+    size_t p = kImageHeaderLen;
     for (uint8_t i = 0; i < count; ++i) {
-        const ActorDecl& a = out.actors[i];
+        ActorDecl a{};
+        decl_at(p, a);
         if (a.type == ActorType::Guest && a.cfg[a.cfg_len - 1] >= out.guest_count) {
             w = "guest actor names a guest the image does not carry";
             return false;
@@ -351,6 +423,19 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
             w = "present asks for TLS and the image carries no broker CA, or another one than it names";
             return false;
         }
+        // M19 (Review of M19 #3): a board keeps what is its own, what is every cell's (cell 0), and what belongs to
+        // one of its cells; a board in no cell, everything.
+        bool keep = keep_for != kKeepNone;
+        if (keep && scope != nullptr && keep_for != kKeepAll && n_mine != 0) {
+            const uint8_t cell = scope[2 * i], also = scope[2 * i + 1];
+            keep = a.node_id == keep_for || cell == 0 || in_mine(cell) || (also != 0 && in_mine(also));
+        }
+        if (!keep) continue;
+        if (out.actor_count >= kMaxActors) {
+            w = "more actors for this node than kMaxActors";
+            return false;
+        }
+        out.actors[out.actor_count++] = a;
     }
     return true;
 }
@@ -737,8 +822,8 @@ DeployReply DeployReceiver::commit(uint32_t crc) {
             return reply(v);
         }
     }
-    DeployImage img{};
-    if (!parse_image(buf_, image_len, img, nullptr) || img.rollback_counter != begin_.rollback_counter) {
+    static DeployImage img;  // off the link task's stack (M19: 64 declarations); validated, nothing kept
+    if (!parse_image(buf_, image_len, img, nullptr, kKeepNone) || img.rollback_counter != begin_.rollback_counter) {
         return reply(DeployStatus::BadImage);
     }
     DeployState s{};

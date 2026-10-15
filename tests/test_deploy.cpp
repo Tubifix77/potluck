@@ -798,3 +798,83 @@ TEST(deploy, a_portable_header_starts_from_scratch_so_no_placement_rule_is_inher
     CHECK_EQ(reused.avoid_caps, 0u);
     CHECK_EQ(reused.out_hash, 0x1234u);
 }
+
+namespace {
+// M19: a version-5 image -- make_image's, then empty guest, outside and CA sections and one (cell, also) an actor.
+std::vector<uint8_t> make_tree_image(const std::vector<ActorSpec>& actors, const std::vector<uint8_t>& scope) {
+    std::vector<uint8_t> img = make_image(9, actors);
+    img[4] = kImageVersionCells;
+    img.push_back(0);  // guests
+    img.push_back(0);  // outside rules
+    put16(img, 0);     // no broker CA
+    img.push_back(static_cast<uint8_t>(actors.size()));
+    img.insert(img.end(), scope.begin(), scope.end());
+    return img;
+}
+std::vector<uint8_t> pos_cfg(uint16_t node, uint8_t cell) {
+    std::vector<uint8_t> c;
+    put32(c, 0x1000u + node);
+    put32(c, 0x2000u + node);
+    put32(c, 0x3000u + node);
+    put32(c, 0xBF800000u);  // -1.0f, -1.0f: a room and no place
+    put32(c, 0xBF800000u);
+    put32(c, 1);            // room 1
+    put32(c, 0x4000u + node);
+    for (int i = 0; i < 8; ++i) c.push_back(0);
+    c.push_back(cell);
+    c.push_back(0);
+    c.push_back(0);
+    c.push_back(0);
+    return c;
+}
+std::vector<uint8_t> ticker_cfg(uint32_t out, std::initializer_list<uint16_t> nodes) {
+    std::vector<uint8_t> c;
+    put32(c, out);
+    put16(c, 1000);
+    c.push_back(static_cast<uint8_t>(nodes.size()));
+    for (uint16_t n : nodes) {
+        put16(c, n);
+        c.push_back(1);
+    }
+    return c;
+}
+}  // namespace
+
+TEST(deploy, a_tree_image_lands_on_each_board_scoped_to_its_cells) {
+    // Review of M19 #3: A and B in cell 1, C in cell 2. A ticker of cell 1; a portable of cell 1 whose second cell is
+    // 2 and which A may run (a foreman role's shape); C's own ticker-free board.
+    const std::vector<ActorSpec> actors = {
+        {0x0A00, static_cast<uint8_t>(ActorType::Position), pos_cfg(0x0A00, 1)},
+        {0x0B00, static_cast<uint8_t>(ActorType::Position), pos_cfg(0x0B00, 1)},
+        {0x0C00, static_cast<uint8_t>(ActorType::Position), pos_cfg(0x0C00, 2)},
+        {kPortableNode, static_cast<uint8_t>(ActorType::Ticker), ticker_cfg(0x5001, {0x0A00, 0x0B00})},
+        {kPortableNode, static_cast<uint8_t>(ActorType::Ticker), ticker_cfg(0x5002, {0x0A00})},
+    };
+    const std::vector<uint8_t> scope = {1, 0, 1, 0, 2, 0, 1, 0, 1, 2};
+    const auto img = make_tree_image(actors, scope);
+    CHECK_EQ(image_extent(img.data(), img.size()), img.size());
+    static DeployImage d;
+    const char* why = nullptr;
+    auto kept = [&](uint16_t me) {
+        d = DeployImage{};
+        CHECK(parse_image(img.data(), img.size(), d, &why, me));
+        std::vector<uint16_t> n;
+        for (size_t i = 0; i < d.actor_count; ++i) n.push_back(d.actors[i].node_id);
+        return n;
+    };
+    // A may hold the role whose second cell is 2, so it keeps cell 2's too; B does not; C keeps its cell and the role
+    CHECK(kept(0x0A00) == (std::vector<uint16_t>{0x0A00, 0x0B00, 0x0C00, kPortableNode, kPortableNode}));
+    CHECK(kept(0x0B00) == (std::vector<uint16_t>{0x0A00, 0x0B00, kPortableNode, kPortableNode}));
+    CHECK(kept(0x0C00) == (std::vector<uint16_t>{0x0C00, kPortableNode}));
+    CHECK_EQ(d.actors[1].cfg[0], 0x02);  // the one whose second cell is C's
+    CHECK_EQ(kept(kKeepAll).size(), size_t{5});
+    CHECK_EQ(kept(kKeepNone).size(), size_t{0});
+    CHECK_EQ(kept(0x0D00).size(), size_t{5});  // a board in no cell keeps everything
+    // a scope section that is not one entry per actor
+    auto bad = img;
+    bad[bad.size() - 11] = 4;
+    CHECK(!parse_image(bad.data(), bad.size(), d, &why, 0x0A00));
+    bad = img;
+    bad.pop_back();
+    CHECK(!parse_image(bad.data(), bad.size(), d, &why, 0x0A00));
+}

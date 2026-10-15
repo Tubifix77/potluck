@@ -30,9 +30,13 @@ IMAGE_VERSION = 1
 IMAGE_VERSION_GUESTS = 2  # M7: version 1 plus a guest section
 IMAGE_VERSION_OUTSIDE = 3  # M13: version 2 plus the outside section
 IMAGE_VERSION_BROKER_CA = 4  # M13: version 3 plus the broker's CA, for a presenter with TLS
+IMAGE_VERSION_CELLS = 5  # M19: version 4 (CA possibly empty) plus the scope section -- a tree's package, per cell
 MAX_BROKER_CA = 1024  # deploy.hpp's kMaxBrokerCa (DER)
 IMAGE_HEADER_LEN = 24
-MAX_ACTORS = 16
+#: deploy.hpp's kMaxActors on a board with PSRAM (every board `apply` builds): the declarations a board keeps. 16 on
+#: one without. M19: a version-5 image lists up to MAX_TREE_ACTORS, and each board keeps its own cells' (scope_of).
+MAX_ACTORS = 64
+MAX_TREE_ACTORS = 255
 MAX_IMAGE_LEN = 512
 #: M7: deploy.hpp's kMaxImageLen. Only a firmware built with the sandbox (CONFIG_POT_WASM) accepts an
 #: image this large; any other refuses it as TOO_LARGE, before writing anything.
@@ -41,6 +45,10 @@ MAX_GUESTS = 4
 #: M13: a firmware with the presenting module receives a signed stream of up to 2048 B (m0_main.cpp's kImageBufLen),
 #: room for the outside section's names and a broker CA; the image is that less its signature trailer.
 MAX_IMAGE_LEN_PRESENT = 2048 - 176
+#: M19/M20: a board with PSRAM receives a signed stream of up to kMaxImageLen (32 KB, the buffer is in PSRAM) -- a
+#: cell of twenty boards with their positions, or a tree's package. A board without PSRAM refuses more than 512 B
+#: (2048 with the presenting module) at BEGIN, before it writes anything.
+MAX_IMAGE_LEN_PSRAM = 32 * 1024 - 176
 EVERY_NODE = 0xFFFF
 # 220, not the node's 512: a CHUNK frame is 6 + data bytes, and the node caps a peer it has not pinned
 # to ESP-NOW v2 -- the host, on the serial link -- at the 226-byte v1 payload (section 5.3). Images
@@ -62,6 +70,7 @@ ACTOR_PRESENT = 10  # M13: the presenting role -- portable, needs a connected bo
 PRESENT_TLS = 0x01  # M13: deploy.hpp's kPresentTls -- the presenter connects with TLS, against the image's CA
 ACTOR_LED_SWITCH = 11  # M13: the status LED as a writable resource, node-<id>/led/on (pot/led_switch.hpp)
 ACTOR_POSITION = 12  # M20: where a board sits on the cell's floor plan, node-<id>/sys/pos/{x,y} (pot/position.hpp)
+ACTOR_FOREMAN = 13  # M19: a cell's foreman role -- portable among its foreman-eligible boards (pot/foreman.hpp)
 CLUSTER_NAME_MAX = 31
 OUTSIDE_NAME_MAX = 40  # M13: deploy.hpp's kMaxOutsideName
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
@@ -569,8 +578,15 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
                               f"characters, without spaces or '/'")
         body += struct.pack("<HBB", 0xFFFF, ACTOR_CLUSTER, len(name)) + name
         count += 1
-    if count > MAX_ACTORS:
-        raise DeployError(f"{count} actors; the node image holds at most {MAX_ACTORS}")
+    scope = scope_of(body, count)
+    if count > (MAX_TREE_ACTORS if scope is not None else MAX_ACTORS):
+        raise DeployError(f"{count} actors; the node image holds at most "
+                          f"{MAX_TREE_ACTORS if scope is not None else MAX_ACTORS}")
+    if scope is not None:
+        for nid, kept in kept_per_board(body, count, scope).items():
+            if kept > MAX_ACTORS:
+                raise DeployError(f"node 0x{nid:04x} would keep {kept} actors of its cells; a board keeps at most "
+                                  f"{MAX_ACTORS}")
     digest = bytes.fromhex(m.digest())[:8]
     rules = outside_rules(m)
     cas = {broker_ca_der(a.config["tls_ca"], f"actors[{a.name}]") for a in m.actors
@@ -578,15 +594,15 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
     if len(cas) > 1:
         raise DeployError("two presenters pin different broker CAs; an image carries one")
     ca = cas.pop() if cas else b""
-    version = (IMAGE_VERSION_BROKER_CA if ca else IMAGE_VERSION_OUTSIDE if rules else
-               IMAGE_VERSION_GUESTS if guests else IMAGE_VERSION)
+    version = (IMAGE_VERSION_CELLS if scope is not None else IMAGE_VERSION_BROKER_CA if ca else
+               IMAGE_VERSION_OUTSIDE if rules else IMAGE_VERSION_GUESTS if guests else IMAGE_VERSION)
     header = struct.pack("<IBBHI8sI", IMAGE_MAGIC, version, count, 0, counter, digest, len(body))
     img = header + body
-    if guests or rules or ca:
+    if guests or rules or ca or scope is not None:
         img += bytes([len(guests)])
         for g in guests:
             img += struct.pack("<I", len(g)) + g
-    if rules or ca:
+    if rules or ca or scope is not None:
         img += bytes([len(rules)])
         prefix = f"potluck://{m.system}/"
         for path, flags in rules:
@@ -596,12 +612,78 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
                 raise DeployError(f"outside: '{name}' -- the name a board calls a resource outside the cell is the path "
                                   f"after {prefix}, 1..{OUTSIDE_NAME_MAX} printable ASCII characters, no quotes")
             img += struct.pack("<IBB", path_hash(path), flags, len(raw)) + raw
-    if ca:
+    if ca or scope is not None:
         img += struct.pack("<H", len(ca)) + ca
-    limit = MAX_IMAGE_LEN_GUESTS if guests else MAX_IMAGE_LEN_PRESENT if ca else MAX_IMAGE_LEN
+    if scope is not None:
+        img += bytes([count]) + b"".join(bytes(p) for p in scope)
+    limit = MAX_IMAGE_LEN_GUESTS if guests else MAX_IMAGE_LEN_PSRAM
     if len(img) > limit:
         raise DeployError(f"image is {len(img)} bytes; the node accepts at most {limit}")
     return img
+
+
+def _decls(body: bytes, count: int) -> list[tuple[int, int, bytes]]:
+    out, at = [], 0
+    for _ in range(count):
+        node, typ, ln = struct.unpack_from("<HBB", body, at)
+        out.append((node, typ, body[at + 4:at + 4 + ln]))
+        at += 4 + ln
+    return out
+
+
+def _eligible_ids(cfg: bytes) -> list[int]:
+    return [struct.unpack_from("<H", cfg, 7 + 3 * i)[0] for i in range(cfg[6])]
+
+
+def board_cells(body: bytes, count: int) -> dict[int, tuple[int, ...]]:
+    """M19: each board's cells, as its own position actor names them (config bytes 36 and 37)."""
+    out = {}
+    for node, typ, cfg in _decls(body, count):
+        if typ == ACTOR_POSITION and len(cfg) == 40 and cfg[36]:
+            out[node] = tuple(c for c in cfg[36:38] if c)
+    return out
+
+
+def scope_of(body: bytes, count: int) -> list[tuple[int, int]] | None:
+    """M19 (Review of M19 #3): each actor's (cell, also) -- the scope section of a version-5 image -- or None for a
+    package with no cells. Pinned: its board's cells. Every node: 0 (every cell). Portable: the one cell all its
+    eligible boards share; a foreman role's second is its cell's parent, where its summary is read."""
+    cells = board_cells(body, count)
+    if not cells:
+        return None
+    out = []
+    for k, (node, typ, cfg) in enumerate(_decls(body, count)):
+        if node == EVERY_NODE:
+            out.append((0, 0))
+        elif node == 0xFFFE:
+            common = None
+            for e in _eligible_ids(cfg):
+                if e in cells:
+                    common = set(cells[e]) if common is None else common & set(cells[e])
+            if common is not None and not common:
+                raise DeployError(f"actor #{k} (type {typ}) is portable among boards of different cells -- a portable "
+                                  f"actor lives in one cell (Review of M19 #3): name its cell")
+            also = cfg[7 + 3 * cfg[6] + 1] if typ == ACTOR_FOREMAN else 0
+            out.append((min(common) if common else 0, also))
+        else:
+            c = cells.get(node, ())
+            out.append((c[0] if c else 0, c[1] if len(c) > 1 else 0))
+    return out
+
+
+def kept_per_board(body: bytes, count: int, scope: list[tuple[int, int]]) -> dict[int, int]:
+    """M19: how many declarations each board keeps of a version-5 image -- parse_image's rule, on the host."""
+    decls = _decls(body, count)
+    cells = board_cells(body, count)
+    out = {}
+    for me, own in cells.items():
+        mine = set(own)
+        for (node, typ, cfg), (cell, also) in zip(decls, scope):
+            if node == 0xFFFE and also and cell in mine and me in _eligible_ids(cfg):
+                mine.add(also)
+        out[me] = sum(1 for (node, _t, _c), (cell, also) in zip(decls, scope)
+                      if node == me or cell == 0 or cell in mine or (also and also in mine))
+    return out
 
 
 def crc32(data: bytes) -> int:
