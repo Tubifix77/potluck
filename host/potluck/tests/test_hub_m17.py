@@ -235,5 +235,51 @@ class Setup(Pair):
 
 
 
+class FirstRun(unittest.TestCase):
+    """M20: a PC with no cell yet -- the hub makes one, then attaches to the first board's own USB port."""
+
+    def test_no_cell_then_a_cell_then_the_first_board(self) -> None:
+        from potluck import apply as ap
+        from potluck import transport as tr
+        from potluck.fake_node import FakeNode
+        tmp = tempfile.TemporaryDirectory()
+        saved = (ap.default_cache, tr.SerialTransport)
+        ap.default_cache = lambda: Path(tmp.name) / "cache"
+        host_side, node_side = tr.LoopbackTransport.pair()
+        node = FakeNode(node_side, node_id=0x0101)
+        node.start()
+        opened = []
+        tr.SerialTransport = lambda port, baud, **kw: opened.append((port, baud)) or host_side
+        hub = hb.Hub(tr.NullTransport())
+        hub.start()
+        model = hb.Model(hub, pull_period_ms=200)
+        addr = f"127.0.0.1:{free_port()}"
+        api = hb.serve_api(model, addr)
+        try:
+            def post(path, body):
+                c = http.client.HTTPConnection("127.0.0.1", int(addr.rpartition(":")[2]), timeout=10)
+                c.request("POST", path, body=json.dumps(body),
+                          headers={"Content-Type": "application/json", "X-Potluck-Request": "1"})
+                r = c.getresponse()
+                out = (r.status, json.loads(r.read()))
+                c.close()
+                return out
+            self.assertEqual(post("/api/setup/attach", {"port": "COM9"})[0], 409)  # no cell yet
+            code, r = post("/api/setup/newcell", {"system": "home", "passphrase": "a long enough passphrase"})
+            self.assertEqual(code, 200, r)
+            self.assertTrue((Path(tmp.name) / "cells" / "home" / "vault.json").exists())
+            self.assertEqual(post("/api/setup/newcell", {"system": "x", "passphrase": "a long enough passphrase"})[0], 409)
+            code, r = post("/api/setup/attach", {"port": "COM9"})
+            self.assertEqual((code, r["node"], opened), (200, "0101", [("COM9", 115200)]))
+            self.assertEqual((model.cluster.port, model.cluster.baud), ("COM9", 115200))
+            self.assertEqual(post("/api/setup/attach", {"port": "COM10"})[0], 409)  # attached once
+        finally:
+            api.shutdown()
+            hub.close()
+            node.stop()
+            ap.default_cache, tr.SerialTransport = saved
+            tmp.cleanup()
+
+
 if __name__ == "__main__":
     unittest.main()

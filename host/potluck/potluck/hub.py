@@ -137,6 +137,15 @@ class Hub(Bridge):
         self.relay_counts = {"clients": 0, "requests": 0, "replies": 0, "unmatched": 0, "fanned_out": 0,
                              "node_frames_out": 0, "node_frames_in": 0}
 
+    def attach(self, transport) -> None:
+        """M20's first run: from no cell (NullTransport) to the first board's port. The reader reads self.transport on
+        every pass, so the swap takes effect at its next read."""
+        old, self.transport = self.transport, transport
+        try:
+            old.close()
+        except Exception:  # noqa: BLE001 -- a null transport, or a port already gone
+            pass
+
     def _next_msg_id(self) -> int:
         with self._lock:
             self._msg_id = self._msg_id + 1 if self.HUB_MSG_ID_BASE <= self._msg_id < 0xFFFF else self.HUB_MSG_ID_BASE
@@ -973,11 +982,54 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 return
             self._json(202, {"ok": True, "job": jid})
 
+        def _setup_first(self, path: str) -> None:
+            """M20's first run: make the cell (keys sealed under the owner's passphrase, an empty cluster file), then
+            attach the hub to the first board's own USB port once that board is flashed and enrolled."""
+            from . import setup as st
+            from .apply import ApplyError, default_cache, load_cluster
+            from .transport import NullTransport, SerialTransport
+            try:
+                req = self._body()
+            except ValueError:
+                self._json(400, {"ok": False, "result": "expected a JSON object"})
+                return
+            try:
+                if path == "/api/setup/newcell":
+                    if getattr(model, "cluster", None) is not None:
+                        self._json(409, {"ok": False, "result": "this hub already runs a cell"})
+                        return
+                    system = str(req.get("system", ""))
+                    folder = default_cache().parent / "cells" / system
+                    cluster = st.new_cell(folder, system, str(req.get("passphrase", "")))
+                    model.cluster = load_cluster(str(cluster))
+                    self._json(200, {"ok": True, "cluster": str(cluster)})
+                    return
+                port = str(req["port"])
+                if not isinstance(model.hub.transport, NullTransport):
+                    self._json(409, {"ok": False, "result": "the hub is already attached to the cell"})
+                    return
+                cl = getattr(model, "cluster", None)
+                if cl is None:
+                    self._json(409, {"ok": False, "result": "make the cell first"})
+                    return
+                doc = json.loads(Path(cl.path).read_text(encoding="utf-8"))
+                doc["port"], doc["baud"] = port, st.CONSOLE_BAUD  # the board's own USB cable: the console's rate
+                st._write_cluster(Path(cl.path), doc)
+                model.cluster = load_cluster(str(cl.path))
+                model.hub.attach(SerialTransport(port, st.CONSOLE_BAUD))
+                ack = model.hub.hello(timeout=3.0)
+                self._json(200, {"ok": True, "node": f"{ack.node_id:04x}" if ack else None})
+            except (st.SetupError, ApplyError, KeyError, OSError, ValueError) as exc:
+                self._json(409, {"ok": False, "result": str(exc)})
+
         def _setup_post(self, path: str) -> None:
             """M20's setup wizard: probe, flash, enrol, Wi-Fi, identify -- each a job the dashboard follows."""
             from . import setup as st
             if path in ("/api/setup/board", "/api/setup/apply"):
                 self._setup_cell(path)
+                return
+            if path in ("/api/setup/newcell", "/api/setup/attach"):
+                self._setup_first(path)
                 return
             try:
                 req = self._body()
@@ -1439,13 +1491,24 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     from .lease import KIND_HUB, CellLease, LeaseRefused, holder_name
 
-    hub = Hub(open_transport(port=a.port, tcp=a.tcp, baud=a.baud))
+    setup_mode = not (a.port or a.tcp)
+    if setup_mode:
+        # M20's first run: no cell yet. Only the PC's own address, and only the wizard has anything to do.
+        if lan is not None:
+            print("hub: no cell yet -- set it up first on this PC (http://127.0.0.1:8470/setup.html); --listen comes after")
+            return 2
+        from .transport import NullTransport
+        hub = Hub(NullTransport())
+    else:
+        hub = Hub(open_transport(port=a.port, tcp=a.tcp, baud=a.baud))
     hub.start()
     model = Model(hub, cluster=cluster, package=package, pull_period_ms=a.pull_ms,
                   telemetry_period_ms=a.telemetry_ms,
                   telemetry_log=open(a.telemetry_log, "a", encoding="utf-8") if a.telemetry_log else None)
     lease = None
-    if hub.hello(timeout=3.0) is None:
+    if setup_mode:
+        print(f"[hub] no cell yet: set one up at http://{a.api}/setup.html", flush=True)
+    elif hub.hello(timeout=3.0) is None:
         print(f"hub: no board answers on {a.port or a.tcp}; serving anyway, and retrying")
     else:
         # In the cell: its hub lease, held by the lowest-id board. Another PC's resident hub holds it -> refused,

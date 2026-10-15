@@ -31,6 +31,10 @@ from pathlib import Path
 from typing import Callable
 
 #: USB ids of serial chips seen on ESP32-S3 boards; the rest of the candidates are asked all the same.
+#: The board's console rate -- 115200, what CONFIG_ESP_CONSOLE_UART_DEFAULT (sdkconfig.defaults.esp32s3) builds, as
+#: the build's sdkconfig.h shows; sdkconfig.defaults' 921600 does not apply then. M20's frame link on the board's own
+#: USB cable runs at it.
+CONSOLE_BAUD = 115200
 #: One cell's boards: ESP-NOW's peer table holds 20 (ESP_NOW_MAX_TOTAL_PEER_NUM, esp_now.h; ledger) -- 19 other
 #: boards and the PC's placement node. Past it is M19's cells of cells.
 MAX_BOARDS = 20

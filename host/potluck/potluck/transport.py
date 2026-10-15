@@ -196,6 +196,27 @@ class TcpTransport:
                 self._sock = None
 
 
+class NullTransport:
+    """No cell yet (M20's first run): the hub serves the setup wizard and reads nothing until the wizard attaches it to
+    the first board's port (Hub.attach)."""
+
+    port = None
+
+    @property
+    def description(self) -> str:
+        return "no cell yet"
+
+    def read(self, max_bytes: int = 4096) -> bytes:
+        time.sleep(0.1)
+        return b""
+
+    def write(self, data: bytes) -> int:
+        return len(data)
+
+    def close(self) -> None:
+        pass
+
+
 class LoopbackTransport:
     """One end of an in-process byte pipe. `pair()` builds both ends.
 
