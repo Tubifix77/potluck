@@ -5778,3 +5778,8 @@ than adding airtime. An external review found fourteen problems, ten binding -- 
 (groups first), one heartbeat window per board, package and reconciler scope, ADR-005/006 forbid election (assigned by
 HRW instead), referrals must not be forwarding, the peer budget, a tree-wide channel, missing accept lines, a kill line
 that had already passed, MAC-derived node ids that collide -- all adopted into section 13.
+
+**Replica eviction works on the boards** (firmware `fb6a5ad`, package 73): twelve quiet minutes after the rollout, B
+dropped from 40 entries to **31** -- its eight link replicas from the minutes it held rf_fusion and a peer's built-in
+gone -- exactly the plan's prediction for B. C stays at 40 because it runs rf_fusion and still reads the eight link
+values (in use, so kept); A holds 33 (plan 32).
