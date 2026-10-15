@@ -42,7 +42,8 @@ def candidates(system: str, boards: list[int], actor_outs: list[str]) -> dict[in
         for q in nodes:
             if q != n:
                 for f in LINK:
-                    out[fnv(f"{p}node-{n:04x}/rf/link-{q:04x}/{f}")] = (f"node-{n:04x}/rf/link-{q:04x}/{f}", "rf_link")
+                    # passive-sensor from 1f6d4ce (2026-10-15): node-<me>/rf/link/node-<peer>/<field>, its {peer} outputs
+                    out[fnv(f"{p}node-{n:04x}/rf/link/node-{q:04x}/{f}")] = (f"node-{n:04x}/rf/link/node-{q:04x}/{f}", "rf_link")
     for a in actor_outs:
         out[fnv(f"{p}act/{a}")] = (f"act/{a}", "actor")
     out[fnv("act/setpoint")] = ("act/setpoint", "builtin")

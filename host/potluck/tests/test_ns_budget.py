@@ -51,8 +51,8 @@ class Budget(unittest.TestCase):
         for n in boards:
             self.assertEqual((b[n]["fixed"], b[n]["package"], b[n]["own"]), (7, 2, 1 + 2))  # count + 2 links
         self.assertEqual(b[0x7368]["replicas"], 0)
-        self.assertEqual(b[0x6300]["replicas"], 2 * 3)  # the other two boards' own outputs, read through the cable
-        self.assertEqual(b[0x6300]["total"], 7 + 2 + 3 + 6)
+        self.assertEqual(b[0x6300]["replicas"], 2)  # the other two boards' link/count, read through the cable --
+        self.assertEqual(b[0x6300]["total"], 7 + 2 + 3 + 2)  # not their {peer} outputs, which neither verify nor hub reads
 
     def test_twenty_boards_with_per_link_outputs_do_not_fit(self) -> None:
         boards = [0x1000 + i for i in range(20)]
@@ -73,6 +73,8 @@ class Budget(unittest.TestCase):
         self.assertEqual(silent, ["ext:t/quiet"])
         self.assertEqual(b[0x7368]["replicas"], 1)  # A's uptime, which B presents
         self.assertEqual(b[0x6300]["replicas"], 0)  # its own built-in already
+        mods._REGISTRY["ext:t/quiet"] = mods.ModuleSpec("ext:t/quiet", 0xF2, "every", (), "t", outputs_declared=True)
+        self.assertEqual(ap.ns_budget(m, boards)[1], [])  # "outputs": [] -- publishes nothing, not uncounted
 
 
 if __name__ == "__main__":

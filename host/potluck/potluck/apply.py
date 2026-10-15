@@ -994,11 +994,11 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
         elif a.module in ("builtin:ticker", "builtin:present") or (spec is not None and spec.placement == "portable"):
             package.add(rc.output_path(m, a))
             package.update(_outputs(m, spec, a, []))
-            if spec is not None and not spec.outputs:
+            if spec is not None and not (spec.outputs or spec.outputs_declared):
                 silent.append(a.module)
         elif spec is not None and spec.placement == "every":
             every.append((spec, a))
-            if not spec.outputs:
+            if not (spec.outputs or spec.outputs_declared):
                 silent.append(a.module)
         else:
             node = m.placement_of(a)
@@ -1009,9 +1009,12 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
             if a.module == "builtin:led_switch":
                 package.add(dp.led_switch_path(m.system, node))
             package.update(expand(spec, a, node))
-            if spec is not None and not spec.outputs:
+            if spec is not None and not (spec.outputs or spec.outputs_declared):
                 silent.append(a.module)
-    own ={n: {p for spec, a in every for p in expand(spec, a, n)} for n in boards}
+    own = {n: {p for spec, a in every for p in expand(spec, a, n)} for n in boards}
+    # What the verify and the hub read through the cabled board: not the {peer} outputs, which neither reads (a reader
+    # of those, such as a capture tool, adds them while it runs).
+    own_read = {n: {p for spec, a in every for p in _outputs(m, spec, a, [n])} for n in boards}
     out_paths = {(p if p.startswith("potluck://") else f"potluck://{m.system}/{p.lstrip('/')}") for p in outside}
     result: dict[int, dict] = {}
     for n in boards:
@@ -1019,7 +1022,7 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
         held = fixed | package | own[n]
         extra: set[str] = set()
         if n == cabled:
-            extra |= {p for q in boards if q != n for p in own[q]}
+            extra |= {p for q in boards if q != n for p in own_read[q]}
         if n in presenters:
             extra |= out_paths
         extra -= held

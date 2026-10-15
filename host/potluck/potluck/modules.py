@@ -69,6 +69,9 @@ class ModuleSpec:
     outputs: tuple[str, ...] = ()
     # M13: the board modules the component needs in the image (BOARD_MODULES): its descriptor's `requires`.
     requires: tuple[str, ...] = ()
+    # Whether the descriptor has an "outputs" key at all: `[]` says "publishes nothing" (an LED driver), a missing
+    # key says nothing -- apply --plan names only the latter as uncounted.
+    outputs_declared: bool = False
 
 
 _REGISTRY: dict[str, ModuleSpec] = {}
@@ -142,7 +145,7 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
             if not isinstance(f, dict) or not isinstance(f.get("name"), str) or f.get("kind") not in _KINDS:
                 raise ModuleError(f"{fw}: needs a name and a kind, one of {sorted(_KINDS)}")
             fields.append(Field(f["name"], f["kind"], f.get("default"), f.get("min"), f.get("max")))
-        out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req)))
+        out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req), "outputs" in m))
     return out
 
 
