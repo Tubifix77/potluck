@@ -74,12 +74,12 @@ ACTOR_FOREMAN = 13  # M19: a cell's foreman role -- portable among its foreman-e
 CLUSTER_NAME_MAX = 31
 OUTSIDE_NAME_MAX = 40  # M13: deploy.hpp's kMaxOutsideName
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
-MAX_ACTOR_CFG = 48
+MAX_ACTOR_CFG = 160  # 48 on a board without PSRAM (M19 raised it for the foreman's)
 BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER,
             "builtin:svc_client": ACTOR_SVC_CLIENT, "builtin:die_temp": ACTOR_DIE_TEMP,
             "builtin:mc_lender": ACTOR_MC_LENDER, "builtin:mc_job": ACTOR_MC_JOB,
             "builtin:present": ACTOR_PRESENT, "builtin:led_switch": ACTOR_LED_SWITCH,
-            "builtin:position": ACTOR_POSITION}
+            "builtin:position": ACTOR_POSITION, "builtin:foreman": ACTOR_FOREMAN}
 
 
 def mc_job_path(system: str, node_id: int) -> str:
@@ -372,6 +372,70 @@ def _present_config(m: Manifest, a, where: str) -> bytes:
     return hdr + own
 
 
+#: M19: pot/foreman.hpp's export kinds.
+EXPORT_KIND_CODES = {"alive": 0, "copy": 1, "max": 2, "min": 3, "sum": 4, "count": 5, "avg": 6}
+VALUE_TYPE_CODES = {"bool": 1, "i32": 2, "u32": 3, "f32": 4}
+
+
+def cell_path(system: str, cell_slug: str, export: str) -> str:
+    """M19. Where a cell's foreman publishes one export of its summary."""
+    return f"potluck://{system}/cell-{cell_slug}/{export}"
+
+
+def foreman_exports(a) -> list[tuple[str, str, str, str, str]]:
+    """M19: (name, kind, of, unit, type) for each export of a foreman actor -- `alive` first, then by name."""
+    out = [("alive", "alive", "", "count", "u32")]
+    for k in sorted(a.config):
+        if k.startswith("export:"):
+            kind, of, unit, typ = (str(a.config[k]).split("|") + ["", "", ""])[:4]
+            out.append((k[len("export:"):], kind, of, unit, typ))
+    return out
+
+
+def _foreman_config(m: Manifest, a, where: str) -> bytes:
+    """M19: the portable header, then cell, parent, parent window (100 ms), members, the node- path prefix and the
+    exports -- pot/foreman.hpp."""
+    from .value import Unit
+    allowed = {"cell", "cell_name", "parent", "parent_window_ms", "members", "period_ms"}
+    extra = {k for k in a.config if k not in allowed and not k.startswith("export:")}
+    if extra:
+        raise DeployError(f"{where}: unknown foreman config key(s) {sorted(extra)}")
+    try:
+        cell, parent = int(a.config["cell"]), int(a.config["parent"])
+        window = int(a.config.get("parent_window_ms", 0))
+        members = near_ids(str(a.config["members"]))
+        slug = str(a.config["cell_name"])
+    except (KeyError, TypeError, ValueError):
+        raise DeployError(f"{where}: a foreman needs cell, cell_name, parent and members") from None
+    if not (1 <= cell <= 255 and 1 <= parent <= 255 and cell != parent) or window % 100 or not 0 <= window <= 25500:
+        raise DeployError(f"{where}: cell and parent are two cell numbers 1..255, the window 0..25500 ms in 100 ms steps")
+    if not 1 <= len(members) <= 20 or len(set(members)) != len(members):
+        raise DeployError(f"{where}: a foreman names 1..20 boards of its cell, each once")
+    cfg = _portable_header(m, a, int(a.config.get("period_ms", 2000)), where)
+    for k in range(cfg[6]):
+        if struct.unpack_from("<H", cfg, 7 + 3 * k)[0] not in members:
+            raise DeployError(f"{where}: a board that may hold the role is not one of the cell's")
+    exports = foreman_exports(a)
+    cfg += struct.pack("<BBBBI", cell, parent, window // 100, len(members), path_hash(f"potluck://{m.system}/node-"))
+    cfg += b"".join(struct.pack("<H", n) for n in members) + bytes([len(exports)])
+    for name, kind, of, unit, typ in exports:
+        if kind not in EXPORT_KIND_CODES or unit.upper() not in Unit.__members__:
+            raise DeployError(f"{where}: export '{name}': kind {kind!r}, unit {unit!r}")
+        cfg += struct.pack("<IBH", path_hash(cell_path(m.system, slug, name)), EXPORT_KIND_CODES[kind], int(Unit[unit.upper()]))
+        if kind == "copy":
+            src = of if of.startswith("potluck://") else f"potluck://{m.system}/{of}"
+            cfg += struct.pack("<BI", VALUE_TYPE_CODES.get(typ, 4), path_hash(src))
+        elif kind != "alive":
+            raw = of.encode("ascii")
+            if not 1 <= len(raw) <= 32:
+                raise DeployError(f"{where}: export '{name}': a suffix of 1..32 characters")
+            cfg += bytes([len(raw)]) + raw
+    if len(cfg) > MAX_ACTOR_CFG:
+        raise DeployError(f"{where}: {len(cfg)} bytes of config; a board keeps at most {MAX_ACTOR_CFG} -- fewer "
+                          f"exports, fewer boards in the cell, or fewer that may hold the role")
+    return cfg
+
+
 def _ticker_config(m: Manifest, a, where: str) -> bytes:
     extra = set(a.config) - {"period_ms"}
     if extra:
@@ -527,6 +591,11 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
             raise DeployError(f"{where}: module '{a.module}' is not a built-in actor this firmware "
                               f"has (ADR-003 Tier 0: one of {sorted(BUILTINS)}), and no --modules "
                               f"descriptor describes it")
+        if a.module == "builtin:foreman":
+            cfg = _foreman_config(m, a, where)  # M19: portable among the cell's foreman-eligible boards
+            body += struct.pack("<HBB", 0xFFFE, ACTOR_FOREMAN, len(cfg)) + cfg
+            count += 1
+            continue
         if a.module in ("builtin:ticker", "builtin:present"):
             # Section 7.7: every node gets it; the reconciler decides where it runs. A pinned ticker
             # is a portable one with a single eligible node.

@@ -332,3 +332,35 @@ TEST(foreman, a_dead_foreman_hands_the_role_to_the_standby_within_the_upper_wind
     reader.node->read(temp_hash(0x102), r);
     CHECK(r.quality == Quality::Unavailable);
 }
+
+TEST(foreman, the_host_compilers_foreman_declaration_parses_here) {
+    // potluck.deploy for cell "house" (1) of boards 0100, 0101 (both may be foreman) and 0102 under "tree" (2, 5 s):
+    // alive, a_temp (a copy of node-0100/hw/die_temp) and warmest (the max of every board's hw/die_temp), 1 s
+    const char* hex =
+        "d2bde385e8030200010101010101023203f885aaca00010101020103d2bde385006400ef7e500d01320004e37c33fe3c9a659e023200"
+        "0b68772f6469655f74656d70";
+    std::vector<uint8_t> cfg;
+    for (size_t i = 0; hex[i] != 0; i += 2) cfg.push_back(static_cast<uint8_t>(std::stoi(std::string(hex + i, 2), nullptr, 16)));
+    const ActorDecl d{kPortableNode, ActorType::Foreman, static_cast<uint8_t>(cfg.size()), cfg.data()};
+    ForemanConfig c{};
+    CHECK(foreman_config(d, c));
+    CHECK(c.place.out_hash == path_hash("potluck://home/cell-house/alive") && c.place.period_ms == 1000);
+    CHECK(c.place.count == 2 && c.place.node[0] == 0x0100 && c.place.node[1] == 0x0101);
+    CHECK(c.cell == 1 && c.parent == 2 && c.parent_window == 50 && c.n_members == 3 && c.members[2] == 0x0102);
+    CHECK_EQ(c.n_exports, static_cast<uint8_t>(3));
+    const ForemanExport alive = c.export_at(0), copy = c.export_at(1), warm = c.export_at(2);
+    CHECK(alive.kind == ExportKind::Alive && alive.unit == Unit::Count);
+    CHECK(copy.kind == ExportKind::Copy && copy.type == ValueType::F32 && copy.unit == Unit::Celsius &&
+          copy.src_hash == path_hash("potluck://home/node-0100/hw/die_temp") &&
+          copy.out_hash == path_hash("potluck://home/cell-house/a_temp"));
+    CHECK(warm.kind == ExportKind::Max && warm.out_hash == path_hash("potluck://home/cell-house/warmest"));
+    CHECK_EQ(c.input_hash(warm, 0x0101), path_hash("potluck://home/node-0101/hw/die_temp"));
+    NsDecl outs[kMaxOutputs];
+    CHECK_EQ(kForemanKind.outputs(d, 0, 0, outs, kMaxOutputs), size_t{3});
+    CHECK(outs[0].type == ValueType::U32 && outs[2].type == ValueType::F32 && outs[2].latency_class == kClassL4);
+    // a board that may hold the role and is not one of the cell's: refused
+    auto bad = cfg;
+    bad[7] = 0x07;  // the first eligible node becomes 0x0107
+    const ActorDecl bd{kPortableNode, ActorType::Foreman, static_cast<uint8_t>(bad.size()), bad.data()};
+    CHECK(!foreman_config(bd, c));
+}

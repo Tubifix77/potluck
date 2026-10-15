@@ -19,6 +19,7 @@ from potluck import deploy as dp
 from potluck import manifest as mf
 from potluck import modules as mods
 from potluck import reconcile as rc
+from potluck.paths import path_hash
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -177,6 +178,7 @@ class ClusterFile(unittest.TestCase):
             nid += 1
         cells = {f"cell{k}": {"parent": "tree"} for k in range(len(cells_of))}
         cells["tree"] = {"window_ms": 5000}
+        cells.update(kw.pop("cells", {}))
         return self.cluster(boards=boards, cells=cells, **kw)
 
     def test_the_peer_budget_counts_both_memberships_and_names_the_board_over_it(self):
@@ -219,9 +221,47 @@ class ClusterFile(unittest.TestCase):
         scope = dp.scope_of(body, count)
         self.assertEqual(img[-(1 + 2 * count):], bytes([count]) + b"".join(bytes(p) for p in scope))
         kept = dp.kept_per_board(body, count, scope)
-        self.assertEqual(set(kept.values()), {9 + 1})  # its cell's nine positions and the cluster's name
+        # its cell's nine positions, its cell's foreman and the cluster's name; a board that may be foreman also the
+        # other two cells' foremen, whose summaries it reads in the upper cell
+        self.assertEqual(sorted(set(kept.values())), [9 + 1 + 1, 9 + 3 + 1])
         # a package with no cells is byte for byte what it was
         self.assertNotEqual(dp.compile_image(mf.parse(ap.compose(self.cluster(), [])), 5)[4], dp.IMAGE_VERSION_CELLS)
+
+    def test_each_federating_cell_gets_a_foreman_with_its_exports(self):
+        # M19: one portable foreman per cell with a parent, eligible on its "foreman": true boards; its summary
+        c = self.tree([3, 3], cells={"cell0": {"parent": "tree", "period_ms": 1000,
+                                               "export": {"warmest": {"max": "hw/die_temp", "unit": "celsius"},
+                                                          "a_temp": {"copy": "node-0100/hw/die_temp",
+                                                                     "unit": "celsius"}}},
+                                     "cell1": {"parent": "tree"}, "tree": {"window_ms": 5000}})
+        m = mf.parse(ap.compose(c, []))
+        fm = {a.name: a for a in m.actors if a.module == "builtin:foreman"}
+        self.assertEqual(sorted(fm), ["foreman_cell0", "foreman_cell1"])
+        a = fm["foreman_cell0"]
+        self.assertEqual(a.nodes, (0x100, 0x101))
+        self.assertEqual(a.config["members"], "0100,0101,0102")
+        self.assertEqual((a.config["cell"], a.config["parent"], a.config["parent_window_ms"]), (1, 3, 5000))
+        self.assertEqual([e[0] for e in dp.foreman_exports(a)], ["alive", "a_temp", "warmest"])
+        img = dp.compile_image(m, 5)
+        _, _, count, _, _, _, body_len = struct.unpack_from("<IBBHI8sI", img)
+        body = img[dp.IMAGE_HEADER_LEN:dp.IMAGE_HEADER_LEN + body_len]
+        decls = dp._decls(body, count)
+        scope = dp.scope_of(body, count)
+        k = next(i for i, (node, typ, _) in enumerate(decls) if typ == dp.ACTOR_FOREMAN)
+        self.assertEqual(scope[k], (1, 3))  # its cell, and the parent where its summary is read
+        self.assertEqual(struct.unpack_from("<I", decls[k][2])[0],
+                         path_hash("potluck://home/cell-cell0/alive"))
+        kept = dp.kept_per_board(body, count, scope)
+        self.assertEqual(kept[0x100], 3 + 2 + 1)  # its cell's positions, both foremen, the cluster's name
+        self.assertEqual(kept[0x102], 3 + 1 + 1)  # a member: its own cell's foreman only
+        # the declaration the firmware's test parses (tests/test_foreman.cpp, kHostForeman)
+        self.assertEqual(len(decls[k][2]), 7 + 3 * 2 + 8 + 2 * 3 + 1 + 7 + 12 + 8 + 11)
+        with self.assertRaisesRegex(ap.ApplyError, "export"):
+            self.tree([3], cells={"cell0": {"export": {"x": {"max": "hw/t"}}}, "tree": {}})
+        for bad in ({"alive": {"max": "a"}}, {"x": {"max": "a", "min": "b"}}, {"x": {"median": "a"}},
+                    {"x": {"max": "a", "unit": "parsec"}}, {"X": {"max": "a"}}):
+            with self.assertRaises(ap.ApplyError):
+                self.tree([3], cells={"cell0": {"parent": "tree", "export": bad}, "tree": {}})
 
     def test_a_foreman_is_a_board_of_one_federating_cell(self):
         with self.assertRaisesRegex(ap.ApplyError, "exactly one cell"):  # two memberships at most, the role adds one

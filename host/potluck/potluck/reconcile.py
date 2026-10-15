@@ -59,6 +59,8 @@ def hrw_weight(key: int, node: int) -> int:
 def output_path(m: Manifest, a: ActorSpec) -> str:
     """Where a ticker publishes. Derived from the system and actor names, so it cannot collide with a
     node's canonical resources (those live under node-<id>/)."""
+    if a.module == "builtin:foreman":  # M19: the cell's summary; its identity is the first export, `alive`
+        return f"potluck://{m.system}/cell-{a.config['cell_name']}/alive"
     return f"potluck://{m.system}/act/{a.name}/out"
 
 

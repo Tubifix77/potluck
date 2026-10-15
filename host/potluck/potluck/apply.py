@@ -245,6 +245,8 @@ class Source:
     #: M20's library: an app switched off keeps its components in the image -- so switching is a package change, no
     #: new firmware -- but its manifests leave the package.
     enabled: bool = True
+    #: M19: in a tree, the cell this app's portable actors live in (Review of M19 #3); None: wherever they may run.
+    cell: str | None = None
 
 
 @dataclass
@@ -295,10 +297,21 @@ class Cluster:
     #: M19 (Review of M19 #4): the boards that may hold their cell's foreman role (`"foreman": true` -- on mains
     #: power); the reconciler assigns it among them, never the owner.
     foremen: tuple[int, ...] = ()
+    #: M19: what each federating cell's foreman publishes upward, export name -> {kind: argument, "unit", "type"}
+    #: (pot/foreman.hpp); `alive` is always one of them.
+    exports: dict[str, dict[str, dict[str, str]]] = field(default_factory=dict)
+    #: M19: how often a cell's foreman publishes its summary, ms (default FOREMAN_PERIOD_MS).
+    cell_periods: dict[str, int] = field(default_factory=dict)
 
 
 #: M19: a board's unicast peers -- ESP-NOW's 20 less the broadcast entry (node.hpp's kMaxUnicastPeers).
 PEER_CAP = 19
+#: M19: a foreman's summary period, ms, unless the cell says (cells.<name>.period_ms).
+FOREMAN_PERIOD_MS = 2000
+#: M19: pot/foreman.hpp's limits -- the boards a foreman's config names, its exports besides `alive`.
+FOREMAN_MAX_MEMBERS = 20
+FOREMAN_MAX_EXPORTS = 7
+EXPORT_KINDS = ("copy", "max", "min", "sum", "avg", "count")
 #: M19 (Review of M19 #6): what one child cell puts into its upper cell at worst -- the foreman, the standby, and
 #: during a handover a second foreman until the first one drops out.
 CHILD_SEATS = 3
@@ -312,7 +325,7 @@ def _rel(base: Path, p: str) -> Path:
 def _source(d: Any, where: str, base: Path, default_name: str) -> Source:
     if not isinstance(d, dict):
         raise ApplyError(f"{where}: must be an object")
-    extra = set(d) - {"name", "git", "rev", "components", "manifests", "enabled"}
+    extra = set(d) - {"name", "git", "rev", "components", "manifests", "enabled", "cell"}
     if extra:
         raise ApplyError(f"{where}: unknown key(s) {sorted(extra)}")
     git = d.get("git", ".")
@@ -327,7 +340,12 @@ def _source(d: Any, where: str, base: Path, default_name: str) -> Source:
     enabled = d.get("enabled", True)
     if not isinstance(enabled, bool):
         raise ApplyError(f"{where}.enabled: true or false")
-    return Source(str(d.get("name", default_name)), git, rev, d.get("components"), tuple(mans), enabled)
+    cell = d.get("cell")
+    if cell is not None and (not isinstance(cell, str) or not 1 <= len(cell) <= 31):
+        raise ApplyError(f"{where}.cell: the name of the cell its portable actors live in (M19)")
+    s = Source(str(d.get("name", default_name)), git, rev, d.get("components"), tuple(mans), enabled)
+    s.cell = cell
+    return s
 
 
 def check_plan(plan: Any) -> dict[str, Any] | None:
@@ -533,8 +551,17 @@ def load_cluster(path: str) -> Cluster:
         raise ApplyError("cells: an object, cell name -> {\"window_ms\", \"parent\"}")
     static = {n for v in cells.values() for n in v}
     for name, spec in cells_doc.items():
-        if not isinstance(spec, dict) or set(spec) - {"window_ms", "parent"}:
-            raise ApplyError(f"cells['{name}']: {{\"window_ms\": <ms>, \"parent\": \"<upper cell>\"}}")
+        if not isinstance(spec, dict) or set(spec) - {"window_ms", "parent", "export", "period_ms"}:
+            raise ApplyError(f"cells['{name}']: {{\"window_ms\": <ms>, \"parent\": \"<upper cell>\", \"export\": "
+                             f"{{...}}, \"period_ms\": <ms>}}")
+        if "export" in spec or "period_ms" in spec:
+            if "parent" not in spec:
+                raise ApplyError(f"cells['{name}']: exports go to a parent cell -- give it a \"parent\"")
+            cl.exports[name] = check_exports(spec.get("export", {}), f"cells['{name}'].export")
+            p = spec.get("period_ms", FOREMAN_PERIOD_MS)
+            if not isinstance(p, int) or isinstance(p, bool) or not 500 <= p <= 60000:
+                raise ApplyError(f"cells['{name}'].period_ms: 500..60000")
+            cl.cell_periods[name] = p
         w = spec.get("window_ms", 0)
         if not isinstance(w, int) or isinstance(w, bool) or w % 100 or not 0 <= w <= 25500:
             raise ApplyError(f"cells['{name}'].window_ms: 0..25500, in steps of 100")
@@ -882,6 +909,36 @@ def cell_numbers(c: Cluster) -> dict[str, int]:
     return {name: i + 1 for i, name in enumerate(sorted(names))}
 
 
+def check_exports(spec: Any, where: str) -> dict[str, dict[str, str]]:
+    """M19: a cell's exports -- name -> {"max": "hw/die_temp", "unit": "celsius"} for an aggregate over every board's
+    node-<id>/<suffix>, or {"copy": "node-0100/hw/die_temp", "type": "f32", "unit": "celsius"} for one resource."""
+    from .value import Unit
+    if not isinstance(spec, dict) or len(spec) > FOREMAN_MAX_EXPORTS:
+        raise ApplyError(f"{where}: an object of up to {FOREMAN_MAX_EXPORTS} exports (besides 'alive')")
+    out = {}
+    for ex, d in spec.items():
+        if not isinstance(ex, str) or not 1 <= len(ex) <= 24 or room_slug(ex) != ex or ex == "alive":
+            raise ApplyError(f"{where}: '{ex}' -- an export's name is lowercase letters, digits and '_' (not 'alive', "
+                             f"which every foreman publishes)")
+        if not isinstance(d, dict) or len([k for k in d if k in EXPORT_KINDS]) != 1 or \
+                set(d) - set(EXPORT_KINDS) - {"unit", "type"}:
+            raise ApplyError(f"{where}.{ex}: one of {', '.join(EXPORT_KINDS)}, with an optional unit (and a type for copy)")
+        kind = next(k for k in d if k in EXPORT_KINDS)
+        arg = d[kind]
+        if not isinstance(arg, str) or not 1 <= len(arg) <= 32 or not arg.isascii() or any(ch <= " " for ch in arg):
+            raise ApplyError(f"{where}.{ex}.{kind}: a path under node-<id>/ (or for copy, one resource's path), 1..32 "
+                             f"printable characters")
+        unit = d.get("unit", "none")
+        if not isinstance(unit, str) or unit.upper() not in Unit.__members__:
+            raise ApplyError(f"{where}.{ex}.unit: one of {', '.join(u.lower() for u in Unit.__members__)}")
+        unit = unit.lower()
+        typ = d.get("type", "f32")
+        if kind == "copy" and typ not in ("bool", "i32", "u32", "f32"):
+            raise ApplyError(f"{where}.{ex}.type: bool, i32, u32 or f32")
+        out[ex] = {"kind": kind, "of": arg, "unit": unit, "type": typ}
+    return out
+
+
 def foreman_cells(c: Cluster) -> dict[str, list[int]]:
     """M19: each federating cell's foreman-eligible boards, by id."""
     return {name: sorted(n for n in c.foremen if c.cells.get(n) == (name,)) for name in c.parents}
@@ -1060,6 +1117,34 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
             if any(c.cell_windows.get(n) for n in c.cells[nid]):
                 cfg["cell_windows"] = ",".join(str(c.cell_windows.get(n, 0)) for n in c.cells[nid])
         actors.append({"name": name, "module": "builtin:position", "latency_class": 4, "pin": nid, "config": cfg})
+    fc = foreman_cells(c)
+    for cell in sorted(c.parents):
+        # M19: the cell's foreman role, portable among its foreman-eligible boards (pot/foreman.hpp)
+        slug = room_slug(cell)
+        name = f"foreman_{slug}"
+        if name in names:
+            raise ApplyError(f"an actor named '{name}' is in {names[name]}; the name belongs to cell '{cell}''s foreman")
+        members = sorted(n for n, _ in c.boards if cell in c.cells.get(n, ()))
+        if len(members) > FOREMAN_MAX_MEMBERS:
+            raise ApplyError(f"cell '{cell}': {len(members)} boards; a foreman names at most {FOREMAN_MAX_MEMBERS}")
+        parent = c.parents[cell]
+        cfg = {"cell": cnum[cell], "cell_name": slug, "parent": cnum[parent],
+               "parent_window_ms": c.cell_windows.get(parent, 0), "members": ",".join(f"{n:04x}" for n in members),
+               "period_ms": c.cell_periods.get(cell, FOREMAN_PERIOD_MS)}
+        for ex, e in sorted(c.exports.get(cell, {}).items()):
+            cfg[f"export:{ex}"] = "|".join((e["kind"], e["of"], e["unit"], e["type"]))
+        actors.append({"name": name, "module": "builtin:foreman", "latency_class": 4, "nodes": fc[cell],
+                       "config": cfg})
+    for a in actors:
+        # M19 (Review of M19 #3): an app's portable actors live in the cell its source names
+        src = a.pop("_cell", None)
+        if c.cells and src is not None and "pin" not in a:
+            if src not in cnum:
+                raise ApplyError(f"actor '{a['name']}': its app names cell '{src}', which the cluster file does not have")
+            inside = [n for n, _ in c.boards if src in c.cells.get(n, ())]
+            a["nodes"] = [n for n in (a.get("nodes") or inside) if n in inside]
+            if not a["nodes"]:
+                raise ApplyError(f"actor '{a['name']}': no board of cell '{src}' may run it")
     return out
 
 
@@ -1091,7 +1176,11 @@ def plan_package(c: Cluster, cache: Path, log) -> Package | None:
                 log(f"package: modules from app '{a.name}' ({desc.parent.name})")
         for m in (a.manifests if a.enabled else ()):  # M20: an app switched off adds nothing to the package
             mp = d / m
-            fragments.append((json.loads(mp.read_text(encoding="utf-8")), d, f"app '{a.name}' {m}"))
+            frag = json.loads(mp.read_text(encoding="utf-8"))
+            if a.cell is not None:  # M19: its portable actors live in that cell (compose places them there)
+                for act in frag.get("actors", []):
+                    act["_cell"] = a.cell
+            fragments.append((frag, d, f"app '{a.name}' {m}"))
     for p in c.modules:
         try:
             mods.load(str(p))
