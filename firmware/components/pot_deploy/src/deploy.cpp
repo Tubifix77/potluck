@@ -213,6 +213,13 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                     return false;
                 }
                 break;
+            case ActorType::Position:
+                // M20: pinned; pot/position.hpp judges the rest (the row's check).
+                if (a.node_id == kPortableNode || a.node_id == kEveryNode || a.cfg_len != 16) {
+                    w = "position must be pinned, with two outputs and x and y";
+                    return false;
+                }
+                break;
             case ActorType::Cluster:
                 // M12: every node, a name of 1..31 characters; pot/cluster.hpp judges the characters.
                 if (a.node_id != kEveryNode || a.cfg_len == 0 || a.cfg_len > 31) {

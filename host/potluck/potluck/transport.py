@@ -67,7 +67,13 @@ class SerialTransport:
                 "  pip install pyserial\n"
                 "Or drive an emulated node instead:  potluck-bridge --tcp 127.0.0.1:5555"
             ) from exc
-        return serial.serial_for_url(self.port, baudrate=self.baud, timeout=self.timeout)
+        ser = serial.serial_for_url(self.port, baudrate=self.baud, timeout=self.timeout, do_not_open=True)
+        # M20: a board's own USB port wires DTR and RTS to its reset and boot pins; opening with them asserted
+        # (pyserial's default) can restart it. An adapter on GPIO17/18 has neither wired, so this costs nothing.
+        ser.dtr = False
+        ser.rts = False
+        ser.open()
+        return ser
 
     def _ensure(self):
         if self._ser is not None:
@@ -97,8 +103,11 @@ class SerialTransport:
             return b""
 
     def write(self, data: bytes) -> int:
+        """One framed Potluck Frame per call. It goes out with a leading 0x00 -- on a board's console the frame link
+        shares the line with text, and that zero opens the frame (pot::ConsoleDemux); on an adapter's UART it is an
+        empty chunk, which a reassembler skips."""
         ser = self._ensure()
-        return ser.write(data) or 0
+        return ser.write(b"\x00" + data) or 0
 
     def close(self) -> None:
         if self._ser is not None:

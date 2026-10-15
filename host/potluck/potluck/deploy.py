@@ -61,6 +61,7 @@ ACTOR_CLUSTER = 9  # M12: the cluster's name, every node; added by compile_image
 ACTOR_PRESENT = 10  # M13: the presenting role -- portable, needs a connected board (pot/present.hpp)
 PRESENT_TLS = 0x01  # M13: deploy.hpp's kPresentTls -- the presenter connects with TLS, against the image's CA
 ACTOR_LED_SWITCH = 11  # M13: the status LED as a writable resource, node-<id>/led/on (pot/led_switch.hpp)
+ACTOR_POSITION = 12  # M20: where a board sits on the cell's floor plan, node-<id>/sys/pos/{x,y} (pot/position.hpp)
 CLUSTER_NAME_MAX = 31
 OUTSIDE_NAME_MAX = 40  # M13: deploy.hpp's kMaxOutsideName
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
@@ -68,7 +69,8 @@ MAX_ACTOR_CFG = 48
 BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:ticker": ACTOR_TICKER,
             "builtin:svc_client": ACTOR_SVC_CLIENT, "builtin:die_temp": ACTOR_DIE_TEMP,
             "builtin:mc_lender": ACTOR_MC_LENDER, "builtin:mc_job": ACTOR_MC_JOB,
-            "builtin:present": ACTOR_PRESENT, "builtin:led_switch": ACTOR_LED_SWITCH}
+            "builtin:present": ACTOR_PRESENT, "builtin:led_switch": ACTOR_LED_SWITCH,
+            "builtin:position": ACTOR_POSITION}
 
 
 def mc_job_path(system: str, node_id: int) -> str:
@@ -211,6 +213,34 @@ def _portable_header(m: Manifest, a, period: int, where: str) -> bytes:
 def led_switch_path(system: str, node_id: int) -> str:
     """M13. The writable resource a led_switch actor declares on its board."""
     return f"potluck://{system}/node-{node_id:04x}/led/on"
+
+
+#: M20: the floor plan's extent a position may take, metres from its top-left corner (x right, y down).
+POSITION_MAX_M = 1000.0
+
+
+def position_paths(system: str, node_id: int) -> tuple[str, str]:
+    """M20. Where a board's position on the floor plan lives: its own two entries, x and y in metres from the
+    plan's top-left corner, x to the right and y down -- an app reads them through the cell, and they come with
+    the signed package, so a cell with no PC keeps them."""
+    base = f"potluck://{system}/node-{node_id:04x}/sys/pos"
+    return f"{base}/x", f"{base}/y"
+
+
+def _position_config(m: Manifest, a, where: str) -> bytes:
+    extra = set(a.config) - {"x", "y"}
+    if extra:
+        raise DeployError(f"{where}: unknown position config key(s) {sorted(extra)}")
+    if a.pin is None:
+        raise DeployError(f"{where}: a position is a board's own, so it is pinned")
+    try:
+        x, y = float(a.config["x"]), float(a.config["y"])
+    except (KeyError, TypeError, ValueError):
+        raise DeployError(f"{where}: a position needs numbers x and y (metres)") from None
+    if not (0.0 <= x <= POSITION_MAX_M and 0.0 <= y <= POSITION_MAX_M):
+        raise DeployError(f"{where}: position ({x}, {y}) is outside 0..{POSITION_MAX_M:g} m")
+    hx, hy = (path_hash(p) for p in position_paths(m.system, a.pin))
+    return struct.pack("<IIff", hx, hy, x, y)
 
 
 def _led_switch_config(m: Manifest, a, where: str) -> bytes:
@@ -460,6 +490,11 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
             raise DeployError(f"{where}: placed on '{spec.label}', a host: built-in actors run on firmware")
         if a.module == "builtin:led_switch":
             cfg = _led_switch_config(m, a, where)
+            body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+            count += 1
+            continue
+        if a.module == "builtin:position":
+            cfg = _position_config(m, a, where)
             body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
             count += 1
             continue

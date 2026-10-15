@@ -12,6 +12,7 @@
 #include "esp_log.h"
 #include "pot/cluster.hpp"
 #include "pot/die_temp.hpp"
+#include "pot/position.hpp"
 #if CONFIG_POT_WASM
 #include "pot/guest.hpp"
 #endif
@@ -133,6 +134,7 @@ const ActorKind kBuiltinRows[] = {
     kMcJobKind,
     kClusterKind,  // M12: the cluster's name, carried by the package
     kLedSwitchKind,  // M13: the status LED as a writable resource
+    kPositionKind,   // M20: the board's place on the floor plan
 #if CONFIG_POT_PRESENT
     present::kPresentKind,  // M13: portable, needs a connected board; without the module an image naming it is refused
 #endif

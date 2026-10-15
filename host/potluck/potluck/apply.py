@@ -274,6 +274,9 @@ class Cluster:
     writers: dict[str, tuple[str, ...]] = field(default_factory=dict)
     #: M20: the room each board lives in (a board's `room`), shown by the dashboard -- not its identity, which is `label`.
     rooms: dict[int, str] = field(default_factory=dict)
+    #: M20: where each board sits on the floor plan, metres from its top-left corner (x right, y down); each
+    #: becomes a pinned builtin:position actor, so the boards hold their own positions with no PC.
+    positions: dict[int, tuple[float, float]] = field(default_factory=dict)
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -319,6 +322,7 @@ def load_cluster(path: str) -> Cluster:
         raise ApplyError("system: a cluster name is 1..31 printable ASCII characters, without spaces or '/'")
     boards = []
     rooms: dict[int, str] = {}
+    positions: dict[int, tuple[float, float]] = {}
     for i, bd in enumerate(doc.get("boards", [])):
         if not isinstance(bd, dict) or "node" not in bd:
             raise ApplyError(f"boards[{i}]: {{\"node\": \"<hex id>\", \"label\": \"...\"}}")
@@ -329,6 +333,12 @@ def load_cluster(path: str) -> Cluster:
             if not isinstance(room, str) or not 1 <= len(room) <= 40 or not room.isprintable():
                 raise ApplyError(f"boards[{i}].room: a room name, 1..40 printable characters")
             rooms[nid] = room
+        pos = bd.get("position")  # M20: [x, y] in metres on the floor plan
+        if pos is not None:
+            if not (isinstance(pos, list) and len(pos) == 2 and
+                    all(isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 1000 for v in pos)):
+                raise ApplyError(f"boards[{i}].position: [x, y], metres from the plan's top-left corner, 0..1000")
+            positions[nid] = (float(pos[0]), float(pos[1]))
     if len({n for n, _ in boards}) != len(boards) or len({lab for _, lab in boards}) != len(boards):
         raise ApplyError("boards: a node id or a label appears twice")
     keys_raw = doc.get("keys", {})
@@ -447,6 +457,7 @@ def load_cluster(path: str) -> Cluster:
                  dict(present) if present else None)
     cl.writers = writers
     cl.rooms = rooms
+    cl.positions = positions
     return cl
 
 
@@ -768,6 +779,13 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
         if "present" in names:
             raise ApplyError(f"an actor named 'present' is in {names['present']}; the name belongs to the presenting role")
         actors.append({"name": "present", "module": "builtin:present", "latency_class": 4, "config": dict(c.present)})
+    for nid, (x, y) in sorted(c.positions.items()):
+        # M20: each board's place on the floor plan, held by the board itself (node-<id>/sys/pos/{x,y}).
+        name = f"pos_{nid:04x}"
+        if name in names:
+            raise ApplyError(f"an actor named '{name}' is in {names[name]}; the name belongs to board 0x{nid:04x}'s position")
+        actors.append({"name": name, "module": "builtin:position", "latency_class": 4, "pin": nid,
+                       "config": {"x": x, "y": y}})
     return out
 
 
@@ -950,6 +968,8 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
                 reads.append(dp.die_temp_path(m.system, node))
             if a.module == "builtin:led_switch" and node is not None:
                 reads.append(dp.led_switch_path(m.system, node))
+            if a.module == "builtin:position" and node is not None:
+                reads += list(dp.position_paths(m.system, node))
             reads += _outputs(m, spec, a, [node] if node is not None else [])
     if m.system != "lab":
         for n in boards:
@@ -1018,6 +1038,8 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
                 package.add(dp.die_temp_path(m.system, node))
             if a.module == "builtin:led_switch":
                 package.add(dp.led_switch_path(m.system, node))
+            if a.module == "builtin:position":
+                package.update(dp.position_paths(m.system, node))
             package.update(expand(spec, a, node))
             if spec is not None and not (spec.outputs or spec.outputs_declared):
                 silent.append(a.module)

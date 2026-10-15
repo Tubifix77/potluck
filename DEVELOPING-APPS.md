@@ -228,6 +228,20 @@ Poll the minimum: ~70 reads a second pushed the heartbeat's 99th-percentile roun
   is not a contract. Treat NotFound like NO_DATA: skip this period, read again next.
 - **Units:** `Unit::None` when the unit has no code (degrees per minute, say); say the unit in the output's name.
 
+### Where the boards are, and showing a place on the floor plan (M20)
+
+A board the owner has placed on the floor plan holds its own position: `node-<id>/sys/pos/x` and `/y`, f32 in
+metres from the plan's top-left corner, x to the right, y down (the cluster file's `"position": [x, y]` on that
+board; `apply` compiles it into the signed package as a pinned `builtin:position` actor, so a cell with no PC keeps
+it). A board with no position declares neither -- treat NotFound as "not placed". Read them like any resource
+(above); each costs the reader one replica, counted by `apply --plan`.
+
+An actor that knows where something is declares seven outputs under one prefix, and the dashboard's floor plan
+draws it: `act/<name>/state` (u32: 0 nobody, 1 present but not placed, 2 placed), `x`, `y` (f32, Unit::Metre,
+plan coordinates as above), `a`, `b` (f32, Unit::Metre, the semi-axes of the zone), `theta` (f32, Unit::Radian,
+from +x toward +y) and `conf` (f32, Unit::Ratio, 0..1). Publish x..theta only while the state is 2 and let them go
+STALE otherwise. Say in your own manual what the zone is; the floor plan shades it and never draws a point.
+
 ### Checkpoints (portable actors)
 
 `ActorEnv::checkpoint` keeps up to 128 bytes for the next activation -- on another node after a failover, or on

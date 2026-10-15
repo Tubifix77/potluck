@@ -106,6 +106,21 @@ class ClusterFile(unittest.TestCase):
         c = self.cluster(boards=[{"node": "0100", "label": "A", "room": "Living room"}, {"node": "0200", "label": "B"}])
         self.assertEqual(c.rooms, {0x0100: "Living room"})
 
+    def test_a_boards_position_becomes_its_own_pinned_actor_and_two_entries(self):
+        # M20: the floor plan's positions travel in the signed package, so a cell with no PC keeps them
+        c = self.cluster(boards=[{"node": "0100", "label": "A", "position": [1.5, 2.25]}, {"node": "0200", "label": "B"}])
+        self.assertEqual(c.positions, {0x0100: (1.5, 2.25)})
+        m = mf.parse(ap.compose(c, []))
+        self.assertEqual(mf.cross_check(m), [])
+        img = dp.compile_image(m, 5)
+        hx, hy = (dp.path_hash(p) for p in dp.position_paths("home", 0x0100))
+        self.assertIn(struct.pack("<HBB", 0x0100, dp.ACTOR_POSITION, 16) + struct.pack("<IIff", hx, hy, 1.5, 2.25), img)
+        _, _, reads = ap.expected(m, [0x100, 0x200])
+        self.assertIn("potluck://home/node-0100/sys/pos/y", reads)
+        for bad in ([1], [-1, 0], [0, 1001], ["1", 2], [True, 1]):
+            with self.assertRaisesRegex(ap.ApplyError, "position"):
+                self.cluster(boards=[{"node": "0100", "position": bad}])
+
     def test_fragments_are_matched_by_label_renumbered_and_rehomed(self):
         c = self.cluster()
         frag = {"schema": 1, "system": "lab", "nodes": [
