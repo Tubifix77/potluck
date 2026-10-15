@@ -7,7 +7,8 @@
 
   var NS = "http://www.w3.org/2000/svg";
   var KIND = ["state", "x", "y", "a", "b", "theta", "conf"];  // DEVELOPING-APPS.md: the position kind
-  var P = { dragging: null, placing: null, editRoom: null, msg: "", saving: false, view: null, viewKey: "", pan: null };
+  var P = { dragging: null, placing: null, editRoom: null, msg: "", saving: false, view: null, viewKey: "", pan: null,
+            applying: null };
 
   function el(tag, attrs, text) {
     var e = document.createElement(tag);
@@ -225,12 +226,58 @@
       info.appendChild(p);
     }
     if (editable) {
-      info.appendChild(el("p", { "class": "muted" }, "Drag a board to move it. A board learns its place with the next " +
-        "\"potluck apply\"; the plan itself is only for you. A rough plan is enough."));
+      info.appendChild(el("p", { "class": "muted" }, "Drag a board to move it -- saved as you let go. The boards learn " +
+        "their places when you apply; the rooms' outlines are only for you. A rough plan is enough."));
+      info.appendChild(applyBar(m, host, editable, refresh));
       info.appendChild(roomForm(plan, refresh, host, m, editable));
     }
     if (P.msg) info.appendChild(el("p", { "class": "note warn" }, P.msg));
     host.appendChild(info);
+  }
+
+  // Boards whose place in the plan differs from what the board itself holds (node-<id>/sys/pos/{x,y}): saved here,
+  // not yet on the board.
+  function unapplied(m) {
+    var held = {};
+    (m.resources || []).forEach(function (r) {
+      var k = /\/node-([0-9a-f]{4})\/sys\/pos\/([xy])$/.exec(r.path || "");
+      if (k && typeof r.value === "number") (held[k[1]] = held[k[1]] || {})[k[2]] = r.value;
+    });
+    return (m.boards || []).filter(function (b) {
+      var h = held[b.node] || {};
+      if (!b.position) return h.x !== undefined;  // taken off the plan, still on the board
+      return h.x === undefined || Math.abs(h.x - b.position[0]) > 0.01 || Math.abs(h.y - b.position[1]) > 0.01;
+    });
+  }
+
+  function applyBar(m, host, editable, refresh) {
+    var bar = el("div", { "class": "lib-apply" });
+    var pending = unapplied(m);
+    var running = P.applying && P.applying.state === "running";
+    var go = el("button", { type: "button" }, running ? "Applying..." : "Apply to the cell");
+    go.disabled = running || (!pending.length && !P.applying);
+    go.addEventListener("click", function () {
+      P.applying = { state: "running" };
+      render(host, m, editable, refresh);
+      fetch("api/setup/apply", { method: "POST", headers: { "Content-Type": "application/json", "X-Potluck-Request": "1" },
+                                 body: "{}" }).then(function (r) { return r.json(); }).then(function (r) {
+        if (!r.ok) { P.applying = { state: "failed", error: r.result || "not started" }; refresh(); return; }
+        (function poll() {
+          fetch("api/setup/jobs/" + r.job, { cache: "no-store" }).then(function (x) { return x.json(); }).then(function (j) {
+            P.applying = j;
+            if (j.state === "running") setTimeout(poll, 1000); else refresh();
+          });
+        })();
+      });
+    });
+    bar.appendChild(go);
+    var say = running ? "Sending the boards their places..." :
+      P.applying && P.applying.state === "failed" ? "Not applied: " + P.applying.error :
+      pending.length ? pending.map(function (b) { return b.label || b.node; }).join(", ") +
+        (pending.length === 1 ? " has" : " have") + " a new place saved here, not yet on the board" :
+      P.applying && P.applying.state === "done" ? "Done: every board holds its place." : "Every board holds the place shown.";
+    bar.appendChild(el("span", { "class": "small " + (pending.length && !running ? "" : "muted") }, say));
+    return bar;
   }
 
   function newPlanForm(refresh) {

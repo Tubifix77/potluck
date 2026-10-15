@@ -340,7 +340,7 @@ class PageTest(unittest.TestCase):
 
     def test_the_floor_plan_writes_only_through_the_owners_setup_call_and_draws_zones_not_points(self):
         js = self.read("plan.js")
-        self.assertEqual(set(re.findall(r'"(api/[a-z/]+)', js)), {"api/setup/board"})
+        self.assertEqual(set(re.findall(r'"(api/[a-z/]+)', js)), {"api/setup/board", "api/setup/apply", "api/setup/jobs/"})
         self.assertIn('["state", "x", "y", "a", "b", "theta", "conf"]', js)  # DEVELOPING-APPS.md's position kind
         self.assertIn("ellipse", js)
         self.assertIn('src="plan.js"', self.read("index.html"))
