@@ -61,6 +61,22 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-15: **M19 and M20 planned; building in the agreed order -- step 1 done, step 2 under way** (M0-LOG session 45).
+>
+> **Order (ARCHITECTURE section 13, "The order of building M19 and M20"):** step 1 CA-assigned node ids (**done**, `d22d6cf`);
+> step 2 M20 up to twenty boards (**under way**: `room` per board `b03b734`, `potluck.keystore` vault/backup `ab59a4b`; next the
+> wizard's backend -- detect boards on USB, flash, enrol, Wi-Fi, light a board -- then the wizard in the dashboard, the library
+> toggles, the frame link over the board's own USB, the installer); step 3 M19 (pot_sim and stub cells -- the owner buys no more
+> boards); step 4 M20's large setup. Wizard mockup: https://claude.ai/artifact/45tDox5VwXr2maaRabvwDB (`bench/m20-setup-wizard.html`).
+> **Bench:** firmware `fb6a5ad` (counter 40; `apply` picks the next), package 73 from `keys/desk-m14-hub.json` with passive-sensor
+> pinned at `1f6d4ce` (blue presence, declared outputs); step 1's firmware change is **not rolled out yet** (the boards keep their
+> ids either way). Replica eviction and the full-namespace reporting are on the boards (B dropped 40 -> 31 entries). The hub runs
+> resident (`--listen 0.0.0.0:8443`, log `captures/hub-5.log`) with the 127.0.0.1 hardening (POSTs need X-Potluck-Request, Host must
+> be local), paired with Home Assistant. The homelab: NTP on; a tray app (`D:\Projects\ha-tray`) turns Home Assistant on/off --
+> check it is on before HA work, Mosquitto always runs. **The keys in `keys\` are still plaintext:** the vault is built but not used
+> until the wizard can unlock it -- the owner seals them himself then. Release-day items for the owner: passive-sensor's licence,
+> esptool's GPL beside the Apache hub.
+>
 > ## HANDOVER, 2026-10-14 (evening): **M16-M18 shown in the owner's Home Assistant; the LED has the owner's colours** (M0-LOG session 44, end).
 >
 > M17: HACS installed `custom_components/potluck`, the hub was discovered and paired, an automation ("Potluck LED test
