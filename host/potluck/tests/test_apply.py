@@ -263,6 +263,16 @@ class ClusterFile(unittest.TestCase):
             with self.assertRaises(ap.ApplyError):
                 self.tree([3], cells={"cell0": {"parent": "tree", "export": bad}, "tree": {}})
 
+    def test_a_trees_firmware_rollout_takes_members_then_the_standby_then_the_foreman(self):
+        c = self.tree([3, 3])
+
+        class St:
+            def __init__(self, actors):
+                self.actors = actors
+        inv = {0x100: St(["foreman_cell0", "pos_0100"]), 0x101: St(["pos_0101"]), 0x103: St(["foreman_cell1"])}
+        need = [0x100, 0x101, 0x102, 0x103, 0x104, 0x105]
+        self.assertEqual(ap.rollout_order(c, need, 0x102, inv), [0x105, 0x101, 0x104, 0x100, 0x103, 0x102])
+
     def test_in_a_tree_the_presenting_role_lives_in_the_cell_it_names(self):
         fw = {"modules": ["present", "wifi"]}
         with self.assertRaisesRegex(ap.ApplyError, "present.cell"):

@@ -111,3 +111,25 @@ class Budget(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_in_a_tree_each_board_counts_its_cells_and_a_foreman_both(self) -> None:
+        # M19 (Review of M19 #3): two cells of three, a die temperature on every board, a foreman each -- a member
+        # counts its own cell's three temperatures and its foreman's summary; a board that may hold the role also
+        # the other cell's summary, which it reads in the upper cell; per-link outputs only toward its own cell
+        boards = [0x100, 0x101, 0x102, 0x200, 0x201, 0x202]
+        actors = [{"name": "link", "module": "ext:t/link", "latency_class": 4}]
+        for n in boards:
+            cell = 1 if n < 0x200 else 2
+            actors.append({"name": f"t_{n:04x}", "module": "builtin:die_temp", "latency_class": 4, "pin": n})
+            actors.append({"name": f"pos_{n:04x}", "module": "builtin:position", "latency_class": 4, "pin": n,
+                           "config": {"cells": str(cell)}})
+        for cell, base in ((1, 0x100), (2, 0x200)):
+            actors.append({"name": f"foreman_c{cell}", "module": "builtin:foreman", "latency_class": 4,
+                           "nodes": [base, base + 1],
+                           "config": {"cell": cell, "cell_name": f"c{cell}", "parent": 3, "members":
+                                      ",".join(f"{base + i:04x}" for i in range(3)), "export:warm": "max|hw/t|none|f32"}})
+        b, _ = ap.ns_budget(manifest(boards, actors), boards, cabled=0x102)
+        self.assertEqual(b[0x102]["package"], 3 + 2)      # its cell's three temperatures, cell 1's alive and warm
+        self.assertEqual(b[0x100]["package"], 3 + 2 + 2)  # ... and cell 2's summary
+        self.assertEqual(b[0x102]["own"], 1 + 2)          # link/count and a link to each cell-mate, not to cell 2
+        self.assertEqual(b[0x102]["replicas"], 2)         # the cabled board reads its cell-mates' link/count

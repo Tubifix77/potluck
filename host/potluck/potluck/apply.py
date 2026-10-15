@@ -981,6 +981,16 @@ def peer_budget(c: Cluster, cabled: int | None = None) -> dict[int, dict[str, An
     return out
 
 
+def rollout_order(c: Cluster, need: list[int], cabled: int | None, inv: dict) -> list[int]:
+    """The boards a firmware rollout visits, one at a time: the cabled board last, since everything goes through it.
+    M19 (Review of M19 #3): in a tree, a cell's members first, then the boards that may hold its foreman role -- the
+    standby before the one running it, which hands the role over when it restarts into the new image."""
+    def runs_foreman(n: int) -> bool:
+        st = inv.get(n)
+        return st is not None and any(str(a).startswith("foreman_") for a in getattr(st, "actors", ()))
+    return sorted(need, key=lambda n: (n == cabled, n in c.foremen, runs_foreman(n), need.index(n)))
+
+
 def check_peers(c: Cluster, cabled: int | None = None) -> list[str]:
     """M19: one plan line per board of a tree (a cluster file with cells); ApplyError naming every board over
     PEER_CAP. A cluster file without cells is one cell, whose twenty-board limit is checked elsewhere."""
@@ -1410,26 +1420,65 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
             near[node] = dp.near_ids(str(a.config["near"]))
             pos_own.setdefault(node, set()).add(dp.near_path(m.system, node))
 
+    # M19 (Review of M19 #3): in a tree each board keeps only its cells' actors (deploy.hpp's scope rule), so it
+    # counts only theirs -- a foreman both of its cells'. Without cells every board keeps every actor, as before.
+    from . import locality
+    cells = locality.node_cells(m)
+
+    def actor_scope(a) -> set[int]:
+        if a.module == "builtin:foreman":
+            return {int(a.config["cell"]), int(a.config["parent"])}
+        node = m.placement_of(a) if a.pin is not None or a.module == "builtin:position" else None
+        if node is not None:
+            return set(cells.get(node, ()))
+        common = None
+        for e in a.nodes:
+            if e in cells:
+                common = set(cells[e]) if common is None else common & cells[e]
+        return common or set()
+
+    def mine(n: int) -> set[int]:
+        out = set(cells.get(n, ()))
+        for a in m.actors:
+            if a.module == "builtin:foreman" and n in a.nodes and int(a.config["cell"]) in out:
+                out.add(int(a.config["parent"]))
+        return out
+    my_cells = {n: mine(n) for n in boards}
+
+    def keeps(n: int, a) -> bool:
+        if not cells or not my_cells.get(n):
+            return True
+        s = actor_scope(a)
+        return not s or bool(s & my_cells[n]) or m.placement_of(a) == n
+
+    def peers_of(n: int) -> list[int]:
+        return [q for q in boards if q != n and (not cells or not my_cells.get(n) or not my_cells.get(q) or
+                                                   my_cells[n] & set(cells.get(q, ())))]
+
     def expand(spec, a, n: int) -> list[str]:
         out = []
         for t in (spec.outputs if spec is not None else ()):
             t = t.lstrip("?").replace("{actor}", a.name).replace("{node}", f"node-{n:04x}")
             if "{peer}" in t:
-                links = near.get(n, [])[:spec.peers_nearest] if spec.peers_nearest else [q for q in boards if q != n]
+                links = near.get(n, [])[:spec.peers_nearest] if spec.peers_nearest else peers_of(n)
             else:
                 links = [None]
             for p in links:
                 out.append(f"potluck://{m.system}/" + (t.replace("{peer}", f"node-{p:04x}") if p is not None else t))
         return out
 
-    package: set[str] = set()
+    by_actor: list[tuple[Any, set[str]]] = []  # each actor's package entries, kept by the boards that keep it
     every: list[tuple] = []
     silent: list[str] = []
     for a in m.actors:
         spec = mods.get(a.module)
+        package: set[str] = set()
+        by_actor.append((a, package))
         if a.module.startswith("guest:"):
             package.update(dp.guest_output_path(m.system, a.name, name)
                            for name, _t in gs.parse_outputs(a.config["outputs"], a.name))
+        elif a.module == "builtin:foreman":
+            package.update(dp.cell_path(m.system, a.config["cell_name"], name) for name, *_ in dp.foreman_exports(a))
         elif a.module in ("builtin:ticker", "builtin:present") or (spec is not None and spec.placement == "portable"):
             package.add(rc.output_path(m, a))
             package.update(_outputs(m, spec, a, []))
@@ -1461,10 +1510,11 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
     result: dict[int, dict] = {}
     for n in boards:
         fixed = {f"potluck://{m.system}/node-{n:04x}/{s}" for s in NS_FIXED} | {"act/setpoint"}
+        package = {p for a, ps in by_actor if keeps(n, a) for p in ps}
         held = fixed | package | own[n]
         extra: set[str] = set()
         if n == cabled:
-            extra |= {p for q in boards if q != n for p in own_read[q]}
+            extra |= {p for q in peers_of(n) for p in own_read[q]}
         if n in presenters:
             extra |= out_paths
         extra -= held
@@ -1628,7 +1678,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                 floors = [x for n in boards for x in ((inv[n].fw_floor, inv[n].fw_running) if inv[n] else
                                                       (fws[n]["floor"], fws[n]["running"]))]
                 counter = max(floors) + 1
-                order = [n for n in need if n != cabled] + ([cabled] if cabled in need else [])
+                order = rollout_order(c, need, cabled, inv)
                 log(f"firmware: {fwb.version} to {', '.join(f'0x{n:04x}' for n in order)} at counter {counter}")
                 from .signing import read_key
 
