@@ -323,6 +323,32 @@ TEST(ns, a_full_table_refuses_rather_than_overwrites) {
     CHECK_EQ(ns.full_refusals(), 1u);  // counted, so a full table is no longer silent (section 15 question 2)
 }
 
+TEST(ns, a_replica_adopted_at_read_time_is_evicted_once_nothing_reads_it_and_only_then) {
+    // Section 15 question 2 (2026-10-15): copies a board made because something read them were never removed.
+    Namespace ns;
+    const uint32_t own = path_hash("potluck://lab/node-0100/sys/uptime");
+    const uint32_t pkg = path_hash("potluck://lab/node-0200/hw/die_temp");   // the package's replica: never evicted
+    const uint32_t read_one = path_hash("potluck://lab/node-0200/rf/link/node-0300/mean");
+    const uint32_t idle_one = path_hash("potluck://lab/node-0300/rf/link/node-0200/mean");
+    CHECK(ns.declare(sampled(own, kSelf, 100)) == NsError::Ok);
+    CHECK(ns.declare(sampled(pkg, 0x0200, 100)) == NsError::Ok);
+    CHECK(ns.declare(sampled(read_one, 0x0200, 100)) == NsError::Ok);
+    CHECK(ns.declare(sampled(idle_one, 0x0300, 100)) == NsError::Ok);
+    ns.mark_adopted(read_one, 1000);
+    ns.mark_adopted(idle_one, 1000);
+    CHECK_EQ(ns.evict_idle(500000, 600000), static_cast<size_t>(0));  // not idle long enough yet
+    ns.touch(read_one, 590000);                                       // still read
+    CHECK_EQ(ns.evict_idle(700000, 600000), static_cast<size_t>(1));  // idle_one: 699 s unread
+    CHECK(ns.find(idle_one) == nullptr);
+    CHECK(ns.find(read_one) != nullptr);
+    CHECK(ns.find(own) != nullptr);
+    CHECK(ns.find(pkg) != nullptr);
+    CHECK_EQ(ns.evict_idle(1200000, 600000), static_cast<size_t>(1));  // read_one too, once unread for long enough
+    CHECK(ns.find(pkg) != nullptr && ns.find(own) != nullptr);
+    CHECK_EQ(ns.evictions(), 2u);
+    CHECK_EQ(ns.count(), static_cast<size_t>(2));
+}
+
 TEST(ns, lookup_cost_is_bounded_at_a_realistic_occupancy) {
     // §14 lists namespace lookup cost as a risk that "reduces node count". §15's open question 2
     // asks whether 128 entries is right. This measures the probe distance rather than assuming it.

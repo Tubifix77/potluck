@@ -1251,6 +1251,10 @@ NsError Node::read(uint32_t path_hash, Reading& out, bool* is_local) {
     }
     if (e == nullptr && adopt_ != nullptr && adopt_(adopt_ctx_, path_hash)) {
         e = ns_.find(path_hash);  // M8.2: an actor output on another node, declared on demand
+        if (e != nullptr) ns_.mark_adopted(path_hash, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
+    }
+    if (e != nullptr && (e->flags & kNsFlagAdopted) != 0) {
+        ns_.touch(path_hash, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);  // still read: keep it
     }
     if (e == nullptr) {
         if (is_local != nullptr) {
@@ -1463,7 +1467,9 @@ bool Node::adopt_peer_sys_resource(uint32_t path_hash) {
         for (size_t k = 0; k < kSysResourceCount; ++k) {
             const SysResource which = static_cast<SysResource>(k);
             if (sys_resource_hash(q.node_id, which) == path_hash) {
-                return ns_.declare(sys_resource_decl(q.node_id, which)) == NsError::Ok;
+                if (ns_.declare(sys_resource_decl(q.node_id, which)) != NsError::Ok) return false;
+                ns_.mark_adopted(path_hash, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
+                return true;
             }
         }
     }
@@ -1571,7 +1577,7 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
         d.latency_class = rep.latency_class;
         d.staleness_bound_ms = rep.timestamp_ms;
         d.staleness_policy = static_cast<StalenessPolicy>(rep.value_raw[2]);
-        (void)ns_.declare(d);
+        if (ns_.declare(d) == NsError::Ok) ns_.mark_adopted(asked_for, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
         return;
     }
 
@@ -2136,6 +2142,11 @@ void Node::do_probe_round(uint32_t now_ms) {
 void Node::tick(uint32_t now_ms) {
     if (!started_) {
         return;
+    }
+
+    if (cfg_.replica_idle_ms != 0 && static_cast<int32_t>(now_ms - next_evict_ms_) >= 0) {
+        next_evict_ms_ = now_ms + 10000;
+        ns_.evict_idle(now_ms, cfg_.replica_idle_ms);
     }
 
     if (static_cast<int32_t>(now_ms - next_beacon_ms_) >= 0) {

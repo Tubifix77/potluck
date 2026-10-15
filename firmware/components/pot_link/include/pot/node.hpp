@@ -136,6 +136,9 @@ struct NodeConfig {
     // The largest msg_id this node puts on its requests (they run 1..msg_id_max per peer). M14: pot_hostnode behind
     // potluck-hub uses 0x7FFF, leaving 0x8000.. to the hub; a board keeps the whole range.
     uint16_t msg_id_max = 0xFFFF;
+    // Section 15 question 2: a replica adopted at read time that nothing has read for this long is dropped (the next
+    // read adopts it again). 0 keeps them for ever.
+    uint32_t replica_idle_ms = 600000;
 
     // §8.2, wireless row.
     uint32_t hb_period_ms = kHbPeriodWirelessMs;
@@ -739,6 +742,7 @@ class Node {
     static constexpr uint32_t kVerifyRefillMs = 250;
     uint32_t verify_tokens_ = kVerifyBurst;
     uint32_t verify_refill_ms_ = 0;
+    uint32_t next_evict_ms_ = 0;
     // The last few refusals, so a refused node announcing itself every 2 s is one event per 10 s
     // rather than a flood. Every refusal is still counted.
     struct Refusal {

@@ -83,9 +83,9 @@ struct NsEntry {
     uint8_t access;              // Access
     uint8_t latency_class;       // §4 L0..L4
     uint8_t staleness_policy;    // StalenessPolicy
-    uint8_t flags;               // bit0 = faulty, as reported by the owner
+    uint8_t flags;               // bit0 = faulty, as reported by the owner; bit1 = adopted at read time
     uint8_t outside;             // M13: kOutside* -- what the package lets systems outside the cell do
-    uint8_t reserved0[4];
+    uint32_t last_read_ms;       // an adopted replica: when it was last read, on our clock (eviction)
 
     bool free() const { return path_hash == 0; }
     bool has_data() const { return update_count > 0; }
@@ -97,6 +97,10 @@ static_assert(sizeof(NsEntry) * kNamespaceEntries <= 8192,
               "§6: namespace table is 128 entries in 8.0 KB");
 
 constexpr uint8_t kNsFlagFaulty = 1u << 0;
+// A replica declared because something read it (a peer's built-in, another board's actor output, a describe reply),
+// not by the package: evicted once nothing has read it for a while (section 15 question 2, 2026-10-15). The package's
+// own declarations never carry it, so they are never evicted.
+constexpr uint8_t kNsFlagAdopted = 1u << 1;
 
 // M13: what the owner's package lets a system outside the cell do with a resource -- Home Assistant through
 // the presenting role, say. Default: nothing. Carried by the deploy image (its outside section, pot/deploy.hpp),
@@ -166,6 +170,13 @@ class Namespace {
     // declared. Linear probing with backward-shift deletion: the entries after it in its probe run move back
     // so that a free slot still ends every search, and nothing else's lookup changes.
     NsError remove(uint32_t hash);
+    // Read-time replicas (kNsFlagAdopted): mark one just declared, note a read of it, and remove those nothing has
+    // read for `idle_ms` -- a board that once read another's values (it held an aggregator for a while, a capture
+    // tool read through it) otherwise kept every copy until it rebooted. Returns how many it removed.
+    void mark_adopted(uint32_t hash, uint32_t now_ms);
+    void touch(uint32_t hash, uint32_t now_ms);
+    size_t evict_idle(uint32_t now_ms, uint32_t idle_ms);
+    uint32_t evictions() const { return evictions_; }
 
     NsEntry* find(uint32_t hash);
     const NsEntry* find(uint32_t hash) const;
@@ -263,6 +274,7 @@ class Namespace {
     uint8_t outside_flags_[kMaxOutside];
     uint8_t outside_n_ = 0;
     uint32_t full_refusals_ = 0;
+    uint32_t evictions_ = 0;
 };
 
 static_assert(kNamespaceEntries > 0 && (kNamespaceEntries & (kNamespaceEntries - 1)) == 0,

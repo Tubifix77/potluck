@@ -75,6 +75,7 @@ NsError Namespace::declare(const NsDecl& d) {
             e.latency_class = d.latency_class;
             e.staleness_policy = static_cast<uint8_t>(d.staleness_policy);
             e.flags = 0;
+            e.last_read_ms = 0;
             e.outside = outside_of(d.path_hash);
             arrived_ms_[i] = 0;
             return NsError::Ok;
@@ -100,6 +101,36 @@ NsError Namespace::declare(const NsDecl& d) {
     }
     ++full_refusals_;
     return NsError::Full;
+}
+
+void Namespace::mark_adopted(uint32_t hash, uint32_t now_ms) {
+    NsEntry* e = find(hash);
+    if (e == nullptr) return;
+    e->flags |= kNsFlagAdopted;
+    e->last_read_ms = now_ms;
+}
+
+void Namespace::touch(uint32_t hash, uint32_t now_ms) {
+    NsEntry* e = find(hash);
+    if (e != nullptr && (e->flags & kNsFlagAdopted) != 0) e->last_read_ms = now_ms;
+}
+
+size_t Namespace::evict_idle(uint32_t now_ms, uint32_t idle_ms) {
+    size_t n = 0;
+    // remove() shifts later entries back into the hole, so restart the scan after each removal.
+    for (bool again = true; again;) {
+        again = false;
+        for (size_t i = 0; i < kNamespaceEntries; ++i) {
+            const NsEntry& e = entries_[i];
+            if (e.free() || (e.flags & kNsFlagAdopted) == 0 || now_ms - e.last_read_ms <= idle_ms) continue;
+            remove(e.path_hash);
+            ++n;
+            ++evictions_;
+            again = true;
+            break;
+        }
+    }
+    return n;
 }
 
 NsError Namespace::remove(uint32_t hash) {
@@ -265,7 +296,7 @@ NsError Namespace::set_owner(uint32_t hash, uint16_t owner) {
     e->value.type = t;
     e->updated_ms = 0;
     e->update_count = 0;
-    e->flags = 0;
+    e->flags &= kNsFlagAdopted;  // a new owner's value is not faulty; whether it was adopted at read time is unchanged
     arrived_ms_[static_cast<size_t>(e - entries_)] = 0;
     return NsError::Ok;
 }
