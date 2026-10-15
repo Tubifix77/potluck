@@ -239,7 +239,7 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
       }
       return "<h1>How many boards are you setting up?</h1>" +
         '<p class="lead">Most people do not have every board plugged in at once. Tell me roughly how many there will be, and I will plan the rest: installing them in batches, and whether they need to be split into groups.</p>' +
-        '<div class="choices">' + pick(3, "A few", "Up to 10 boards: one room or a flat. One group.") + pick(15, "A house", "11 to 20 boards. Still one group.") + pick(24, "More than 20", "Split into groups that talk through one board each (needs M19).") + "</div>" +
+        '<div class="choices">' + pick(3, "Up to 20 boards", "One group: a room, a flat or a house.") + pick(24, "More than 20", "Split into groups that talk through one board each (needs M19).") + "</div>" +
         '<label class="field" for="countn" style="margin-top:18px">Or type the number<input id="countn" type="text" inputmode="numeric" value="' + S.count + '"></label>' +
         '<p class="calm"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--accent)" stroke-width="2"/><path d="M12 7v10M7 12h10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/></svg><span><b>You can always add more boards later.</b> A rough number is fine: the dashboard adds boards whenever you get more, and if boards far apart cannot hear each other, I will notice after you place them and suggest groups.</span></p>';
     },
