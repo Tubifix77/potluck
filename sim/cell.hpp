@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "pot/node.hpp"
+#include "pot/opcodes.hpp"
 #include "link_model.hpp"
 
 namespace potsim {
@@ -107,6 +108,7 @@ class Cell {
             s.hal.free_dram = &Cell::hal_free_dram;
 
             s.node = new Node(cfg, s.hal);
+            spaces_[i] = 1;
         }
     }
 
@@ -185,6 +187,16 @@ class Cell {
     // that behaviour can be reproduced -- this is the condition §13-M0's kill criterion is about.
     void set_pdr(double p) { link_.pdr = p; }
     double pdr() const { return link_.pdr; }
+
+    // M19: radio spaces -- places out of each other's earshot that reuse the channel (rooms, floors, buildings). A
+    // node is in one or more (a bit each, up to 64); two nodes hear each other when they share one. Default: all in
+    // space 0, one radio space as before. A frame's airtime is charged to every space its sender is in.
+    void set_spaces(size_t i, uint64_t mask) { spaces_[i] = mask; }
+    uint64_t spaces(size_t i) const { return spaces_[i]; }
+    double space_busy_us(size_t s) const { return space_busy_us_[s]; }
+    // ... of which CASTs -- the reconciler's claim sets and checkpoints (section 7.7), which a cell without portable
+    // actors does not send.
+    double space_cast_us(size_t s) const { return space_cast_us_[s]; }
 
     void set_asleep(size_t i, bool v) { asleep_[i] = v; }
     bool asleep(size_t i) const { return asleep_[i]; }
@@ -283,18 +295,29 @@ class Cell {
         const double air = airtime_floor_us(static_cast<uint32_t>(len));
         busy_us += air;
         ++frames_sent;
+        const bool cast = len > 6 && data[6] == pot::kOpCast;
+        for (size_t s = 0; s < 64; ++s) {
+            if (((spaces_[from] >> s) & 1u) == 0) continue;
+            space_busy_us_[s] += air;
+            if (cast) space_cast_us_[s] += air;
+        }
 
         // Channel occupancy. This is the whole point of the exercise: a shared medium can only
         // carry so much, and a policy that asks for more does not degrade gracefully — it collapses.
         // Frames offered while the channel is already saturated are dropped, which is a crude stand-
         // in for the collisions and retry exhaustion that would really happen.
+        // M19: per radio space -- a space is a separate medium, and a sender in two loads both.
         const double window_us = 1e6;
         if (now_us_ >= window_start_us_ + window_us) {
             window_start_us_ = now_us_;
-            window_busy_us_ = 0.0;
+            for (double& w : window_busy_us_) w = 0.0;
         }
-        window_busy_us_ += air;
-        const bool saturated = window_busy_us_ > window_us;
+        bool saturated = false;
+        for (size_t s = 0; s < 64; ++s) {
+            if (((spaces_[from] >> s) & 1u) == 0) continue;
+            window_busy_us_[s] += air;
+            saturated = saturated || window_busy_us_[s] > window_us;
+        }
 
         if (broadcast) {
             for (size_t to = 0; to < nodes_.size(); ++to) {
@@ -342,6 +365,9 @@ class Cell {
         if (partition_at_ != 0 && ((from < partition_at_) != (to < partition_at_))) {
             ++frames_lost;
             return false;
+        }
+        if ((spaces_[from] & spaces_[to]) == 0) {
+            return false;  // M19: out of earshot -- not a loss, the frame is never heard there
         }
         if (saturated) {
             ++frames_lost;
@@ -391,13 +417,16 @@ class Cell {
     uint64_t now_us_ = 0;
     Totals retired_{};  // counters harvested from nodes destroyed by reboot()
     bool asleep_[kMaxSimNodes] = {};
+    uint64_t spaces_[kMaxSimNodes] = {};  // filled with space 0 by the constructor
+    double space_busy_us_[64] = {};
+    double space_cast_us_[64] = {};
     size_t partition_at_ = 0;  // 0 = whole cell hears itself
     void (*on_second_)(Cell&, uint32_t) = nullptr;
     void (*on_step_)(Cell&, void*) = nullptr;
     void* step_ctx_ = nullptr;
     bool stop_ = false;
     uint64_t window_start_us_ = 0;
-    double window_busy_us_ = 0.0;
+    double window_busy_us_[64] = {};
 
     std::priority_queue<InFlight, std::vector<InFlight>, std::greater<InFlight>> rx_q_;
     std::priority_queue<TxCompletion, std::vector<TxCompletion>, std::greater<TxCompletion>> tx_q_;

@@ -234,6 +234,41 @@ class Setup(Pair):
             self.model.cluster = saved
 
 
+    def test_the_wizard_proposes_a_tree_from_what_the_boards_measure_and_writes_it(self) -> None:
+        # M19/M20: three buildings of eight boards; two chargers in each hear the others' across the yard
+        from potluck.apply import check_peers, load_cluster
+        groups = [[0x100 + 0x100 * g + i for i in range(8)] for g in range(3)]
+        chargers = [g[0] for g in groups] + [g[1] for g in groups]
+        boards = []
+        for g in groups:
+            for n in g:
+                links = [{"peer": f"{q:04x}", "delivery": 1.0, "rssi": -50} for q in g if q != n]
+                if n in chargers:
+                    links += [{"peer": f"{q:04x}", "delivery": 0.97, "rssi": -80} for q in chargers if q not in g]
+                boards.append({"node": f"{n:04x}", "links": links})
+        p = Path(self.tmp.name) / "farm.json"
+        p.write_text(json.dumps({"schema": "potluck-cluster/1", "system": "farm", "firmware": None,
+                                 "boards": [{"node": b["node"], "label": "b" + b["node"]} for b in boards]}),
+                     encoding="utf-8")
+        saved, saved_snap = self.model.cluster, self.model.snapshot
+        self.model.cluster = load_cluster(str(p))
+        self.model.snapshot = lambda: {"boards": boards}
+        try:
+            code, r = self.req(self.local_addr, "POST", "/api/setup/tree", {"chargers": [f"{n:04x}" for n in chargers]})
+            self.assertEqual(code, 200)
+            self.assertEqual(sorted(len(v) for v in r["proposal"]["cells"].values()), [8, 8, 8])
+            self.assertEqual(r["proposal"]["notes"], [])
+            self.assertFalse(r["written"])
+            code, r = self.req(self.local_addr, "POST", "/api/setup/tree",
+                               {"chargers": [f"{n:04x}" for n in chargers], "write": True})
+            self.assertEqual((code, r["written"]), (200, True))
+            cl = load_cluster(str(p))
+            self.assertEqual(len(cl.parents), 3)
+            check_peers(cl, 0x100)  # within every board's nineteen peers
+            self.assertIn(self.req(self.lan_addr, "POST", "/api/setup/tree", {})[0], (401, 404))
+        finally:
+            self.model.cluster, self.model.snapshot = saved, saved_snap
+
 
 class LibraryRoutes(Pair):
     """M20's library on the hub: apps on and off, what Home Assistant may see -- the PC's own address only."""

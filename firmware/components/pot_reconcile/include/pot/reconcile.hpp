@@ -64,7 +64,9 @@
 
 namespace pot {
 
-constexpr size_t kMaxPortable = 8;
+// 16 since M19: a board that may hold its cell's foreman role keeps its own and every sibling cell's (whose summaries
+// it reads in the upper cell) -- ten cells, ten roles -- beside the cell's apps. The reconciler lives in PSRAM.
+constexpr size_t kMaxPortable = 16;
 
 // The CAST path the claim sets travel on. Not a namespace resource: a reserved hash, like a port.
 constexpr uint32_t kReconcilePath = path_hash("potluck:sys/reconcile/v1");

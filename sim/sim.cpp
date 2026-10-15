@@ -25,6 +25,7 @@
 #include "pot/telemetry.hpp"
 #include "cell.hpp"
 #include "link_model.hpp"
+#include "tree2.hpp"
 
 using namespace pot;
 using namespace potsim;
@@ -397,7 +398,10 @@ void usage() {
         "  --hb-ms N          heartbeat period, default 100 (section 8.2)\n"
         "  --probe-ms N       round-robin probe interval, default 1000\n"
         "  --seed N           RNG seed, default 1\n"
-        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present|telemetry|d20|perlink|twocells|tree|indep\n"
+        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present|telemetry|d20|perlink|twocells|tree|indep|\n"
+        "                     tree2 (M19: --cells K base cells of ten in their own radio spaces, under one upper cell)\n"
+        "  --cells K          tree2: base cells, default 10 (K x 10 boards)\n"
+        "  --kill-at S        tree2: cell 0's foreman sleeps at second S for two minutes\n"
         "  --tel-ms N         telemetry: the hub's pull period per board, default 10000 (M15)\n"
         "  --start-days D     start the virtual clock D days in, to straddle a counter wrap\n"
         "  --json             emit one link/node record per node, in the firmware's format\n"
@@ -420,6 +424,8 @@ int main(int argc, char** argv) {
     bool json = false;
     std::string scenario = "none";
     double start_days = 0.0;
+    size_t t2_cells = 10;
+    uint32_t kill_at = 0;
 
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -443,6 +449,8 @@ int main(int argc, char** argv) {
         else if (a == "--scenario") scenario = next();
         else if (a == "--start-days") start_days = std::stod(next());
         else if (a == "--tel-ms") g_tel.period_ms = static_cast<uint32_t>(std::stoul(next()));
+        else if (a == "--cells") t2_cells = static_cast<size_t>(std::stoul(next()));
+        else if (a == "--kill-at") kill_at = static_cast<uint32_t>(std::stoul(next()));
         else if (a == "--help" || a == "-h") { usage(); return 0; }
         else { std::printf("unknown option '%s'\n\n", a.c_str()); usage(); return 2; }
     }
@@ -454,7 +462,14 @@ int main(int argc, char** argv) {
 
     // One cell stops at section 3's ESP-NOW peer ceiling; scenarios with cells (M19) keep each board's peers within it
     // and may hold more boards in one radio space.
-    const bool cells = scenario == "tree" || scenario == "indep" || scenario == "twocells";
+    const bool cells = scenario == "tree" || scenario == "indep" || scenario == "twocells" || scenario == "tree2";
+    if (scenario == "tree2") {
+        if (t2_cells < 2 || t2_cells > 25) {
+            std::printf("--cells must be 2..25\n");
+            return 2;
+        }
+        nodes = t2_cells * kT2Cell;
+    }
     const size_t most = cells ? kMaxSimNodes : kMaxPeers;
     if (nodes < 2 || nodes > most) {
         std::printf("--nodes must be between 2 and %zu (%s)\n", most,
@@ -472,7 +487,11 @@ int main(int argc, char** argv) {
         cell.set_clock_us(static_cast<uint64_t>(start_days * 86400.0 * 1e6));
         std::printf("clock starts at %.4f days (uint32 ms wraps at 49.7103)\n", start_days);
     }
-    if (scenario == "tree" || scenario == "indep") {
+    if (scenario == "tree2") {
+        tree2_setup(cell, t2_cells, kill_at);
+        std::printf("tree2: %zu cells of %zu in their own radio spaces, two foreman-eligible boards each also in the "
+                    "upper cell's space%s\n", t2_cells, kT2Cell, kill_at ? "; a foreman killed" : "");
+    } else if (scenario == "tree" || scenario == "indep") {
         tree_setup(cell, scenario == "tree");
         std::printf("%s: %zu cells of %zu in one radio space%s\n", scenario.c_str(), (cell.size() + kTreeCell - 1) / kTreeCell,
                     kTreeCell, scenario == "tree" ? ", each cell's first board also in the upper cell (5 s window)" : "");
@@ -515,6 +534,7 @@ int main(int argc, char** argv) {
     if (scenario != "none") {
         std::printf("scenario: %s\n", scenario.c_str());
     }
+    if (scenario == "tree2") tree2_start(cell);
     cell.run(static_cast<uint64_t>(minutes * 60.0 * 1e6));
 
     const double elapsed_s = minutes * 60.0;
@@ -528,8 +548,12 @@ int main(int argc, char** argv) {
     std::printf("  lost                %llu  (of which %llu to saturation)\n",
                 static_cast<unsigned long long>(cell.frames_lost),
                 static_cast<unsigned long long>(cell.frames_lost_to_collision));
-    std::printf("  airtime (floor)     %.1f%%  %s\n", util * 100.0,
-                util > 1.0 ? "<-- OVERSUBSCRIBED" : "");
+    if (scenario == "tree2") {
+        std::printf("  airtime (floor)     %.1f%%  summed over %zu radio spaces -- each space's is below\n", util * 100.0,
+                    t2_cells + 1);
+    } else {
+        std::printf("  airtime (floor)     %.1f%%  %s\n", util * 100.0, util > 1.0 ? "<-- OVERSUBSCRIBED" : "");
+    }
 
     std::printf("\nper node\n");
     std::printf("  %-8s %6s %7s %7s %8s %8s %9s %9s\n", "node", "peers", "beacons", "probes",
@@ -576,7 +600,12 @@ int main(int argc, char** argv) {
     // converged: nobody left dead once the link came back.
     size_t still_dead = 0;
     for (size_t i = 0; i < cell.size(); ++i) {
-        still_dead += cell.node(i).node->peers().count_in_state(PeerState::Dead);
+        // M19: a peer that no longer shares a cell with us (a foreman that handed its role on and left the upper cell)
+        // is dead to us by design; only one we still share a cell with should have come back
+        const Node& n = *cell.node(i).node;
+        for (size_t k = 0; k < PeerTable::capacity(); ++k) {
+            if (n.peers().slot(k).state == PeerState::Dead && n.shares_group(n.peer_groups(k))) ++still_dead;
+        }
     }
     std::printf("\nmembership: %u death declarations, %u revivals across the cell\n", deaths,
                 revivals);
@@ -636,8 +665,9 @@ int main(int argc, char** argv) {
                     g_d20_wanted / (minutes * 60.0), g_d20_reads / (minutes * 60.0),
                     static_cast<unsigned>(g_d20_reads), static_cast<unsigned>(g_d20_wanted));
     }
+    if (scenario == "tree2") tree2_report(cell, minutes * 60.0);
     if (scenario == "none" || scenario == "present" || scenario == "telemetry" || scenario == "d20" ||
-        scenario == "perlink" || scenario == "tree" || scenario == "indep") {  // polling must not cost a death
+        scenario == "perlink" || scenario == "tree" || scenario == "indep" || (scenario == "tree2" && !kill_at)) {
         std::printf("  %s\n", deaths ? "<-- unperturbed cell lost peers; the heartbeat did not hold"
                                      : "no deaths on an unperturbed cell, as required");
     } else {

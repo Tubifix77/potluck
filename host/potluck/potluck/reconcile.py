@@ -36,7 +36,7 @@ from .paths import path_hash
 PORTABLE_NODE = 0xFFFE
 #: deploy.hpp's kMaxEligible and reconcile.hpp's kMaxPortable.
 MAX_ELIGIBLE = 8
-MAX_PORTABLE = 8
+MAX_PORTABLE = 16  # 8 until M19
 #: The modules that can be portable on this firmware (ADR-003 Tier 0).
 PORTABLE_MODULES = ("builtin:ticker", "builtin:present")
 

@@ -984,6 +984,23 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             except ValueError:
                 self._json(400, {"ok": False, "result": "expected a JSON object"})
                 return
+            if path == "/api/setup/tree":
+                # M19/M20's large setup: the cells proposed from what the boards measure (potluck.survey); with
+                # "write": true, put into the cluster file -- every screen writes the cluster file, every step is apply.
+                from . import survey as sv
+                try:
+                    chargers = {int(str(x), 16) for x in req.get("chargers", [])}
+                    boards, links, rooms = sv.links_from_model(model.snapshot())
+                    p = sv.propose(boards, links, chargers, rooms)
+                    if req.get("write"):
+                        sv.write(cl.path, p)
+                        from .apply import load_cluster
+                        model.cluster = load_cluster(str(cl.path))
+                except (st.SetupError, ValueError) as exc:
+                    self._json(409, {"ok": False, "result": str(exc)})
+                    return
+                self._json(200, {"ok": True, "proposal": p.to_json(), "written": bool(req.get("write"))})
+                return
             if path == "/api/setup/board":
                 try:
                     if "plan" in req:
@@ -1082,7 +1099,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
         def _setup_post(self, path: str) -> None:
             """M20's setup wizard: probe, flash, enrol, Wi-Fi, identify -- each a job the dashboard follows."""
             from . import setup as st
-            if path in ("/api/setup/board", "/api/setup/apply"):
+            if path in ("/api/setup/board", "/api/setup/apply", "/api/setup/tree"):
                 self._setup_cell(path)
                 return
             if path in ("/api/setup/library", "/api/setup/broker"):

@@ -444,7 +444,7 @@ struct Pending {
 };
 EXT_RAM_BSS_ATTR Pending g_q[kMaxPortable];  // under g_mutex
 bool g_retain_due = false;
-uint32_t g_retain[kMaxPortable];
+EXT_RAM_BSS_ATTR uint32_t g_retain[kMaxPortable];
 size_t g_retain_n = 0;
 uint32_t g_writes = 0;       // NVS writes done this boot (the wear figure)
 uint32_t g_write_errors = 0;
@@ -523,8 +523,8 @@ const CheckpointPersist g_hook{nullptr, &write, &read, &retain, 60000};
 
 // From the stats task: take the queue under the mutex, then write without it.
 void flush() {
-    static Pending s_out[kMaxPortable];
-    static uint32_t s_keep[kMaxPortable];
+    EXT_RAM_BSS_ATTR static Pending s_out[kMaxPortable];  // M19: 16 actors -- PSRAM, never internal RAM
+    EXT_RAM_BSS_ATTR static uint32_t s_keep[kMaxPortable];
     size_t n_out = 0, n_keep = 0;
     bool retain_due = false;
     xSemaphoreTake(g_mutex, portMAX_DELAY);
@@ -563,7 +563,7 @@ void flush() {
     }
     if (retain_due) {
         nvs_iterator_t it = nullptr;
-        char gone[kMaxPortable][16];
+        EXT_RAM_BSS_ATTR static char gone[kMaxPortable][16];  // the stats task's only
         size_t n_gone = 0;
         for (esp_err_t e = nvs_entry_find("nvs", kNs, NVS_TYPE_BLOB, &it); e == ESP_OK && it != nullptr;
              e = nvs_entry_next(&it)) {

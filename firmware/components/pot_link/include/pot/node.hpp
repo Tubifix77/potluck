@@ -327,6 +327,8 @@ class Node {
     uint32_t group_refusals() const { return group_refusals_; }
     // M19: dead peers whose slot a full table gave to a newcomer (NodeCounters is a fixed 64 B, section 6).
     uint32_t peers_reclaimed() const { return peers_reclaimed_; }
+    // M19: the cells a peer's last HELLO named (0 for a slot not in use).
+    uint16_t peer_groups(size_t slot) const { return slot < kMaxPeers ? peer_groups_[slot] : 0; }
     uint32_t heartbeat_period_ms() const { return cfg_.hb_period_ms; }
 
     // ---- M5.1 (CR-1): moving the cell, and finding it again -----------------------------------
