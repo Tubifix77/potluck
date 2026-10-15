@@ -241,6 +241,19 @@ void perlink_step(Cell& c, void*) {
     }
 }
 
+// M19 (Review of M19 #1): two cells side by side on one channel under one CA. Boards 0..half-1 are cell 1, the rest
+// cell 2; at 120 s the last board of cell 1 moves to cell 2 -- its old cell-mates must let it fall silent and its new
+// ones admit it. The end report counts any peer alive across cells (must be 0) and any cell-mate missing.
+size_t g_two_moved = 0;
+uint8_t two_cell_of(size_t i, size_t n) { return (i == g_two_moved && g_two_moved != 0) ? 2 : (i < n / 2 ? 1 : 2); }
+
+void scenario_twocells(Cell& c, uint32_t sec) {
+    if (sec == 120) {
+        g_two_moved = c.size() / 2 - 1;
+        c.node(g_two_moved).node->set_groups(2, 0);
+    }
+}
+
 // M15: the hub's telemetry pull. Node 0 is the board on the hub's cable: every period it asks each other board, one
 // request at a time as the real proxy does, for its health, its links (paged, five peers a reply), its actors and its
 // events. Each board answers with a reply of the size pot/telemetry.hpp gives for a cell this size -- the bytes on
@@ -367,7 +380,7 @@ void usage() {
         "  --hb-ms N          heartbeat period, default 100 (section 8.2)\n"
         "  --probe-ms N       round-robin probe interval, default 1000\n"
         "  --seed N           RNG seed, default 1\n"
-        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present|telemetry|d20|perlink\n"
+        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present|telemetry|d20|perlink|twocells\n"
         "  --tel-ms N         telemetry: the hub's pull period per board, default 10000 (M15)\n"
         "  --start-days D     start the virtual clock D days in, to straddle a counter wrap\n"
         "  --json             emit one link/node record per node, in the firmware's format\n"
@@ -438,7 +451,12 @@ int main(int argc, char** argv) {
         cell.set_clock_us(static_cast<uint64_t>(start_days * 86400.0 * 1e6));
         std::printf("clock starts at %.4f days (uint32 ms wraps at 49.7103)\n", start_days);
     }
-    if (scenario == "present") {
+    if (scenario == "twocells") {
+        for (size_t i = 0; i < cell.size(); ++i) cell.node(i).node->set_groups(i < cell.size() / 2 ? 1 : 2, 0);
+        cell.set_on_second(&scenario_twocells);
+        std::printf("twocells: boards 0-%zu cell 1, %zu-%zu cell 2, one channel; board %zu moves to cell 2 at 120 s\n",
+                    cell.size() / 2 - 1, cell.size() / 2, cell.size() - 1, cell.size() / 2 - 1);
+    } else if (scenario == "present") {
         cell.set_on_second(&scenario_present);
     } else if (scenario == "d20") {
         cell.set_on_second(&scenario_d20);
@@ -544,6 +562,28 @@ int main(int argc, char** argv) {
                     static_cast<unsigned>(g_tel.answered), static_cast<unsigned>(g_tel.timeouts),
                     static_cast<unsigned>(g_tel.refused), g_tel.reply_bytes / 1024.0,
                     g_tel.cycles ? g_tel.cycle_us_sum / 1000.0 / g_tel.cycles : 0.0, g_tel.cycle_us_max / 1000.0);
+    }
+    if (scenario == "twocells") {
+        size_t cross = 0, missing = 0;
+        uint32_t refused = 0;
+        for (size_t i = 0; i < cell.size(); ++i) {
+            const Node& me = *cell.node(i).node;
+            refused += me.group_refusals();
+            for (size_t j = 0; j < cell.size(); ++j) {
+                if (j == i) continue;
+                const uint16_t id = cell.node(j).node->config().node_id;
+                bool alive = false;
+                for (size_t k = 0; k < PeerTable::capacity(); ++k) {
+                    const PeerLink& pl = me.peers().slot(k);
+                    if (pl.state == PeerState::Alive && pl.node_id == id) alive = true;
+                }
+                const bool mates = two_cell_of(i, cell.size()) == two_cell_of(j, cell.size());
+                if (alive && !mates) ++cross;
+                if (!alive && mates) ++missing;
+            }
+        }
+        std::printf("\ntwocells: %zu peer(s) alive across cells (must be 0), %zu cell-mate(s) missing (must be 0), "
+                    "%u HELLO(s) refused as another cell's\n", cross, missing, static_cast<unsigned>(refused));
     }
     if (scenario == "d20" || scenario == "perlink") {
         std::printf("\n%s: the design wants %.1f reads a second; %.1f went out (%u of %u)\n", scenario.c_str(),

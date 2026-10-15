@@ -69,6 +69,8 @@ class Hello:
     hb_miss_limit: int
     flags: int
     pubkey_fp: bytes
+    #: M19: the sender's cells, two 8-bit numbers low byte first; 0 = none (a host, or a board with no package yet)
+    groups: int = 0
 
     @property
     def wants_ack(self) -> bool:
@@ -81,7 +83,7 @@ class Hello:
 
     @classmethod
     def parse(cls, payload: bytes) -> Hello:
-        (epoch, caps, node_id, _res0, ver, period_cs, misses, flags, fp) = _unpack(
+        (epoch, caps, node_id, groups, ver, period_cs, misses, flags, fp) = _unpack(
             _HELLO, payload, "HELLO"
         )
         return cls(
@@ -93,6 +95,7 @@ class Hello:
             hb_miss_limit=misses,
             flags=flags,
             pubkey_fp=fp,
+            groups=groups,
         )
 
     def encode(self) -> bytes:
@@ -111,7 +114,7 @@ class Hello:
             self.boot_epoch,
             self.caps,
             self.node_id,
-            0,
+            self.groups,
             self.espnow_version,
             self.hb_period_ms // 10,
             self.hb_miss_limit,

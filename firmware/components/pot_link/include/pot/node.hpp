@@ -304,6 +304,15 @@ class Node {
     // hears beacons at the old rate until a periodic HELLO has told it too. HELLO carries the period in one byte of
     // centiseconds: 10..2550 ms in steps of 10, miss limit 1..255. False if out of range.
     bool set_heartbeat_window(uint32_t period_ms, uint8_t miss_limit);
+
+    // M19: the cells (groups) this board belongs to, from its package -- up to two, 0 = none. A HELLO from a board
+    // that shares none of them is refused, and frames from a known peer that no longer shares one are ignored, so it
+    // drops out within its window (two cells within earshot under one CA never merge -- Review of M19 #1). A board
+    // with no cells (a fresh one waiting for its package) and a host are admitted by anyone, and admit anyone.
+    void set_groups(uint8_t a, uint8_t b);
+    uint16_t groups() const { return groups_; }
+    bool shares_group(uint16_t theirs) const;
+    uint32_t group_refusals() const { return group_refusals_; }
     uint32_t heartbeat_period_ms() const { return cfg_.hb_period_ms; }
 
     // ---- M5.1 (CR-1): moving the cell, and finding it again -----------------------------------
@@ -670,6 +679,9 @@ class Node {
     void relay_hello(const Frame& f, const uint8_t orig_mac[kMacLen]);
     bool relay_ = false;
     bool relayed_[kMaxPeers]{};
+    uint16_t groups_ = 0;                  // M19: ours, low byte first
+    uint16_t peer_groups_[kMaxPeers]{};    // M19: each peer's, as its last HELLO said
+    uint32_t group_refusals_ = 0;
     bool rx_via_relay_ = false;  // set by on_rx for the frame being dispatched
     uint8_t rx_orig_mac_[kMacLen]{};
     RelayCounters relay_counters_{};

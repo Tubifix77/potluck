@@ -168,7 +168,7 @@ TEST(golden, hello_payload_bytes) {
     h.boot_epoch = 0x11223344;
     h.caps = 0;
     h.node_id = 0x0102;
-    h.reserved0 = 0;
+    h.groups = 0;
     h.espnow_version = 2;
     h.hb_period_cs = 10;
     h.hb_miss_limit = 6;

@@ -551,6 +551,23 @@ void Node::announce_change() {
     next_announce_ms_ = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
 }
 
+void Node::set_groups(uint8_t a, uint8_t b) {
+    const uint16_t g = static_cast<uint16_t>(a | b << 8);
+    if (g == groups_) return;
+    groups_ = g;
+    announce_change();  // the HELLO says something new
+}
+
+bool Node::shares_group(uint16_t theirs) const {
+    if (groups_ == 0 || theirs == 0) return true;  // a board with no cell yet, or a host
+    const uint8_t mine[2] = {static_cast<uint8_t>(groups_), static_cast<uint8_t>(groups_ >> 8)};
+    const uint8_t their[2] = {static_cast<uint8_t>(theirs), static_cast<uint8_t>(theirs >> 8)};
+    for (uint8_t m : mine) {
+        if (m != 0 && (m == their[0] || m == their[1])) return true;
+    }
+    return false;
+}
+
 bool Node::set_heartbeat_window(uint32_t period_ms, uint8_t miss_limit) {
     if (period_ms < 10 || period_ms > 2550 || period_ms % 10 != 0 || miss_limit == 0) {
         return false;
@@ -778,6 +795,7 @@ void Node::send_hello(bool want_ack) {
              (cfg_.channel_fixed ? kHelloCapChannelFixed : 0u) | (settling(hnow) ? kHelloCapSettling : 0u) |
              (relay_ ? kHelloCapRelay : 0u);
     h.node_id = cfg_.node_id;
+    h.groups = groups_;  // M19
     h.espnow_version = cfg_.espnow_version;
     // M5.1: the window being announced, which leads cfg_ while a looser window is pending.
     const uint32_t period = announced_period_ms_ != 0 ? announced_period_ms_ : cfg_.hb_period_ms;
@@ -958,6 +976,13 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         announce_change();
     }
 
+    if (p == nullptr && !shares_group(h.groups)) {
+        // M19: another cell's board -- refused before any signature work, so a neighbouring cell's HELLOs cannot
+        // spend the verification budget this cell's admissions need (refusing on an unverified claim costs nothing).
+        ++group_refusals_;
+        return;
+    }
+
     if (trust_ != nullptr) {
         // The cable is trusted without a signature (section 9.3) -- but a host that signs anyway
         // (M10's pot_hostnode, enrolled like a board) is verified, so this board relays its HELLO to
@@ -970,6 +995,14 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
                 if (!cable) return;  // a refused stranger never gets a peer slot; a known peer's state is untouched
                 outcome = AuthOutcome::Legacy;  // the cable: as if it had not signed
             }
+        }
+    }
+
+    if (p != nullptr) {
+        peer_groups_[peers_.index_of(p)] = h.groups;  // M19: what it belongs to now (verified, or the cable)
+        if (!shares_group(h.groups)) {
+            ++group_refusals_;  // no longer a cell of ours: left to fall silent within its window
+            return;
         }
     }
 
@@ -993,6 +1026,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         }
         auth_[peers_.index_of(p)] = PeerAuth{};  // a reused slot must not inherit its last tenant's key
         relayed_[peers_.index_of(p)] = rx_via_relay_;
+        peer_groups_[peers_.index_of(p)] = h.groups;
         emit(EventKind::PeerDiscovered, p, h.boot_epoch);
         // on_rx only accounts a frame against a peer it already knew, so the HELLO that creates the
         // peer has to be accounted here or it is missing from rx_frames forever. A broadcast HELLO
@@ -1952,6 +1986,9 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
             return;
         }
     } else {
+        if (f.hdr.opcode != kOpHello && !shares_group(peer_groups_[peers_.index_of(p)])) {
+            return;  // M19: no longer a cell of ours -- not heard, so it falls silent within its window
+        }
         p->last_rssi = rssi;
         if (was_broadcast) {
             // Counted, but not through account_rx_seq: §5.1 makes seq per (src,dst), so the

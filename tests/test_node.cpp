@@ -1037,3 +1037,36 @@ TEST(node, two_relays_in_one_cell_resolve_to_the_lower_node_id) {
     CHECK(c.nodes[1].node->relay());
     CHECK(!c.nodes[2].node->relay());
 }
+
+// ---- M19: cells (groups) -- two cells within earshot under one CA never merge ----------------------------------
+
+TEST(node, boards_share_a_cell_when_one_number_matches_and_a_board_with_none_matches_anyone) {
+    TestCell c;
+    c.build(1, BeaconMode::BroadcastBeacon);
+    Node& n = *c.nodes[0].node;
+    CHECK(n.shares_group(0x0201));  // no cell yet: anyone
+    n.set_groups(1, 3);              // a foreman: cells 1 and 3
+    CHECK(n.shares_group(0x0001) && n.shares_group(0x0300) && n.shares_group(0x0103));
+    CHECK(!n.shares_group(0x0002) && !n.shares_group(0x0402));
+    CHECK(n.shares_group(0));       // a host, or a board waiting for its package
+    CHECK_EQ(n.groups(), static_cast<uint16_t>(0x0301));
+}
+
+TEST(node, a_board_of_another_cell_is_never_admitted_and_one_that_moves_away_falls_silent) {
+    TestCell c;
+    c.build(4, BeaconMode::BroadcastBeacon);
+    c.nodes[0].node->set_groups(1, 0);
+    c.nodes[1].node->set_groups(1, 0);
+    c.nodes[2].node->set_groups(2, 0);
+    c.nodes[3].node->set_groups(2, 0);
+    c.start_all();
+    c.advance_ms(3000);
+    for (int i = 0; i < 4; ++i) {
+        CHECK_EQ(c.nodes[i].node->peers().count_in_state(PeerState::Alive), static_cast<size_t>(1));  // its cell-mate only
+        CHECK(c.nodes[i].node->group_refusals() > 0);
+    }
+    c.nodes[1].node->set_groups(2, 0);  // node 1 moves to cell 2
+    c.advance_ms(5000);
+    CHECK_EQ(c.nodes[0].node->peers().count_in_state(PeerState::Alive), static_cast<size_t>(0));
+    CHECK_EQ(c.nodes[2].node->peers().count_in_state(PeerState::Alive), static_cast<size_t>(2));
+}

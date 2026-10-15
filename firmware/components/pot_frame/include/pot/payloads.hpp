@@ -80,7 +80,10 @@ struct HelloPayload {
     uint32_t boot_epoch;
     uint32_t caps;
     uint16_t node_id;
-    uint16_t reserved0;
+    // M19: the cells (groups) the sender belongs to -- two 8-bit numbers, low byte first, 0 = none; a board holds at
+    // most two memberships. 0x0000: no cell yet (a board waiting for its package) or a host: admitted by anyone.
+    // Was reserved (always 0), so every older sender reads as "no cell".
+    uint16_t groups;
     uint8_t espnow_version;
     uint8_t hb_period_cs;
     uint8_t hb_miss_limit;
@@ -92,7 +95,7 @@ static_assert(sizeof(HelloPayload) == 24, "HELLO is 24 bytes");
 static_assert(offsetof(HelloPayload, boot_epoch) == 0, "HELLO offset");
 static_assert(offsetof(HelloPayload, caps) == 4, "HELLO offset");
 static_assert(offsetof(HelloPayload, node_id) == 8, "HELLO offset");
-static_assert(offsetof(HelloPayload, reserved0) == 10, "HELLO offset");
+static_assert(offsetof(HelloPayload, groups) == 10, "HELLO offset");
 static_assert(offsetof(HelloPayload, espnow_version) == 12, "HELLO offset");
 static_assert(offsetof(HelloPayload, hb_period_cs) == 13, "HELLO offset");
 static_assert(offsetof(HelloPayload, hb_miss_limit) == 14, "HELLO offset");
