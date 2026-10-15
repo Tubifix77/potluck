@@ -5719,7 +5719,9 @@ installation; M18: Node-RED itself not installed).
 M17: the owner's Home Assistant, not a fresh installation; M18: Node-RED itself not installed). 21 of 24 milestones
 are accepted; M5.1, M8.1 and M8.2 are built and wait on long runs or a hand on the hardware.
 
-**Session 45 (2026-10-15, past midnight): the four things left that needed no owner.**
+## Session 45 -- 2026-10-15: the four owner-free items, replica eviction, M19 and M20 planned, M19/M20 step 1 and the start of step 2
+
+**The four things left that needed no owner (past midnight).**
 
 1. **Flash endurance, verified.** WROOM-1/1U datasheet v1.8, Table 6-8: "Program/erase cycles 100,000" (minimum),
    retention 20 years (ledger row updated; the bench's flash die is unidentified -- IDF logs `detected chip: generic`).
