@@ -144,10 +144,16 @@ class SerialReassembler:
     is expected, so it is counted rather than raised.
     """
 
-    def __init__(self) -> None:
+    #: M20: on a board's console the frames share the line with its log. Each piece between zeros that is not a frame
+    #: is that text, handed here when set (the bytes as received; a piece longer than TEXT_MAX is cut there).
+    TEXT_MAX = 8192
+
+    def __init__(self, on_text: Callable[[bytes], None] | None = None) -> None:
+        self.on_text = on_text
         self.reset()
 
     def reset(self) -> None:
+        self._text = bytearray()
         self._buf = bytearray()
         self._overflow = False
         self.frames_ok = 0
@@ -162,6 +168,8 @@ class SerialReassembler:
         self.bytes_in += len(data)
         for b in data:
             if b != DELIMITER:
+                if self.on_text is not None and len(self._text) < self.TEXT_MAX:
+                    self._text.append(b)
                 if len(self._buf) < SERIAL_FRAME_MAX:
                     self._buf.append(b)
                 else:
@@ -170,6 +178,7 @@ class SerialReassembler:
                     self._overflow = True
                 continue
 
+            frame = None
             if self._overflow:
                 self.too_long += 1
             elif not self._buf:
@@ -188,9 +197,13 @@ class SerialReassembler:
                         self.cobs_invalid += 1
                 else:
                     self.frames_ok += 1
-                    yield frame
+            text, self._text = self._text, bytearray()
             self._buf.clear()
             self._overflow = False
+            if frame is not None:
+                yield frame
+            elif text and self.on_text is not None:
+                self.on_text(bytes(text))
 
     def feed_to(self, data: bytes, on_frame: Callable[[bytes], None]) -> None:
         for f in self.feed(data):

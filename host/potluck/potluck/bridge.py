@@ -106,6 +106,21 @@ class _Pending:
     rtt_s: float | None = None
 
 
+def _console_text_sink():
+    """M20: with POTLUCK_CONSOLE_TEXT naming a file, a console link's log text (what is between frames) is appended
+    there -- the board's log, which a console link otherwise discards. Only for a board whose log holds no secrets (B
+    and C on the bench can name networks: never point this at them)."""
+    path = os.environ.get("POTLUCK_CONSOLE_TEXT")
+    if not path:
+        return None
+    f = open(path, "ab")
+
+    def sink(text: bytes) -> None:
+        f.write(text)
+        f.flush()
+    return sink
+
+
 class Bridge:
     """Owns the transport, the framing, and the request/reply correlation."""
 
@@ -135,7 +150,7 @@ class Bridge:
         self.on_request = on_request
 
         self.stats = BridgeStats()
-        self.reassembler = SerialReassembler()
+        self.reassembler = SerialReassembler(_console_text_sink())
         #: node_id of whoever answered, once known. A bridge does not assume it knows the far end.
         self.peer_node_id: int | None = None
         self.peer_boot_epoch: int | None = None
