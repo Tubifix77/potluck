@@ -862,6 +862,33 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             setup_state["jobs"] = st.Jobs()
         return setup_state["jobs"]
 
+    def library_json() -> dict:
+        """M20's library as the page shows it: each app on or off, Home Assistant (the cell's presenting role) with its
+        broker, and per resource the package names whether the outside may see it ("read") or also control it
+        ("read_write"), and whether it could be controlled at all."""
+        cl = getattr(model, "cluster", None)
+        if cl is None:
+            return {"apps": [], "home_assistant": None, "resources": []}
+        snap = model.snapshot()
+        m = getattr(getattr(model, "package", None), "manifest", None)
+        prefix = f"potluck://{cl.system}/"
+        res = []
+        for r in snap["resources"]:
+            decl = m.resource(r["path"]) if m is not None else None
+            mode = cl.outside.get(r["path"], "off")
+            res.append({"path": r["path"], "name": r["name"], "mode": mode if isinstance(mode, str) else "read_write",
+                        "controllable": bool(decl is not None and decl.access in ("write", "read_write") and
+                                             not decl.safety_relevant)})
+        for path, mode in cl.outside.items():  # a rule for a resource the package no longer names (an app off)
+            if not any(x["path"] == path for x in res):
+                res.append({"path": path, "name": path[len(prefix):] if path.startswith(prefix) else path,
+                            "mode": mode, "controllable": False, "missing": True})
+        pr = cl.present
+        return {"apps": [{"name": a.name, "enabled": a.enabled, "built_in": bool(a.components)} for a in cl.apps],
+                "home_assistant": {"on": pr is not None, "broker": (pr or {}).get("broker"),
+                                   "tls": bool((pr or {}).get("tls_ca"))},
+                "resources": sorted(res, key=lambda x: x["name"])}
+
     def cell_keys() -> tuple[str, str] | None:
         """The CA key and the node registry beside the cluster's ca.pub (potluck.enrol's defaults)."""
         cl = getattr(model, "cluster", None)
@@ -982,6 +1009,36 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 return
             self._json(202, {"ok": True, "job": jid})
 
+        def _setup_library(self, path: str) -> None:
+            """M20's library: apps on and off, the broker tried, what Home Assistant may see and control."""
+            from . import setup as st
+            from .apply import ApplyError, load_cluster
+            cl = getattr(model, "cluster", None)
+            if cl is None:
+                self._json(409, {"ok": False, "result": "make the cell first"})
+                return
+            try:
+                req = self._body()
+                if path == "/api/setup/broker":
+                    import base64
+                    broker = str(req.get("broker") or (cl.present or {}).get("broker") or "")
+                    ca = (cl.present or {}).get("tls_ca")
+                    use_tls = bool(req.get("tls", ca is not None))
+                    self._json(200, st.broker_test(broker, base64.b64decode(ca) if (use_tls and ca) else None))
+                    return
+                if "app" in req:
+                    st.set_app(cl.path, str(req["app"]), bool(req.get("enabled", True)))
+                elif "outside" in req and isinstance(req["outside"], dict):
+                    st.set_outside(cl.path, {str(k): str(v) for k, v in req["outside"].items()})
+                else:
+                    self._json(400, {"ok": False, "result": "expected {\"app\", \"enabled\"} or {\"outside\": {...}}"})
+                    return
+                model.cluster = load_cluster(str(cl.path))
+            except (st.SetupError, ApplyError, ValueError, KeyError) as exc:
+                self._json(409, {"ok": False, "result": str(exc)})
+                return
+            self._json(200, dict(library_json(), ok=True))
+
         def _setup_first(self, path: str) -> None:
             """M20's first run: make the cell (keys sealed under the owner's passphrase, an empty cluster file), then
             attach the hub to the first board's own USB port once that board is flashed and enrolled."""
@@ -1027,6 +1084,9 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             from . import setup as st
             if path in ("/api/setup/board", "/api/setup/apply"):
                 self._setup_cell(path)
+                return
+            if path in ("/api/setup/library", "/api/setup/broker"):
+                self._setup_library(path)
                 return
             if path in ("/api/setup/newcell", "/api/setup/attach"):
                 self._setup_first(path)
@@ -1154,6 +1214,8 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                                                 for n, lab in (cl.boards if cl is not None else [])],
                                      "max_boards": st.MAX_BOARDS,
                                      "vault": bool(keys) and (Path(keys[0]).parent / "vault.json").exists()})
+                elif path == "/api/setup/library":
+                    self._json(200, library_json())
                 elif path == "/api/setup/jobs":
                     self._json(200, {"jobs": setup_jobs().all()})
                 elif path.startswith("/api/setup/jobs/"):

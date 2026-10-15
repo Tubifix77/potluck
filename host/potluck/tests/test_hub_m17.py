@@ -235,6 +235,34 @@ class Setup(Pair):
 
 
 
+class LibraryRoutes(Pair):
+    """M20's library on the hub: apps on and off, what Home Assistant may see -- the PC's own address only."""
+
+    def test_the_library_reads_and_writes_the_cluster_file(self) -> None:
+        from potluck.apply import load_cluster
+        p = Path(self.tmp.name) / "home.json"
+        p.write_text(json.dumps({"schema": "potluck-cluster/1", "system": "home", "firmware": None,
+                                 "boards": [{"node": "6300", "label": "A"}],
+                                 "apps": [{"name": "passive-sensor", "git": ".", "components": "c"}]}), encoding="utf-8")
+        saved = self.model.cluster
+        self.model.cluster = load_cluster(str(p))
+        try:
+            code, lib = self.req(self.local_addr, "GET", "/api/setup/library")
+            self.assertEqual((code, lib["apps"][0]["enabled"], lib["home_assistant"]["on"]), (200, True, False))
+            code, lib = self.req(self.local_addr, "POST", "/api/setup/library", {"app": "passive-sensor", "enabled": False})
+            self.assertEqual((code, lib["apps"][0]["enabled"]), (200, False))
+            code, lib = self.req(self.local_addr, "POST", "/api/setup/library",
+                                 {"outside": {"potluck://home/act/rf_fusion/out": "read"}})
+            self.assertEqual(code, 200)
+            self.assertIn({"path": "potluck://home/act/rf_fusion/out", "name": "act/rf_fusion/out", "mode": "read",
+                           "controllable": False, "missing": True}, lib["resources"])
+            self.assertIn(self.req(self.lan_addr, "GET", "/api/setup/library")[0], (401, 404))
+            self.assertEqual(self.req(self.local_addr, "POST", "/api/setup/broker", {"broker": "127.0.0.1:1"})[1]["ok"],
+                             False)
+        finally:
+            self.model.cluster = saved
+
+
 class FirstRun(unittest.TestCase):
     """M20: a PC with no cell yet -- the hub makes one, then attaches to the first board's own USB port."""
 

@@ -279,6 +279,11 @@ and `GET /api/setup/jobs/<id>` follows it -- `{"id", "kind", "port", "state": "r
 | `POST /api/setup/identify {"port", "seconds"?}` | job: the board's light blinks blue (default 20 s, at most 300) |
 | `POST /api/setup/board {"node", "label"?, "room"?, "position"?}` | adds the board to the cluster file or sets its room (`""` clears it) or its `[x, y]` on the floor plan (`[]` clears it); the file's previous version is kept as `<file>.bak`, and a change `apply` would refuse is never written (409). With `{"plan": {...} | null}` instead, sets the floor plan |
 | `POST /api/setup/apply` | job: `potluck apply <cluster file>`; its output in `lines`; done on VERIFIED, failed otherwise |
+| `POST /api/setup/newcell {"system", "passphrase"}` | a PC with no cell (the hub started without a port or cluster file): makes the cell -- its keys sealed under the passphrase, an empty cluster file -- under `%LOCALAPPDATA%/potluck/cells/<system>` |
+| `POST /api/setup/attach {"port"}` | once, after the first board is flashed and enrolled: its own USB port goes into the cluster file at 115200 and the hub attaches to it; `{"node"}` that answered |
+| `GET /api/setup/library` | `{"apps": [{"name", "enabled", "built_in"}], "home_assistant": {"on", "broker", "tls"}, "resources": [{"path", "name", "mode": "off" \| "read" \| "read_write", "controllable", "missing"?}]}` -- `controllable`: writable and not safety-relevant, so it may be offered as controllable; `missing`: a rule for a resource the package no longer names |
+| `POST /api/setup/library {"app", "enabled"}` or `{"outside": {path: "off" \| "read" \| "read_write"}}` | an app on or off (its manifests in or out of the package; the image unchanged), or what systems outside the cell may see and control -- the cluster file's `outside`; the next `apply` carries either |
+| `POST /api/setup/broker {"broker"?, "tls"?}` | tries the broker from this PC (the cluster's by default, with its CA when it has one): `{"ok", "result"}` -- `connected`, a login wanted or refused, TLS wanted, no answer |
 
 The hub's own serial port is refused (409). The passphrase unlocks the cell's sealed keys for that one enrolment and
 they are locked again after it.

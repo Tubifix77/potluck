@@ -242,6 +242,9 @@ class Source:
     rev: str
     components: str | None = None
     manifests: tuple[str, ...] = ()
+    #: M20's library: an app switched off keeps its components in the image -- so switching is a package change, no
+    #: new firmware -- but its manifests leave the package.
+    enabled: bool = True
 
 
 @dataclass
@@ -290,7 +293,7 @@ def _rel(base: Path, p: str) -> Path:
 def _source(d: Any, where: str, base: Path, default_name: str) -> Source:
     if not isinstance(d, dict):
         raise ApplyError(f"{where}: must be an object")
-    extra = set(d) - {"name", "git", "rev", "components", "manifests"}
+    extra = set(d) - {"name", "git", "rev", "components", "manifests", "enabled"}
     if extra:
         raise ApplyError(f"{where}: unknown key(s) {sorted(extra)}")
     git = d.get("git", ".")
@@ -302,7 +305,10 @@ def _source(d: Any, where: str, base: Path, default_name: str) -> Source:
     mans = d.get("manifests", [])
     if not isinstance(rev, str) or not isinstance(mans, list) or not all(isinstance(x, str) for x in mans):
         raise ApplyError(f"{where}: 'rev' is a string and 'manifests' a list of paths")
-    return Source(str(d.get("name", default_name)), git, rev, d.get("components"), tuple(mans))
+    enabled = d.get("enabled", True)
+    if not isinstance(enabled, bool):
+        raise ApplyError(f"{where}.enabled: true or false")
+    return Source(str(d.get("name", default_name)), git, rev, d.get("components"), tuple(mans), enabled)
 
 
 def check_plan(plan: Any) -> dict[str, Any] | None:
@@ -845,7 +851,7 @@ def plan_package(c: Cluster, cache: Path, log) -> Package | None:
                 except mods.ModuleError as exc:
                     raise ApplyError(f"app '{a.name}': {exc}") from None
                 log(f"package: modules from app '{a.name}' ({desc.parent.name})")
-        for m in a.manifests:
+        for m in (a.manifests if a.enabled else ()):  # M20: an app switched off adds nothing to the package
             mp = d / m
             fragments.append((json.loads(mp.read_text(encoding="utf-8")), d, f"app '{a.name}' {m}"))
     for p in c.modules:

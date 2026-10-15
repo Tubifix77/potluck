@@ -252,6 +252,74 @@ class NewCell(unittest.TestCase):
             self.assertIn(want, out.getvalue())
 
 
+class Library(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.p = Path(self.tmp.name) / "home.json"
+        self.p.write_text(json.dumps({"schema": "potluck-cluster/1", "system": "home", "firmware": None,
+                                      "boards": [{"node": "6300", "label": "A"}],
+                                      "apps": [{"name": "passive-sensor", "git": ".", "components": "c"}],
+                                      "outside": {"node-6300/led/on": {"mode": "read_write", "writers": ["HA"]}}}),
+                          encoding="utf-8")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_an_app_switched_off_stays_in_the_image_and_leaves_the_package(self):
+        from potluck import apply as ap
+        st.set_app(self.p, "passive-sensor", False)
+        self.assertFalse(ap.load_cluster(str(self.p)).apps[0].enabled)
+        st.set_app(self.p, "passive-sensor", True)
+        self.assertNotIn("enabled", json.loads(self.p.read_text(encoding="utf-8"))["apps"][0])
+        with self.assertRaises(st.SetupError):
+            st.set_app(self.p, "nope", True)
+
+    def test_what_the_outside_may_see_and_control_in_either_path_form(self):
+        out = st.set_outside(self.p, {"potluck://home/act/rf_fusion/out": "read"})
+        self.assertEqual(out["act/rf_fusion/out"], "read")
+        out = st.set_outside(self.p, {"potluck://home/node-6300/led/on": "read_write"})
+        self.assertEqual(out["node-6300/led/on"], {"mode": "read_write", "writers": ["HA"]})  # who may write, kept
+        out = st.set_outside(self.p, {"node-6300/led/on": "read"})
+        self.assertEqual(out["node-6300/led/on"], "read")  # a writers list only for what is writable
+        out = st.set_outside(self.p, {"node-6300/led/on": "off", "act/rf_fusion/out": "off"})
+        self.assertEqual(out, {})
+        with self.assertRaises(st.SetupError):
+            st.set_outside(self.p, {"x": "everything"})
+
+
+class Broker(unittest.TestCase):
+    """M20: the broker Home Assistant's boards present to, tried from the PC before the wizard goes on."""
+
+    def serve(self, reply: bytes):
+        import socket
+        import threading
+        srv = socket.socket()
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(1)
+
+        def run():
+            try:
+                c, _ = srv.accept()
+                c.recv(1024)
+                if reply:
+                    c.sendall(reply)
+                c.close()
+            finally:
+                srv.close()
+        threading.Thread(target=run, daemon=True).start()
+        return f"127.0.0.1:{srv.getsockname()[1]}"
+
+    def test_each_answer_is_said_plainly(self):
+        self.assertEqual(st.broker_test(self.serve(b"\x20\x02\x00\x00"))["result"], "connected")
+        self.assertIn("wants a login", st.broker_test(self.serve(b"\x20\x02\x00\x05"))["result"])  # 0x05, OASIS 3.1.1
+        self.assertIn("refused the login", st.broker_test(self.serve(b"\x20\x02\x00\x04"))["result"])
+        self.assertIn("wants TLS", st.broker_test(self.serve(b"\x15\x03\x03\x00\x02\x02\x46"))["result"])
+        self.assertIn("closed the connection", st.broker_test(self.serve(b""))["result"])
+        self.assertIn("not as an MQTT broker", st.broker_test(self.serve(b"HTTP/1.1 400\r\n\r\n"))["result"])
+        with self.assertRaises(st.SetupError):
+            st.broker_test("no-port-here")
+
+
 class ApplyJob(unittest.TestCase):
     def run_fake(self, out: str, code: int = 0):
         script = f"import sys; print({out!r}); sys.exit({code})"

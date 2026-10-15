@@ -279,6 +279,128 @@ def enrol_board(port: str, ca_key: str, registry: str, node_id: int | None = Non
             "reboot_needed": info["assigned"] != int(info["node"])}
 
 
+# ---- the library: Home Assistant's broker -------------------------------------------------------------------------
+
+#: MQTT 3.1.1's CONNACK return codes (OASIS, section 3.2.2.3, table 3.1; ledger), said for the owner.
+CONNACK_SAYS = {1: "refused: it does not speak MQTT 3.1.1", 2: "refused the client name",
+                3: "is up, but its MQTT service is unavailable",
+                4: "refused the login (bad user name or password)",
+                5: "wants a login (not authorized without one)"}
+
+
+def broker_test(broker: str, tls_ca: str | bytes | None = None, user: str | None = None, password: str | None = None,
+                timeout: float = 4.0) -> dict:
+    """Try the broker the boards will present to, from this PC, before the wizard goes on: connect, send MQTT's
+    CONNECT, read CONNACK. Says what happened -- connected, a login wanted or refused, TLS wanted, no answer. Neither
+    the login nor anything the broker sends is logged."""
+    import socket
+    import ssl
+    from .mqtt_link import connect_packet, take_packet
+    host, _, port_s = broker.rpartition(":")
+    if not host or not port_s.isdigit():
+        raise SetupError(f"{broker!r}: give the broker as host:port, e.g. 192.168.0.77:1883")
+    where = f"the broker at {broker}"
+    try:
+        sock = socket.create_connection((host, int(port_s)), timeout=timeout)
+    except OSError as exc:
+        return {"ok": False, "result": f"no answer from {where} ({exc.strerror or exc})"}
+    try:
+        if tls_ca:
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+            try:  # the CA as a file, or as DER (the cluster's present.tls_ca once loaded)
+                if isinstance(tls_ca, bytes):
+                    ctx.load_verify_locations(cadata=tls_ca)
+                else:
+                    ctx.load_verify_locations(cafile=tls_ca)
+            except (OSError, ssl.SSLError) as exc:
+                return {"ok": False, "result": f"the cell's CA for {where} could not be read ({exc})"}
+            try:
+                sock = ctx.wrap_socket(sock, server_hostname=host)
+            except (ssl.SSLError, OSError) as exc:
+                return {"ok": False, "result": f"{where} did not complete TLS against the cell's CA ({exc})"}
+        sock.sendall(connect_packet("potluck-setup-test", 10, "potluck/setup-test", b"", user, password))
+        buf = b""
+        while True:
+            try:
+                chunk = sock.recv(256)
+            except socket.timeout:
+                return {"ok": False, "result": f"{where} accepted the connection but never answered as MQTT"}
+            except OSError as exc:
+                return {"ok": False, "result": f"{where} dropped the connection ({exc.strerror or exc})" +
+                        ("" if tls_ca else " -- it may want TLS")}
+            if not chunk:
+                return {"ok": False, "result": f"{where} closed the connection" +
+                        ("" if tls_ca else " -- it may want TLS")}
+            buf += chunk
+            if not tls_ca and buf[:1] in (b"\x15", b"\x16"):  # a TLS record (alert, handshake): it speaks TLS
+                return {"ok": False, "result": f"{where} wants TLS"}
+            if buf[0] != 0x20:  # a broker's first word is CONNACK
+                return {"ok": False, "result": f"{where} answered, but not as an MQTT broker"}
+            got = take_packet(buf)
+            if got is None:
+                continue
+            h, body, _ = got
+            if h != 0x20 or len(body) < 2:
+                return {"ok": False, "result": f"{where} answered, but not as an MQTT broker"}
+            code = body[1]
+            if code == 0:
+                try:
+                    sock.sendall(b"\xe0\x00")  # DISCONNECT
+                except OSError:
+                    pass
+                return {"ok": True, "result": "connected", "tls": bool(tls_ca), "login": bool(user)}
+            return {"ok": False, "result": f"{where} " + CONNACK_SAYS.get(code, f"refused (code {code})"),
+                    "code": code}
+    finally:
+        try:
+            sock.close()
+        except OSError:
+            pass
+
+
+def set_app(cluster: str | Path, name: str, enabled: bool) -> None:
+    """M20's library: an app on or off -- its manifests in or out of the package, its components left in the image, so
+    the next `apply` is a package change."""
+    p = Path(cluster)
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    app = next((a for a in doc.get("apps", []) if a.get("name") == name), None)
+    if app is None:
+        raise SetupError(f"no app named {name!r} in this cell")
+    if enabled:
+        app.pop("enabled", None)
+    else:
+        app["enabled"] = False
+    _write_cluster(p, doc)
+
+
+def set_outside(cluster: str | Path, changes: dict[str, str]) -> dict[str, str]:
+    """M20's library: what Home Assistant (any system outside the cell) may see and control, per resource --
+    "read", "read_write" or "off" -- written as the cluster file's `outside`, which only the owner sets (M13)."""
+    p = Path(cluster)
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    out = doc.setdefault("outside", {})
+    prefix = f"potluck://{doc.get('system', 'lab')}/"
+
+    def short(x: str) -> str:  # the cluster file's form: "node-7368/led/on", whichever the caller gave
+        return x[len(prefix):] if x.startswith(prefix) else x.lstrip("/")
+    for path, mode in changes.items():
+        key = short(path)
+        prev = next((out.pop(k) for k in list(out) if short(k) == key), None)
+        if mode == "off":
+            continue
+        if mode == "read_write" and isinstance(prev, dict):
+            out[key] = dict(prev, mode=mode)  # keeps who may write it
+        elif mode in ("read", "read_write"):
+            out[key] = mode  # "read" drops a writers list: only a writable resource has writers
+        else:
+            raise SetupError(f"{path}: \"read\", \"read_write\" or \"off\", not {mode!r}")
+    if not out:
+        doc.pop("outside")
+    _write_cluster(p, doc)
+    return doc.get("outside", {})
+
+
 # ---- a new cell --------------------------------------------------------------------------------------------------
 
 def new_cell(folder: str | Path, system: str, passphrase: str, port: str | None = None) -> Path:
