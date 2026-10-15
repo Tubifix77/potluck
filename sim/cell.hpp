@@ -25,6 +25,8 @@ using pot::kBroadcastMacAddr;
 using pot::kEspNowV2LinkMtu;
 using pot::kMacLen;
 using pot::kMaxPeers;
+// M19: boards in one simulation -- past one cell's twenty when cells keep each board's peers within its table.
+constexpr size_t kMaxSimNodes = 256;
 using pot::BeaconMode;
 using pot::Node;
 using pot::NodeConfig;
@@ -388,7 +390,7 @@ class Cell {
     BeaconMode mode_;
     uint64_t now_us_ = 0;
     Totals retired_{};  // counters harvested from nodes destroyed by reboot()
-    bool asleep_[kMaxPeers] = {};
+    bool asleep_[kMaxSimNodes] = {};
     size_t partition_at_ = 0;  // 0 = whole cell hears itself
     void (*on_second_)(Cell&, uint32_t) = nullptr;
     void (*on_step_)(Cell&, void*) = nullptr;

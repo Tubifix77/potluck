@@ -254,6 +254,23 @@ void scenario_twocells(Cell& c, uint32_t sec) {
     }
 }
 
+// M19's kill line: a tree against independent cells in ONE radio space. --nodes N splits into cells of ten (cell k is
+// boards 10k..10k+9). "tree": the first board of each cell (its foreman) is also in the upper cell (number 200, window
+// 5 s), one radio in two cells; "indep": the same cells with no upper cell. Compare the airtime floor and deaths.
+// The end report checks admission: base cells see only their own, foremen also each other.
+constexpr size_t kTreeCell = 10;
+constexpr uint8_t kUpper = 200;
+bool g_tree_upper = false;
+
+void tree_setup(Cell& c, bool upper) {
+    g_tree_upper = upper;
+    for (size_t i = 0; i < c.size(); ++i) {
+        const uint8_t base = static_cast<uint8_t>(1 + i / kTreeCell);
+        const bool foreman = upper && i % kTreeCell == 0;
+        c.node(i).node->set_groups(base, foreman ? kUpper : 0, 0, foreman ? 5000 : 0);
+    }
+}
+
 // M15: the hub's telemetry pull. Node 0 is the board on the hub's cable: every period it asks each other board, one
 // request at a time as the real proxy does, for its health, its links (paged, five peers a reply), its actors and its
 // events. Each board answers with a reply of the size pot/telemetry.hpp gives for a cell this size -- the bytes on
@@ -380,7 +397,7 @@ void usage() {
         "  --hb-ms N          heartbeat period, default 100 (section 8.2)\n"
         "  --probe-ms N       round-robin probe interval, default 1000\n"
         "  --seed N           RNG seed, default 1\n"
-        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present|telemetry|d20|perlink|twocells\n"
+        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present|telemetry|d20|perlink|twocells|tree|indep\n"
         "  --tel-ms N         telemetry: the hub's pull period per board, default 10000 (M15)\n"
         "  --start-days D     start the virtual clock D days in, to straddle a counter wrap\n"
         "  --json             emit one link/node record per node, in the firmware's format\n"
@@ -435,9 +452,13 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    if (nodes < 2 || nodes > kMaxPeers) {
-        std::printf("--nodes must be between 2 and %zu (section 3's ESP-NOW peer ceiling)\n",
-                    kMaxPeers);
+    // One cell stops at section 3's ESP-NOW peer ceiling; scenarios with cells (M19) keep each board's peers within it
+    // and may hold more boards in one radio space.
+    const bool cells = scenario == "tree" || scenario == "indep" || scenario == "twocells";
+    const size_t most = cells ? kMaxSimNodes : kMaxPeers;
+    if (nodes < 2 || nodes > most) {
+        std::printf("--nodes must be between 2 and %zu (%s)\n", most,
+                    cells ? "pot_sim's own limit" : "section 3's ESP-NOW peer ceiling; cells go past it");
         return 2;
     }
 
@@ -451,7 +472,11 @@ int main(int argc, char** argv) {
         cell.set_clock_us(static_cast<uint64_t>(start_days * 86400.0 * 1e6));
         std::printf("clock starts at %.4f days (uint32 ms wraps at 49.7103)\n", start_days);
     }
-    if (scenario == "twocells") {
+    if (scenario == "tree" || scenario == "indep") {
+        tree_setup(cell, scenario == "tree");
+        std::printf("%s: %zu cells of %zu in one radio space%s\n", scenario.c_str(), (cell.size() + kTreeCell - 1) / kTreeCell,
+                    kTreeCell, scenario == "tree" ? ", each cell's first board also in the upper cell (5 s window)" : "");
+    } else if (scenario == "twocells") {
         for (size_t i = 0; i < cell.size(); ++i) cell.node(i).node->set_groups(i < cell.size() / 2 ? 1 : 2, 0);
         cell.set_on_second(&scenario_twocells);
         std::printf("twocells: boards 0-%zu cell 1, %zu-%zu cell 2, one channel; board %zu moves to cell 2 at 120 s\n",
@@ -563,6 +588,27 @@ int main(int argc, char** argv) {
                     static_cast<unsigned>(g_tel.refused), g_tel.reply_bytes / 1024.0,
                     g_tel.cycles ? g_tel.cycle_us_sum / 1000.0 / g_tel.cycles : 0.0, g_tel.cycle_us_max / 1000.0);
     }
+    if (scenario == "tree" || scenario == "indep") {
+        size_t wrong = 0, missing = 0, foreman_links = 0;
+        for (size_t i = 0; i < cell.size(); ++i) {
+            const Node& me = *cell.node(i).node;
+            for (size_t j = 0; j < cell.size(); ++j) {
+                if (j == i) continue;
+                bool alive = false;
+                for (size_t k = 0; k < PeerTable::capacity(); ++k) {
+                    const PeerLink& pl = me.peers().slot(k);
+                    if (pl.state == PeerState::Alive && pl.node_id == cell.node(j).node->config().node_id) alive = true;
+                }
+                const bool same = i / kTreeCell == j / kTreeCell;
+                const bool foremen = g_tree_upper && i % kTreeCell == 0 && j % kTreeCell == 0;
+                if (alive && !same && !foremen) ++wrong;
+                if (!alive && (same || foremen)) ++missing;
+                if (alive && foremen && !same) ++foreman_links;
+            }
+        }
+        std::printf("\n%s: %zu peer(s) alive that should not be, %zu missing, %zu foreman-to-foreman link(s)\n",
+                    scenario.c_str(), wrong, missing, foreman_links);
+    }
     if (scenario == "twocells") {
         size_t cross = 0, missing = 0;
         uint32_t refused = 0;
@@ -591,7 +637,7 @@ int main(int argc, char** argv) {
                     static_cast<unsigned>(g_d20_reads), static_cast<unsigned>(g_d20_wanted));
     }
     if (scenario == "none" || scenario == "present" || scenario == "telemetry" || scenario == "d20" ||
-        scenario == "perlink") {  // polling must not cost a death
+        scenario == "perlink" || scenario == "tree" || scenario == "indep") {  // polling must not cost a death
         std::printf("  %s\n", deaths ? "<-- unperturbed cell lost peers; the heartbeat did not hold"
                                      : "no deaths on an unperturbed cell, as required");
     } else {
