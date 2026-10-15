@@ -1,0 +1,362 @@
+<title>Potluck Setup Wizard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an installer window -- a step rail on the left, one question per screen, Back and Next at the foot. */
+:root {
+  --bg: #eef2f0;          /* page around the window */
+  --win: #fbfcfb;         /* the window itself */
+  --ink: #18211e;
+  --muted: #5a6b65;
+  --line: #d6dfdb;
+  --accent: #0b6e5f;      /* Potluck's own green-teal: buttons, the current step */
+  --accent-ink: #ffffff;
+  --soft: #e3eeea;
+  /* the board LED's own colours (the owner's scheme) -- semantic, not decoration */
+  --led-purple: #9b4dff; --led-yellow: #e6b400; --led-red: #e5484d; --led-green: #2fb36b; --led-blue: #2f7bff; --led-off: #b9c4c0;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1513; --win: #161e1b; --ink: #e5eeea; --muted: #9db0a9; --line: #2a3632; --accent: #3cc3a6; --accent-ink: #062520; --soft: #1d2a26; --led-off: #4a5753; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1513; --win: #161e1b; --ink: #e5eeea; --muted: #9db0a9; --line: #2a3632; --accent: #3cc3a6; --accent-ink: #062520; --soft: #1d2a26; --led-off: #4a5753; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.5; padding-inline: 16px; padding-block: 24px; }
+.banner { max-width: 980px; margin: 0 auto 12px; font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.banner b { color: var(--ink); }
+.window { max-width: 980px; margin: 0 auto; background: var(--win); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 50px -24px rgba(0,0,0,.35); overflow: hidden; display: grid; grid-template-columns: 250px 1fr; min-height: 600px; }
+.titlebar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.dots { display: flex; gap: 6px; } .dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); display: block; }
+.rail { border-right: 1px solid var(--line); padding: 22px 14px; background: var(--soft); }
+.brand { font-family: var(--f-display); font-weight: 700; font-size: 22px; letter-spacing: -.01em; padding: 0 8px 18px; display: flex; align-items: center; gap: 10px; }
+.pot { width: 26px; height: 26px; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.steps li { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 8px; color: var(--muted); font-size: 14.5px; }
+.steps li .n { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 12px; font-family: var(--f-mono); flex: none; }
+.steps li.done { color: var(--ink); } .steps li.done .n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.steps li.now { color: var(--ink); background: var(--win); font-weight: 700; } .steps li.now .n { border-color: var(--accent); color: var(--accent); }
+.steps li.skip { opacity: .45; text-decoration: line-through; }
+.main { display: flex; flex-direction: column; min-width: 0; }
+.screen { padding: 34px 40px 20px; flex: 1; min-width: 0; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(26px, 3.4vw, 34px); line-height: 1.12; letter-spacing: -.015em; margin: 0 0 10px; text-wrap: balance; }
+.lead { color: var(--muted); max-width: 60ch; margin: 0 0 24px; font-size: 17px; }
+.foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 40px; border-top: 1px solid var(--line); }
+.foot .hint { color: var(--muted); font-size: 13.5px; flex: 1; min-width: 0; }
+button { font: inherit; cursor: pointer; border-radius: 10px; padding: 10px 20px; border: 1.5px solid var(--line); background: var(--win); color: var(--ink); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+label.field { display: grid; gap: 6px; margin-bottom: 18px; max-width: 420px; font-weight: 700; font-size: 14.5px; }
+label.field small { font-weight: 400; color: var(--muted); }
+input[type=text], input[type=password], select { font: inherit; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--win); color: var(--ink); width: 100%; }
+.meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; } .meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.note { border-left: 3px solid var(--accent); padding: 8px 14px; background: var(--soft); border-radius: 0 8px 8px 0; max-width: 62ch; font-size: 14.5px; }
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.choice { border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 6px; cursor: pointer; background: var(--win); text-align: left; }
+.choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--soft); }
+.choice h3 { margin: 0; font-family: var(--f-display); font-size: 18px; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.choice p { margin: 0; color: var(--muted); font-size: 14px; }
+.choice .where { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.tick { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--line); display: grid; place-items: center; flex: none; font-size: 14px; }
+.choice[aria-pressed="true"] .tick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.boards { display: grid; gap: 12px; max-width: 640px; }
+.board { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; animation: in .35s ease-out; }
+.board.bad { border-style: dashed; }
+@keyframes in { from { transform: translateY(6px); opacity: .3 } to { transform: none; opacity: 1 } }
+.pcb { width: 46px; height: 30px; border-radius: 4px; background: #1d3b33; position: relative; flex: none; }
+.pcb::before { content: ""; position: absolute; left: 8px; top: 7px; width: 14px; height: 16px; background: #c7ccc9; border-radius: 2px; }
+.led { width: 11px; height: 11px; border-radius: 50%; position: absolute; right: 7px; top: 10px; background: var(--led-off); }
+.led.purple { background: var(--led-purple); box-shadow: 0 0 10px var(--led-purple); }
+.led.green { background: var(--led-green); box-shadow: 0 0 10px var(--led-green); }
+.led.yellow { background: var(--led-yellow); box-shadow: 0 0 10px var(--led-yellow); }
+.led.blue { background: var(--led-blue); box-shadow: 0 0 12px var(--led-blue); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 2px var(--led-blue); opacity: .55 } }
+.bname { font-weight: 700; } .bmeta { font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pill { font-size: 12.5px; padding: 3px 10px; border-radius: 99px; background: var(--soft); white-space: nowrap; }
+.pill.ok { color: var(--led-green); } .pill.warn { color: var(--led-red); }
+.bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-top: 6px; } .bar i { display: block; height: 100%; width: 0; background: var(--led-purple); transition: width .25s linear; }
+.bar.full i { background: var(--led-green); }
+.waiting { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 14.5px; margin-top: 4px; }
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: rot 1s linear infinite; }
+@keyframes rot { to { transform: rotate(360deg) } }
+.roomrow { display: grid; grid-template-columns: auto 1fr minmax(160px, 220px); gap: 14px; align-items: center; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.roomrow.active { border-color: var(--led-blue); }
+.place { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.place svg { width: 100%; height: auto; max-width: 100%; }
+.summary { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-size: 15px; max-width: 560px; }
+.summary dt { color: var(--muted); } .summary dd { margin: 0; font-weight: 700; }
+.mono { font-family: var(--f-mono); font-size: 13px; }
+@media (max-width: 760px) {
+  .window { grid-template-columns: 1fr; }
+  .rail { border-right: 0; border-bottom: 1px solid var(--line); padding: 14px; }
+  .steps { grid-auto-flow: column; overflow-x: auto; } .steps li span.t { display: none; }
+  .screen { padding: 24px 18px 12px; } .foot { padding: 14px 18px; }
+  .place { grid-template-columns: 1fr; }
+  .roomrow { grid-template-columns: auto 1fr; } .roomrow select { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="banner"><b>Mockup</b> of M20's first-run wizard -- nothing is flashed, saved or sent. Boards appear by themselves on step 4 to show what detection would look like.</div>
+
+<div class="window" role="application" aria-label="Potluck setup">
+  <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><span>Potluck Setup</span></div>
+  <aside class="rail">
+    <div class="brand">
+      <svg class="pot" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 14h22v4a10 10 0 0 1-10 10h-2A10 10 0 0 1 5 18z" fill="var(--accent)"/><rect x="3" y="12" width="26" height="3" rx="1.5" fill="var(--ink)"/><path d="M12 8c0-2 2-2 2-4M17 8c0-2 2-2 2-4" stroke="var(--muted)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+      Potluck
+    </div>
+    <ol class="steps" id="rail"></ol>
+  </aside>
+  <section class="main">
+    <div class="screen" id="screen" aria-live="polite"></div>
+    <div class="foot">
+      <button id="back" type="button">Back</button>
+      <span class="hint" id="hint"></span>
+      <button id="next" class="primary" type="button">Next</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var STEPS = [
+    { id: "welcome", t: "Welcome" },
+    { id: "cell", t: "Name your cell" },
+    { id: "apps", t: "Choose apps" },
+    { id: "plug", t: "Plug in boards" },
+    { id: "install", t: "Install" },
+    { id: "wifi", t: "Your Wi-Fi" },
+    { id: "rooms", t: "Rooms" },
+    { id: "place", t: "Place boards" },
+    { id: "done", t: "Done" }
+  ];
+  var S = {
+    i: 0, cell: "home", pass: "", backup: false,
+    apps: { extender: false, presence: true, ha: true },
+    boards: [], detecting: null, installed: false, installing: false,
+    wifi: { ssid: "", pass: "", hs: "", hspass: "" },
+    rooms: {}, identify: 0
+  };
+  var FOUND = [
+    { node: "6300", port: "COM3", chip: "ESP32-S3", flash: "16 MB", psram: "8 MB", ok: true },
+    { node: "7368", port: "COM4", chip: "ESP32-S3", flash: "16 MB", psram: "8 MB", ok: true },
+    { node: "8160", port: "COM5", chip: "ESP32-S3", flash: "16 MB", psram: "8 MB", ok: true },
+    { node: "1c40", port: "COM7", chip: "ESP32-S3", flash: "4 MB", psram: "none", ok: false }
+  ];
+  var ROOMS = ["Living room", "Kitchen", "Bedroom", "Office", "Hallway", "Garden"];
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function needWifi() { return S.apps.extender || S.apps.ha; }
+  function skipped(id) { return id === "wifi" && !needWifi(); }
+  function good() { return S.boards.filter(function (b) { return b.ok; }); }
+
+  function rail() {
+    $("rail").innerHTML = STEPS.map(function (s, k) {
+      var cls = skipped(s.id) ? "skip" : k < S.i ? "done" : k === S.i ? "now" : "";
+      return '<li class="' + cls + '"><span class="n">' + (k < S.i && !skipped(s.id) ? "&#10003;" : k + 1) + '</span><span class="t">' + s.t + "</span></li>";
+    }).join("");
+  }
+
+  var VIEWS = {
+    welcome: function () {
+      return "<h1>Let's set up your boards</h1>" +
+        '<p class="lead">Potluck turns a few small ESP32-S3 boards into one system: they sense, share and help each other. This takes about ten minutes, and you won\'t need to type a command.</p>' +
+        '<div class="note">Have ready: your boards, a USB cable for each (or one cable used in turn), and your Wi-Fi password if you want Home Assistant or the Wi-Fi extender.</div>';
+    },
+    cell: function () {
+      return "<h1>Name your cell</h1>" +
+        '<p class="lead">A cell is your group of boards. Its keys are made on this computer and never leave it unless you make a backup.</p>' +
+        '<label class="field" for="cellname">Cell name <small>Shown in the dashboard and in Home Assistant</small><input id="cellname" type="text" value="' + esc(S.cell) + '" autocomplete="off"></label>' +
+        '<label class="field" for="pass">Passphrase <small>Guards the keys; you type it when adding a board or an app</small><input id="pass" type="password" value="' + esc(S.pass) + '" autocomplete="new-password"><span class="meter"><i id="pmeter"></i></span><small id="ptext">At least 10 characters</small></label>' +
+        '<button type="button" id="backupbtn">' + (S.backup ? "Backup made &#10003;" : "Make a backup of the keys") + '</button>' +
+        '<p class="hint" style="color:var(--muted);font-size:13.5px;max-width:60ch">The backup is one file, encrypted with your passphrase. Without the keys, every board has to be set up again.</p>';
+    },
+    apps: function () {
+      function c(key, title, where, text) {
+        return '<button type="button" class="choice" data-app="' + key + '" aria-pressed="' + S.apps[key] + '"><span class="where">' + where + '</span><h3>' + title + '<span class="tick">' + (S.apps[key] ? "&#10003;" : "") + '</span></h3><p>' + text + "</p></button>";
+      }
+      return "<h1>What should your boards do?</h1>" +
+        '<p class="lead">Pick now; you can change it later in the library. Your choice decides the next questions, nothing more is downloaded.</p>' +
+        '<div class="choices">' +
+        c("presence", "Presence sensing", "Runs on your boards", "Notices when someone is in the room from how they disturb the radio between the boards. Best with three boards in a triangle.") +
+        c("extender", "Wi-Fi extender", "Runs on your boards", "One board becomes a hotspot that carries your house Wi-Fi further. Needs your Wi-Fi password.") +
+        c("ha", "Home Assistant", "Integration", "Shows your boards and what they sense in Home Assistant. Needs your Wi-Fi and your Home Assistant.") +
+        "</div>";
+    },
+    plug: function () {
+      var list = S.boards.map(function (b) {
+        return '<div class="board' + (b.ok ? "" : " bad") + '"><span class="pcb"><span class="led"></span></span><span><span class="bname">' + esc(b.chip) + ' on ' + esc(b.port) + '</span><br><span class="bmeta">' + esc(b.flash) + ' flash &middot; ' + esc(b.psram) + ' PSRAM &middot; id ' + esc(b.node) + '</span></span>' +
+          (b.ok ? '<span class="pill ok">Ready</span>' : '<span class="pill warn" title="Potluck needs 16 MB flash and PSRAM">Can\'t use: 4 MB flash</span>') + "</div>";
+      }).join("");
+      return "<h1>Plug your ESP32-S3 boards into this computer's USB ports</h1>" +
+        '<p class="lead">I\'ll find each board as you plug it in. Plug them in now, one after another or all at once.</p>' +
+        '<div class="boards">' + list + "</div>" +
+        (S.boards.length < FOUND.length ? '<div class="waiting"><span class="spin" aria-hidden="true"></span>Looking for boards&hellip;</div>' : '<div class="waiting">' + good().length + " boards ready. One can't be used: Potluck needs 16 MB of flash and PSRAM.</div>");
+    },
+    install: function () {
+      var list = good().map(function (b, k) {
+        var p = b.progress || 0, cls = p >= 100 ? "green" : p > 0 ? "purple" : "";
+        return '<div class="board"><span class="pcb"><span class="led ' + cls + '"></span></span><span style="min-width:0"><span class="bname">Board ' + (k + 1) + ' <span class="bmeta">on ' + esc(b.port) + '</span></span><span class="bar' + (p >= 100 ? " full" : "") + '"><i style="width:' + p + '%"></i></span></span><span class="pill' + (p >= 100 ? " ok" : "") + '">' + (p >= 100 ? "Done" : p > 0 ? Math.floor(p) + " %" : "Waiting") + "</span></div>";
+      }).join("");
+      var apps = [S.apps.presence && "presence sensing", S.apps.extender && "Wi-Fi extender", S.apps.ha && "Home Assistant"].filter(Boolean);
+      return "<h1>Install Potluck on your boards</h1>" +
+        '<p class="lead">Potluck ' + '<span class="mono">2026.10</span>' + ' and your choices (' + esc(apps.join(", ") || "no apps yet") + ') go on in one step. A board glows purple while it updates and green when it is done.</p>' +
+        '<div class="boards">' + list + "</div>" +
+        (S.installed ? "" : S.installing ? "" : '<p style="margin-top:18px"><button type="button" class="primary" id="go">Install on ' + good().length + " boards</button></p>");
+    },
+    wifi: function () {
+      return "<h1>Your Wi-Fi</h1>" +
+        '<p class="lead">' + (S.apps.extender && S.apps.ha ? "Home Assistant and the Wi-Fi extender need your house Wi-Fi." : S.apps.extender ? "The Wi-Fi extender needs your house Wi-Fi." : "Home Assistant needs your house Wi-Fi.") + " It goes to the boards over the cable and is never shown again.</p>" +
+        '<label class="field" for="ssid">Network<select id="ssid"><option value="">Choose your network</option><option>HomeNet</option><option>HomeNet-Guest</option><option>Neighbour-5G</option></select></label>' +
+        '<label class="field" for="wpass">Password<input id="wpass" type="password" autocomplete="off" value="' + esc(S.wifi.pass) + '"></label>' +
+        (S.apps.extender ? '<label class="field" for="hs">Hotspot name <small>The new network the extender makes</small><input id="hs" type="text" value="' + esc(S.wifi.hs || "HomeNet-Extra") + '"></label><label class="field" for="hspass">Hotspot password<input id="hspass" type="password" autocomplete="new-password" value="' + esc(S.wifi.hspass) + '"></label>' : "") +
+        '<div class="note">Your boards use 2.4 GHz. A network that offers both 2.4 and 5 GHz under one name is fine.</div>';
+    },
+    rooms: function () {
+      var rows = good().map(function (b, k) {
+        var on = S.identify === k;
+        return '<div class="roomrow' + (on ? " active" : "") + '"><span class="pcb"><span class="led ' + (on ? "blue" : "green") + '"></span></span><span><span class="bname">' + (on ? "The board glowing blue" : "Board " + (k + 1)) + '</span><br><span class="bmeta">' + (on ? "Look for the blue light, then pick its room" : (S.rooms[b.node] ? esc(S.rooms[b.node]) : "not placed yet")) + '</span></span>' +
+          '<select data-node="' + b.node + '" aria-label="Room for board ' + (k + 1) + '"><option value="">Pick a room</option>' + ROOMS.map(function (r) { return "<option" + (S.rooms[b.node] === r ? " selected" : "") + ">" + r + "</option>"; }).join("") + "</select></div>";
+      }).join("");
+      return "<h1>Which room is this?</h1>" +
+        '<p class="lead">One board at a time lights up blue. Pick the room it will live in. You never need its number.</p>' +
+        '<div class="boards">' + rows + "</div>" +
+        '<p style="margin-top:14px"><button type="button" id="nextboard">Light up the next board</button></p>';
+    },
+    place: function () {
+      var g = good(), first = g[0];
+      return "<h1>Place your boards</h1>" +
+        '<div class="place"><div>' +
+        '<p class="lead" style="margin-bottom:14px">Leave <b>one board connected to this computer</b>: it\'s how the dashboard talks to the others. The rest can go anywhere with a USB phone charger.</p>' +
+        (S.apps.presence ? '<div class="note"><b>Presence sensing:</b> put three boards around the room in a triangle, at about table height, a few metres apart. It sees people best inside the triangle and close to it.</div>' : "") +
+        (S.apps.extender ? '<div class="note" style="margin-top:12px"><b>Wi-Fi extender:</b> the board holding your Wi-Fi works best halfway between your router and where you need coverage.</div>' : "") +
+        '</div><svg viewBox="0 0 320 240" role="img" aria-label="Three boards in a triangle around a room, one connected to the computer">' +
+        '<rect x="10" y="10" width="300" height="220" rx="10" fill="none" stroke="var(--line)" stroke-width="2"/>' +
+        '<text x="22" y="32" fill="var(--muted)" font-size="12" font-family="var(--f-body)">' + esc(S.rooms[first && first.node] || "Living room") + '</text>' +
+        '<polygon points="70,190 250,190 160,60" fill="color-mix(in srgb, var(--accent) 12%, transparent)" stroke="var(--accent)" stroke-dasharray="5 5" stroke-width="1.5"/>' +
+        '<g font-family="var(--f-body)" font-size="11" fill="var(--ink)">' +
+        '<circle cx="70" cy="190" r="9" fill="var(--led-green)"/><text x="40" y="215">Board 1</text>' +
+        '<circle cx="250" cy="190" r="9" fill="var(--led-green)"/><text x="228" y="215">Board 2</text>' +
+        '<circle cx="160" cy="60" r="9" fill="var(--led-green)"/><text x="137" y="45">Board 3</text></g>' +
+        '<rect x="20" y="120" width="34" height="24" rx="3" fill="none" stroke="var(--muted)" stroke-width="1.5"/><text x="18" y="160" font-size="10" fill="var(--muted)" font-family="var(--f-body)">this PC</text>' +
+        '<path d="M37 144 C 40 170, 55 185, 62 188" stroke="var(--muted)" stroke-width="1.5" fill="none"/>' +
+        "</svg></div>";
+    },
+    done: function () {
+      var apps = [S.apps.presence && "Presence sensing", S.apps.extender && "Wi-Fi extender", S.apps.ha && "Home Assistant"].filter(Boolean);
+      return "<h1>Your cell is up</h1>" +
+        '<p class="lead">All boards glow green: they found each other. From here on, the dashboard shows what they do, and the library adds or removes apps.</p>' +
+        '<dl class="summary"><dt>Cell</dt><dd>' + esc(S.cell || "home") + "</dd><dt>Boards</dt><dd>" + good().length + " working</dd><dt>Apps</dt><dd>" + esc(apps.join(", ") || "none yet") + "</dd><dt>Rooms</dt><dd>" + esc(Object.values(S.rooms).filter(Boolean).join(", ") || "not set") + "</dd><dt>Key backup</dt><dd>" + (S.backup ? "made" : "not yet -- the dashboard will remind you") + "</dd></dl>" +
+        '<p style="margin-top:20px"><button type="button" class="primary" id="opendash">Open the dashboard</button></p>';
+    }
+  };
+
+  function canNext() {
+    var id = STEPS[S.i].id;
+    if (id === "cell") return S.cell.trim().length > 0 && S.pass.length >= 10;
+    if (id === "plug") return good().length > 0;
+    if (id === "install") return S.installed;
+    if (id === "wifi") return !!S.wifi.ssid && S.wifi.pass.length >= 8 && (!S.apps.extender || S.wifi.hspass.length >= 8);
+    return true;
+  }
+  var HINTS = {
+    welcome: "Takes about 10 minutes",
+    cell: "Choose a passphrase of 10 characters or more",
+    apps: "You can change these later",
+    plug: "Plug in at least one board",
+    install: "Press Install to start",
+    wifi: "Passwords of 8 characters or more",
+    rooms: "Rooms are optional",
+    place: "Then press Next",
+    done: ""
+  };
+
+  function render() {
+    rail();
+    var id = STEPS[S.i].id;
+    $("screen").innerHTML = VIEWS[id]();
+    $("back").disabled = S.i === 0 || S.installing;
+    $("next").hidden = id === "done";
+    $("next").disabled = !canNext();
+    $("next").textContent = id === "place" ? "Finish" : "Next";
+    $("hint").textContent = id === "install" && S.installing ? "Keep the boards plugged in" : id === "install" && S.installed ? "All boards are installed" : HINTS[id];
+    wire(id);
+    if (id === "plug") startDetect();
+  }
+
+  function wire(id) {
+    if (id === "cell") {
+      $("cellname").addEventListener("input", function (e) { S.cell = e.target.value; refresh(); });
+      $("pass").addEventListener("input", function (e) { S.pass = e.target.value; meter(); refresh(); });
+      $("backupbtn").addEventListener("click", function () { S.backup = true; this.innerHTML = "Backup made &#10003;"; });
+      meter();
+    }
+    if (id === "apps") document.querySelectorAll("[data-app]").forEach(function (b) {
+      b.addEventListener("click", function () { var k = b.getAttribute("data-app"); S.apps[k] = !S.apps[k]; render(); });
+    });
+    if (id === "install" && $("go")) $("go").addEventListener("click", install);
+    if (id === "wifi") {
+      $("ssid").value = S.wifi.ssid;
+      $("ssid").addEventListener("change", function (e) { S.wifi.ssid = e.target.value; refresh(); });
+      $("wpass").addEventListener("input", function (e) { S.wifi.pass = e.target.value; refresh(); });
+      if ($("hspass")) {
+        $("hs").addEventListener("input", function (e) { S.wifi.hs = e.target.value; });
+        $("hspass").addEventListener("input", function (e) { S.wifi.hspass = e.target.value; refresh(); });
+      }
+    }
+    if (id === "rooms") {
+      document.querySelectorAll("select[data-node]").forEach(function (sel) {
+        sel.addEventListener("change", function () { S.rooms[sel.getAttribute("data-node")] = sel.value; });
+      });
+      $("nextboard").addEventListener("click", function () { S.identify = (S.identify + 1) % good().length; render(); });
+    }
+    if (id === "done") $("opendash").addEventListener("click", function () { this.textContent = "This mockup ends here"; this.disabled = true; });
+  }
+  function refresh() { $("next").disabled = !canNext(); }
+  function meter() {
+    var n = S.pass.length, w = Math.min(100, n * 7), m = $("pmeter"), t = $("ptext");
+    if (!m) return;
+    m.style.width = w + "%";
+    t.textContent = n === 0 ? "At least 10 characters" : n < 10 ? (10 - n) + " more characters" : n < 16 ? "Good" : "Strong";
+  }
+  function startDetect() {
+    if (S.detecting || S.boards.length >= FOUND.length) return;
+    S.detecting = setInterval(function () {
+      if (S.boards.length >= FOUND.length) { clearInterval(S.detecting); S.detecting = null; return; }
+      S.boards.push(Object.assign({}, FOUND[S.boards.length]));
+      if (STEPS[S.i].id === "plug") render();
+    }, 1400);
+  }
+  function install() {
+    S.installing = true; render();
+    var t = setInterval(function () {
+      var all = true;
+      good().forEach(function (b, k) {
+        var lag = k * 18;
+        var p = b.progress || 0;
+        if (p < 100) { b.progress = Math.min(100, p + (p + lag > lag ? 3 + Math.random() * 4 : 0) + (p === 0 && Math.random() < 0.5 - k * 0.12 ? 2 : 0)); }
+        if (b.progress < 100) all = false;
+      });
+      if (STEPS[S.i].id === "install") render();
+      if (all) { clearInterval(t); S.installing = false; S.installed = true; render(); }
+    }, 180);
+  }
+
+  $("next").addEventListener("click", function () {
+    if (!canNext()) return;
+    do { S.i++; } while (S.i < STEPS.length - 1 && skipped(STEPS[S.i].id));
+    render(); $("screen").focus && $("screen").focus();
+  });
+  $("back").addEventListener("click", function () {
+    do { S.i--; } while (S.i > 0 && skipped(STEPS[S.i].id));
+    render();
+  });
+  render();
+})();
+</script>
