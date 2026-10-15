@@ -32,7 +32,7 @@ TOP_KEYS = {"api", "at", "hub", "cell", "boards", "apps", "resources", "integrat
 # The first screen's landmarks, documented in index.html's header comment.
 LANDMARKS = {"conn", "status", "verdict", "problems", "summary", "sum-boards", "sum-apps", "sum-integrations",
              "sum-deploy", "sum-hub", "sum-channel", "signals", "use", "tabs", "tab-cell", "tab-apps", "tab-data",
-             "tab-integrations", "tab-deploys", "tab-events", "tab-plan"}
+             "tab-integrations", "tab-deploys", "tab-events", "tab-plan", "tab-library"}
 
 
 class Mock:
@@ -344,6 +344,11 @@ class PageTest(unittest.TestCase):
         self.assertIn('["state", "x", "y", "a", "b", "theta", "conf"]', js)  # DEVELOPING-APPS.md's position kind
         self.assertIn("ellipse", js)
         self.assertIn('src="plan.js"', self.read("index.html"))
+
+    def test_the_library_speaks_only_to_the_owners_setup_calls(self):
+        js = self.read("library.js")
+        self.assertEqual({u.split("/")[1] for u in re.findall(r'"(api/[a-z/]+)', js)}, {"setup"})
+        self.assertIn('src="library.js"', self.read("index.html"))
 
     def test_the_setup_wizard_has_its_steps_and_speaks_only_to_api_setup(self):
         p = _Ids()

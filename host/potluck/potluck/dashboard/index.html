@@ -7,6 +7,7 @@
 <title>Potluck cell</title>
 <link rel="stylesheet" href="style.css">
 <script src="plan.js" defer></script>
+<script src="library.js" defer></script>
 <script src="app.js" defer></script>
 </head>
 <body>
@@ -20,7 +21,7 @@
                   #sum-boards #sum-apps #sum-integrations #sum-deploy #sum-hub #sum-channel
     #signals      layer 2, the four golden signals
     #use          layer 3, utilisation and saturation per resource
-    #tabs         layer 4: #tab-cell #tab-plan #tab-apps #tab-data #tab-integrations #tab-deploys #tab-events
+    #tabs         layer 4: #tab-cell #tab-plan #tab-library #tab-apps #tab-data #tab-integrations #tab-deploys #tab-events
 -->
 <header class="top">
   <div class="brand"><span class="logo" aria-hidden="true"></span><span>Potluck</span>
@@ -83,6 +84,7 @@
   <nav id="tabs" class="tabs" role="tablist" aria-label="Details">
     <a role="tab" href="#cell" data-tab="cell">Cell</a>
     <a role="tab" href="#plan" data-tab="plan">Plan</a>
+    <a role="tab" href="#library" data-tab="library">Library</a>
     <a role="tab" href="#apps" data-tab="apps">Apps</a>
     <a role="tab" href="#data" data-tab="data">Data</a>
     <a role="tab" href="#integrations" data-tab="integrations">Integrations</a>
@@ -92,6 +94,7 @@
 
   <section id="tab-cell" class="tabpanel" role="tabpanel" aria-label="Cell"></section>
   <section id="tab-plan" class="tabpanel" role="tabpanel" aria-label="Floor plan" hidden></section>
+  <section id="tab-library" class="tabpanel" role="tabpanel" aria-label="Library" hidden></section>
   <section id="tab-apps" class="tabpanel" role="tabpanel" aria-label="Apps" hidden></section>
   <section id="tab-data" class="tabpanel" role="tabpanel" aria-label="Data" hidden>
     <div class="toolbar"><label>Filter <input id="data-filter" type="search" placeholder="path, board, quality" autocomplete="off"></label></div>

@@ -468,12 +468,22 @@
     });
   }
 
+  // M20: the library (library.js) -- the PC's own address only; it keeps its own state, so the model's arrival
+  // every few seconds does not redraw it.
+  var libDrawn = false;
+  function renderLibrary() {
+    if (!window.PotluckLibrary || (libDrawn && S.tab === "library")) return;
+    libDrawn = true;
+    window.PotluckLibrary.render($("tab-library"), !S.who.login);
+  }
+
   // ---- routing --------------------------------------------------------------------------------------------------
-  var TABS = ["cell", "plan", "apps", "data", "integrations", "deploys", "events"];
+  var TABS = ["cell", "plan", "library", "apps", "data", "integrations", "deploys", "events"];
   function route(scroll) {
     var h = decodeURIComponent((location.hash || "").slice(1)), i = h.indexOf("/");
     var tab = i < 0 ? h : h.slice(0, i), focus = i < 0 ? "" : h.slice(i + 1);
     if (TABS.indexOf(tab) < 0) return;  // a plain anchor (#use, #signals...): the browser scrolls to it
+    if (S.tab !== tab) libDrawn = false;  // the library is drawn again each time it is opened
     S.tab = tab; S.focus = focus;
     TABS.forEach(function (t) {
       $("tab-" + t).hidden = t !== tab;
@@ -494,8 +504,8 @@
     var m = S.model;
     if (S.tab === "events") return renderEvents();
     if (!m) return;
-    ({ cell: renderCell, plan: renderPlan, apps: renderApps, data: renderData, integrations: renderIntegrations,
-       deploys: renderDeploys })[S.tab](m);
+    ({ cell: renderCell, plan: renderPlan, library: renderLibrary, apps: renderApps, data: renderData,
+       integrations: renderIntegrations, deploys: renderDeploys })[S.tab](m);
     if (S.focus) { var el = document.getElementById(fid(S.focus)); if (el) el.classList.add("focus"); }
   }
 

@@ -224,3 +224,17 @@ svg.plan ellipse.zone { fill: var(--warn); fill-opacity: 0.28; stroke: var(--war
 .plan-form { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 8px 0; }
 .plan-form input { font: inherit; width: 6.5em; padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); }
 .plan-form input[type=text] { width: 10em; }
+/* the library (M20), library.js */
+.lib-list { display: grid; gap: 6px; margin: 6px 0 12px; }
+.lib-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.lib-res { display: grid; gap: 4px; margin: 6px 0 12px; }
+.lib-rrow { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.lib-rrow code { min-width: 14em; overflow-wrap: anywhere; }
+.lib-rrow.missing code { color: var(--muted); }
+.seg { display: inline-flex; gap: 0; }
+.seg button { border-radius: 0; margin: 0; }
+.seg button:first-child { border-radius: 4px 0 0 4px; }
+.seg button:last-child { border-radius: 0 4px 4px 0; }
+.seg button.on { background: var(--role); color: var(--panel); }
+.lib-apply { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 10px 0; }
+#tab-library .out { max-height: 260px; overflow: auto; font-size: 0.8em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
