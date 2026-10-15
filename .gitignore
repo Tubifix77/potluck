@@ -1,5 +1,6 @@
 # Host test builds.
 /build/
+/dist/
 
 # ESP-IDF build output. Since the rename to an all-ASCII path the firmware builds
 # in place (tools/build_firmware.ps1 only mirrors when the path forces it), so this

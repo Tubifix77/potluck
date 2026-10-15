@@ -852,3 +852,11 @@ Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on 
   then "Apply to the cell".
 - **pot_sim for an app's read load:** `build/tests/pot_sim.exe --nodes 20 --scenario d20` (passive-sensor's design: a
   fusion per room) or `--scenario perlink` (the design before it), against `--scenario none` on the same seed.
+- **The packaged app and the tray icon:** `tools\build_package.ps1` builds `dist\Potluck\` (`potluck.exe`: hub, apply,
+  setup, keystore, ctl...; `potluck-tray.exe`: the tray icon) with PyInstaller from `%LOCALAPPDATA%\potluck\build-env`
+  (made once; the script's top says how). The owner installs it with `packaging\install.ps1` -- run it yourself, not
+  from a Claude session, whose AppData is redirected -- and removes it with `packaging\uninstall.ps1`. The tray starts
+  a hub at login when none runs (the cell in `%LOCALAPPDATA%\potluck\tray.json`'s "cluster", else the one the wizard
+  made, else setup mode). Unpackaged: `python -m potluck.tray`.
+- **Potluck's mark:** `python -m potluck.brandmark` regenerates every copy of it -- the dashboard's SVGs, Home
+  Assistant's `custom_components/potluck/brand/icon*.png` -- from one geometry; the tray draws it at run time.

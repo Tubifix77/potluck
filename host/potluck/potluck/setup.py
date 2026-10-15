@@ -512,7 +512,8 @@ def run_apply(cluster: str | Path, on_line: Callable[[str], None], cmd: list[str
     Done when it says VERIFIED, failed on NOT VERIFIED, REFUSED or a non-zero exit. A sealed cell's passphrase goes
     to the child on its stdin, never in its arguments or environment. `cmd`: for the tests."""
     import subprocess
-    cmd = cmd or [sys.executable, "-u", "-m", "potluck.apply", str(cluster)] + \
+    base = [sys.executable, "apply"] if getattr(sys, "frozen", False) else [sys.executable, "-u", "-m", "potluck.apply"]
+    cmd = cmd or base + [str(cluster)] + \
         (["--passphrase-stdin"] if passphrase is not None else [])
     verdict = None
     with subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parent.parent), stdout=subprocess.PIPE,

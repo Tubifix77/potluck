@@ -35,7 +35,7 @@ h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
 }
 .brand { display: flex; gap: 8px; align-items: baseline; font-weight: 600; min-width: 0; }
 .brand .muted { font-weight: 400; font-size: 0.9em; overflow-wrap: anywhere; }
-.logo { width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(var(--ok) 0 33%, var(--warn) 0 66%, var(--role) 0); align-self: center; }
+.logo { width: 20px; height: 20px; align-self: center; }  /* Potluck's mark (potluck.brandmark) */
 .conn { display: flex; align-items: center; gap: 6px; font-size: 0.85em; color: var(--muted); }
 .conn .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--idle); }
 .conn.ok .dot { background: var(--ok); } .conn.warn .dot { background: var(--warn); } .conn.bad .dot { background: var(--bad); }

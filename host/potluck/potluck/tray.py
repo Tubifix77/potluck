@@ -1,0 +1,245 @@
+"""Potluck's tray icon (M20): the cell's state at a glance and the way to its dashboard, with no terminal.
+
+    potluck-tray                      (the packaged app; or: python -m potluck.tray)
+
+The icon is Potluck's mark (potluck.brandmark), and what the hub says shows on it: the mark alone, every board alive
+and every app working; an amber badge, something to look at (hover for what); a red badge, the hub has lost its link to
+the cell; the mark greyed, no hub runs. It asks the hub on the PC's own address (http://127.0.0.1:8470/) every 3 seconds, so it is right whoever started
+the hub. Its menu opens the dashboard or the setup wizard, and starts a hub when none runs: on the cell's cluster file
+(`tray.json`'s "cluster", else the one cell the setup wizard made under %LOCALAPPDATA%/potluck/cells), or with no cell
+at all, in setup mode, so the wizard can make one.
+
+Windows only for now, through the Win32 calls Windows has (ctypes, no packages); a Linux panel would use what
+ha-tray uses (GTK). The tray never stops a hub it did not start.
+"""
+
+from __future__ import annotations
+
+import ctypes
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import threading
+import urllib.request
+from ctypes import wintypes
+from pathlib import Path
+
+API = "http://127.0.0.1:8470"
+POLL_MS = 3000
+
+STATES = ("ok", "warn", "bad", "none")  # potluck.brandmark draws each: the mark, a badge, or the mark greyed
+
+
+# ---- what the hub says ------------------------------------------------------------------------------------------
+
+def judge(model: dict | None) -> tuple[str, str]:
+    """(state, tooltip) from the hub's model, or (none, ...) when no hub answers."""
+    if model is None:
+        return "none", "Potluck: no hub runs on this PC"
+    cell = (model.get("cell") or {}).get("system") or "the cell"
+    if (model.get("hub") or {}).get("link") != "up":
+        return "bad", f"Potluck {cell}: the hub has lost its link to the cell"
+    boards = model.get("boards") or []
+    down = [b.get("label") or b.get("node") for b in boards if b.get("state") not in ("alive", "asleep")]
+    broken = [a.get("name") for a in model.get("apps") or [] if not a.get("working")]
+    if not boards:
+        return "warn", f"Potluck {cell}: no boards yet -- add some"
+    if down or broken:
+        parts = ([f"{', '.join(down)} not answering"] if down else []) + ([f"{', '.join(broken)} not working"] if broken else [])
+        return "warn", f"Potluck {cell}: " + "; ".join(parts)
+    return "ok", f"Potluck {cell}: all {len(boards)} boards fine"
+
+
+def fetch_model(timeout: float = 1.5) -> dict | None:
+    try:
+        with urllib.request.urlopen(API + "/api/model", timeout=timeout) as r:
+            return json.loads(r.read())
+    except (OSError, ValueError):
+        return None
+
+
+# ---- starting a hub ----------------------------------------------------------------------------------------------
+
+def potluck_dir() -> Path:
+    return Path(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.cache")) / "potluck"
+
+
+def cell_file() -> Path | None:
+    """The cluster file the tray starts a hub on: tray.json's "cluster", else the one cell the wizard made."""
+    try:
+        cfg = json.loads((potluck_dir() / "tray.json").read_text(encoding="utf-8"))
+        if cfg.get("cluster"):
+            return Path(cfg["cluster"])
+    except (OSError, ValueError):
+        pass
+    cells = sorted((potluck_dir() / "cells").glob("*/*.json"))
+    cells = [p for p in cells if p.stem == p.parent.name]  # <name>/<name>.json, as setup.new_cell makes it
+    return cells[0] if len(cells) == 1 else None
+
+
+def hub_command(cluster: Path | None) -> list[str]:
+    if getattr(sys, "frozen", False):  # potluck-tray.exe: the hub is potluck.exe beside it
+        base = [str(Path(sys.executable).with_name("potluck.exe")), "hub"]
+    else:
+        base = [sys.executable, "-u", "-m", "potluck.hub"]
+    return base + (["--cluster", str(cluster)] if cluster else [])
+
+
+def start_hub() -> subprocess.Popen | None:
+    logs = potluck_dir() / "logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    cluster = cell_file()
+    out = open(logs / "hub.log", "ab")
+    cwd = str(cluster.parent) if cluster else str(potluck_dir())
+    return subprocess.Popen(hub_command(cluster), stdout=out, stderr=subprocess.STDOUT, cwd=cwd,
+                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+
+
+# ---- Win32 ------------------------------------------------------------------------------------------------------
+
+if sys.platform == "win32":
+    user32, shell32, kernel32 = ctypes.windll.user32, ctypes.windll.shell32, ctypes.windll.kernel32
+    LRESULT = ctypes.c_ssize_t
+    WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+
+    class WNDCLASSEXW(ctypes.Structure):
+        _fields_ = [("cbSize", wintypes.UINT), ("style", wintypes.UINT), ("lpfnWndProc", WNDPROC),
+                    ("cbClsExtra", ctypes.c_int), ("cbWndExtra", ctypes.c_int), ("hInstance", wintypes.HINSTANCE),
+                    ("hIcon", wintypes.HICON), ("hCursor", wintypes.HANDLE), ("hbrBackground", wintypes.HBRUSH),
+                    ("lpszMenuName", wintypes.LPCWSTR), ("lpszClassName", wintypes.LPCWSTR), ("hIconSm", wintypes.HICON)]
+
+    class NOTIFYICONDATAW(ctypes.Structure):
+        _fields_ = [("cbSize", wintypes.DWORD), ("hWnd", wintypes.HWND), ("uID", wintypes.UINT),
+                    ("uFlags", wintypes.UINT), ("uCallbackMessage", wintypes.UINT), ("hIcon", wintypes.HICON),
+                    ("szTip", wintypes.WCHAR * 128), ("dwState", wintypes.DWORD), ("dwStateMask", wintypes.DWORD),
+                    ("szInfo", wintypes.WCHAR * 256), ("uVersion", wintypes.UINT), ("szInfoTitle", wintypes.WCHAR * 64),
+                    ("dwInfoFlags", wintypes.DWORD), ("guidItem", ctypes.c_byte * 16), ("hBalloonIcon", wintypes.HICON)]
+
+    user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+    user32.DefWindowProcW.restype = LRESULT
+    user32.CreateWindowExW.argtypes = [wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+                                       ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.HWND,
+                                       wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID]
+    user32.CreateWindowExW.restype = wintypes.HWND
+    user32.LoadImageW.argtypes = [wintypes.HINSTANCE, wintypes.LPCWSTR, wintypes.UINT, ctypes.c_int, ctypes.c_int,
+                                  wintypes.UINT]
+    user32.LoadImageW.restype = wintypes.HANDLE
+    user32.TrackPopupMenu.argtypes = [wintypes.HMENU, wintypes.UINT, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                                      wintypes.HWND, wintypes.LPVOID]
+    user32.AppendMenuW.argtypes = [wintypes.HMENU, wintypes.UINT, ctypes.c_size_t, wintypes.LPCWSTR]
+    user32.SetTimer.argtypes = [wintypes.HWND, ctypes.c_size_t, wintypes.UINT, wintypes.LPVOID]
+    shell32.Shell_NotifyIconW.argtypes = [wintypes.DWORD, ctypes.POINTER(NOTIFYICONDATAW)]
+
+WM_DESTROY, WM_COMMAND, WM_TIMER, WM_APP = 0x0002, 0x0111, 0x0113, 0x8000
+WM_LBUTTONUP, WM_RBUTTONUP = 0x0202, 0x0205
+NIM_ADD, NIM_MODIFY, NIM_DELETE = 0, 1, 2
+NIF_MESSAGE, NIF_ICON, NIF_TIP = 1, 2, 4
+MF_STRING, MF_GRAYED, MF_SEPARATOR = 0, 1, 0x800
+CMD_OPEN, CMD_SETUP, CMD_START, CMD_QUIT = 1, 2, 3, 9
+
+
+class Tray:
+    def __init__(self) -> None:
+        self.state, self.tip = "none", "Potluck"
+        self.icons: dict[str, int] = {}
+        self.child: subprocess.Popen | None = None
+        self.model: dict | None = None
+        self._lock = threading.Lock()
+        folder = Path(tempfile.gettempdir()) / "potluck-tray"
+        folder.mkdir(exist_ok=True)
+        from .brandmark import ico
+        for st in STATES:
+            p = folder / f"{st}.ico"
+            p.write_bytes(ico(32, st))
+            self.icons[st] = user32.LoadImageW(None, str(p), 1, 0, 0, 0x10)  # IMAGE_ICON, LR_LOADFROMFILE
+        self._proc = WNDPROC(self._wndproc)  # kept: Windows calls it for as long as the window lives
+        wc = WNDCLASSEXW(cbSize=ctypes.sizeof(WNDCLASSEXW), lpfnWndProc=self._proc,
+                         hInstance=kernel32.GetModuleHandleW(None), lpszClassName="PotluckTray")
+        user32.RegisterClassExW(ctypes.byref(wc))
+        self.hwnd = user32.CreateWindowExW(0, "PotluckTray", "Potluck", 0, 0, 0, 0, 0, None, None, wc.hInstance, None)
+        self.nid = NOTIFYICONDATAW(cbSize=ctypes.sizeof(NOTIFYICONDATAW), hWnd=self.hwnd, uID=1,
+                                   uFlags=NIF_MESSAGE | NIF_ICON | NIF_TIP, uCallbackMessage=WM_APP + 1,
+                                   hIcon=self.icons["none"])
+        self.nid.szTip = "Potluck"
+        shell32.Shell_NotifyIconW(NIM_ADD, ctypes.byref(self.nid))
+        user32.SetTimer(self.hwnd, 1, POLL_MS, None)
+        self._poll_async()
+
+    def _poll_async(self) -> None:
+        def run():
+            m = fetch_model()
+            with self._lock:
+                self.model = m
+                self.state, self.tip = judge(m)
+        threading.Thread(target=run, daemon=True).start()
+
+    def _show(self) -> None:
+        with self._lock:
+            st, tip = self.state, self.tip
+        self.nid.hIcon = self.icons[st]
+        self.nid.szTip = tip[:127]
+        shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(self.nid))
+
+    def _menu(self) -> None:
+        menu = user32.CreatePopupMenu()
+        with self._lock:
+            have_hub = self.model is not None
+        user32.AppendMenuW(menu, MF_STRING | (0 if have_hub else MF_GRAYED), CMD_OPEN, "Open the dashboard")
+        user32.AppendMenuW(menu, MF_STRING | (0 if have_hub else MF_GRAYED), CMD_SETUP, "Add boards")
+        user32.AppendMenuW(menu, MF_SEPARATOR, 0, None)
+        user32.AppendMenuW(menu, MF_STRING | (MF_GRAYED if have_hub else 0), CMD_START, "Start the hub")
+        user32.AppendMenuW(menu, MF_SEPARATOR, 0, None)
+        user32.AppendMenuW(menu, MF_STRING, CMD_QUIT, "Quit the tray icon")
+        pt = wintypes.POINT()
+        user32.GetCursorPos(ctypes.byref(pt))
+        user32.SetForegroundWindow(self.hwnd)  # so the menu closes when the user clicks elsewhere
+        user32.TrackPopupMenu(menu, 0, pt.x, pt.y, 0, self.hwnd, None)
+        user32.DestroyMenu(menu)
+
+    def _wndproc(self, hwnd, msg, wparam, lparam):
+        if msg == WM_TIMER:
+            self._show()
+            self._poll_async()
+            return 0
+        if msg == WM_APP + 1 and lparam in (WM_LBUTTONUP, WM_RBUTTONUP):
+            self._menu()
+            return 0
+        if msg == WM_COMMAND:
+            cmd = wparam & 0xFFFF
+            if cmd == CMD_OPEN:
+                os.startfile(API + "/")
+            elif cmd == CMD_SETUP:
+                os.startfile(API + "/setup.html")
+            elif cmd == CMD_START and self.child is None:
+                self.child = start_hub()
+            elif cmd == CMD_QUIT:
+                user32.DestroyWindow(hwnd)
+            return 0
+        if msg == WM_DESTROY:
+            shell32.Shell_NotifyIconW(NIM_DELETE, ctypes.byref(self.nid))
+            user32.PostQuitMessage(0)
+            return 0
+        return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+
+    def run(self) -> int:
+        msg = wintypes.MSG()
+        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
+            user32.TranslateMessage(ctypes.byref(msg))
+            user32.DispatchMessageW(ctypes.byref(msg))
+        return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if "--start-hub" in argv and fetch_model() is None:
+        start_hub()  # at login: a hub if none runs, then the icon
+    if sys.platform != "win32":
+        print("potluck-tray: the tray icon is Windows-only for now; the hub and dashboard work without it")
+        return 2
+    return Tray().run()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
