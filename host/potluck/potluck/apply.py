@@ -289,6 +289,19 @@ class Cluster:
     #: M19 (Review #2): a cell's own death window in ms (an upper cell of foremen, far apart, a slower one); absent:
     #: its members are judged by their own announced windows, as in one cell.
     cell_windows: dict[str, int] = field(default_factory=dict)
+    #: M19: a cell's parent -- the upper cell its foreman (and the standby) joins at run time; absent: a cell that
+    #: does not federate.
+    parents: dict[str, str] = field(default_factory=dict)
+    #: M19 (Review of M19 #4): the boards that may hold their cell's foreman role (`"foreman": true` -- on mains
+    #: power); the reconciler assigns it among them, never the owner.
+    foremen: tuple[int, ...] = ()
+
+
+#: M19: a board's unicast peers -- ESP-NOW's 20 less the broadcast entry (node.hpp's kMaxUnicastPeers).
+PEER_CAP = 19
+#: M19 (Review of M19 #6): what one child cell puts into its upper cell at worst -- the foreman, the standby, and
+#: during a handover a second foreman until the first one drops out.
+CHILD_SEATS = 3
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -365,6 +378,7 @@ def load_cluster(path: str) -> Cluster:
     rooms: dict[int, str] = {}
     positions: dict[int, tuple[float, float]] = {}
     cells: dict[int, tuple[str, ...]] = {}
+    foremen: list[int] = []
     for i, bd in enumerate(doc.get("boards", [])):
         if not isinstance(bd, dict) or "node" not in bd:
             raise ApplyError(f"boards[{i}]: {{\"node\": \"<hex id>\", \"label\": \"...\"}}")
@@ -387,6 +401,11 @@ def load_cluster(path: str) -> Cluster:
                     all(isinstance(v, str) and 1 <= len(v) <= 31 and v.isprintable() for v in cl_raw)):
                 raise ApplyError(f"boards[{i}].cells: one or two cell names, 1..31 printable characters each")
             cells[nid] = tuple(cl_raw)
+        fm = bd.get("foreman", False)  # M19: may hold its cell's foreman role (mains power)
+        if not isinstance(fm, bool):
+            raise ApplyError(f"boards[{i}].foreman: true or false")
+        if fm:
+            foremen.append(nid)
     if len({n for n, _ in boards}) != len(boards) or len({lab for _, lab in boards}) != len(boards):
         raise ApplyError("boards: a node id or a label appears twice")
     keys_raw = doc.get("keys", {})
@@ -508,18 +527,52 @@ def load_cluster(path: str) -> Cluster:
     cl.positions = positions
     cl.plan = check_plan(doc.get("plan"))
     cl.cells = cells
-    cw = {}
-    for name, spec in (doc.get("cells") or {}).items():
-        if not isinstance(spec, dict) or set(spec) - {"window_ms"}:
-            raise ApplyError(f"cells['{name}']: {{\"window_ms\": <ms>}}")
+    cw, parents = {}, {}
+    cells_doc = doc.get("cells") or {}
+    if not isinstance(cells_doc, dict):
+        raise ApplyError("cells: an object, cell name -> {\"window_ms\", \"parent\"}")
+    static = {n for v in cells.values() for n in v}
+    for name, spec in cells_doc.items():
+        if not isinstance(spec, dict) or set(spec) - {"window_ms", "parent"}:
+            raise ApplyError(f"cells['{name}']: {{\"window_ms\": <ms>, \"parent\": \"<upper cell>\"}}")
         w = spec.get("window_ms", 0)
         if not isinstance(w, int) or isinstance(w, bool) or w % 100 or not 0 <= w <= 25500:
             raise ApplyError(f"cells['{name}'].window_ms: 0..25500, in steps of 100")
-        if name not in {n for v in cells.values() for n in v}:
-            raise ApplyError(f"cells['{name}']: no board is in this cell")
-        cw[name] = w
+        if "parent" in spec:
+            par = spec["parent"]
+            if not isinstance(par, str) or not 1 <= len(par) <= 31 or not par.isprintable() or par == name:
+                raise ApplyError(f"cells['{name}'].parent: another cell's name")
+            parents[name] = par
+        if w:
+            cw[name] = w
+    named = static | set(parents.values())
+    for name, spec in cells_doc.items():
+        if name not in named:
+            raise ApplyError(f"cells['{name}']: no board is in this cell, and it is no cell's parent")
     cl.cell_windows = cw
-    if len({n for v in cells.values() for n in v}) > 255:
+    for name in parents:
+        if name not in static:
+            raise ApplyError(f"cells['{name}']: has a parent but no board -- a cell's foreman comes from its own boards")
+        seen, at = {name}, parents[name]
+        while at in parents:  # one tree, no loops
+            if at in seen:
+                raise ApplyError(f"cells: '{name}' is its own ancestor -- parents make a tree")
+            seen.add(at)
+            at = parents[at]
+    cl.parents = parents
+    for nid in foremen:  # Review of M19 #4 and #6: one cell of its own, which has a parent; the role adds the second
+        mine = cells.get(nid, ())
+        lab = dict(boards)[nid]
+        if len(mine) != 1 or mine[0] not in parents:
+            raise ApplyError(f"boards['{lab}'].foreman: a foreman is a board in exactly one cell, and that cell has a "
+                             f"parent -- the role makes it a member of the parent too (a board holds two memberships "
+                             f"at most)")
+    cl.foremen = tuple(foremen)
+    for name in parents:
+        if not any(cells.get(n) == (name,) for n in foremen):
+            raise ApplyError(f"cells['{name}']: has a parent but no board that may be its foreman -- mark one or more "
+                             f"boards of it \"foreman\": true (on mains power)")
+    if len(named) > 255:
         raise ApplyError("cells: at most 255 named cells in one tree")
     return cl
 
@@ -825,7 +878,72 @@ def per_room(c: Cluster, actors: list[dict]) -> list[dict]:
 
 def cell_numbers(c: Cluster) -> dict[str, int]:
     """M19: the cluster file's cell names, sorted and numbered from 1 -- the numbers HELLO carries."""
-    return {name: i + 1 for i, name in enumerate(sorted({n for v in c.cells.values() for n in v}))}
+    names = {n for v in c.cells.values() for n in v} | set(c.parents.values())
+    return {name: i + 1 for i, name in enumerate(sorted(names))}
+
+
+def foreman_cells(c: Cluster) -> dict[str, list[int]]:
+    """M19: each federating cell's foreman-eligible boards, by id."""
+    return {name: sorted(n for n in c.foremen if c.cells.get(n) == (name,)) for name in c.parents}
+
+
+def peer_budget(c: Cluster, cabled: int | None = None) -> dict[int, dict[str, Any]]:
+    """M19 (Review of M19 #6): every board's unicast peers at worst, against PEER_CAP. A board's peers are the
+    boards of every cell it can be in -- its own, and the parent of its cell when it may hold the foreman role (or
+    the standby) -- where a cell's members are the boards that name it plus, from each child cell, up to
+    CHILD_SEATS foreman-eligible boards (foreman, standby, a second foreman during a handover). A board in no cell
+    is admitted by every board, and admits every board. The PC (hub or host node, reached through the cabled board
+    and its relay) takes one more on each board of the cabled board's cells; `cabled` None: on every board.
+    Returns, per board: {"peers": total, "cells": {cell: count}, "host": 0|1}."""
+    boards = [n for n, _ in c.boards]
+    fc = foreman_cells(c)
+    static: dict[str, set[int]] = {}
+    for n in boards:
+        for name in c.cells.get(n, ()):
+            static.setdefault(name, set()).add(n)
+    loose = {n for n in boards if not c.cells.get(n)}
+    cabled_cells = set(c.cells.get(cabled, ())) if cabled is not None else None
+    out: dict[int, dict[str, Any]] = {}
+    for n in boards:
+        own = tuple(c.cells.get(n, ()))
+        mine = list(own) + ([c.parents[own[0]]] if n in c.foremen else [])
+        if not mine:  # admitted by every board, and admits every board
+            out[n] = {"peers": len(boards) - 1 + 1, "cells": {}, "host": 1}
+            continue
+        peers = set(loose)
+        seats = 0
+        per = {}
+        for name in mine:
+            peers |= static.get(name, set())
+            kids = sum(min(len(e), CHILD_SEATS) for k, e in fc.items() if c.parents[k] == name and k not in own)
+            seats += kids
+            per[name] = len(static.get(name, set()) - {n}) + kids
+        peers.discard(n)
+        host = int(cabled_cells is None or n == cabled or bool(cabled_cells & set(own)))
+        out[n] = {"peers": len(peers) + seats + host, "cells": per, "host": host}
+    return out
+
+
+def check_peers(c: Cluster, cabled: int | None = None) -> list[str]:
+    """M19: one plan line per board of a tree (a cluster file with cells); ApplyError naming every board over
+    PEER_CAP. A cluster file without cells is one cell, whose twenty-board limit is checked elsewhere."""
+    if not c.cells:
+        return []
+    labels = dict(c.boards)
+    budget = peer_budget(c, cabled)
+    lines, over = [], []
+    for n, u in budget.items():
+        parts = [f"{k} {v}" for k, v in u["cells"].items()] + (["the PC 1"] if u["host"] else [])
+        lines.append(f"plan: peers {labels[n]} (0x{n:04x}): {u['peers']} of {PEER_CAP} ({', '.join(parts)})")
+        if u["peers"] > PEER_CAP:
+            over.append((-u["peers"], n, f"{labels[n]} (0x{n:04x}) would need {u['peers']} unicast peers"))
+    if over:
+        over.sort()
+        named = "; ".join(x for _, _, x in over[:3]) + (f"; and {len(over) - 3} more board(s)" if len(over) > 3 else "")
+        raise ApplyError(f"{named} -- over the {PEER_CAP} a board holds: smaller cells, fewer foreman-eligible boards "
+                         f"in a cell, or another upper cell")
+    return lines
+
 
 
 def room_numbers(c: Cluster) -> dict[str, int]:
@@ -1332,6 +1450,12 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             return 2
         if cabled not in boards:
             print(f"REFUSED, nothing changed: the board on the cable (0x{cabled:04x}) is not in the cluster file")
+            return 2
+        try:  # M19 (Review of M19 #6): the tree's peer budget, per board
+            for line in check_peers(c, cabled):
+                log(line)
+        except ApplyError as exc:
+            print(f"REFUSED, nothing changed: {exc}")
             return 2
         times["inventory"] = time.monotonic() - t0
         if fwb is not None:
