@@ -246,7 +246,10 @@ your own board's set locally; `apply --plan` counts the module's `{peer}` output
 A portable module that works one room at a time says `"per_room": true` in its descriptor; `apply` then runs
 each of its actors once per room of the cluster file, as `<name>_<room>` (the room's name lowercased, every run of
 other characters one `_`: "Living room" -> `living_room`), placed only among that room's boards, with `<room>` and
-its own `act/<name>/` rewritten in its string config values. A cluster file with no rooms keeps the one actor.
+its own `act/<name>/` rewritten in its string config values. A cluster file with no rooms keeps the one actor. A portable
+actor's eligible list holds at most 8 boards: in a bigger room `apply` keeps the 8 the reconciler would rank first
+with every board alive (stable, from the actor's output path) -- the actor runs only on those, though it may read
+every board in the room.
 
 An actor that knows where something is declares seven outputs under one prefix, and the dashboard's floor plan
 draws it: `act/<name>/state` (u32: 0 nobody, 1 present but not placed, 2 placed), `x`, `y` (f32, Unit::Metre,
