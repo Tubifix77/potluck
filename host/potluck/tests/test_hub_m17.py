@@ -215,6 +215,24 @@ class Setup(Pair):
         code, r = self.req(self.local_addr, "POST", "/api/setup/flash", {"port": "COM98", "build": self.tmp.name})
         self.assertEqual(code, 403)
 
+    def test_a_new_board_and_its_room_go_into_the_cluster_file_and_show_at_once(self) -> None:
+        from potluck.apply import load_cluster
+        p = Path(self.tmp.name) / "home.json"
+        p.write_text(json.dumps({"schema": "potluck-cluster/1", "system": "home", "firmware": None,
+                                 "boards": [{"node": "6300", "label": "A"}]}), encoding="utf-8")
+        saved = self.model.cluster
+        self.model.cluster = load_cluster(str(p))
+        try:
+            code, r = self.req(self.local_addr, "POST", "/api/setup/board", {"node": "8160", "room": "Kitchen"})
+            self.assertEqual((code, r["board"]["label"]), (200, "node-8160"))
+            self.assertEqual(self.model.room_of(0x8160), "Kitchen")
+            self.assertEqual(self.req(self.local_addr, "POST", "/api/setup/board", {"node": "8160", "label": "A"})[0],
+                             409)
+            self.assertIn(self.req(self.lan_addr, "POST", "/api/setup/board", {"node": "8161"})[0], (401, 404))
+            self.assertEqual(len(json.loads(p.read_text(encoding="utf-8"))["boards"]), 2)
+        finally:
+            self.model.cluster = saved
+
 
 
 if __name__ == "__main__":

@@ -135,5 +135,56 @@ class Console(unittest.TestCase):
             st.set_wifi("COM5", "x", "short", opener=lambda p: fw)
 
 
+class ClusterFile(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.p = Path(self.tmp.name) / "home.json"
+        self.p.write_text(json.dumps({"schema": "potluck-cluster/1", "system": "home", "firmware": None,
+                                      "boards": [{"node": "6300", "label": "A"}]}), encoding="utf-8")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def boards(self):
+        return json.loads(self.p.read_text(encoding="utf-8"))["boards"]
+
+    def test_a_new_board_is_added_and_its_room_set_and_cleared(self):
+        self.assertEqual(st.add_board(self.p, "8160", room="Kitchen"),
+                         {"node": "8160", "label": "node-8160", "room": "Kitchen"})
+        st.add_board(self.p, "6300", room="Hall")
+        self.assertEqual([b.get("room") for b in self.boards()], ["Hall", "Kitchen"])
+        st.add_board(self.p, "8160", room="")
+        self.assertNotIn("room", self.boards()[1])
+        self.assertTrue(self.p.with_suffix(".json.bak").exists())  # the previous version, kept
+
+    def test_what_apply_would_refuse_is_never_written(self):
+        before = self.p.read_text(encoding="utf-8")
+        with self.assertRaisesRegex(st.SetupError, "taken"):
+            st.add_board(self.p, "8160", label="A")
+        with self.assertRaisesRegex(st.SetupError, "would not load"):
+            st.add_board(self.p, "8160", room="x" * 41)
+        with self.assertRaisesRegex(st.SetupError, "0100..fffe"):
+            st.add_board(self.p, "00fe")
+        self.assertEqual(json.loads(self.p.read_text(encoding="utf-8")), json.loads(before))
+
+
+class ApplyJob(unittest.TestCase):
+    def run_fake(self, out: str, code: int = 0):
+        script = f"import sys; print({out!r}); sys.exit({code})"
+        lines = []
+        try:
+            res = st.run_apply("x.json", lines.append, cmd=[sys.executable, "-c", script])
+        except st.SetupError as exc:
+            return lines, exc
+        return lines, res
+
+    def test_verified_is_done_and_anything_else_is_a_failure(self):
+        lines, res = self.run_fake("plan\nVERIFIED: cluster 'home' runs package 4 on 3 board(s)")
+        self.assertEqual((lines[0], res["verdict"][:9]), ("plan", "VERIFIED:"))
+        self.assertIn("NOT VERIFIED", str(self.run_fake("NOT VERIFIED:\n  0x8160 runs abc")[1]))
+        self.assertIn("REFUSED", str(self.run_fake("REFUSED, nothing changed: no port", 2)[1]))
+        self.assertIn("exited with 3", str(self.run_fake("crash", 3)[1]))
+
+
 if __name__ == "__main__":
     unittest.main()

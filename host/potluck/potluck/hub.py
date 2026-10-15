@@ -933,9 +933,42 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             self.wfile.write(body)
             return False
 
+        def _setup_cell(self, path: str) -> None:
+            """M20's setup wizard, the cell's side: a board into the cluster file (or its room), and `apply`."""
+            from . import setup as st
+            cl = getattr(model, "cluster", None)
+            if cl is None:
+                self._json(409, {"ok": False, "result": "the hub was started without a cluster file"})
+                return
+            try:
+                req = self._body()
+            except ValueError:
+                self._json(400, {"ok": False, "result": "expected a JSON object"})
+                return
+            if path == "/api/setup/board":
+                try:
+                    entry = st.add_board(cl.path, str(req["node"]), req.get("label"), req.get("room"))
+                    from .apply import load_cluster
+                    model.cluster = load_cluster(str(cl.path))  # the dashboard shows the new label and room
+                except (st.SetupError, KeyError, ValueError) as exc:
+                    self._json(409, {"ok": False, "result": str(exc)})
+                    return
+                self._json(200, {"ok": True, "board": entry})
+                return
+            jobs = setup_jobs()
+            try:
+                jid = jobs.start("apply", "cell", lambda pct: st.run_apply(cl.path, pct))
+            except st.SetupError as exc:
+                self._json(409, {"ok": False, "result": str(exc)})
+                return
+            self._json(202, {"ok": True, "job": jid})
+
         def _setup_post(self, path: str) -> None:
             """M20's setup wizard: probe, flash, enrol, Wi-Fi, identify -- each a job the dashboard follows."""
             from . import setup as st
+            if path in ("/api/setup/board", "/api/setup/apply"):
+                self._setup_cell(path)
+                return
             try:
                 req = self._body()
                 port = str(req["port"])
@@ -1034,6 +1067,18 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 if path == "/api/setup/ports":
                     own = getattr(model.hub.transport, "port", None)
                     self._json(200, {"ports": st.list_ports(exclude=(own,) if own else ())})
+                elif path == "/api/setup/build":
+                    # the firmware the cell runs (most of its boards), and its build on this PC, for new boards
+                    vers = [b.get("firmware", {}).get("version") for b in model.snapshot()["boards"]]
+                    vers = [v for v in vers if v]
+                    if not vers:
+                        self._json(409, {"ok": False, "result": "no board reports its firmware yet"})
+                        return
+                    v = max(set(vers), key=vers.count)
+                    try:
+                        self._json(200, {"version": v, "build": str(st.cell_build(v))})
+                    except st.SetupError as exc:
+                        self._json(409, {"ok": False, "version": v, "result": str(exc)})
                 elif path == "/api/setup/jobs":
                     self._json(200, {"jobs": setup_jobs().all()})
                 elif path.startswith("/api/setup/jobs/"):

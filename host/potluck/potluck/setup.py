@@ -126,6 +126,20 @@ def flash_parts(build_dir: str | Path) -> list[tuple[str, Path]]:
     return parts
 
 
+def cell_build(version: str, cache: Path | None = None) -> Path:
+    """The cached build of firmware `version` ("<commit>-<key6>", as boards report it): new boards get exactly the
+    firmware the cell runs (M20, Add boards), never merely the newest on the PC."""
+    if cache is None:
+        from .apply import default_cache
+        cache = default_cache()
+    key6 = version.rsplit("-", 1)[-1]
+    for d in sorted((cache / "fw").glob(f"{key6}*")):
+        for b in d.glob("build-*"):
+            if (b / "flasher_args.json").exists() and (b / "potluck_m0.bin").exists():
+                return b
+    raise SetupError(f"no build of firmware {version} on this PC -- `potluck apply` builds it")
+
+
 _PCT = re.compile(r"\((\d{1,3})\s?%\)")
 
 
@@ -223,6 +237,64 @@ def enrol_board(port: str, ca_key: str, registry: str, node_id: int | None = Non
             "reboot_needed": info["assigned"] != int(info["node"])}
 
 
+# ---- the cluster file -------------------------------------------------------------------------------------------
+
+def add_board(cluster: str | Path, node: str, label: str | None = None, room: str | None = None) -> dict:
+    """Add a board to the cluster file, or set its room -- the file the owner may also edit by hand, so the previous
+    version is kept beside it (<name>.bak) and the result must still load (`apply` refuses it otherwise)."""
+    from . import apply as ap
+    p = Path(cluster)
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    nid = int(node, 16)
+    if not ap.LEASE_MIN_BOARD_ID <= nid <= 0xFFFE:
+        raise SetupError(f"node {node}: a board's id is 0100..fffe")
+    boards = doc.setdefault("boards", [])
+    entry = next((b for b in boards if int(str(b.get("node")), 16) == nid), None)
+    if entry is None:
+        used = {b.get("label") for b in boards}
+        lab = label or f"node-{nid:04x}"
+        if lab in used:
+            raise SetupError(f"label {lab!r} is taken in this cell")
+        entry = {"node": f"{nid:04x}", "label": lab}
+        boards.append(entry)
+    elif label and label != entry.get("label"):  # a label may name the board in the package: renamed by hand only
+        raise SetupError(f"node {nid:04x} is already in this cell as {entry.get('label')!r}")
+    if room is not None:
+        if room:
+            entry["room"] = room
+        else:
+            entry.pop("room", None)
+    text = json.dumps(doc, indent=2) + "\n"
+    bak = p.with_suffix(p.suffix + ".bak")
+    bak.write_text(p.read_text(encoding="utf-8"), encoding="utf-8")
+    p.write_text(text, encoding="utf-8")
+    try:
+        ap.load_cluster(str(p))
+    except ap.ApplyError as exc:
+        p.write_text(bak.read_text(encoding="utf-8"), encoding="utf-8")  # never leave a file apply refuses
+        raise SetupError(f"the cluster file would not load ({exc}); left as it was") from None
+    return entry
+
+
+def run_apply(cluster: str | Path, on_line: Callable[[str], None], cmd: list[str] | None = None) -> dict:
+    """`potluck apply <cluster>` as a child process (it runs beside the hub, through it); its lines go to `on_line`.
+    Done when it says VERIFIED, failed on NOT VERIFIED, REFUSED or a non-zero exit. `cmd`: for the tests."""
+    import subprocess
+    cmd = cmd or [sys.executable, "-u", "-m", "potluck.apply", str(cluster)]
+    verdict = None
+    with subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parent.parent), stdout=subprocess.PIPE,
+                          stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace") as proc:
+        for line in proc.stdout:  # type: ignore[union-attr]
+            line = line.rstrip()
+            on_line(line)
+            if line.startswith(("VERIFIED", "NOT VERIFIED", "REFUSED")):
+                verdict = line
+        code = proc.wait()
+    if code != 0 or not verdict or not verdict.startswith("VERIFIED"):
+        raise SetupError(verdict or f"apply exited with {code}")
+    return {"verdict": verdict}
+
+
 # ---- jobs -------------------------------------------------------------------------------------------------------
 
 class Jobs:
@@ -242,9 +314,13 @@ class Jobs:
                 raise SetupError(f"{port} is busy with {busy[0]['kind']}")
             self.jobs[jid] = job
 
-        def pct(n: int) -> None:
+        def pct(n: int | str) -> None:  # a number is progress; a line of text is the job's output (apply's, say)
             with self.lock:
-                job["pct"] = max(job["pct"], n)
+                if isinstance(n, str):
+                    job.setdefault("lines", []).append(n)
+                    del job["lines"][:-200]
+                else:
+                    job["pct"] = max(job["pct"], n)
 
         def run() -> None:
             try:
@@ -261,7 +337,7 @@ class Jobs:
     def get(self, jid: str) -> dict | None:
         with self.lock:
             j = self.jobs.get(jid)
-            return dict(j) if j else None
+            return dict(j, lines=list(j.get("lines", []))) if j else None
 
     def all(self) -> list[dict]:
         with self.lock:
