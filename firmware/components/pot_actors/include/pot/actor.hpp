@@ -186,7 +186,9 @@ struct ActorKind {
     size_t (*outputs)(const ActorDecl& decl, uint16_t node, uint16_t peer, NsDecl* out, size_t cap) = nullptr;
 };
 
-constexpr size_t kMaxOutputs = 8;
+// 12 since M20: passive-sensor's fusion publishes presence, motion and the seven-output position kind (9). The
+// reconciler's per-slot copy lives in PSRAM; the cost in internal RAM is the stack arrays (NsDecl, ~20 B each).
+constexpr size_t kMaxOutputs = 12;
 
 // Find a type's row, or nullptr.
 const ActorKind* find_actor_kind(const ActorKind* table, size_t n, ActorType type);

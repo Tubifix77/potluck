@@ -22,6 +22,8 @@ Types: 0x00-0x7F are Potluck's built-ins; 0x80-0xFF are external, given out in b
 
 M12: a module may list its ``outputs`` -- paths under ``potluck://<system>/`` with ``{node}`` (``node-<id>`` of
 the node it runs on) and ``{actor}`` (the actor's name) -- and ``potluck apply`` reads each one back.
+M20: a path starting with ``?`` is published only sometimes (a position while nobody is placed is not): it is
+counted in the namespace like any other, but neither ``apply``'s verify nor the hub's "working" waits for it.
 """
 
 from __future__ import annotations
@@ -127,8 +129,8 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
             raise ModuleError(f"{w}: must be an object")
         name, typ, place, cfg = m.get("module"), m.get("type"), m.get("placement"), m.get("config", [])
         outs = m.get("outputs", [])
-        if not isinstance(outs, list) or not all(isinstance(o, str) and o and not o.startswith("potluck://")
-                                                 for o in outs):
+        if not isinstance(outs, list) or not all(isinstance(o, str) and o.lstrip("?") and
+                                                 not o.lstrip("?").startswith("potluck://") for o in outs):
             raise ModuleError(f"{w}: 'outputs' must be a list of paths under potluck://<system>/, "
                               f"such as \"{{node}}/my/out\" or \"act/{{actor}}/out\"")
         if not isinstance(name, str) or not name.startswith("ext:"):

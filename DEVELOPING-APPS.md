@@ -240,7 +240,10 @@ An actor that knows where something is declares seven outputs under one prefix, 
 draws it: `act/<name>/state` (u32: 0 nobody, 1 present but not placed, 2 placed), `x`, `y` (f32, Unit::Metre,
 plan coordinates as above), `a`, `b` (f32, Unit::Metre, the semi-axes of the zone), `theta` (f32, Unit::Radian,
 from +x toward +y) and `conf` (f32, Unit::Ratio, 0..1). Publish x..theta only while the state is 2 and let them go
-STALE otherwise. Say in your own manual what the zone is; the floor plan shades it and never draws a point.
+STALE otherwise, and list those six with a `?` in front in your descriptor's `outputs`
+(`"?act/{actor}/x"`): an output published only sometimes is counted in the namespace like any other, but neither
+`apply`'s verify nor the hub's "working" waits for it. Say in your own manual what the zone is; the floor plan
+shades it and never draws a point. An actor declares at most 12 outputs (`kMaxOutputs`).
 
 ### Checkpoints (portable actors)
 

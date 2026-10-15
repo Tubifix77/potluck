@@ -69,6 +69,9 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
 
 - `hub.link`: `up` | `down` (the cable to the cell). `hub.tls_fp`: with `--listen`, the SHA-256 of its certificate.
 - `board.state`: `alive` | `dead` | `asleep` (a declared long window, M5.1) | `unknown` (never heard since the hub started).
+- `board.room` and `board.position` (M20): the cluster file's room name and `[x, y]` on the floor plan (metres from its
+  top-left corner, x right, y down), each `null` when it gives none. `cell.plan`: the floor plan, `{"width", "height",
+  "rooms": [{"name", "x", "y", "w", "h"}]}` in the same metres, or `null`.
 - `board.heap`, `board.links`, `board.rssi` and `board.telemetry` come from M15's telemetry, pulled over the radio every
   `hub.telemetry_period_ms` (`--telemetry-ms`, default 10000; 0 never): `heap` adds `internal_total_kib` and `psram_min` (`signals.saturation.internal_ram` is the worst
   board's internal heap used at its low-water mark); each link adds `lost`
@@ -274,7 +277,7 @@ and `GET /api/setup/jobs/<id>` follows it -- `{"id", "kind", "port", "state": "r
 | `POST /api/setup/wifi {"port", "ssid", "password"}` | job: the house Wi-Fi into the board (kept only there; never logged) |
 | `POST /api/setup/reset {"port"}` | job: restarts the board (a new id and a saved Wi-Fi take effect then) |
 | `POST /api/setup/identify {"port", "seconds"?}` | job: the board's light blinks blue (default 20 s, at most 300) |
-| `POST /api/setup/board {"node", "label"?, "room"?}` | adds the board to the cluster file or sets its room (`""` clears it); the file's previous version is kept as `<file>.bak`, and a change `apply` would refuse is never written (409) |
+| `POST /api/setup/board {"node", "label"?, "room"?, "position"?}` | adds the board to the cluster file or sets its room (`""` clears it) or its `[x, y]` on the floor plan (`[]` clears it); the file's previous version is kept as `<file>.bak`, and a change `apply` would refuse is never written (409). With `{"plan": {...} | null}` instead, sets the floor plan |
 | `POST /api/setup/apply` | job: `potluck apply <cluster file>`; its output in `lines`; done on VERIFIED, failed otherwise |
 
 The hub's own serial port is refused (409). The passphrase unlocks the cell's sealed keys for that one enrolment and

@@ -307,7 +307,8 @@ def new_cell(folder: str | Path, system: str, passphrase: str, port: str | None 
 
 # ---- the cluster file -------------------------------------------------------------------------------------------
 
-def add_board(cluster: str | Path, node: str, label: str | None = None, room: str | None = None) -> dict:
+def add_board(cluster: str | Path, node: str, label: str | None = None, room: str | None = None,
+              position: list | None = None) -> dict:
     """Add a board to the cluster file, or set its room -- the file the owner may also edit by hand, so the previous
     version is kept beside it (<name>.bak) and the result must still load (`apply` refuses it otherwise)."""
     from . import apply as ap
@@ -332,6 +333,29 @@ def add_board(cluster: str | Path, node: str, label: str | None = None, room: st
             entry["room"] = room
         else:
             entry.pop("room", None)
+    if position is not None:  # [x, y] on the floor plan; [] takes the board off it
+        if position:
+            entry["position"] = [round(float(v), 2) for v in position]
+        else:
+            entry.pop("position", None)
+    _write_cluster(p, doc)
+    return entry
+
+
+def set_plan(cluster: str | Path, plan: dict | None) -> dict | None:
+    """The floor plan in the cluster file (apply.check_plan's shape), or none (None)."""
+    p = Path(cluster)
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    if plan is None:
+        doc.pop("plan", None)
+    else:
+        doc["plan"] = plan
+    _write_cluster(p, doc)
+    return doc.get("plan")
+
+
+def _write_cluster(p: Path, doc: dict) -> None:
+    from . import apply as ap
     text = json.dumps(doc, indent=2) + "\n"
     bak = p.with_suffix(p.suffix + ".bak")
     bak.write_text(p.read_text(encoding="utf-8"), encoding="utf-8")
@@ -341,7 +365,6 @@ def add_board(cluster: str | Path, node: str, label: str | None = None, room: st
     except ap.ApplyError as exc:
         p.write_text(bak.read_text(encoding="utf-8"), encoding="utf-8")  # never leave a file apply refuses
         raise SetupError(f"the cluster file would not load ({exc}); left as it was") from None
-    return entry
 
 
 def run_apply(cluster: str | Path, on_line: Callable[[str], None], cmd: list[str] | None = None,

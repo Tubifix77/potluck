@@ -277,6 +277,9 @@ class Cluster:
     #: M20: where each board sits on the floor plan, metres from its top-left corner (x right, y down); each
     #: becomes a pinned builtin:position actor, so the boards hold their own positions with no PC.
     positions: dict[int, tuple[float, float]] = field(default_factory=dict)
+    #: M20: the floor plan the dashboard draws -- its size in metres and the rooms as rectangles -- or None. For
+    #: people only: nothing on a board depends on it (the boards' positions above are what travels).
+    plan: dict[str, Any] | None = None
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -302,6 +305,32 @@ def _source(d: Any, where: str, base: Path, default_name: str) -> Source:
     return Source(str(d.get("name", default_name)), git, rev, d.get("components"), tuple(mans))
 
 
+def check_plan(plan: Any) -> dict[str, Any] | None:
+    """M20: the floor plan, {"width": m, "height": m, "rooms": [{"name", "x", "y", "w", "h"}]}, metres from its
+    top-left corner, x right, y down. Returns it normalised, or None when the file has none."""
+    if plan is None:
+        return None
+
+    def num(v, lo, hi):
+        return isinstance(v, (int, float)) and not isinstance(v, bool) and lo <= v <= hi
+    if not isinstance(plan, dict) or set(plan) - {"width", "height", "rooms"} or \
+            not num(plan.get("width"), 1, 1000) or not num(plan.get("height"), 1, 1000):
+        raise ApplyError("plan: {\"width\": m, \"height\": m, \"rooms\": [...]}, each side 1..1000 m")
+    w, h = float(plan["width"]), float(plan["height"])
+    rooms = []
+    raw = plan.get("rooms", [])
+    if not isinstance(raw, list) or len(raw) > 64:
+        raise ApplyError("plan.rooms: a list of at most 64 rooms")
+    for i, r in enumerate(raw):
+        if not isinstance(r, dict) or set(r) != {"name", "x", "y", "w", "h"} or not isinstance(r["name"], str) or \
+                not 1 <= len(r["name"]) <= 40 or not r["name"].isprintable() or \
+                not (num(r["x"], 0, w) and num(r["y"], 0, h) and num(r["w"], 0.1, w) and num(r["h"], 0.1, h)) or \
+                r["x"] + r["w"] > w + 1e-6 or r["y"] + r["h"] > h + 1e-6:
+            raise ApplyError(f"plan.rooms[{i}]: {{\"name\", \"x\", \"y\", \"w\", \"h\"}} inside the plan, a name of 1..40 characters")
+        rooms.append({"name": r["name"], "x": float(r["x"]), "y": float(r["y"]), "w": float(r["w"]), "h": float(r["h"])})
+    return {"width": w, "height": h, "rooms": rooms}
+
+
 def load_cluster(path: str) -> Cluster:
     p = Path(path).resolve()
     try:
@@ -312,7 +341,7 @@ def load_cluster(path: str) -> Cluster:
     if not isinstance(doc, dict) or doc.get("schema") != SCHEMA:
         raise ApplyError(f"{path}: not a cluster file (\"schema\": \"{SCHEMA}\")")
     allowed = {"schema", "system", "port", "baud", "boards", "keys", "firmware", "apps", "package", "verify",
-               "comment", "outside", "present"}
+               "comment", "outside", "present", "plan"}
     extra = set(doc) - allowed
     if extra:
         raise ApplyError(f"{path}: unknown key(s) {sorted(extra)}")
@@ -458,6 +487,7 @@ def load_cluster(path: str) -> Cluster:
     cl.writers = writers
     cl.rooms = rooms
     cl.positions = positions
+    cl.plan = check_plan(doc.get("plan"))
     return cl
 
 
@@ -928,6 +958,8 @@ def _outputs(m, spec, a, nodes: list[int]) -> list[str]:
     for t in spec.outputs:
         if "{peer}" in t:
             continue  # one per link: counted by ns_budget, not read back (6 x N x (N-1) reads would swamp a verify)
+        if t.startswith("?"):
+            continue  # M20: published only sometimes -- counted by ns_budget, never waited for
         t = t.replace("{actor}", a.name)
         for n in (nodes if "{node}" in t else [None]):
             out.append(f"potluck://{m.system}/" + (t.replace("{node}", f"node-{n:04x}") if n is not None else t))
@@ -1008,7 +1040,7 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
     def expand(spec, a, n: int) -> list[str]:
         out = []
         for t in (spec.outputs if spec is not None else ()):
-            t = t.replace("{actor}", a.name).replace("{node}", f"node-{n:04x}")
+            t = t.lstrip("?").replace("{actor}", a.name).replace("{node}", f"node-{n:04x}")
             for p in ([q for q in boards if q != n] if "{peer}" in t else [None]):
                 out.append(f"potluck://{m.system}/" + (t.replace("{peer}", f"node-{p:04x}") if p is not None else t))
         return out

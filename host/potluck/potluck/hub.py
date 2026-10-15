@@ -659,7 +659,9 @@ class Model:
 
     def _board_json(self, n: int, b: dict) -> dict:
         st = b.get("status")
-        out = {"node": f"{n:04x}", "label": self.label_of(n), "room": self.room_of(n), "state": b["state"],
+        pos = getattr(self.cluster, "positions", {}).get(n) if self.cluster is not None else None
+        out = {"node": f"{n:04x}", "label": self.label_of(n), "room": self.room_of(n),
+               "position": list(pos) if pos else None, "state": b["state"],
                "since_at": b["since_at"],
                "silent_ms": int((time.monotonic() - b["last_ok"]) * 1000) if b.get("last_ok") else None,
                "rssi": None, "cabled": bool(b.get("cabled"))}
@@ -732,7 +734,8 @@ class Model:
         fw = next((b["firmware"]["version"] for b in boards if b.get("firmware")), None)
         presenter = next((b["node"] for b in boards if "present" in b.get("actors", [])), None)
         return {"system": self.cluster.system if self.cluster is not None else "lab", "cell_id": self.cell_id,
-                "channel": None, "package": pk, "firmware": fw, "other_cell_frames": None, "presenter": presenter}
+                "channel": None, "package": pk, "firmware": fw, "other_cell_frames": None, "presenter": presenter,
+                "plan": getattr(self.cluster, "plan", None) if self.cluster is not None else None}
 
     def _apps_json(self, boards: list[dict], resources: list[dict]) -> list[dict]:
         if self.package is None:
@@ -947,7 +950,12 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 return
             if path == "/api/setup/board":
                 try:
-                    entry = st.add_board(cl.path, str(req["node"]), req.get("label"), req.get("room"))
+                    if "plan" in req:
+                        st.set_plan(cl.path, req["plan"])
+                        entry = None
+                    else:
+                        entry = st.add_board(cl.path, str(req["node"]), req.get("label"), req.get("room"),
+                                             req.get("position"))
                     from .apply import load_cluster
                     model.cluster = load_cluster(str(cl.path))  # the dashboard shows the new label and room
                 except (st.SetupError, KeyError, ValueError) as exc:

@@ -171,6 +171,21 @@ class ClusterFile(unittest.TestCase):
         self.assertNotIn("room", self.boards()[1])
         self.assertTrue(self.p.with_suffix(".json.bak").exists())  # the previous version, kept
 
+    def test_a_floor_plan_and_a_boards_place_on_it(self):
+        from potluck import apply as ap
+        plan = {"width": 13, "height": 9, "rooms": [{"name": "Living room", "x": 0, "y": 0, "w": 8, "h": 9}]}
+        st.set_plan(self.p, plan)
+        st.add_board(self.p, "6300", position=[3.456, 4])
+        c = ap.load_cluster(str(self.p))
+        self.assertEqual((c.plan["width"], c.plan["rooms"][0]["name"], c.positions), (13.0, "Living room",
+                                                                                       {0x6300: (3.46, 4.0)}))
+        with self.assertRaisesRegex(st.SetupError, "would not load"):  # a room outside the plan
+            st.set_plan(self.p, dict(plan, rooms=[{"name": "x", "x": 10, "y": 0, "w": 8, "h": 1}]))
+        st.add_board(self.p, "6300", position=[])
+        st.set_plan(self.p, None)
+        c = ap.load_cluster(str(self.p))
+        self.assertEqual((c.plan, c.positions), (None, {}))
+
     def test_what_apply_would_refuse_is_never_written(self):
         before = self.p.read_text(encoding="utf-8")
         with self.assertRaisesRegex(st.SetupError, "taken"):

@@ -59,7 +59,8 @@ namespace pot {
 constexpr uint32_t kGuestMagic = 0x54534750u;  // "PGST"
 constexpr uint8_t kGuestVersion = 1;
 constexpr size_t kMaxGuestInputs = 8;
-constexpr size_t kMaxGuestOutputs = kMaxOutputs;
+constexpr size_t kMaxGuestOutputs = 8;  // the guest format's own limit (potluck.guest MAX_OUTPUTS), not kMaxOutputs
+static_assert(kMaxGuestOutputs <= kMaxOutputs, "a guest's outputs are an actor's outputs");
 constexpr uint8_t kGuestMaxPages = 1;  // 64 KiB: what a Rust guest built by tools/build_guests.py asks for
 constexpr uint32_t kGuestFuelMin = 1000;
 constexpr uint32_t kGuestFuelMax = 50000000;  // ~16 s at the S3's measured 327 ns a unit: a bound, not a budget

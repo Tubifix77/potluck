@@ -54,6 +54,18 @@ class Budget(unittest.TestCase):
         self.assertEqual(b[0x6300]["replicas"], 2)  # the other two boards' link/count, read through the cable --
         self.assertEqual(b[0x6300]["total"], 7 + 2 + 3 + 2)  # not their {peer} outputs, which neither verify nor hub reads
 
+    def test_an_output_published_only_sometimes_is_counted_but_never_waited_for(self) -> None:
+        # M20: a position's x..conf exist only while someone is placed ("?" in the descriptor)
+        mods._REGISTRY["ext:t/fuse"] = mods.ModuleSpec("ext:t/fuse", 0xF3, "portable", (), "t",
+                                                        outputs=("act/{actor}/state", "?act/{actor}/x"))
+        boards = [0x6300, 0x7368]
+        m = manifest(boards, [{"name": "fuse", "module": "ext:t/fuse", "latency_class": 4}])
+        _, _, reads = ap.expected(m, boards)
+        self.assertIn("potluck://lab/act/fuse/state", reads)
+        self.assertNotIn("potluck://lab/act/fuse/x", reads)
+        b, _ = ap.ns_budget(m, boards, cabled=0x6300)
+        self.assertEqual(b[0x7368]["package"], 2)  # both declared on every board
+
     def test_twenty_boards_with_per_link_outputs_do_not_fit(self) -> None:
         boards = [0x1000 + i for i in range(20)]
         mods._REGISTRY["ext:t/link"] = mods.ModuleSpec("ext:t/link", 0xF1, "every", (), "t", outputs=tuple(
