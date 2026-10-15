@@ -180,11 +180,17 @@ def write_keypair(kp: KeyPair, out_base: str, *, overwrite: bool = False) -> tup
 
 
 def read_key(path: str) -> KeyPair:
-    with open(path, "r", encoding="utf-8") as f:
-        try:
-            d = json.load(f)
-        except json.JSONDecodeError as exc:
-            raise SigningError(f"{path}: {exc.msg} at line {exc.lineno}") from exc
+    from . import keystore
+
+    raw = keystore.lookup(path)  # M20: from an unlocked vault in the key's folder, when the file itself is gone
+    try:
+        if raw is not None:
+            d = json.loads(raw)
+        else:
+            with open(path, "r", encoding="utf-8") as f:
+                d = json.load(f)
+    except json.JSONDecodeError as exc:
+        raise SigningError(f"{path}: {exc.msg} at line {exc.lineno}") from exc
     return _key_from_dict(d, path)
 
 
