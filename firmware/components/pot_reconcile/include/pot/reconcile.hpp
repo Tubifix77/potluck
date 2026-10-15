@@ -172,6 +172,7 @@ class Reconciler {
         uint32_t owner_term;
         uint32_t max_term;   // highest term seen for this actor
         uint16_t assigned;   // assign() in our current view; 0 = no eligible node alive
+        uint16_t standby;    // M19: second in that ranking; 0 = none
         uint32_t activations;
         uint32_t fenced;     // stopped because a higher claim appeared
         uint32_t released;   // stopped to hand over to the assigned node
@@ -240,6 +241,7 @@ class Reconciler {
         uint32_t unclaimed_since;  // 0 = claimed, or not yet settled
         uint16_t released_to;      // handover already offered to this node in the current view
         uint32_t activations, fenced, released;
+        bool member;               // M19: told the kind's membership hook "member" (ActorKind::membership)
     };
     // What we last heard from one peer, keyed by node id and incarnation.
     struct PeerClaims {
@@ -269,6 +271,7 @@ class Reconciler {
     void activate(size_t i, uint32_t now);
     void stop(size_t i, uint32_t why);  // 1 fenced, 2 handed over
     void run(size_t i, uint32_t now);  // tick the instance, while we are the fenced owner
+    void membership(size_t i, bool member);  // M19: tell the kind's hook, on a change
     static bool ck_save(void* ctx, const uint8_t* data, size_t len);
     static bool ck_load(void* ctx, uint8_t* out, size_t cap, size_t* len, uint32_t* age_ms);
     bool on_checkpoint(uint16_t from, const uint8_t* args, uint16_t len);

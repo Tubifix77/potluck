@@ -315,6 +315,10 @@ class Node {
     // tightest of those windows; one it shares a cell with no window of its own (a base cell) by its own announced
     // window, as before. So a foreman, one radio in two cells, judges its cell-mates fast and its fellow foremen slowly.
     void set_groups(uint8_t a, uint8_t b, uint32_t window_a_ms = 0, uint32_t window_b_ms = 0);
+    // M19: a membership a role brings -- the foreman's (and the standby's) of its cell's parent -- held in the second
+    // place when the package gives the board one cell, beside it; 0 leaves it. Announced at once, like set_groups.
+    void set_role_group(uint8_t cell, uint32_t window_ms = 0);
+    uint8_t role_group() const { return role_group_; }
     uint32_t window_floor(uint16_t theirs) const;
     uint16_t groups() const { return groups_; }
     bool shares_group(uint16_t theirs) const;
@@ -423,6 +427,12 @@ class Node {
     // M14: ask `peer_node_id` to describe `path_hash` (ns_payloads.hpp, kReadDescribe); the answer declares a replica
     // here if none exists, owned by the node the answer names. 0 if it could not be sent.
     uint16_t request_describe(uint16_t peer_node_id, uint32_t path_hash);
+    // M19 (Review of M19 #5): a referral -- `path_hash` lives in another cell, and `via` (its foreman, a member of
+    // this board's upper cell) answers for it. As request_describe, but the replica the answer declares is owned by
+    // `via`, so every later read goes to the foreman, which answers with its own READ under its own identity (the
+    // age the source's plus the transit, its quality the worse of the two) -- never a forwarded frame. While the
+    // foreman is down the replica reads Unavailable.
+    uint16_t request_referral(uint16_t via, uint32_t path_hash);
     // M13: `from_outside` marks a write the presenting role passes on from a system outside the cell; the
     // owning board then applies the package's outside rules (WritePayload::flags, Namespace::write_outside).
     uint16_t request_write(uint16_t peer_node_id, uint32_t path_hash, const Value& v, bool from_outside = false);
@@ -685,7 +695,12 @@ class Node {
     void relay_hello(const Frame& f, const uint8_t orig_mac[kMacLen]);
     bool relay_ = false;
     bool relayed_[kMaxPeers]{};
-    uint16_t groups_ = 0;                  // M19: ours, low byte first
+    uint16_t groups_ = 0;                  // M19: ours, low byte first -- the package's, then a role's
+    uint8_t base_groups_[2]{};             // M19: the package's (set_groups)
+    uint32_t base_window_ms_[2]{};
+    uint8_t role_group_ = 0;               // M19: a role's (set_role_group)
+    uint32_t role_window_ms_ = 0;
+    void recompute_groups();
     uint32_t group_window_ms_[2]{};        // M19: each of our cells' own death window, 0 = none (a base cell)
     void apply_cell_window(PeerLink& p, uint16_t theirs) const;
     uint16_t peer_groups_[kMaxPeers]{};    // M19: each peer's, as its last HELLO said

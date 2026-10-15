@@ -166,7 +166,17 @@ bool check_decl(const ActorDecl& a, const char*& w) {
                 return false;
             }
             break;
-        case ActorType::Cluster:
+        case ActorType::Foreman: {
+        // M19: portable; pot/foreman.hpp judges the rest (the row's check).
+        TickerConfig pc{};
+        size_t hl = 0;
+        if (a.node_id != kPortableNode || !portable_header(a, pc, hl) || a.cfg_len < hl + 9) {
+            w = "foreman must be portable: the portable header, then its cell, parent, boards and exports";
+            return false;
+        }
+        break;
+    }
+    case ActorType::Cluster:
             // M12: every node, a name of 1..31 characters; pot/cluster.hpp judges the characters.
             if (a.node_id != kEveryNode || a.cfg_len == 0 || a.cfg_len > 31) {
                 w = "cluster must be on every node, with a name of 1..31 characters";

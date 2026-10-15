@@ -65,6 +65,9 @@ constexpr uint16_t kWriteFromOutside = 1u << 0;
 // asker drops.
 constexpr uint16_t kReadDescribe = 1u << 0;
 constexpr uint8_t kReplyDescribe = 0x15;  // the reserved LIST opcode's number: no frame carries it as an opcode
+// M19: a describe asked as a referral (Node::request_referral) -- the same READ on the wire; the asker's own mark on
+// its pending request, never sent.
+constexpr uint8_t kReplyReferral = 0x16;
 
 struct WritePayload {
     uint32_t path_hash;

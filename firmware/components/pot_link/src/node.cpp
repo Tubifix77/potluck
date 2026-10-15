@@ -553,11 +553,36 @@ void Node::announce_change() {
 }
 
 void Node::set_groups(uint8_t a, uint8_t b, uint32_t window_a_ms, uint32_t window_b_ms) {
-    group_window_ms_[0] = a != 0 ? window_a_ms : 0;
-    group_window_ms_[1] = b != 0 ? window_b_ms : 0;
-    const uint16_t g = static_cast<uint16_t>(a | b << 8);
-    if (g == groups_) return;
-    groups_ = g;
+    base_groups_[0] = a;
+    base_groups_[1] = b;
+    base_window_ms_[0] = a != 0 ? window_a_ms : 0;
+    base_window_ms_[1] = b != 0 ? window_b_ms : 0;
+    recompute_groups();
+}
+
+void Node::set_role_group(uint8_t cell, uint32_t window_ms) {
+    role_group_ = cell;
+    role_window_ms_ = cell != 0 ? window_ms : 0;
+    recompute_groups();
+}
+
+void Node::recompute_groups() {
+    uint8_t g[2] = {base_groups_[0], base_groups_[1]};
+    uint32_t w[2] = {base_window_ms_[0], base_window_ms_[1]};
+    // A role's cell takes the free place; a board the package already gives two cells holds no role (`apply` refuses
+    // it), and a role in a cell the board is in anyway changes nothing.
+    if (role_group_ != 0 && g[0] != role_group_ && g[1] != role_group_) {
+        const int at = g[0] == 0 ? 0 : g[1] == 0 ? 1 : -1;
+        if (at >= 0) {
+            g[at] = role_group_;
+            w[at] = role_window_ms_;
+        }
+    }
+    group_window_ms_[0] = w[0];
+    group_window_ms_[1] = w[1];
+    const uint16_t now = static_cast<uint16_t>(g[0] | g[1] << 8);
+    if (now == groups_) return;
+    groups_ = now;
     announce_change();  // the HELLO says something new
 }
 
@@ -1406,6 +1431,14 @@ uint16_t Node::request_describe(uint16_t peer_node_id, uint32_t path_hash) {
     return msg_id;
 }
 
+uint16_t Node::request_referral(uint16_t via, uint32_t path_hash) {
+    const uint16_t id = request_describe(via, path_hash);
+    if (id == 0) return 0;
+    PendingNs* q = pending_find(id, via);
+    if (q != nullptr) q->op = kReplyReferral;
+    return id;
+}
+
 uint16_t Node::request_write(uint16_t peer_node_id, uint32_t path_hash, const Value& v, bool from_outside) {
     PeerLink* p = peers_.find_by_node_id(peer_node_id);
     if (p == nullptr || departed_) {
@@ -1617,7 +1650,7 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
     q->msg_id = 0;
     ++ns_counters_.replies_matched;
 
-    if (op == kReplyDescribe) {
+    if (op == kReplyDescribe || op == kReplyReferral) {
         // M14: a declaration (ns_payloads.hpp). A board before M14 answers a reading instead: dropped.
         if (rep.reply_to != kReplyDescribe || static_cast<NsError>(rep.status) != NsError::Ok || rep.value_len != 5 ||
             ns_.find(asked_for) != nullptr || rep.path_hash != asked_for) {
@@ -1626,7 +1659,7 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
         NsDecl d;
         d.path_hash = asked_for;
         d.owner_node = static_cast<uint16_t>(rep.value_raw[0] | (rep.value_raw[1] << 8));
-        if (d.owner_node == 0 || d.owner_node == kNodeBroadcast) d.owner_node = p->node_id;
+        if (d.owner_node == 0 || d.owner_node == kNodeBroadcast || op == kReplyReferral) d.owner_node = p->node_id;
         d.type = static_cast<ValueType>(rep.value_type);
         d.unit = static_cast<Unit>(rep.unit);
         d.kind = static_cast<ResourceKind>(rep.value_raw[3]);

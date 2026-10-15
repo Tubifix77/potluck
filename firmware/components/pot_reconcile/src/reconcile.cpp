@@ -218,6 +218,7 @@ bool Reconciler::reload(const PortableSpec* actors, size_t n, uint32_t now_ms, R
             std::memcpy(c.ck, s.ck, s.ck_len);
         }
         if (s.running) stop(i, 3);  // 3: removed by a new package
+        membership(i, false);
         for (uint8_t j = 0; j < s.n_out; ++j) {
             if (node_.ns().remove(s.out_hash[j]) == NsError::Ok) ++st.outputs_removed;
         }
@@ -299,7 +300,15 @@ bool Reconciler::load(const TickerConfig* actors, size_t n) {
 Reconciler::~Reconciler() {
     for (size_t i = 0; i < count_; ++i) {
         if (slots_[i].active && slots_[i].inst != nullptr) slots_[i].inst->~Actor();
+        if (slots_[i].active) membership(i, false);
     }
+}
+
+void Reconciler::membership(size_t i, bool member) {
+    Slot& s = slots_[i];
+    if (s.member == member || s.kind == nullptr || s.kind->membership == nullptr) return;
+    s.member = member;
+    s.kind->membership(s.decl, node_, member);
 }
 
 bool collect_portable(const DeployImage& img, const ActorKind* table, size_t n_kinds, PortableSpec* out,
@@ -760,6 +769,13 @@ void Reconciler::tick(uint32_t now) {
             resolve_owner(i);
         }
         run(i, now);
+        if (slots_[i].kind != nullptr && slots_[i].kind->membership != nullptr) {
+            // M19: the one running it, and the first two of the ranking -- the foreman and its standby.
+            uint16_t ranked[kMaxEligible];
+            const size_t n = rank_for(slots_[i].cfg, ranked);
+            const uint16_t self = node_.config().node_id;
+            membership(i, slots_[i].running || (n > 0 && ranked[0] == self) || (n > 1 && ranked[1] == self));
+        }
     }
     persist_tick(now);  // M12
     if (dirty_) {
@@ -793,6 +809,7 @@ Reconciler::ActorView Reconciler::view(size_t i) const {
     uint16_t ranked[kMaxEligible];
     const size_t n = rank_for(s.cfg, ranked);
     v.assigned = n > 0 ? ranked[0] : 0;
+    v.standby = n > 1 ? ranked[1] : 0;
     v.activations = s.activations;
     v.fenced = s.fenced;
     v.released = s.released;

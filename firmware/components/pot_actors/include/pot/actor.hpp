@@ -153,8 +153,13 @@ class Actor {
 // 384 since M9 (the job actor keeps its units in flight); the slots live in PSRAM on the boards.
 constexpr size_t kActorSlotBytes = 384;
 constexpr size_t kMaxPinnedActors = 8;
-// The longest actor configuration the runtime keeps a copy of (a ticker's is 7 + 3 x 8 = 31).
+// The longest actor configuration the runtime keeps a copy of (a ticker's is 7 + 3 x 8 = 31). 160 on a board with
+// PSRAM since M19: a foreman's names its cell's boards and its exports (pot/foreman.hpp).
+#if defined(CONFIG_IDF_TARGET) && !defined(CONFIG_SPIRAM)
 constexpr size_t kMaxActorCfg = 48;
+#else
+constexpr size_t kMaxActorCfg = 160;
+#endif
 
 // One row of the registration table: everything the runtime needs to know about one actor type.
 struct ActorKind {
@@ -188,6 +193,10 @@ struct ActorKind {
     // on the other boards but adopted when first read, like an every-node one -- so they cost a reader one entry
     // while it reads, not every board an entry per board (and an adopted replica nobody reads is evicted).
     bool outputs_on_demand = false;
+    // M19: portable kinds only. Called by the reconciler when this node becomes, or stops being, one of the two the
+    // actor's ranking puts first among the live eligible nodes, or the one running it -- the foreman and its standby,
+    // which are members of the parent cell (pot/foreman.hpp). nullptr: the type has no such role.
+    void (*membership)(const ActorDecl& decl, Node& node, bool member) = nullptr;
 };
 
 // 12 since M20: passive-sensor's fusion publishes presence, motion and the seven-output position kind (9). The
