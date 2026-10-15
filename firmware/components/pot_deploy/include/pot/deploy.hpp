@@ -174,6 +174,8 @@ bool apply_outside(const DeployImage& img, Namespace& ns);
 constexpr uint16_t kKeepAll = 0;
 constexpr uint16_t kKeepNone = 0xFFFF;
 bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why, uint16_t keep_for = kKeepAll);
+// M19: one image for validity checks (kKeepNone) -- the receiver's and the package agent's, both on the link task.
+DeployImage& validation_image();
 
 // Where the image in `data` ends, by its own header: 24 + body_len for version 1, plus the guest
 // section for version 2 (M7). What follows is the M5 signature trailer. 0 if the header or the guest

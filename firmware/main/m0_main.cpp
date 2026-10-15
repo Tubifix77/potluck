@@ -1019,7 +1019,7 @@ bool load_and_apply(const char** why) {
     // image is its first part. A slot written before M12 holds the image alone, and its extent is all of it.
     const size_t extent = image_extent(g_image, len);
     if (extent != 0 && extent <= len) len = extent;
-    static DeployImage img;  // M19: 64 declarations, off the boot stack
+    EXT_RAM_BSS_ATTR static DeployImage img;  // M19: 64 declarations, off the boot stack and internal RAM
     img = DeployImage{};
     if (!parse_image(g_image, len, img, why, g_node_id)) {  // M19: this board's cells only
         return false;
@@ -1136,7 +1136,7 @@ size_t cell_nodes(uint16_t* ids) {
 void rec_create();  // after the board services exist, below
 
 bool apply_live(DeployStatus* refused) {
-    static DeployImage img;  // off the link task's stack, which this runs on
+    EXT_RAM_BSS_ATTR static DeployImage img;  // off the link task's stack, which this runs on, and internal RAM
     *refused = DeployStatus::Ok;
     const char* why = "?";
     const size_t extent = image_extent(g_rx.image(), g_rx.image_len());
@@ -2573,7 +2573,7 @@ void image_job(void* a) {
 #if CONFIG_POT_WASM
     // M7: and every guest's author signature, so an image carrying a guest nobody certified is refused
     // whole, before it is written. Static: this worker's 4 KB stack also holds the Ed25519 check.
-    static DeployImage img;
+    EXT_RAM_BSS_ATTR static DeployImage img;
     const char* why = nullptr;
     if (j.e == CertError::Ok && parse_image(j.img, j.n, img, &why, kKeepNone) && img.guest_count > 0) {
         uint8_t which = 0;

@@ -2,6 +2,15 @@
 
 #include <cstring>
 
+#if defined(__has_include)
+#if __has_include("esp_attr.h")
+#include "esp_attr.h"
+#endif
+#endif
+#ifndef EXT_RAM_BSS_ATTR
+#define EXT_RAM_BSS_ATTR
+#endif
+
 #include "pot/namespace.hpp"
 
 namespace pot {
@@ -193,6 +202,12 @@ bool check_decl(const ActorDecl& a, const char*& w) {
     return true;
 }
 }  // namespace
+
+DeployImage& validation_image() {
+    // M19: 64 declarations make an image ~0.6 KB -- in PSRAM on a board that has it, never on a task's stack.
+    EXT_RAM_BSS_ATTR static DeployImage img;
+    return img;
+}
 
 bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char** why, uint16_t keep_for) {
     const char* dummy = nullptr;
@@ -832,7 +847,7 @@ DeployReply DeployReceiver::commit(uint32_t crc) {
             return reply(v);
         }
     }
-    static DeployImage img;  // off the link task's stack (M19: 64 declarations); validated, nothing kept
+    DeployImage& img = validation_image();
     if (!parse_image(buf_, image_len, img, nullptr, kKeepNone) || img.rollback_counter != begin_.rollback_counter) {
         return reply(DeployStatus::BadImage);
     }
