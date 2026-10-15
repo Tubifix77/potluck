@@ -114,10 +114,19 @@ def _console_text_sink():
     if not path:
         return None
     f = open(path, "ab")
+    # POTLUCK_CONSOLE_TEXT_SAFE=1: keep only the lines that tell an update's or a crash's story -- deploy and firmware
+    # steps, the reset reason, the bootloader, the image check, a panic -- none of which can name a network, so it may
+    # be pointed at a board that holds Wi-Fi credentials.
+    safe = os.environ.get("POTLUCK_CONSOLE_TEXT_SAFE") == "1"
+    keep = (b"pot.m0: fw:", b"pot.m0: deploy:", b"rst:", b" boot: ", b"esp_image:", b"Guru Meditation", b"Backtrace",
+            b"abort()", b"panic", b"rollback", b"Rebooting...")
 
     def sink(text: bytes) -> None:
-        f.write(text)
-        f.flush()
+        if safe:
+            text = b"".join(line for line in text.splitlines(keepends=True) if any(k in line for k in keep))
+        if text:
+            f.write(text)
+            f.flush()
     return sink
 
 

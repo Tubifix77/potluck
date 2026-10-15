@@ -5832,3 +5832,24 @@ alone places nobody** (+2.7 dB from 1.4 m off a link, +3.3 dB from 11 m away); w
 link-zone level, labelled "estimated zone" (not a probability contour). Its accuracy in metres is a [MEASURE]: the
 PS-1 walk to taped spots, the owner's to run. The bench's board positions are ROUGH, read off the owner's drawing with
 the room assumed 13 m across.
+
+**passive-sensor's D20 on the bench, and a firmware rollout through a board's own USB console** (evening, 2026-10-15).
+passive-sensor's session took the floor-plan job (the owner: catch up on Potluck first) and moved its evidence to the
+edge -- each board publishes one packed value a window, a fusion per room reads one value per room-mate -- after
+pot_sim showed the per-link design collapsing a 20-board cell (63.9 % airtime, 15,580 deaths) and D20 costing a point
+(26.0 -> 27.0 %, 0 deaths; ideal link). Potluck built what it needed: rooms and each board's nearest boards on the board
+(`sys/room`, `sys/near`, computed by `apply` by its rule), a kind's outputs adopted on demand (a board's position had cost
+every board an entry per board at boot), `"peers": {"nearest": K}` counting, `per_room`. **Deployed and verified:** package
+77, passive-sensor `b5dc141`, the three boards in one room; `rf_fusion_room` on A, its smoke test as predicted (near sets
+C,B / C,A / B,A against the rough positions; baselines 30,30; 3 members; presence 0 in the empty room). A correction on
+the way: a node keeps up to 20 reads outstanding (`kMaxPendingNs`), not four -- a stale comment, repeated by this session
+to passive-sensor and in the pot_sim commit (found by passive-sensor).
+
+**The rollout through C's own cable at 115200** (the M20 frame link) reached A and B (185 and 184 s a board, against 146 s
+through the adapter at 921600), then **C, the board on the cable, did not keep its own image: it restarted and ran its old
+firmware** (up 43 s at the next inventory); the rollout was finished through the adapter. Not reproduced in isolation,
+with the hub stopped: A through its own cable took its image in 152 s (7.7 KiB/s) and confirmed; C through its own cable
+in 150 s (7.8 KiB/s), trial passed with 2 radio peers. The first attempt differed: the hub was running, C was updated last
+and carried the cell's work (A and B ran no package on the new firmware). **Cause open.** The host now keeps a console
+link's log text (`POTLUCK_CONSOLE_TEXT`, and `_SAFE=1` keeps only update and crash lines, so it may point at a board with
+Wi-Fi credentials); the next console rollout runs with it.
