@@ -215,7 +215,7 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
                 break;
             case ActorType::Position:
                 // M20: pinned; pot/position.hpp judges the rest (the row's check).
-                if (a.node_id == kPortableNode || a.node_id == kEveryNode || a.cfg_len != 36) {
+                if (a.node_id == kPortableNode || a.node_id == kEveryNode || a.cfg_len != 38) {
                     w = "position must be pinned, with its outputs, x, y, a room and its nearest boards";
                     return false;
                 }

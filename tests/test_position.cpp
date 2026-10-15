@@ -27,13 +27,13 @@ std::vector<uint8_t> from_hex(const char* hex) {
 }
 
 // potluck.deploy.compile_image at counter 3: pos_7368 (builtin:position) pinned to B at x 3.5 m, y 12.25 m, room 2,
-// nearest C then A; and one with a room and no place.
+// nearest C then A, in cells 1 and 3 (M19); and one with a room and no place.
 const char* kGolden =
-    "504f544401010000030000007f5936465fb35a752800000068730c24666ab25bf96bb25c5286b12000006040000044410200000027d1e20b"
-    "6081006300000000";
+    "504f54440101000003000000f30f281b5cdd7a4f2a00000068730c26666ab25bf96bb25c5286b12000006040000044410200000027d1e20b"
+    "60810063000000000103";
 const char* kRoomOnly =
-    "504f5444010100000300000057f54b1fcde4d76e2800000068730c24666ab25bf96bb25c5286b120000080bf000080bf0100000027d1e20b"
-    "0000000000000000";
+    "504f5444010100000300000057f54b1fcde4d76e2a00000068730c26666ab25bf96bb25c5286b120000080bf000080bf0100000027d1e20b"
+    "00000000000000000000";
 
 }  // namespace
 
@@ -52,6 +52,7 @@ TEST(position, the_host_compilers_position_declaration_parses_here) {
     CHECK_EQ(c.room, 2u);
     CHECK_EQ(c.near_hash, path_hash("potluck://lab/node-7368/sys/near"));
     CHECK(c.near_count() == 2 && c.near[0] == 0x8160 && c.near[1] == 0x6300);
+    CHECK(c.cells[0] == 1 && c.cells[1] == 3);
     NsDecl outs[kMaxOutputs];
     CHECK_EQ(kPositionKind.outputs(d.actors[0], 0x7368, 0, outs, kMaxOutputs), size_t{4});
     CHECK(kPositionKind.outputs_on_demand);  // other boards adopt them when they read them
@@ -92,9 +93,10 @@ TEST(position, the_board_holds_its_place_as_two_good_entries_and_keeps_them_fres
     alignas(PositionActor) unsigned char mem[sizeof(PositionActor)];
     const uint32_t hr = path_hash("potluck://lab/node-7368/sys/room");
     const uint32_t hn = path_hash("potluck://lab/node-7368/sys/near");
-    auto* a = new (mem) PositionActor(node, PositionConfig{hx, hy, hr, 3.5f, 12.25f, 2, hn, {0x8160, 0x6300, 0, 0}});
+    auto* a = new (mem) PositionActor(node, PositionConfig{hx, hy, hr, 3.5f, 12.25f, 2, hn, {0x8160, 0x6300, 0, 0}, {4, 0}});
     g_t = 1000;
     CHECK(a->start(g_t));
+    CHECK_EQ(node.groups(), static_cast<uint16_t>(4));  // M19: the board joins its cell when the actor starts
     a->tick(g_t);
     Reading r;
     float v = 0;
@@ -113,4 +115,5 @@ TEST(position, the_board_holds_its_place_as_two_good_entries_and_keeps_them_fres
     CHECK(node.read(hx, r) == NsError::Ok);
     CHECK(r.quality == Quality::Good);
     a->~PositionActor();
+    CHECK_EQ(node.groups(), static_cast<uint16_t>(0));  // and leaves it when the package no longer names it
 }

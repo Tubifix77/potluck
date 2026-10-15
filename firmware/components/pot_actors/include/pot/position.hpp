@@ -17,8 +17,11 @@
 //
 // Other boards adopt these entries when they first read them (ActorKind::outputs_on_demand), never at boot.
 //
+// M19: and the cells (groups) the board belongs to -- up to two, numbered by `apply` from the cluster file's names --
+// which it sets on the node (Node::set_groups) when it starts and clears when it stops, so admission follows the package.
+//
 //   config: x_hash u32, y_hash u32, room_hash u32, x f32, y f32 (-1: not placed; else 0..1000 m), room u32 (0: none),
-//           near_hash u32, near u16[4] (0: none; no ids at all: no sys/near)
+//           near_hash u32, near u16[4] (0: none; no ids at all: no sys/near), cell u8[2] (0: none)
 
 #pragma once
 
@@ -31,7 +34,7 @@
 
 namespace pot {
 
-constexpr uint8_t kPositionCfgLen = 36;
+constexpr uint8_t kPositionCfgLen = 38;
 constexpr size_t kPositionNearMax = 4;
 constexpr uint32_t kPositionPeriodMs = 10000;
 constexpr float kPositionMaxM = 1000.0f;
@@ -42,6 +45,7 @@ struct PositionConfig {
     uint32_t room;
     uint32_t near_hash;
     uint16_t near[kPositionNearMax];
+    uint8_t cells[2];  // M19
     bool placed() const { return x >= 0.0f; }
     uint8_t near_count() const {
         uint8_t n = 0;
@@ -58,6 +62,7 @@ class PositionActor : public Actor {
     bool start(uint32_t now_ms) override;
     void tick(uint32_t now_ms) override;
     size_t stats_json(char* buf, size_t cap, uint32_t now_ms) override;
+    ~PositionActor() override;
 
   private:
     Node& node_;

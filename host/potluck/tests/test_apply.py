@@ -115,8 +115,8 @@ class ClusterFile(unittest.TestCase):
         img = dp.compile_image(m, 5)
         hx, hy = (dp.path_hash(p) for p in dp.position_paths("home", 0x0100))
         hr, hn = dp.path_hash(dp.room_path("home", 0x0100)), dp.path_hash(dp.near_path("home", 0x0100))
-        self.assertIn(struct.pack("<HBB", 0x0100, dp.ACTOR_POSITION, 36) +
-                      struct.pack("<IIIffII4H", hx, hy, hr, 1.5, 2.25, 0, hn, 0, 0, 0, 0), img)
+        self.assertIn(struct.pack("<HBB", 0x0100, dp.ACTOR_POSITION, 38) +
+                      struct.pack("<IIIffII4H2B", hx, hy, hr, 1.5, 2.25, 0, hn, 0, 0, 0, 0, 0, 0), img)
         _, _, reads = ap.expected(m, [0x100, 0x200])
         self.assertIn("potluck://home/node-0100/sys/pos/y", reads)
         for bad in ([1], [-1, 0], [0, 1001], ["1", 2], [True, 1]):
@@ -136,6 +136,20 @@ class ClusterFile(unittest.TestCase):
         _, _, reads = ap.expected(m, [0x100, 0x200, 0x300])
         self.assertIn("potluck://home/node-0100/sys/room", reads)
         self.assertNotIn("potluck://home/node-0100/sys/pos/x", reads)
+
+    def test_cells_are_numbered_by_name_and_each_board_carries_its_own(self):
+        # M19: a board admits only boards of its cells; a foreman holds two
+        c = self.cluster(boards=[{"node": "0100", "label": "a", "cells": ["house"]},
+                                 {"node": "0200", "label": "b", "cells": ["house", "upper"]},
+                                 {"node": "0300", "label": "c"}])
+        self.assertEqual(ap.cell_numbers(c), {"house": 1, "upper": 2})
+        m = mf.parse(ap.compose(c, []))
+        cfg = {a.name: a.config.get("cells") for a in m.actors if a.module == "builtin:position"}
+        self.assertEqual(cfg, {"pos_0100": "1", "pos_0200": "1,2"})
+        dp.compile_image(m, 5)
+        for bad in (["a", "b", "c"], [], ["a", "a"], [3]):
+            with self.assertRaisesRegex(ap.ApplyError, "cells"):
+                self.cluster(boards=[{"node": "0100", "cells": bad}])
 
     def test_each_boards_nearest_set_follows_passive_sensors_rule(self):
         # D20: same room when the board has one; by distance, ties to the lower id; unplaced after placed, by id

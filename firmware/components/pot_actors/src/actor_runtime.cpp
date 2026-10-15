@@ -233,6 +233,7 @@ bool ActorRuntime::reload(const DeployImage& img, uint16_t node_id, const ActorE
         for (size_t i = 0; i < n_others_; ++i) {
             const Held& o = others_[i];
             if (o.decl.node_id == kEveryNode) continue;  // adopted on demand, as at boot
+            if (o.kind->outputs_on_demand) continue;      // M20: likewise (a position, a room), as at boot
             NsDecl out[kMaxOutputs];
             const size_t n = o.kind->outputs(o.decl, o.decl.node_id, 0, out, kMaxOutputs);
             for (size_t j = 0; j < n && j < kMaxOutputs; ++j) env.node->ns().declare(out[j]);

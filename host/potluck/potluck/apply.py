@@ -283,6 +283,9 @@ class Cluster:
     #: M20: the floor plan the dashboard draws -- its size in metres and the rooms as rectangles -- or None. For
     #: people only: nothing on a board depends on it (the boards' positions above are what travels).
     plan: dict[str, Any] | None = None
+    #: M19: the cells (groups) each board belongs to, by name -- one, or two for a foreman. A cluster file with none
+    #: is one cell as before; with cells, a board admits only boards of its own cells.
+    cells: dict[int, tuple[str, ...]] = field(default_factory=dict)
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -358,6 +361,7 @@ def load_cluster(path: str) -> Cluster:
     boards = []
     rooms: dict[int, str] = {}
     positions: dict[int, tuple[float, float]] = {}
+    cells: dict[int, tuple[str, ...]] = {}
     for i, bd in enumerate(doc.get("boards", [])):
         if not isinstance(bd, dict) or "node" not in bd:
             raise ApplyError(f"boards[{i}]: {{\"node\": \"<hex id>\", \"label\": \"...\"}}")
@@ -374,6 +378,12 @@ def load_cluster(path: str) -> Cluster:
                     all(isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 1000 for v in pos)):
                 raise ApplyError(f"boards[{i}].position: [x, y], metres from the plan's top-left corner, 0..1000")
             positions[nid] = (float(pos[0]), float(pos[1]))
+        cl_raw = bd.get("cells")  # M19: ["house"], or ["house", "upper"] for a board in two
+        if cl_raw is not None:
+            if not (isinstance(cl_raw, list) and 1 <= len(cl_raw) <= 2 and len(set(cl_raw)) == len(cl_raw) and
+                    all(isinstance(v, str) and 1 <= len(v) <= 31 and v.isprintable() for v in cl_raw)):
+                raise ApplyError(f"boards[{i}].cells: one or two cell names, 1..31 printable characters each")
+            cells[nid] = tuple(cl_raw)
     if len({n for n, _ in boards}) != len(boards) or len({lab for _, lab in boards}) != len(boards):
         raise ApplyError("boards: a node id or a label appears twice")
     keys_raw = doc.get("keys", {})
@@ -494,6 +504,9 @@ def load_cluster(path: str) -> Cluster:
     cl.rooms = rooms
     cl.positions = positions
     cl.plan = check_plan(doc.get("plan"))
+    cl.cells = cells
+    if len({n for v in cells.values() for n in v}) > 255:
+        raise ApplyError("cells: at most 255 named cells in one tree")
     return cl
 
 
@@ -796,6 +809,11 @@ def per_room(c: Cluster, actors: list[dict]) -> list[dict]:
     return out
 
 
+def cell_numbers(c: Cluster) -> dict[str, int]:
+    """M19: the cluster file's cell names, sorted and numbered from 1 -- the numbers HELLO carries."""
+    return {name: i + 1 for i, name in enumerate(sorted({n for v in c.cells.values() for n in v}))}
+
+
 def room_numbers(c: Cluster) -> dict[str, int]:
     """M20: the rooms the cluster file names, sorted by name and numbered from 1 -- what node-<id>/sys/room holds."""
     return {name: i + 1 for i, name in enumerate(sorted(set(c.rooms.values())))}
@@ -891,7 +909,8 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
     from . import modules as mods
     k = max((s.peers_nearest for s in mods.registered()), default=0)  # an app asks for nearest sets
     near = near_sets(c, k) if k else {}
-    for nid in sorted(set(c.positions) | set(c.rooms) | {n for n, ids in near.items() if ids}):
+    cnum = cell_numbers(c)
+    for nid in sorted(set(c.positions) | set(c.rooms) | set(c.cells) | {n for n, ids in near.items() if ids}):
         # M20: each board's place on the floor plan and its room, held by the board itself (node-<id>/sys/pos/{x,y},
         # node-<id>/sys/room).
         name = f"pos_{nid:04x}"
@@ -904,6 +923,8 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
             cfg["room"] = numbers[c.rooms[nid]]
         if near.get(nid):
             cfg["near"] = ",".join(f"{q:04x}" for q in near[nid])
+        if nid in c.cells:
+            cfg["cells"] = ",".join(str(cnum[n]) for n in c.cells[nid])
         actors.append({"name": name, "module": "builtin:position", "latency_class": 4, "pin": nid, "config": cfg})
     return out
 

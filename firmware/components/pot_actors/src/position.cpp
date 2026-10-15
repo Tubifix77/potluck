@@ -35,9 +35,12 @@ bool position_config(const ActorDecl& a, PositionConfig& out) {
     for (size_t i = 0; i < kPositionNearMax; ++i) {
         out.near[i] = static_cast<uint16_t>(a.cfg[28 + 2 * i] | a.cfg[29 + 2 * i] << 8);
     }
+    out.cells[0] = a.cfg[36];
+    out.cells[1] = a.cfg[37];
     const bool placed = !(out.x == -1.0f && out.y == -1.0f);  // -1, -1: a room and no place
     if (placed && !(in_plan(out.x) && in_plan(out.y))) return false;
-    if (!placed && out.room == 0 && out.near_count() == 0) return false;  // nothing to hold
+    if (out.cells[1] != 0 && (out.cells[0] == 0 || out.cells[1] == out.cells[0])) return false;  // first, then a second
+    if (!placed && out.room == 0 && out.near_count() == 0 && out.cells[0] == 0) return false;  // nothing to hold
     for (size_t i = out.near_count(); i < kPositionNearMax; ++i) {
         if (out.near[i] != 0) return false;  // the ids come first, then zeros
     }
@@ -59,7 +62,10 @@ NsDecl position_decl(uint16_t node, uint32_t hash, Unit unit, ValueType type) {
     return d;
 }
 
+PositionActor::~PositionActor() { node_.set_groups(0, 0); }  // the package no longer names its cells
+
 bool PositionActor::start(uint32_t now_ms) {
+    node_.set_groups(cfg_.cells[0], cfg_.cells[1]);  // M19: admission follows the package
     const uint16_t me = node_.config().node_id;
     if (cfg_.placed()) {
         if (node_.ns().declare(position_decl(me, cfg_.x_hash)) != NsError::Ok) return false;
@@ -98,10 +104,12 @@ void PositionActor::tick(uint32_t now) {
 
 size_t PositionActor::stats_json(char* buf, size_t cap, uint32_t now_ms) {
     const int n = std::snprintf(buf, cap,
-                                "{\"t\":\"position\",\"node\":%u,\"up_ms\":%u,\"x\":%.2f,\"y\":%.2f,\"room\":%u}",
+                                "{\"t\":\"position\",\"node\":%u,\"up_ms\":%u,\"x\":%.2f,\"y\":%.2f,\"room\":%u,"
+                                "\"cells\":[%u,%u],\"cell_refusals\":%u}",
                                 static_cast<unsigned>(node_.config().node_id), static_cast<unsigned>(now_ms),
                                 static_cast<double>(cfg_.x), static_cast<double>(cfg_.y),
-                                static_cast<unsigned>(cfg_.room));
+                                static_cast<unsigned>(cfg_.room), static_cast<unsigned>(cfg_.cells[0]),
+                                static_cast<unsigned>(cfg_.cells[1]), static_cast<unsigned>(node_.group_refusals()));
     return (n > 0 && static_cast<size_t>(n) < cap) ? static_cast<size_t>(n) : 0;
 }
 
