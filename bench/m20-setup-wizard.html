@@ -5,30 +5,34 @@
 <style>
 /* Layout: an installer window -- a step rail on the left, one question per screen, Back and Next at the foot. */
 :root {
-  --bg: #eef2f0;          /* page around the window */
-  --win: #fbfcfb;         /* the window itself */
+  --bg: #eef2f0;
+  --win: #fbfcfb;
   --ink: #18211e;
   --muted: #5a6b65;
   --line: #d6dfdb;
-  --accent: #0b6e5f;      /* Potluck's own green-teal: buttons, the current step */
+  --accent: #0b6e5f;
   --accent-ink: #ffffff;
   --soft: #e3eeea;
   /* the board LED's own colours (the owner's scheme) -- semantic, not decoration */
   --led-purple: #9b4dff; --led-yellow: #e6b400; --led-red: #e5484d; --led-green: #2fb36b; --led-blue: #2f7bff; --led-off: #b9c4c0;
+  --cell-a: #2f7bff; --cell-b: #c2410c; --cell-c: #7c3aed;
   --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0f1513; --win: #161e1b; --ink: #e5eeea; --muted: #9db0a9; --line: #2a3632; --accent: #3cc3a6; --accent-ink: #062520; --soft: #1d2a26; --led-off: #4a5753; color-scheme: dark } }
+  --bg: #0f1513; --win: #161e1b; --ink: #e5eeea; --muted: #9db0a9; --line: #2a3632; --accent: #3cc3a6; --accent-ink: #062520; --soft: #1d2a26; --led-off: #4a5753;
+  --cell-a: #6ea3ff; --cell-b: #f2884e; --cell-c: #b18cff; color-scheme: dark } }
 :root[data-theme="dark"] {
-  --bg: #0f1513; --win: #161e1b; --ink: #e5eeea; --muted: #9db0a9; --line: #2a3632; --accent: #3cc3a6; --accent-ink: #062520; --soft: #1d2a26; --led-off: #4a5753; color-scheme: dark }
+  --bg: #0f1513; --win: #161e1b; --ink: #e5eeea; --muted: #9db0a9; --line: #2a3632; --accent: #3cc3a6; --accent-ink: #062520; --soft: #1d2a26; --led-off: #4a5753;
+  --cell-a: #6ea3ff; --cell-b: #f2884e; --cell-c: #b18cff; color-scheme: dark }
 
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.5; padding-inline: 16px; padding-block: 24px; }
-.banner { max-width: 980px; margin: 0 auto 12px; font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.banner { max-width: 1000px; margin: 0 auto 12px; font-size: 13px; color: var(--muted); display: flex; gap: 8px 14px; align-items: center; flex-wrap: wrap; }
 .banner b { color: var(--ink); }
-.window { max-width: 980px; margin: 0 auto; background: var(--win); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 50px -24px rgba(0,0,0,.35); overflow: hidden; display: grid; grid-template-columns: 250px 1fr; min-height: 600px; }
+.banner label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; color: var(--ink); }
+.window { max-width: 1000px; margin: 0 auto; background: var(--win); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 50px -24px rgba(0,0,0,.35); overflow: hidden; display: grid; grid-template-columns: 250px 1fr; min-height: 620px; }
 .titlebar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
 .dots { display: flex; gap: 6px; } .dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); display: block; }
 .rail { border-right: 1px solid var(--line); padding: 22px 14px; background: var(--soft); }
@@ -40,10 +44,11 @@ body { background: var(--bg); color: var(--ink); font-family: var(--f-body); fon
 .steps li.done { color: var(--ink); } .steps li.done .n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .steps li.now { color: var(--ink); background: var(--win); font-weight: 700; } .steps li.now .n { border-color: var(--accent); color: var(--accent); }
 .steps li.skip { opacity: .45; text-decoration: line-through; }
+.steps li.large .t::after { content: " (large setup)"; font-weight: 400; font-size: 12px; color: var(--muted); }
 .main { display: flex; flex-direction: column; min-width: 0; }
 .screen { padding: 34px 40px 20px; flex: 1; min-width: 0; }
 h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(26px, 3.4vw, 34px); line-height: 1.12; letter-spacing: -.015em; margin: 0 0 10px; text-wrap: balance; }
-.lead { color: var(--muted); max-width: 60ch; margin: 0 0 24px; font-size: 17px; }
+.lead { color: var(--muted); max-width: 62ch; margin: 0 0 24px; font-size: 17px; }
 .foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 40px; border-top: 1px solid var(--line); }
 .foot .hint { color: var(--muted); font-size: 13.5px; flex: 1; min-width: 0; }
 button { font: inherit; cursor: pointer; border-radius: 10px; padding: 10px 20px; border: 1.5px solid var(--line); background: var(--win); color: var(--ink); }
@@ -54,16 +59,16 @@ label.field { display: grid; gap: 6px; margin-bottom: 18px; max-width: 420px; fo
 label.field small { font-weight: 400; color: var(--muted); }
 input[type=text], input[type=password], select { font: inherit; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--win); color: var(--ink); width: 100%; }
 .meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; } .meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
-.note { border-left: 3px solid var(--accent); padding: 8px 14px; background: var(--soft); border-radius: 0 8px 8px 0; max-width: 62ch; font-size: 14.5px; }
+.note { border-left: 3px solid var(--accent); padding: 8px 14px; background: var(--soft); border-radius: 0 8px 8px 0; max-width: 64ch; font-size: 14.5px; }
 .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
-.choice { border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 6px; cursor: pointer; background: var(--win); text-align: left; }
+.choice { border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 6px; cursor: pointer; background: var(--win); text-align: left; align-content: start; }
 .choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--soft); }
 .choice h3 { margin: 0; font-family: var(--f-display); font-size: 18px; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .choice p { margin: 0; color: var(--muted); font-size: 14px; }
 .choice .where { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .tick { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--line); display: grid; place-items: center; flex: none; font-size: 14px; }
 .choice[aria-pressed="true"] .tick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.boards { display: grid; gap: 12px; max-width: 640px; }
+.boards { display: grid; gap: 12px; max-width: 660px; }
 .board { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; animation: in .35s ease-out; }
 .board.bad { border-style: dashed; }
 @keyframes in { from { transform: translateY(6px); opacity: .3 } to { transform: none; opacity: 1 } }
@@ -72,7 +77,6 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
 .led { width: 11px; height: 11px; border-radius: 50%; position: absolute; right: 7px; top: 10px; background: var(--led-off); }
 .led.purple { background: var(--led-purple); box-shadow: 0 0 10px var(--led-purple); }
 .led.green { background: var(--led-green); box-shadow: 0 0 10px var(--led-green); }
-.led.yellow { background: var(--led-yellow); box-shadow: 0 0 10px var(--led-yellow); }
 .led.blue { background: var(--led-blue); box-shadow: 0 0 12px var(--led-blue); animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 2px var(--led-blue); opacity: .55 } }
 .bname { font-weight: 700; } .bmeta { font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
@@ -80,14 +84,33 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
 .pill.ok { color: var(--led-green); } .pill.warn { color: var(--led-red); }
 .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-top: 6px; } .bar i { display: block; height: 100%; width: 0; background: var(--led-purple); transition: width .25s linear; }
 .bar.full i { background: var(--led-green); }
-.waiting { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 14.5px; margin-top: 4px; }
-.spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: rot 1s linear infinite; }
+.waiting { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 14.5px; margin-top: 10px; }
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: rot 1s linear infinite; flex: none; }
 @keyframes rot { to { transform: rotate(360deg) } }
+/* many boards: a compact grid of chips */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; max-width: 720px; }
+.chip { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; font-size: 13px; animation: in .3s ease-out; min-width: 0; }
+.chip .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--led-off); }
+.chip .dot.purple { background: var(--led-purple); box-shadow: 0 0 8px var(--led-purple); }
+.chip .dot.green { background: var(--led-green); box-shadow: 0 0 8px var(--led-green); }
+.chip .sub { grid-column: 1 / -1; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; } .chip .sub i { display: block; height: 100%; background: var(--led-purple); }
+.chip.full .sub i { background: var(--led-green); }
 .roomrow { display: grid; grid-template-columns: auto 1fr minmax(160px, 220px); gap: 14px; align-items: center; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; }
 .roomrow.active { border-color: var(--led-blue); }
 .place { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
-.place svg { width: 100%; height: auto; max-width: 100%; }
-.summary { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-size: 15px; max-width: 560px; }
+.place svg, .survey svg { width: 100%; height: auto; max-width: 100%; display: block; }
+.survey { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.cell { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.cell h3 { margin: 0; font-family: var(--f-display); font-size: 17px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.cell h3 small { font-family: var(--f-body); font-weight: 400; font-size: 13px; color: var(--muted); }
+.cell .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+.mem { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 6px; }
+.mem select { width: auto; padding: 4px 6px; font-size: 13px; border-radius: 7px; }
+.mem label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.role { font-family: var(--f-mono); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
+.warnline { color: var(--led-red); font-size: 13px; }
+.summary { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-size: 15px; max-width: 620px; }
 .summary dt { color: var(--muted); } .summary dd { margin: 0; font-weight: 700; }
 .mono { font-family: var(--f-mono); font-size: 13px; }
 @media (max-width: 760px) {
@@ -95,13 +118,16 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
   .rail { border-right: 0; border-bottom: 1px solid var(--line); padding: 14px; }
   .steps { grid-auto-flow: column; overflow-x: auto; } .steps li span.t { display: none; }
   .screen { padding: 24px 18px 12px; } .foot { padding: 14px 18px; }
-  .place { grid-template-columns: 1fr; }
+  .place, .survey { grid-template-columns: 1fr; }
   .roomrow { grid-template-columns: auto 1fr; } .roomrow select { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } }
 </style>
 
-<div class="banner"><b>Mockup</b> of M20's first-run wizard -- nothing is flashed, saved or sent. Boards appear by themselves on step 4 to show what detection would look like.</div>
+<div class="banner">
+  <span><b>Mockup</b> of M20's first-run wizard: nothing is flashed, saved or sent.</span>
+  <label for="large"><input id="large" type="checkbox"> Simulate a large setup (24 boards, needs M19)</label>
+</div>
 
 <div class="window" role="application" aria-label="Potluck setup">
   <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><span>Potluck Setup</span></div>
@@ -125,7 +151,7 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
 <script>
 (function () {
   "use strict";
-  var STEPS = [
+  var BASE = [
     { id: "welcome", t: "Welcome" },
     { id: "cell", t: "Name your cell" },
     { id: "apps", t: "Choose apps" },
@@ -134,39 +160,63 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
     { id: "wifi", t: "Your Wi-Fi" },
     { id: "rooms", t: "Rooms" },
     { id: "place", t: "Place boards" },
+    { id: "survey", t: "Check reach", large: true },
+    { id: "groups", t: "Group boards", large: true },
+    { id: "chargers", t: "Chargers", large: true },
     { id: "done", t: "Done" }
   ];
   var S = {
-    i: 0, cell: "home", pass: "", backup: false,
+    i: 0, cell: "home", pass: "", backup: false, large: false,
     apps: { extender: false, presence: true, ha: true },
     boards: [], detecting: null, installed: false, installing: false,
     wifi: { ssid: "", pass: "", hs: "", hspass: "" },
-    rooms: {}, identify: 0
+    rooms: {}, identify: 0,
+    surveyed: false, surveying: false, survey: 0, groups: null, charger: {}
   };
-  var FOUND = [
+  var SMALL = [
     { node: "6300", port: "COM3", chip: "ESP32-S3", flash: "16 MB", psram: "8 MB", ok: true },
     { node: "7368", port: "COM4", chip: "ESP32-S3", flash: "16 MB", psram: "8 MB", ok: true },
     { node: "8160", port: "COM5", chip: "ESP32-S3", flash: "16 MB", psram: "8 MB", ok: true },
     { node: "1c40", port: "COM7", chip: "ESP32-S3", flash: "4 MB", psram: "none", ok: false }
   ];
-  var ROOMS = ["Living room", "Kitchen", "Bedroom", "Office", "Hallway", "Garden"];
+  var CELLS = [
+    { key: "a", name: "Ground floor", color: "var(--cell-a)" },
+    { key: "b", name: "Upstairs", color: "var(--cell-b)" },
+    { key: "c", name: "Garage", color: "var(--cell-c)" }
+  ];
+  function largeList() {
+    var ids = ["6300", "7368", "8160", "1a2b", "2c9d", "3f04", "4e71", "5b18", "6d22", "7a90", "8c3e", "9f11",
+      "a207", "b5c4", "c8e9", "d013", "e6f2", "f4a8", "0b7d", "13c6", "2e85", "47d9", "59af", "6b30"];
+    return ids.map(function (n, k) {
+      return { node: n, port: "USB " + (k + 1), chip: "ESP32-S3", flash: "16 MB", psram: "8 MB", ok: true,
+        home: k < 10 ? "a" : k < 19 ? "b" : "c" };
+    });
+  }
+  var ROOMS = ["Living room", "Kitchen", "Bedroom", "Office", "Hallway", "Garden", "Garage", "Upstairs landing"];
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function found() { return S.large ? largeList() : SMALL; }
   function needWifi() { return S.apps.extender || S.apps.ha; }
-  function skipped(id) { return id === "wifi" && !needWifi(); }
+  function skipped(st) { return (st.id === "wifi" && !needWifi()) || (st.large && !S.large); }
   function good() { return S.boards.filter(function (b) { return b.ok; }); }
+  function steps() { return BASE.filter(function (st) { return !st.large || S.large; }); }
+  function cur() { return steps()[S.i]; }
 
   function rail() {
-    $("rail").innerHTML = STEPS.map(function (s, k) {
-      var cls = skipped(s.id) ? "skip" : k < S.i ? "done" : k === S.i ? "now" : "";
-      return '<li class="' + cls + '"><span class="n">' + (k < S.i && !skipped(s.id) ? "&#10003;" : k + 1) + '</span><span class="t">' + s.t + "</span></li>";
+    $("rail").innerHTML = steps().map(function (s, k) {
+      var sk = skipped(s), cls = (sk ? "skip " : k < S.i ? "done " : k === S.i ? "now " : "") + (s.large ? "large" : "");
+      return '<li class="' + cls + '"><span class="n">' + (k < S.i && !sk ? "&#10003;" : k + 1) + '</span><span class="t">' + s.t + "</span></li>";
     }).join("");
+  }
+  function chip(b, k, extra) {
+    var p = b.progress || 0, dot = p >= 100 ? "green" : p > 0 ? "purple" : "";
+    return '<div class="chip' + (p >= 100 ? " full" : "") + '"><span class="dot ' + dot + '"></span><span class="bmeta">Board ' + (k + 1) + "</span>" + (extra || "") + "</div>";
   }
 
   var VIEWS = {
     welcome: function () {
       return "<h1>Let's set up your boards</h1>" +
-        '<p class="lead">Potluck turns a few small ESP32-S3 boards into one system: they sense, share and help each other. This takes about ten minutes, and you won\'t need to type a command.</p>' +
+        '<p class="lead">Potluck turns small ESP32-S3 boards into one system: they sense, share and help each other. This takes about ten minutes' + (S.large ? " (longer with many boards)" : "") + ", and you won't need to type a command.</p>" +
         '<div class="note">Have ready: your boards, a USB cable for each (or one cable used in turn), and your Wi-Fi password if you want Home Assistant or the Wi-Fi extender.</div>';
     },
     cell: function () {
@@ -174,54 +224,73 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
         '<p class="lead">A cell is your group of boards. Its keys are made on this computer and never leave it unless you make a backup.</p>' +
         '<label class="field" for="cellname">Cell name <small>Shown in the dashboard and in Home Assistant</small><input id="cellname" type="text" value="' + esc(S.cell) + '" autocomplete="off"></label>' +
         '<label class="field" for="pass">Passphrase <small>Guards the keys; you type it when adding a board or an app</small><input id="pass" type="password" value="' + esc(S.pass) + '" autocomplete="new-password"><span class="meter"><i id="pmeter"></i></span><small id="ptext">At least 10 characters</small></label>' +
-        '<button type="button" id="backupbtn">' + (S.backup ? "Backup made &#10003;" : "Make a backup of the keys") + '</button>' +
-        '<p class="hint" style="color:var(--muted);font-size:13.5px;max-width:60ch">The backup is one file, encrypted with your passphrase. Without the keys, every board has to be set up again.</p>';
+        '<button type="button" id="backupbtn">' + (S.backup ? "Backup made &#10003;" : "Make a backup of the keys") + "</button>" +
+        '<p style="color:var(--muted);font-size:13.5px;max-width:60ch">The backup is one file, encrypted with your passphrase. Without the keys, every board has to be set up again.</p>';
     },
     apps: function () {
       function c(key, title, where, text) {
-        return '<button type="button" class="choice" data-app="' + key + '" aria-pressed="' + S.apps[key] + '"><span class="where">' + where + '</span><h3>' + title + '<span class="tick">' + (S.apps[key] ? "&#10003;" : "") + '</span></h3><p>' + text + "</p></button>";
+        return '<button type="button" class="choice" data-app="' + key + '" aria-pressed="' + S.apps[key] + '"><span class="where">' + where + "</span><h3>" + title + '<span class="tick">' + (S.apps[key] ? "&#10003;" : "") + "</span></h3><p>" + text + "</p></button>";
       }
       return "<h1>What should your boards do?</h1>" +
         '<p class="lead">Pick now; you can change it later in the library. Your choice decides the next questions, nothing more is downloaded.</p>' +
         '<div class="choices">' +
-        c("presence", "Presence sensing", "Runs on your boards", "Notices when someone is in the room from how they disturb the radio between the boards. Best with three boards in a triangle.") +
-        c("extender", "Wi-Fi extender", "Runs on your boards", "One board becomes a hotspot that carries your house Wi-Fi further. Needs your Wi-Fi password.") +
+        c("presence", "Presence sensing", "Runs on your boards", "Notices when someone is in a room from how they disturb the radio between the boards. Best with three boards in a triangle.") +
+        c("extender", "Wi-Fi extender", "Runs on your boards", "Your boards carry your house Wi-Fi further: each board that can hear your router can offer its own hotspot for phones and laptops. Needs your Wi-Fi password.") +
         c("ha", "Home Assistant", "Integration", "Shows your boards and what they sense in Home Assistant. Needs your Wi-Fi and your Home Assistant.") +
         "</div>";
     },
     plug: function () {
-      var list = S.boards.map(function (b) {
-        return '<div class="board' + (b.ok ? "" : " bad") + '"><span class="pcb"><span class="led"></span></span><span><span class="bname">' + esc(b.chip) + ' on ' + esc(b.port) + '</span><br><span class="bmeta">' + esc(b.flash) + ' flash &middot; ' + esc(b.psram) + ' PSRAM &middot; id ' + esc(b.node) + '</span></span>' +
-          (b.ok ? '<span class="pill ok">Ready</span>' : '<span class="pill warn" title="Potluck needs 16 MB flash and PSRAM">Can\'t use: 4 MB flash</span>') + "</div>";
-      }).join("");
+      var f = found(), list;
+      if (S.large) {
+        list = '<div class="grid">' + S.boards.map(function (b, k) { return chip(b, k); }).join("") + "</div>";
+      } else {
+        list = '<div class="boards">' + S.boards.map(function (b) {
+          return '<div class="board' + (b.ok ? "" : " bad") + '"><span class="pcb"><span class="led"></span></span><span><span class="bname">' + esc(b.chip) + " on " + esc(b.port) + '</span><br><span class="bmeta">' + esc(b.flash) + " flash &middot; " + esc(b.psram) + " PSRAM &middot; id " + esc(b.node) + "</span></span>" +
+            (b.ok ? '<span class="pill ok">Ready</span>' : '<span class="pill warn">Can\'t use: 4 MB flash</span>') + "</div>";
+        }).join("") + "</div>";
+      }
+      var doneMsg = S.large
+        ? good().length + " boards ready. That's more than one cell holds, so after you place them I'll check which ones can hear each other and suggest how to group them."
+        : good().length + " boards ready. One can't be used: Potluck needs 16 MB of flash and PSRAM.";
       return "<h1>Plug your ESP32-S3 boards into this computer's USB ports</h1>" +
-        '<p class="lead">I\'ll find each board as you plug it in. Plug them in now, one after another or all at once.</p>' +
-        '<div class="boards">' + list + "</div>" +
-        (S.boards.length < FOUND.length ? '<div class="waiting"><span class="spin" aria-hidden="true"></span>Looking for boards&hellip;</div>' : '<div class="waiting">' + good().length + " boards ready. One can't be used: Potluck needs 16 MB of flash and PSRAM.</div>");
+        '<p class="lead">I\'ll find each board as you plug it in. ' + (S.large ? "With many boards, a powered USB hub helps: plug in as many as it takes, and swap them as each finishes." : "Plug them in now, one after another or all at once.") + "</p>" +
+        list +
+        (S.boards.length < f.length ? '<div class="waiting"><span class="spin" aria-hidden="true"></span>Looking for boards&hellip; ' + S.boards.length + " found</div>" : '<div class="waiting">' + doneMsg + "</div>");
     },
     install: function () {
-      var list = good().map(function (b, k) {
-        var p = b.progress || 0, cls = p >= 100 ? "green" : p > 0 ? "purple" : "";
-        return '<div class="board"><span class="pcb"><span class="led ' + cls + '"></span></span><span style="min-width:0"><span class="bname">Board ' + (k + 1) + ' <span class="bmeta">on ' + esc(b.port) + '</span></span><span class="bar' + (p >= 100 ? " full" : "") + '"><i style="width:' + p + '%"></i></span></span><span class="pill' + (p >= 100 ? " ok" : "") + '">' + (p >= 100 ? "Done" : p > 0 ? Math.floor(p) + " %" : "Waiting") + "</span></div>";
-      }).join("");
       var apps = [S.apps.presence && "presence sensing", S.apps.extender && "Wi-Fi extender", S.apps.ha && "Home Assistant"].filter(Boolean);
+      var list;
+      if (S.large) {
+        list = '<div class="grid">' + good().map(function (b, k) { return chip(b, k, '<span class="sub"><i style="width:' + (b.progress || 0) + '%"></i></span>'); }).join("") + "</div>";
+      } else {
+        list = '<div class="boards">' + good().map(function (b, k) {
+          var p = b.progress || 0, cls = p >= 100 ? "green" : p > 0 ? "purple" : "";
+          return '<div class="board"><span class="pcb"><span class="led ' + cls + '"></span></span><span style="min-width:0"><span class="bname">Board ' + (k + 1) + ' <span class="bmeta">on ' + esc(b.port) + '</span></span><span class="bar' + (p >= 100 ? " full" : "") + '"><i style="width:' + p + '%"></i></span></span><span class="pill' + (p >= 100 ? " ok" : "") + '">' + (p >= 100 ? "Done" : p > 0 ? Math.floor(p) + " %" : "Waiting") + "</span></div>";
+        }).join("") + "</div>";
+      }
+      var n = good().filter(function (b) { return (b.progress || 0) >= 100; }).length;
       return "<h1>Install Potluck on your boards</h1>" +
-        '<p class="lead">Potluck ' + '<span class="mono">2026.10</span>' + ' and your choices (' + esc(apps.join(", ") || "no apps yet") + ') go on in one step. A board glows purple while it updates and green when it is done.</p>' +
-        '<div class="boards">' + list + "</div>" +
-        (S.installed ? "" : S.installing ? "" : '<p style="margin-top:18px"><button type="button" class="primary" id="go">Install on ' + good().length + " boards</button></p>");
+        '<p class="lead">Potluck <span class="mono">2026.10</span> and your choices (' + esc(apps.join(", ") || "no apps yet") + ") go on in one step. A board glows purple while it updates and green when it is done.</p>" +
+        list +
+        (S.installing || S.installed ? '<div class="waiting">' + n + " of " + good().length + " done</div>" : '<p style="margin-top:18px"><button type="button" class="primary" id="go">Install on ' + good().length + " boards</button></p>");
     },
     wifi: function () {
       return "<h1>Your Wi-Fi</h1>" +
         '<p class="lead">' + (S.apps.extender && S.apps.ha ? "Home Assistant and the Wi-Fi extender need your house Wi-Fi." : S.apps.extender ? "The Wi-Fi extender needs your house Wi-Fi." : "Home Assistant needs your house Wi-Fi.") + " It goes to the boards over the cable and is never shown again.</p>" +
         '<label class="field" for="ssid">Network<select id="ssid"><option value="">Choose your network</option><option>HomeNet</option><option>HomeNet-Guest</option><option>Neighbour-5G</option></select></label>' +
         '<label class="field" for="wpass">Password<input id="wpass" type="password" autocomplete="off" value="' + esc(S.wifi.pass) + '"></label>' +
-        (S.apps.extender ? '<label class="field" for="hs">Hotspot name <small>The new network the extender makes</small><input id="hs" type="text" value="' + esc(S.wifi.hs || "HomeNet-Extra") + '"></label><label class="field" for="hspass">Hotspot password<input id="hspass" type="password" autocomplete="new-password" value="' + esc(S.wifi.hspass) + '"></label>' : "") +
+        (S.apps.extender ? '<label class="field" for="hs">Hotspot name <small>Every board that extends your Wi-Fi offers this network</small><input id="hs" type="text" value="' + esc(S.wifi.hs || "HomeNet-Extra") + '"></label><label class="field" for="hspass">Hotspot password<input id="hspass" type="password" autocomplete="new-password" value="' + esc(S.wifi.hspass) + '"></label>' : "") +
         '<div class="note">Your boards use 2.4 GHz. A network that offers both 2.4 and 5 GHz under one name is fine.</div>';
     },
     rooms: function () {
+      if (S.large) {
+        return "<h1>Rooms</h1>" +
+          '<p class="lead">With ' + good().length + " boards, naming every room now would take a while. After you place them, I'll group them by which ones can hear each other, and you name the groups. You can light up and name single boards later from the dashboard.</p>" +
+          '<div class="note">Tip: put a small sticker on each board with the room it goes to. The board number is printed on each chip on the install screen.</div>';
+      }
       var rows = good().map(function (b, k) {
         var on = S.identify === k;
-        return '<div class="roomrow' + (on ? " active" : "") + '"><span class="pcb"><span class="led ' + (on ? "blue" : "green") + '"></span></span><span><span class="bname">' + (on ? "The board glowing blue" : "Board " + (k + 1)) + '</span><br><span class="bmeta">' + (on ? "Look for the blue light, then pick its room" : (S.rooms[b.node] ? esc(S.rooms[b.node]) : "not placed yet")) + '</span></span>' +
+        return '<div class="roomrow' + (on ? " active" : "") + '"><span class="pcb"><span class="led ' + (on ? "blue" : "green") + '"></span></span><span><span class="bname">' + (on ? "The board glowing blue" : "Board " + (k + 1)) + '</span><br><span class="bmeta">' + (on ? "Look for the blue light, then pick its room" : (S.rooms[b.node] ? esc(S.rooms[b.node]) : "not placed yet")) + "</span></span>" +
           '<select data-node="' + b.node + '" aria-label="Room for board ' + (k + 1) + '"><option value="">Pick a room</option>' + ROOMS.map(function (r) { return "<option" + (S.rooms[b.node] === r ? " selected" : "") + ">" + r + "</option>"; }).join("") + "</select></div>";
       }).join("");
       return "<h1>Which room is this?</h1>" +
@@ -230,61 +299,139 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
         '<p style="margin-top:14px"><button type="button" id="nextboard">Light up the next board</button></p>';
     },
     place: function () {
-      var g = good(), first = g[0];
+      var g = good();
       return "<h1>Place your boards</h1>" +
         '<div class="place"><div>' +
-        '<p class="lead" style="margin-bottom:14px">Leave <b>one board connected to this computer</b>: it\'s how the dashboard talks to the others. The rest can go anywhere with a USB phone charger.</p>' +
-        (S.apps.presence ? '<div class="note"><b>Presence sensing:</b> put three boards around the room in a triangle, at about table height, a few metres apart. It sees people best inside the triangle and close to it.</div>' : "") +
-        (S.apps.extender ? '<div class="note" style="margin-top:12px"><b>Wi-Fi extender:</b> the board holding your Wi-Fi works best halfway between your router and where you need coverage.</div>' : "") +
+        '<p class="lead" style="margin-bottom:14px">Leave <b>one board connected to this computer</b>: it\'s how the dashboard talks to the others. The rest can go anywhere with a USB phone charger.' + (S.large ? " Put them where they'll live: next I'll check which boards can hear each other from there." : "") + "</p>" +
+        (S.apps.presence ? '<div class="note"><b>Presence sensing:</b> put three boards around a room in a triangle, at about table height, a few metres apart. It sees people best inside the triangle and close to it.</div>' : "") +
+        (S.apps.extender ? '<div class="note" style="margin-top:12px"><b>Wi-Fi extender:</b> a board extends your Wi-Fi where it can still hear your router well, so place those boards between the router and where you need coverage.</div>' : "") +
         '</div><svg viewBox="0 0 320 240" role="img" aria-label="Three boards in a triangle around a room, one connected to the computer">' +
         '<rect x="10" y="10" width="300" height="220" rx="10" fill="none" stroke="var(--line)" stroke-width="2"/>' +
-        '<text x="22" y="32" fill="var(--muted)" font-size="12" font-family="var(--f-body)">' + esc(S.rooms[first && first.node] || "Living room") + '</text>' +
+        '<text x="22" y="32" fill="var(--muted)" font-size="12">' + esc((g[0] && S.rooms[g[0].node]) || "Living room") + "</text>" +
         '<polygon points="70,190 250,190 160,60" fill="color-mix(in srgb, var(--accent) 12%, transparent)" stroke="var(--accent)" stroke-dasharray="5 5" stroke-width="1.5"/>' +
-        '<g font-family="var(--f-body)" font-size="11" fill="var(--ink)">' +
+        '<g font-size="11" fill="var(--ink)">' +
         '<circle cx="70" cy="190" r="9" fill="var(--led-green)"/><text x="40" y="215">Board 1</text>' +
         '<circle cx="250" cy="190" r="9" fill="var(--led-green)"/><text x="228" y="215">Board 2</text>' +
         '<circle cx="160" cy="60" r="9" fill="var(--led-green)"/><text x="137" y="45">Board 3</text></g>' +
-        '<rect x="20" y="120" width="34" height="24" rx="3" fill="none" stroke="var(--muted)" stroke-width="1.5"/><text x="18" y="160" font-size="10" fill="var(--muted)" font-family="var(--f-body)">this PC</text>' +
+        '<rect x="20" y="120" width="34" height="24" rx="3" fill="none" stroke="var(--muted)" stroke-width="1.5"/><text x="18" y="160" font-size="10" fill="var(--muted)">this PC</text>' +
         '<path d="M37 144 C 40 170, 55 185, 62 188" stroke="var(--muted)" stroke-width="1.5" fill="none"/>' +
         "</svg></div>";
     },
+    survey: function () {
+      return "<h1>Checking which boards can hear each other</h1>" +
+        '<div class="survey"><div>' + surveyMap(S.surveyed ? 1 : S.survey / 100) + '</div><div>' +
+        '<p class="lead" style="margin-bottom:14px">Every board listens for the others for a minute or two and reports how well it hears each one. You don\'t need to do anything.</p>' +
+        '<div class="bar' + (S.surveyed ? " full" : "") + '"><i style="width:' + (S.surveyed ? 100 : S.survey) + '%"></i></div>' +
+        '<div class="waiting">' + (S.surveyed ? "Done. The boards fall into three groups that hear each other well." : S.surveying ? '<span class="spin" aria-hidden="true"></span>Listening&hellip;' : "") + "</div>" +
+        (S.surveying || S.surveyed ? "" : '<p style="margin-top:14px"><button type="button" class="primary" id="startsurvey">Start the check</button></p>') +
+        "</div></div>";
+    },
+    groups: function () {
+      var g = S.groups;
+      var html = CELLS.map(function (c) {
+        var mem = good().filter(function (b) { return g[b.node] === c.key; });
+        return '<div class="cell"><h3><span><span class="sw" style="background:' + c.color + '"></span><input type="text" data-cellname="' + c.key + '" value="' + esc(c.name) + '" aria-label="Name of this group" style="width:11ch;padding:2px 6px;font:inherit;font-weight:700;border-radius:6px"></span><small>' + mem.length + " boards</small></h3>" +
+          mem.map(function (b) {
+            var k = good().indexOf(b);
+            return '<div class="mem"><span>Board ' + (k + 1) + ' <span class="bmeta">' + esc(b.node) + '</span></span><select data-move="' + b.node + '" aria-label="Move board ' + (k + 1) + '">' + CELLS.map(function (o) { return '<option value="' + o.key + '"' + (o.key === c.key ? " selected" : "") + ">" + (o.key === c.key ? "Stays here" : "Move to " + esc(o.name)) + "</option>"; }).join("") + "</select></div>";
+          }).join("") +
+          (mem.length > 10 ? '<div class="warnline">More than 10 boards: move some to another group, or a group becomes too big for its foreman.</div>' : "") +
+          (mem.length < 2 ? '<div class="warnline">A group needs at least 2 boards.</div>' : "") +
+          "</div>";
+      }).join("");
+      return "<h1>Your boards in groups</h1>" +
+        '<p class="lead">I grouped the boards by which ones hear each other well. Name the groups, and move a board if you know better. Each group becomes one cell, and the cells talk to each other through one board each.</p>' +
+        '<div class="cells">' + html + "</div>";
+    },
+    chargers: function () {
+      var html = CELLS.map(function (c) {
+        var mem = good().filter(function (b) { return S.groups[b.node] === c.key; });
+        var on = mem.filter(function (b) { return S.charger[b.node]; });
+        var f = foremen(c.key);
+        return '<div class="cell"><h3><span><span class="sw" style="background:' + c.color + '"></span>' + esc(c.name) + "</span><small>" + on.length + " on a charger</small></h3>" +
+          mem.map(function (b) {
+            var k = good().indexOf(b), role = f[0] === b.node ? "Foreman" : f[1] === b.node ? "Standby" : "";
+            return '<div class="mem"><label><input type="checkbox" data-charger="' + b.node + '"' + (S.charger[b.node] ? " checked" : "") + "> Board " + (k + 1) + "</label>" + (role ? '<span class="role">' + role + "</span>" : "") + "</div>";
+          }).join("") +
+          (on.length < 2 ? '<div class="warnline">Tick at least 2 boards that stay on a charger: one carries the group\'s messages, one stands by.</div>' : "") +
+          "</div>";
+      }).join("");
+      return "<h1>Which boards stay on a charger?</h1>" +
+        '<p class="lead">One board in each group carries its messages to the other groups, so it must never run on a battery. Tick the boards that stay plugged into a charger, and Potluck picks the busy one and a standby itself. If one stops, the other takes over.</p>' +
+        '<div class="cells">' + html + "</div>";
+    },
     done: function () {
       var apps = [S.apps.presence && "Presence sensing", S.apps.extender && "Wi-Fi extender", S.apps.ha && "Home Assistant"].filter(Boolean);
-      return "<h1>Your cell is up</h1>" +
+      var cells = S.large ? CELLS.map(function (c) {
+        var n = good().filter(function (b) { return S.groups[b.node] === c.key; }).length;
+        return esc(c.name) + " (" + n + ")";
+      }).join(", ") : "";
+      return "<h1>Your " + (S.large ? "cells are" : "cell is") + " up</h1>" +
         '<p class="lead">All boards glow green: they found each other. From here on, the dashboard shows what they do, and the library adds or removes apps.</p>' +
-        '<dl class="summary"><dt>Cell</dt><dd>' + esc(S.cell || "home") + "</dd><dt>Boards</dt><dd>" + good().length + " working</dd><dt>Apps</dt><dd>" + esc(apps.join(", ") || "none yet") + "</dd><dt>Rooms</dt><dd>" + esc(Object.values(S.rooms).filter(Boolean).join(", ") || "not set") + "</dd><dt>Key backup</dt><dd>" + (S.backup ? "made" : "not yet -- the dashboard will remind you") + "</dd></dl>" +
+        '<dl class="summary"><dt>Name</dt><dd>' + esc(S.cell || "home") + "</dd><dt>Boards</dt><dd>" + good().length + " working</dd>" +
+        (S.large ? "<dt>Groups</dt><dd>" + cells + "</dd><dt>Between groups</dt><dd>one board each, picked by Potluck, with a standby</dd>" : "<dt>Rooms</dt><dd>" + esc(Object.values(S.rooms).filter(Boolean).join(", ") || "not set") + "</dd>") +
+        "<dt>Apps</dt><dd>" + esc(apps.join(", ") || "none yet") + "</dd><dt>Key backup</dt><dd>" + (S.backup ? "made" : "not yet -- the dashboard will remind you") + "</dd></dl>" +
         '<p style="margin-top:20px"><button type="button" class="primary" id="opendash">Open the dashboard</button></p>';
     }
   };
 
+  function surveyMap(t) {
+    // 24 boards placed as three clusters; links appear as the check runs
+    var pos = good().map(function (b, k) {
+      var c = b.home === "a" ? [90, 130] : b.home === "b" ? [250, 70] : [255, 205];
+      var r = b.home === "a" ? 62 : b.home === "b" ? 52 : 34, n = b.home === "a" ? 10 : b.home === "b" ? 9 : 5;
+      var j = b.home === "a" ? k : b.home === "b" ? k - 10 : k - 19, a = (j / n) * Math.PI * 2;
+      return { b: b, x: c[0] + Math.cos(a) * r, y: c[1] + Math.sin(a) * r * 0.75 };
+    });
+    var lines = "", shown = Math.floor(t * 60), count = 0;
+    for (var i = 0; i < pos.length; i++) for (var j = i + 1; j < pos.length; j++) {
+      var same = pos[i].b.home === pos[j].b.home, near = Math.hypot(pos[i].x - pos[j].x, pos[i].y - pos[j].y) < (same ? 80 : 120);
+      if (!near) continue;
+      if (count++ > shown) continue;
+      lines += '<line x1="' + pos[i].x.toFixed(1) + '" y1="' + pos[i].y.toFixed(1) + '" x2="' + pos[j].x.toFixed(1) + '" y2="' + pos[j].y.toFixed(1) + '" stroke="' + (same ? "var(--accent)" : "var(--muted)") + '" stroke-width="' + (same ? 1.4 : 0.8) + '" stroke-dasharray="' + (same ? "" : "3 3") + '" opacity="' + (same ? 0.7 : 0.45) + '"/>';
+    }
+    var dots = pos.map(function (p) {
+      var col = S.surveyed ? (p.b.home === "a" ? "var(--cell-a)" : p.b.home === "b" ? "var(--cell-b)" : "var(--cell-c)") : "var(--led-green)";
+      return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="5" fill="' + col + '"/>';
+    }).join("");
+    return '<svg viewBox="0 0 330 260" role="img" aria-label="Map of which boards hear each other">' +
+      '<rect x="4" y="4" width="322" height="252" rx="10" fill="none" stroke="var(--line)" stroke-width="1.5"/>' + lines + dots +
+      (S.surveyed ? '<g font-size="11" fill="var(--ink)"><text x="40" y="225">Ground floor</text><text x="215" y="20">Upstairs</text><text x="230" y="250">Garage</text></g>' : "") +
+      "</svg>";
+  }
+  function foremen(key) {
+    // HRW stand-in: the two lowest node ids among the boards on a charger
+    return good().filter(function (b) { return S.groups[b.node] === key && S.charger[b.node]; })
+      .map(function (b) { return b.node; }).sort().slice(0, 2);
+  }
+
   function canNext() {
-    var id = STEPS[S.i].id;
+    var id = cur().id;
     if (id === "cell") return S.cell.trim().length > 0 && S.pass.length >= 10;
-    if (id === "plug") return good().length > 0;
+    if (id === "plug") return good().length > 0 && S.boards.length >= found().length;
     if (id === "install") return S.installed;
     if (id === "wifi") return !!S.wifi.ssid && S.wifi.pass.length >= 8 && (!S.apps.extender || S.wifi.hspass.length >= 8);
+    if (id === "survey") return S.surveyed;
+    if (id === "groups") return CELLS.every(function (c) { var n = good().filter(function (b) { return S.groups[b.node] === c.key; }).length; return n >= 2 && n <= 10; });
+    if (id === "chargers") return CELLS.every(function (c) { return foremen(c.key).length === 2; });
     return true;
   }
   var HINTS = {
-    welcome: "Takes about 10 minutes",
-    cell: "Choose a passphrase of 10 characters or more",
-    apps: "You can change these later",
-    plug: "Plug in at least one board",
-    install: "Press Install to start",
-    wifi: "Passwords of 8 characters or more",
-    rooms: "Rooms are optional",
-    place: "Then press Next",
-    done: ""
+    welcome: "Takes about 10 minutes", cell: "Choose a passphrase of 10 characters or more", apps: "You can change these later",
+    plug: "Wait until every board is found", install: "Press Install to start", wifi: "Passwords of 8 characters or more",
+    rooms: "Rooms are optional", place: "Then press Next", survey: "Takes a minute or two",
+    groups: "Each group needs 2 to 10 boards", chargers: "At least 2 per group", done: ""
   };
 
   function render() {
+    if (S.i > steps().length - 1) S.i = steps().length - 1;
     rail();
-    var id = STEPS[S.i].id;
+    var id = cur().id;
     $("screen").innerHTML = VIEWS[id]();
-    $("back").disabled = S.i === 0 || S.installing;
+    $("back").disabled = S.i === 0 || S.installing || S.surveying;
     $("next").hidden = id === "done";
     $("next").disabled = !canNext();
-    $("next").textContent = id === "place" ? "Finish" : "Next";
+    $("next").textContent = id === (S.large ? "chargers" : "place") ? "Finish" : "Next";
     $("hint").textContent = id === "install" && S.installing ? "Keep the boards plugged in" : id === "install" && S.installed ? "All boards are installed" : HINTS[id];
     wire(id);
     if (id === "plug") startDetect();
@@ -310,51 +457,92 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
         $("hspass").addEventListener("input", function (e) { S.wifi.hspass = e.target.value; refresh(); });
       }
     }
-    if (id === "rooms") {
+    if (id === "rooms" && !S.large) {
       document.querySelectorAll("select[data-node]").forEach(function (sel) {
         sel.addEventListener("change", function () { S.rooms[sel.getAttribute("data-node")] = sel.value; });
       });
       $("nextboard").addEventListener("click", function () { S.identify = (S.identify + 1) % good().length; render(); });
     }
+    if (id === "survey" && $("startsurvey")) $("startsurvey").addEventListener("click", runSurvey);
+    if (id === "groups") {
+      document.querySelectorAll("select[data-move]").forEach(function (sel) {
+        sel.addEventListener("change", function () { S.groups[sel.getAttribute("data-move")] = sel.value; render(); });
+      });
+      document.querySelectorAll("input[data-cellname]").forEach(function (inp) {
+        inp.addEventListener("change", function () { var c = CELLS.filter(function (x) { return x.key === inp.getAttribute("data-cellname"); })[0]; c.name = inp.value || c.name; });
+      });
+    }
+    if (id === "chargers") document.querySelectorAll("input[data-charger]").forEach(function (cb) {
+      cb.addEventListener("change", function () { S.charger[cb.getAttribute("data-charger")] = cb.checked; render(); });
+    });
     if (id === "done") $("opendash").addEventListener("click", function () { this.textContent = "This mockup ends here"; this.disabled = true; });
   }
   function refresh() { $("next").disabled = !canNext(); }
   function meter() {
-    var n = S.pass.length, w = Math.min(100, n * 7), m = $("pmeter"), t = $("ptext");
+    var n = S.pass.length, m = $("pmeter"), t = $("ptext");
     if (!m) return;
-    m.style.width = w + "%";
+    m.style.width = Math.min(100, n * 7) + "%";
     t.textContent = n === 0 ? "At least 10 characters" : n < 10 ? (10 - n) + " more characters" : n < 16 ? "Good" : "Strong";
   }
   function startDetect() {
-    if (S.detecting || S.boards.length >= FOUND.length) return;
+    if (S.detecting || S.boards.length >= found().length) return;
+    var f = found(), gap = S.large ? 260 : 1400;
     S.detecting = setInterval(function () {
-      if (S.boards.length >= FOUND.length) { clearInterval(S.detecting); S.detecting = null; return; }
-      S.boards.push(Object.assign({}, FOUND[S.boards.length]));
-      if (STEPS[S.i].id === "plug") render();
-    }, 1400);
+      if (S.boards.length >= f.length) { clearInterval(S.detecting); S.detecting = null; return; }
+      S.boards.push(Object.assign({}, f[S.boards.length]));
+      if (cur().id === "plug") render();
+    }, gap);
   }
   function install() {
     S.installing = true; render();
     var t = setInterval(function () {
       var all = true;
       good().forEach(function (b, k) {
-        var lag = k * 18;
         var p = b.progress || 0;
-        if (p < 100) { b.progress = Math.min(100, p + (p + lag > lag ? 3 + Math.random() * 4 : 0) + (p === 0 && Math.random() < 0.5 - k * 0.12 ? 2 : 0)); }
-        if (b.progress < 100) all = false;
+        if (p < 100) {
+          if (p === 0) { if (Math.random() < (S.large ? 0.18 : 0.5 - k * 0.12)) b.progress = 2; }
+          else b.progress = Math.min(100, p + 3 + Math.random() * 4);
+        }
+        if ((b.progress || 0) < 100) all = false;
       });
-      if (STEPS[S.i].id === "install") render();
+      if (cur().id === "install") render();
       if (all) { clearInterval(t); S.installing = false; S.installed = true; render(); }
     }, 180);
   }
+  function runSurvey() {
+    S.surveying = true; S.survey = 0; render();
+    var t = setInterval(function () {
+      S.survey = Math.min(100, S.survey + 4);
+      if (S.survey >= 100) {
+        clearInterval(t); S.surveying = false; S.surveyed = true;
+        S.groups = {}; good().forEach(function (b) { S.groups[b.node] = b.home; });
+      }
+      if (cur().id === "survey") render();
+    }, 120);
+  }
+  function resetBoards() {
+    if (S.detecting) { clearInterval(S.detecting); S.detecting = null; }
+    S.boards = []; S.installed = false; S.installing = false; S.surveyed = false; S.surveying = false; S.groups = null; S.charger = {}; S.identify = 0; S.rooms = {};
+  }
 
+  $("large").addEventListener("change", function (e) {
+    S.large = e.target.checked;
+    resetBoards();
+    var id = cur() ? cur().id : "welcome";
+    var order = steps().map(function (s) { return s.id; });
+    var keep = ["welcome", "cell", "apps"].indexOf(id) >= 0 ? id : "plug";
+    S.i = Math.max(0, order.indexOf(keep));
+    render();
+  });
   $("next").addEventListener("click", function () {
     if (!canNext()) return;
-    do { S.i++; } while (S.i < STEPS.length - 1 && skipped(STEPS[S.i].id));
-    render(); $("screen").focus && $("screen").focus();
+    var st = steps();
+    do { S.i++; } while (S.i < st.length - 1 && skipped(st[S.i]));
+    render();
   });
   $("back").addEventListener("click", function () {
-    do { S.i--; } while (S.i > 0 && skipped(STEPS[S.i].id));
+    var st = steps();
+    do { S.i--; } while (S.i > 0 && skipped(st[S.i]));
     render();
   });
   render();
