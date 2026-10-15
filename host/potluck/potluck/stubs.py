@@ -14,6 +14,9 @@ The cabled board must relay (`POT! relay 1` on its console, as for M10's host no
 cell through it.
 
 --sleep F101@120+90: stub F101's radio off 120 s in, for 90 s -- a stub foreman killed, and brought back.
+--watch F301:cell-bench/warmest: stub F301 reads that path every two seconds (a "watch" line with owner, quality,
+value, unit and age). --refer F101:8160:node-7368/hw/die_temp: stub F101 asks for that path as a referral through
+8160 (the real cell's foreman), then watches it.
 """
 
 from __future__ import annotations
@@ -36,7 +39,10 @@ from .manifest import parse
 from .signing import load_package, read_key, verify_package
 from .transport import SerialTransport, open_transport
 
-DEFAULT_EXE = os.path.join(os.path.dirname(__file__), "..", "..", "..", "build", "tests",
+_BUILD = os.path.join(os.path.dirname(__file__), "..", "..", "..", "build")
+#: the optimised build when there is one (tools/run_host_tests.ps1 -Release -BuildDir build/release -Target pot_stubs):
+#: nine stubs checking Ed25519 signatures in a Debug build fell behind their own heartbeats.
+DEFAULT_EXE = os.path.join(_BUILD, "release" if os.path.exists(os.path.join(_BUILD, "release", "pot_stubs.exe")) else "tests",
                            "pot_stubs.exe" if os.name == "nt" else "pot_stubs")
 STUB_FIRST, STUB_LAST = 0xF000, 0xFDFF
 
@@ -81,6 +87,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--baud", type=int, default=921600)
     ap.add_argument("--sleep", action="append", default=[], help="<hex id>@<seconds>+<seconds>: a stub's radio off")
     ap.add_argument("--hub", nargs="?", const="auto", default=None)
+    ap.add_argument("--watch", action="append", default=[], help="<hex stub>:<path>")
+    ap.add_argument("--refer", action="append", default=[], help="<hex stub>:<hex via>:<path>")
     a = ap.parse_args(argv)
     from .hub import hub_endpoint
 
@@ -180,7 +188,24 @@ def main(argv: list[str] | None = None) -> int:
             control(f"sleep {who} 0")
             print(f"# stub {who} awake", flush=True)
 
-    threads = [threading.Thread(target=f, daemon=True) for f in (cable_to_stubs, stubs_to_cable, stats)]
+    from .paths import path_hash
+
+    def full(p: str) -> str:
+        return p if p.startswith("potluck://") else f"potluck://{m.system}/{p.lstrip('/')}"
+
+    def asks() -> None:
+        if stop.wait(20.0):  # once the stubs have found the cell
+            return
+        for w in a.watch:
+            who, _, p = w.partition(":")
+            control(f"watch {who} {path_hash(full(p))}")
+            print(f"# stub {who} watches {full(p)} ({path_hash(full(p))})", flush=True)
+        for r in a.refer:
+            who, via, p = r.split(":", 2)
+            control(f"refer {who} {via} {path_hash(full(p))}")
+            print(f"# stub {who} asks {via} for {full(p)} as a referral ({path_hash(full(p))})", flush=True)
+
+    threads = [threading.Thread(target=f, daemon=True) for f in (cable_to_stubs, stubs_to_cable, stats, asks)]
     threads += [threading.Thread(target=sleeper, args=(s,), daemon=True) for s in a.sleep]
     for t in threads:
         t.start()

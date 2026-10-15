@@ -2699,12 +2699,26 @@ bool handle_test(const char* line, size_t len) {
         if (owner != 0 && owner != g_node->config().node_id) asked = g_node->request_read(owner, h);
         xSemaphoreGive(g_mutex);
         uint32_t u = 0;
+        float fv = 0;
         const bool has = r.value.as_u32(u);
+        const bool hasf = r.value.as_f32(fv);  // M19: a summary's max/min/sum/avg is an f32
         std::printf("{\"t\":\"test\",\"cmd\":\"read\",\"hash\":%u,\"owner\":%u,\"quality\":\"%s\",\"value\":%s%u,"
-                    "\"age_ms\":%u,\"ts\":%u,\"asked\":%u}\n",
+                    "\"f32\":%.3f,\"unit\":%u,\"age_ms\":%u,\"ts\":%u,\"asked\":%u}\n",
                     static_cast<unsigned>(h), static_cast<unsigned>(owner), quality_str(r.quality), has ? "" : "-",
-                    has ? static_cast<unsigned>(u) : 0u, static_cast<unsigned>(r.age_ms),
+                    has ? static_cast<unsigned>(u) : 0u, hasf ? static_cast<double>(fv) : 0.0,
+                    static_cast<unsigned>(r.unit), static_cast<unsigned>(r.age_ms),
                     static_cast<unsigned>(r.timestamp_ms), static_cast<unsigned>(asked));
+        return true;
+    }
+    // M19 test instrument: "POT! refer <via, hex> <path hash>" -- a referral (Node::request_referral): the path lives
+    // in another cell, and <via> (its foreman, in this board's upper cell) answers for it. Then POT! read shows it.
+    unsigned long ref_via = 0, ref_hash = 0;
+    if (std::sscanf(buf, "POT! refer %lx %lu", &ref_via, &ref_hash) == 2) {
+        lock_node();
+        const uint16_t id = g_node->request_referral(static_cast<uint16_t>(ref_via), static_cast<uint32_t>(ref_hash));
+        xSemaphoreGive(g_mutex);
+        std::printf("{\"t\":\"test\",\"cmd\":\"refer\",\"via\":%u,\"hash\":%u,\"msg_id\":%u}\n",
+                    static_cast<unsigned>(ref_via), static_cast<unsigned>(ref_hash), static_cast<unsigned>(id));
         return true;
     }
 #if CONFIG_POT_WASM

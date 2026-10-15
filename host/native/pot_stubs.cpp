@@ -148,6 +148,11 @@ struct Stub {
 };
 std::vector<std::unique_ptr<Stub>> g_stubs;
 uint64_t g_cable_space = 0;
+struct Watch {
+    uint16_t stub;
+    uint32_t hash;
+};
+std::vector<Watch> g_watch;  // control "watch"/"refer": a path read at a stub every stats round
 
 int32_t stub_send(void* ctx, const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
     Stub* s = static_cast<Stub*>(ctx);
@@ -387,8 +392,16 @@ int main(int argc, char** argv) {
                 c = std::move(g_ctl.front());
                 g_ctl.pop_front();
             }
-            unsigned id = 0, on = 0;
-            if (std::sscanf(c.c_str(), "sleep %x %u", &id, &on) == 2) {
+            unsigned id = 0, on = 0, via = 0;
+            unsigned long hash = 0;
+            if (std::sscanf(c.c_str(), "refer %x %x %lu", &id, &via, &hash) == 3) {
+                // a referral (Node::request_referral) from stub <id> through <via>, then watched
+                for (auto& s : g_stubs)
+                    if (s->id == id) s->node->request_referral(static_cast<uint16_t>(via), static_cast<uint32_t>(hash));
+                g_watch.push_back({static_cast<uint16_t>(id), static_cast<uint32_t>(hash)});
+            } else if (std::sscanf(c.c_str(), "watch %x %lu", &id, &hash) == 2) {
+                g_watch.push_back({static_cast<uint16_t>(id), static_cast<uint32_t>(hash)});
+            } else if (std::sscanf(c.c_str(), "sleep %x %u", &id, &on) == 2) {
                 for (auto& s : g_stubs)
                     if (s->id == id) s->asleep = on != 0;
                 std::fprintf(stderr, "{\"t\":\"stub_sleep\",\"node\":%u,\"asleep\":%u}\n", id, on);
@@ -431,6 +444,27 @@ int main(int argc, char** argv) {
         }
         if (static_cast<int32_t>(t - next_stats) >= 0) {
             next_stats = t + 2000;
+            for (const Watch& w : g_watch) {
+                for (auto& s : g_stubs) {
+                    if (s->id != w.stub) continue;
+                    const NsEntry* e = s->node->ns().find(w.hash);
+                    Reading r;
+                    const NsError st = s->node->read(w.hash, r);
+                    uint32_t u = 0;
+                    float fv = 0;
+                    const bool hu = r.value.as_u32(u), hf = r.value.as_f32(fv);
+                    std::fprintf(stderr, "{\"t\":\"watch\",\"node\":%u,\"up_ms\":%u,\"hash\":%u,\"status\":%u,\"owner\":%u,"
+                                 "\"quality\":%u,\"u32\":%lld,\"f32\":%.3f,\"unit\":%u,\"age_ms\":%u}\n",
+                                 static_cast<unsigned>(s->id), static_cast<unsigned>(t), static_cast<unsigned>(w.hash),
+                                 static_cast<unsigned>(st), static_cast<unsigned>(e != nullptr ? e->owner_node : 0),
+                                 static_cast<unsigned>(r.quality), hu ? static_cast<long long>(u) : -1LL,
+                                 hf ? static_cast<double>(fv) : 0.0, static_cast<unsigned>(r.unit),
+                                 static_cast<unsigned>(r.age_ms));
+                    if (e != nullptr && e->owner_node != 0 && e->owner_node != s->id) {
+                        s->node->request_read(e->owner_node, w.hash);
+                    }
+                }
+            }
             for (auto& s : g_stubs) {
                 std::string peers, roles;
                 for (size_t i = 0; i < PeerTable::capacity(); ++i) {

@@ -1135,7 +1135,8 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
             if not inside:
                 raise ApplyError("present.cell: in a tree of cells the presenting role lives in one cell -- name it "
                                  "(a cell whose boards reach the broker)")
-            pact["nodes"] = inside
+            # the PC's placement node is in no cell: with present.hub it presents in the cell's place, as before
+            pact["nodes"] = inside + [nid for nid, n in nodes.items() if n.get("kind") == "host"]
         actors.append(pact)
     numbers = room_numbers(c)
     from . import modules as mods
@@ -1185,6 +1186,7 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
             if src not in cnum:
                 raise ApplyError(f"actor '{a['name']}': its app names cell '{src}', which the cluster file does not have")
             inside = [n for n, _ in c.boards if src in c.cells.get(n, ())]
+            inside += [nid for nid, n in nodes.items() if n.get("kind") == "host"]  # the PC is in no cell
             a["nodes"] = [n for n in (a.get("nodes") or inside) if n in inside]
             if not a["nodes"]:
                 raise ApplyError(f"actor '{a['name']}': no board of cell '{src}' may run it")
