@@ -170,6 +170,76 @@ void scenario_present(Cell& c, uint32_t sec) {
     }
 }
 
+// passive-sensor's D20 (its DECISIONS, 2026-10-15): the read load of presence and position in rooms. Rooms of five
+// boards in a row (0-4, 5-9, ...). Every board publishes its evidence and its peer list (Bytes(8) each) and sixteen
+// per-link fields every 2 s, all local; the first board of each room holds that room's fusion and reads one evidence
+// value from each other board in the room every 2 s, and their peer lists once a minute. Per-link fields are read
+// only while someone records, so not here. --scenario perlink is the design before D20 for comparison: one fusion
+// reads two values per directed link of the whole cell every 2 s.
+constexpr size_t kRoom = 5;
+uint32_t d20_hash(size_t owner, uint32_t k) { return 0x60000000u + static_cast<uint32_t>(owner) * 64u + k; }
+uint32_t g_d20_reads = 0;   // reads that went out (request_read keeps at most four outstanding a node)
+uint32_t g_d20_wanted = 0;  // reads the design asks for
+
+void d20_declare(Cell& c, uint32_t per_owner) {
+    for (size_t o = 0; o < c.size(); ++o) {
+        for (uint32_t k = 0; k < per_owner; ++k) {
+            NsDecl d;
+            d.path_hash = d20_hash(o, k);
+            d.owner_node = c.node(o).node->config().node_id;
+            d.type = k < 2 ? ValueType::Bytes : ValueType::F32;
+            d.staleness_bound_ms = 6000;
+            for (size_t i = 0; i < c.size(); ++i) c.node(i).node->ns().declare(d);
+        }
+    }
+}
+
+void scenario_d20(Cell& c, uint32_t sec) {
+    if (sec == 1) d20_declare(c, 2);  // evidence (0) and peers (1): what the radio carries
+    if (sec < 2) return;
+    const uint8_t pack[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+    if (sec % 2 == 0) {
+        for (size_t o = 0; o < c.size(); ++o) c.node(o).node->publish(d20_hash(o, 0), Value::of_bytes(pack, 8));
+    }
+    for (size_t holder = 0; holder < c.size(); holder += kRoom) {
+        for (size_t o = holder + 1; o < holder + kRoom && o < c.size(); ++o) {
+            const uint16_t id = c.node(o).node->config().node_id;
+            if (sec % 2 == 0) {  // evidence every window
+                ++g_d20_wanted;
+                g_d20_reads += c.node(holder).node->request_read(id, d20_hash(o, 0)) != 0;
+            }
+            if (sec % 60 == 1) {  // peers once a minute, in the odd second between windows
+                ++g_d20_wanted;
+                g_d20_reads += c.node(holder).node->request_read(id, d20_hash(o, 1)) != 0;
+            }
+        }
+    }
+}
+
+void scenario_perlink(Cell& c, uint32_t sec) {
+    const uint32_t per_owner = static_cast<uint32_t>(2 * (c.size() - 1));  // mean and variance of each outgoing link
+    if (sec == 1) d20_declare(c, per_owner);
+    if (sec < 2 || sec % 2) return;
+    for (size_t o = 0; o < c.size(); ++o) {
+        for (uint32_t k = 0; k < per_owner; ++k) c.node(o).node->publish(d20_hash(o, k), Value::of_f32(1.0f));
+    }
+    g_d20_wanted += static_cast<uint32_t>((c.size() - 1) * per_owner);
+}
+
+// The fusion keeps its four read slots full, every step, walking every link's two values in turn -- the fastest it
+// could go; whether that reaches the reads a window wants is the question.
+void perlink_step(Cell& c, void*) {
+    static size_t o = 1;
+    static uint32_t k = 0;
+    if (c.now_us() < 2000000) return;
+    const uint32_t per_owner = static_cast<uint32_t>(2 * (c.size() - 1));
+    for (int tries = 0; tries < 4; ++tries) {
+        if (c.node(0).node->request_read(c.node(o).node->config().node_id, d20_hash(o, k)) == 0) return;
+        ++g_d20_reads;
+        if (++k == per_owner) { k = 0; o = o + 1 < c.size() ? o + 1 : 1; }
+    }
+}
+
 // M15: the hub's telemetry pull. Node 0 is the board on the hub's cable: every period it asks each other board, one
 // request at a time as the real proxy does, for its health, its links (paged, five peers a reply), its actors and its
 // events. Each board answers with a reply of the size pot/telemetry.hpp gives for a cell this size -- the bytes on
@@ -296,7 +366,7 @@ void usage() {
         "  --hb-ms N          heartbeat period, default 100 (section 8.2)\n"
         "  --probe-ms N       round-robin probe interval, default 1000\n"
         "  --seed N           RNG seed, default 1\n"
-        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present|telemetry (default none)\n"
+        "  --scenario S       none|reboot|partition|chaos|sleepy|cliff|present|telemetry|d20|perlink\n"
         "  --tel-ms N         telemetry: the hub's pull period per board, default 10000 (M15)\n"
         "  --start-days D     start the virtual clock D days in, to straddle a counter wrap\n"
         "  --json             emit one link/node record per node, in the firmware's format\n"
@@ -369,6 +439,14 @@ int main(int argc, char** argv) {
     }
     if (scenario == "present") {
         cell.set_on_second(&scenario_present);
+    } else if (scenario == "d20") {
+        cell.set_on_second(&scenario_d20);
+        std::printf("d20: rooms of %zu, each room's fusion reads one evidence value per room-mate every 2 s, peers "
+                    "once a minute\n", kRoom);
+    } else if (scenario == "perlink") {
+        cell.set_on_second(&scenario_perlink);
+        cell.set_on_step(&perlink_step, nullptr);
+        std::printf("perlink: one fusion reads mean and variance of every directed link every 2 s\n");
     } else if (scenario == "telemetry") {
         for (size_t i = 1; i < cell.size(); ++i) cell.node(i).node->set_deploy_server(&tel_server, &cell.node(i));
         cell.node(0).node->set_deploy_result(&tel_result, nullptr);
@@ -466,7 +544,13 @@ int main(int argc, char** argv) {
                     static_cast<unsigned>(g_tel.refused), g_tel.reply_bytes / 1024.0,
                     g_tel.cycles ? g_tel.cycle_us_sum / 1000.0 / g_tel.cycles : 0.0, g_tel.cycle_us_max / 1000.0);
     }
-    if (scenario == "none" || scenario == "present" || scenario == "telemetry") {  // polling must not cost a death
+    if (scenario == "d20" || scenario == "perlink") {
+        std::printf("\n%s: the design wants %.1f reads a second; %.1f went out (%u of %u)\n", scenario.c_str(),
+                    g_d20_wanted / (minutes * 60.0), g_d20_reads / (minutes * 60.0),
+                    static_cast<unsigned>(g_d20_reads), static_cast<unsigned>(g_d20_wanted));
+    }
+    if (scenario == "none" || scenario == "present" || scenario == "telemetry" || scenario == "d20" ||
+        scenario == "perlink") {  // polling must not cost a death
         std::printf("  %s\n", deaths ? "<-- unperturbed cell lost peers; the heartbeat did not hold"
                                      : "no deaths on an unperturbed cell, as required");
     } else {
