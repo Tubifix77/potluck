@@ -182,6 +182,61 @@ class ClusterFile(unittest.TestCase):
         self.assertEqual(json.loads(self.p.read_text(encoding="utf-8")), json.loads(before))
 
 
+class NewCell(unittest.TestCase):
+    PASS = "a long enough passphrase"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.d = Path(self.tmp.name) / "home"
+
+    def tearDown(self):
+        from potluck import keystore
+        keystore.lock()
+        self.tmp.cleanup()
+
+    def test_a_new_cell_keeps_its_secrets_only_in_the_vault_and_signs_through_it(self):
+        from potluck import apply as ap
+        from potluck import keystore, signing
+        cluster = st.new_cell(self.d, "home", self.PASS)
+        self.assertEqual(sorted(p.name for p in self.d.iterdir()),
+                         ["ca.pub", "deploy.bcert", "deploy.cert", "deploy.pub", "home.json", "nodes.json",
+                          "vault.json"])  # no .key file on disk
+        self.assertNotIn(b"secret", (self.d / "vault.json").read_bytes())
+        c = ap.load_cluster(str(cluster))
+        with self.assertRaises(OSError):
+            signing.read_key(str(c.keys["deploy_key"]))  # locked
+        keystore.unlock(self.d / "vault.json", self.PASS)
+        dk, ca = signing.read_key(str(c.keys["deploy_key"])), signing.read_key(str(self.d / "ca.key"))
+        cert = json.loads(c.keys["deploy_cert"].read_text(encoding="utf-8"))
+        self.assertEqual(signing.verify_cert(cert, ca.public).public, dk.public)
+
+    def test_a_folder_that_holds_a_cell_is_never_written_over(self):
+        st.new_cell(self.d, "home", self.PASS)
+        before = (self.d / "vault.json").read_bytes()
+        with self.assertRaisesRegex(st.SetupError, "already holds a cell"):
+            st.new_cell(self.d, "home", self.PASS)
+        with self.assertRaisesRegex(st.SetupError, "already holds a cell"):
+            st.new_cell(self.d, "other", self.PASS)
+        self.assertEqual((self.d / "vault.json").read_bytes(), before)
+        with self.assertRaises(st.SetupError):
+            st.new_cell(Path(self.tmp.name) / "x", "my home", self.PASS)
+
+    def test_apply_opens_the_vault_from_stdin_and_refuses_a_wrong_passphrase(self):
+        import contextlib
+        import io
+        from potluck import apply as ap
+        cluster = st.new_cell(self.d, "home", self.PASS)  # no port: apply stops right after the vault
+        for phrase, want in ((self.PASS + "!", "did not open"), (self.PASS, "no port")):
+            out, old = io.StringIO(), sys.stdin
+            sys.stdin = io.StringIO(phrase + "\n")
+            try:
+                with contextlib.redirect_stdout(out):
+                    self.assertEqual(ap.main([str(cluster), "--passphrase-stdin"]), 2)
+            finally:
+                sys.stdin = old
+            self.assertIn(want, out.getvalue())
+
+
 class ApplyJob(unittest.TestCase):
     def run_fake(self, out: str, code: int = 0):
         script = f"import sys; print({out!r}); sys.exit({code})"

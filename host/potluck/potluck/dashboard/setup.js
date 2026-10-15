@@ -286,7 +286,10 @@
     $("do-apply").disabled = true;
     var out = $("apply-out");
     out.hidden = false;
-    job("api/setup/apply", {}, function (j) {
+    var body = {};
+    if ($("pp2").value) body.passphrase = $("pp2").value;
+    $("pp2").value = "";
+    job("api/setup/apply", body, function (j) {
       out.textContent = (j.lines || []).slice(-40).join("\n");
       out.scrollTop = out.scrollHeight;
     }).then(function (j) {
@@ -329,7 +332,7 @@
     $("go-install").onclick = function () { show("s-install"); findBuild(); };
     $("do-install").onclick = install;
     $("do-join").onclick = joinAll;
-    $("go-done").onclick = function () { show("s-done"); };
+    $("go-done").onclick = function () { show("s-done"); $("pp2-row").hidden = !cell.vault; };
     $("do-apply").onclick = applyAll;
     show("s-count");
   }

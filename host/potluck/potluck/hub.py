@@ -957,7 +957,9 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 return
             jobs = setup_jobs()
             try:
-                jid = jobs.start("apply", "cell", lambda pct: st.run_apply(cl.path, pct))
+                phrase = req.get("passphrase")
+                jid = jobs.start("apply", "cell", lambda pct: st.run_apply(
+                    cl.path, pct, passphrase=str(phrase) if phrase else None))
             except st.SetupError as exc:
                 self._json(409, {"ok": False, "result": str(exc)})
                 return

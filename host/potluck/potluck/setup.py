@@ -262,6 +262,49 @@ def enrol_board(port: str, ca_key: str, registry: str, node_id: int | None = Non
             "reboot_needed": info["assigned"] != int(info["node"])}
 
 
+# ---- a new cell --------------------------------------------------------------------------------------------------
+
+def new_cell(folder: str | Path, system: str, passphrase: str, port: str | None = None) -> Path:
+    """A cell from nothing (M20's first run): its CA, a deploy key certified by it, an empty node registry and a
+    cluster file -- the secret halves sealed into `vault.json` under the owner's passphrase and never written in the
+    clear. Refuses a folder that already holds keys or a vault: a CA written over orphans every board enrolled under
+    it. Returns the cluster file."""
+    from . import apply as ap
+    from . import enrol as en
+    from . import keystore
+    from . import signing as sg
+    d = Path(folder)
+    if not 1 <= len(system) <= 31 or any(c in system for c in " /") or not system.isascii() or \
+            not system.isprintable():
+        raise SetupError("a cell's name is 1..31 printable ASCII characters, without spaces or '/'")
+    cluster = d / f"{system}.json"
+    taken = [n for n in ("vault.json", "ca.pub", "ca.key", "deploy.key", "deploy.pub", "nodes.json", cluster.name)
+             if (d / n).exists()]
+    if taken:
+        raise SetupError(f"{d} already holds a cell ({', '.join(taken)}); nothing was changed")
+    ca, deploy = sg.generate("ca", f"{system} CA"), sg.generate("deploy", f"{system} deploy")
+
+    def blob(obj) -> bytes:
+        return (json.dumps(obj, indent=2, sort_keys=True) + "\n").encode("ascii")
+    vault = keystore.seal({"ca.key": blob(ca.private_dict()), "deploy.key": blob(deploy.private_dict())}, passphrase)
+    bcert = en.build_cert(ca, 0, deploy.public, role=en.ROLE_DEPLOY)
+    en.verify_cert(bcert, ca.public, en.ROLE_DEPLOY)
+    d.mkdir(parents=True, exist_ok=True)
+    files = {"vault.json": (json.dumps(vault, indent=1) + "\n").encode("ascii"),
+             "ca.pub": blob(ca.public_dict()), "deploy.pub": blob(deploy.public_dict()),
+             "deploy.cert": blob(sg.certify(ca, deploy)), "deploy.bcert": (bcert.hex() + "\n").encode("ascii"),
+             "nodes.json": blob({"schema": 1, "nodes": {}}),
+             cluster.name: (json.dumps({"schema": ap.SCHEMA, "system": system, "port": port, "boards": [],
+                                        "keys": {"ca": "ca.pub", "deploy_key": "deploy.key",
+                                                 "deploy_cert": "deploy.cert", "deploy_bcert": "deploy.bcert"}},
+                                       indent=2) + "\n").encode("utf-8")}
+    for name, data in files.items():
+        with open(d / name, "xb") as f:  # x: never over a file that appeared since the check
+            f.write(data)
+    ap.load_cluster(str(cluster))
+    return cluster
+
+
 # ---- the cluster file -------------------------------------------------------------------------------------------
 
 def add_board(cluster: str | Path, node: str, label: str | None = None, room: str | None = None) -> dict:
@@ -301,14 +344,23 @@ def add_board(cluster: str | Path, node: str, label: str | None = None, room: st
     return entry
 
 
-def run_apply(cluster: str | Path, on_line: Callable[[str], None], cmd: list[str] | None = None) -> dict:
+def run_apply(cluster: str | Path, on_line: Callable[[str], None], cmd: list[str] | None = None,
+              passphrase: str | None = None) -> dict:
     """`potluck apply <cluster>` as a child process (it runs beside the hub, through it); its lines go to `on_line`.
-    Done when it says VERIFIED, failed on NOT VERIFIED, REFUSED or a non-zero exit. `cmd`: for the tests."""
+    Done when it says VERIFIED, failed on NOT VERIFIED, REFUSED or a non-zero exit. A sealed cell's passphrase goes
+    to the child on its stdin, never in its arguments or environment. `cmd`: for the tests."""
     import subprocess
-    cmd = cmd or [sys.executable, "-u", "-m", "potluck.apply", str(cluster)]
+    cmd = cmd or [sys.executable, "-u", "-m", "potluck.apply", str(cluster)] + \
+        (["--passphrase-stdin"] if passphrase is not None else [])
     verdict = None
     with subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parent.parent), stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace") as proc:
+                          stdin=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+                          errors="replace") as proc:
+        try:
+            proc.stdin.write((passphrase or "") + "\n")  # type: ignore[union-attr]
+            proc.stdin.close()  # type: ignore[union-attr]
+        except OSError:
+            pass  # it exited before reading: its own output says why
         for line in proc.stdout:  # type: ignore[union-attr]
             line = line.rstrip()
             on_line(line)

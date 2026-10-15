@@ -828,8 +828,9 @@ def plan_package(c: Cluster, cache: Path, log) -> Package | None:
         raise ApplyError(f"the composed manifest is not valid: {exc}") from None
     if problems:
         raise ApplyError("the composed manifest is not valid:\n  " + "\n  ".join(str(p) for p in problems))
+    from . import keystore
     for k in ("ca", "deploy_key", "deploy_cert", "deploy_bcert"):
-        if not c.keys[k].exists():
+        if not c.keys[k].exists() and keystore.lookup(c.keys[k]) is None:  # M20: a key may live only in the vault
             raise ApplyError(f"keys.{k}: {c.keys[k]} does not exist (GETTING-STARTED.md makes the keys)")
     ca = read_key(str(c.keys["ca"]))
     try:
@@ -1361,12 +1362,27 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--port", default=None, help="the serial port of the board on the cable (else the file's)")
     ap.add_argument("--plan", action="store_true", help="plan, build and read the inventory; change nothing")
     ap.add_argument("--cache", default=None, help=f"where exports and builds are kept (default {default_cache()})")
+    ap.add_argument("--passphrase-stdin", action="store_true",
+                    help="M20: read the passphrase of the keys' vault from the first line of stdin (the hub's way)")
     a = ap.parse_args(argv)
     try:
         c = load_cluster(a.cluster)
     except ApplyError as exc:
         print(f"REFUSED, nothing changed: {exc}")
         return 2
+    vault = c.keys["ca"].parent / "vault.json"
+    if vault.exists() and (a.passphrase_stdin or not c.keys["deploy_key"].exists()):
+        from . import keystore
+        try:
+            if a.passphrase_stdin:
+                phrase = sys.stdin.readline().rstrip("\r\n")
+            else:
+                import getpass
+                phrase = getpass.getpass(f"Passphrase for {vault}: ")
+            keystore.unlock(vault, phrase)
+        except (keystore.KeystoreError, OSError, ValueError) as exc:
+            print(f"REFUSED, nothing changed: the keys' vault did not open ({exc})")
+            return 2
     port = a.port or c.port
     if not port:
         print("REFUSED, nothing changed: no port (--port, or \"port\" in the cluster file)")
