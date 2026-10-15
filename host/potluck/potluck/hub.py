@@ -842,6 +842,21 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
     from . import hubauth
 
     PUBLIC = {"/", "/index.html", "/app.js", "/style.css", "/api/login", "/api/whoami", "/api/hello"}
+    setup_state: dict = {}  # M20's setup wizard: its jobs, made on first use (owner actions, 127.0.0.1 only)
+
+    def setup_jobs():
+        from . import setup as st
+        if "jobs" not in setup_state:
+            setup_state["jobs"] = st.Jobs()
+        return setup_state["jobs"]
+
+    def cell_keys() -> tuple[str, str] | None:
+        """The CA key and the node registry beside the cluster's ca.pub (potluck.enrol's defaults)."""
+        cl = getattr(model, "cluster", None)
+        if cl is None or "ca" not in getattr(cl, "keys", {}):
+            return None
+        folder = Path(cl.keys["ca"]).parent
+        return str(folder / "ca.key"), str(folder / "nodes.json")
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
@@ -918,6 +933,64 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             self.wfile.write(body)
             return False
 
+        def _setup_post(self, path: str) -> None:
+            """M20's setup wizard: probe, flash, enrol, Wi-Fi, identify -- each a job the dashboard follows."""
+            from . import setup as st
+            try:
+                req = self._body()
+                port = str(req["port"])
+            except (ValueError, KeyError):
+                self._json(400, {"ok": False, "result": "expected {\"port\": ...}"})
+                return
+            if port == getattr(model.hub.transport, "port", None):
+                self._json(409, {"ok": False, "result": "that is the hub's own link to the cell"})
+                return
+            jobs = setup_jobs()
+            try:
+                if path == "/api/setup/probe":
+                    jid = jobs.start("probe", port, lambda pct: st.probe(port))
+                elif path == "/api/setup/identify":
+                    secs = int(req.get("seconds", 20))
+                    jid = jobs.start("identify", port, lambda pct: st.identify(port, secs))
+                elif path == "/api/setup/flash":
+                    from .apply import default_cache
+                    build = Path(str(req["build"])).resolve()
+                    root = default_cache().resolve()
+                    if root not in build.parents:  # only a build the hub's own tools made
+                        self._json(403, {"ok": False, "result": f"a build under {root}, nothing else"})
+                        return
+                    parts = st.flash_parts(build)
+                    jid = jobs.start("flash", port, lambda pct: st.flash(port, parts, pct) or {"flashed": str(build)})
+                elif path == "/api/setup/wifi":
+                    ssid, pw = str(req["ssid"]), str(req["password"])
+                    jid = jobs.start("wifi", port, lambda pct: {"saved": st.set_wifi(port, ssid, pw)})
+                elif path == "/api/setup/enrol":
+                    keys = cell_keys()
+                    if keys is None:
+                        self._json(409, {"ok": False, "result": "the hub was started without a cluster file"})
+                        return
+                    ca_key, registry = keys
+                    passphrase = req.get("passphrase")
+                    wanted = req.get("node_id")
+
+                    def run(pct, ca_key=ca_key, registry=registry, passphrase=passphrase, wanted=wanted):
+                        from . import keystore
+                        vault = Path(ca_key).parent / "vault.json"
+                        try:
+                            if passphrase and vault.exists():  # the owner's keys, unlocked for this one action
+                                keystore.unlock(vault, str(passphrase))
+                            return st.enrol_board(port, ca_key, registry, int(wanted, 16) if wanted else None)
+                        finally:
+                            keystore.lock()
+                    jid = jobs.start("enrol", port, run)
+                else:
+                    self._json(404, {"error": "not found"})
+                    return
+            except (st.SetupError, ValueError, KeyError) as exc:
+                self._json(409, {"ok": False, "result": str(exc)})
+                return
+            self._json(202, {"ok": True, "job": jid})
+
         def _local_host_ok(self) -> bool:
             """On the PC's own address (no logins: whoever is there is the owner), only a request that names it: a page
             elsewhere could otherwise reach it through DNS rebinding (a name of its own resolving to 127.0.0.1).
@@ -952,6 +1025,22 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                                  "system": cl.system if cl is not None else None,
                                  "version": getattr(model, "version", None),
                                  "tls_fp": getattr(model, "tls_fp", None)})
+                return
+            if path.startswith("/api/setup/"):
+                if sessions is not None:  # owner actions: the PC's own address, never --listen (Review of M20 #5)
+                    self._json(404, {"error": "not found"})
+                    return
+                from . import setup as st
+                if path == "/api/setup/ports":
+                    own = getattr(model.hub.transport, "port", None)
+                    self._json(200, {"ports": st.list_ports(exclude=(own,) if own else ())})
+                elif path == "/api/setup/jobs":
+                    self._json(200, {"jobs": setup_jobs().all()})
+                elif path.startswith("/api/setup/jobs/"):
+                    j = setup_jobs().get(path.rsplit("/", 1)[1])
+                    self._json(200 if j else 404, j or {"error": "no such job"})
+                else:
+                    self._json(404, {"error": "not found"})
                 return
             if path == "/api/whoami":
                 who = self._who()
@@ -1068,6 +1157,9 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 ok = pairing.answer(pid, approve)
                 model.record("pair_answer", None, {"pair_id": pid, "approve": approve, "ok": ok})
                 self._json(200 if ok else 404, {"ok": ok})
+                return
+            if self.path.startswith("/api/setup/") and sessions is None:
+                self._setup_post(self.path)
                 return
             if self.path == "/api/integrations/forget" and sessions is None:
                 # The owner's, on the PC's own address only: a program that stopped for good, or a test, stops being

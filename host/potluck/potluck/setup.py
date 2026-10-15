@@ -1,0 +1,292 @@
+"""M20's setup wizard, the hub's side: find boards on USB, ask each what it is, flash it, enrol it, give it the house
+Wi-Fi, light it up so a person can find it. Owner actions, served by the hub on 127.0.0.1 only (Review of M20 #5).
+
+    python -m potluck.setup ports                      # the USB serial ports and what they look like
+    python -m potluck.setup probe COM5                 # ask the chip on COM5 what it is (resets the board)
+    python -m potluck.setup identify COM5 20           # blink its LED blue for 20 s
+
+FINDING BOARDS. A port's USB id alone cannot tell a board from an adapter: on the bench the boards' serial chips are
+CH343 (1A86:55D3) and the hub's frame-link adapter is a CP2102 (10C4:EA60), a chip other boards also use (ledger, "USB
+IDs on the bench"). So every port with a USB id is a candidate, the port the hub itself holds is left out, and the
+chip is asked (`probe`: esptool's flash-id, which resets the board into its bootloader and back).
+
+WHAT A BOARD NEEDS. An ESP32-S3 with 16 MB of flash and PSRAM: the image's partition table assumes 16 MB (M12) and the
+reconciler is compiled out without PSRAM (CLAUDE.md, the PSRAM build). `probe` says which, with the reason.
+
+JOBS. Flashing takes a minute or two a board: it runs as a job the dashboard follows (`Jobs`), with a percentage and
+a short log that never holds a password or a key.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import io
+import json
+import re
+import sys
+import threading
+import time
+import uuid
+from pathlib import Path
+from typing import Callable
+
+#: USB ids of serial chips seen on ESP32-S3 boards; the rest of the candidates are asked all the same.
+KNOWN = {(0x1A86, 0x55D3): "CH343", (0x10C4, 0xEA60): "CP2102", (0x303A, None): "ESP32-S3 USB"}
+NEED_FLASH_MB = 16
+
+
+class SetupError(Exception):
+    pass
+
+
+def list_ports(exclude: tuple[str, ...] = (), lister: Callable | None = None) -> list[dict]:
+    """Every USB serial port but those named in `exclude` (the hub's own frame link)."""
+    if lister is None:
+        from serial.tools import list_ports as lp
+        lister = lp.comports
+    out = []
+    for p in lister():
+        if p.vid is None or p.device in exclude:
+            continue
+        kind = KNOWN.get((p.vid, p.pid)) or KNOWN.get((p.vid, None)) or "USB serial"
+        out.append({"port": p.device, "vid": f"{p.vid:04x}", "pid": f"{(p.pid or 0):04x}", "chip": kind,
+                    "description": p.description, "serial": p.serial_number})
+    return sorted(out, key=lambda d: d["port"])
+
+
+def _esptool(args: list[str]) -> str:
+    import esptool
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+        try:
+            esptool.main(args)
+        except SystemExit as exc:  # esptool exits on a failed connection
+            if exc.code not in (0, None):
+                raise SetupError(_last_line(buf.getvalue()) or "esptool failed") from None
+        except Exception as exc:  # noqa: BLE001 -- esptool raises its own FatalError and serial errors
+            raise SetupError(f"{type(exc).__name__}: {exc}") from None
+    return buf.getvalue()
+
+
+def _last_line(text: str) -> str:
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    return lines[-1] if lines else ""
+
+
+def parse_probe(text: str) -> dict:
+    """What esptool's flash-id says, tolerant of its wording."""
+    def find(*pats):
+        for p in pats:
+            m = re.search(p, text, re.IGNORECASE | re.MULTILINE)
+            if m:
+                return m.group(1).strip()
+        return None
+    chip = find(r"^Chip type:\s*(.+)$", r"Detecting chip type\.*\s*(ESP32[\w-]*)", r"^Chip is\s+(.+)$")
+    flash = find(r"Detected flash size:\s*(\d+)\s*MB", r"flash size:\s*(\d+)\s*MB")
+    psram = find(r"Embedded PSRAM\s*(\d+)\s*MB", r"PSRAM\s*(\d+)\s*MB")
+    mac = find(r"^MAC:\s*([0-9a-f:]{17})")
+    return {"chip": chip, "flash_mb": int(flash) if flash else None, "psram_mb": int(psram) if psram else 0, "mac": mac}
+
+
+def judge(info: dict) -> tuple[bool, str]:
+    """Can Potluck run here, and if not, the reason a person reads."""
+    chip = (info.get("chip") or "").upper()
+    if not chip.startswith("ESP32-S3"):
+        return False, f"this is {info.get('chip') or 'not an Espressif chip'}; Potluck's S3 Edition needs an ESP32-S3"
+    if not info.get("flash_mb"):
+        return False, "its flash size could not be read"
+    if info["flash_mb"] < NEED_FLASH_MB:
+        return False, f"it has {info['flash_mb']} MB of flash; Potluck needs {NEED_FLASH_MB} MB"
+    if not info.get("psram_mb"):
+        return False, "it has no PSRAM; Potluck needs it"
+    return True, "ready"
+
+
+def probe(port: str, runner: Callable[[list[str]], str] = _esptool) -> dict:
+    info = parse_probe(runner(["--port", port, "--after", "hard-reset", "flash-id"]))
+    ok, why = judge(info)
+    return dict(info, port=port, ok=ok, reason=why)
+
+
+# ---- flashing ---------------------------------------------------------------------------------------------------
+
+def flash_parts(build_dir: str | Path) -> list[tuple[str, Path]]:
+    """The (offset, file) pairs ESP-IDF's flasher_args.json names for a build."""
+    d = Path(build_dir)
+    fa = d / "flasher_args.json"
+    if not fa.exists():
+        raise SetupError(f"{d}: no flasher_args.json -- not an ESP-IDF build folder")
+    doc = json.loads(fa.read_text(encoding="utf-8"))
+    parts = [(off, d / f) for off, f in sorted(doc.get("flash_files", {}).items(), key=lambda kv: int(kv[0], 16))]
+    if not parts:
+        raise SetupError(f"{fa}: no flash_files")
+    for _, f in parts:
+        if not f.exists():
+            raise SetupError(f"{f}: missing")
+    return parts
+
+
+_PCT = re.compile(r"\((\d{1,3})\s?%\)")
+
+
+class _Progress(io.TextIOBase):
+    """A stream esptool writes into; each '(NN %)' it prints moves the job on."""
+
+    def __init__(self, on_pct: Callable[[int], None]):
+        self.on_pct, self.text = on_pct, []
+
+    def write(self, s: str) -> int:
+        self.text.append(s)
+        for m in _PCT.finditer(s):
+            self.on_pct(min(100, int(m.group(1))))
+        return len(s)
+
+
+def flash(port: str, parts: list[tuple[str, Path]], on_pct: Callable[[int], None],
+          runner: Callable | None = None) -> None:
+    args = ["--port", port, "--baud", "921600", "--after", "hard-reset", "write-flash"]
+    for off, f in parts:
+        args += [off, str(f)]
+    if runner is not None:
+        runner(args, on_pct)
+        return
+    import esptool
+    stream = _Progress(on_pct)
+    with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
+        try:
+            esptool.main(args)
+        except SystemExit as exc:
+            if exc.code not in (0, None):
+                raise SetupError(_last_line("".join(stream.text)) or "flashing failed") from None
+    on_pct(100)
+
+
+# ---- talking to a board's console ---------------------------------------------------------------------------------
+
+def console(port: str, line: str, want: str, timeout: float = 5.0, opener: Callable | None = None) -> dict:
+    """Send one `POT! ...` line, return the first JSON line whose fields contain `want` (k=v)."""
+    k, _, v = want.partition("=")
+    if opener is None:
+        import serial
+
+        def opener(p):
+            s = serial.Serial()
+            s.port, s.baudrate, s.timeout = p, 115200, 0.05
+            s.dtr = False  # never reset the board by opening its port
+            s.rts = False
+            s.open()
+            return s
+    s = opener(port)
+    try:
+        s.reset_input_buffer()
+        s.write(line.encode("utf-8") + b"\n")
+        buf, end = b"", time.time() + timeout
+        while time.time() < end:
+            buf += s.read(256)
+            while b"\n" in buf:
+                raw, buf = buf.split(b"\n", 1)
+                raw = raw.strip()
+                if raw.startswith(b"{"):
+                    try:
+                        d = json.loads(raw)
+                    except ValueError:
+                        continue
+                    if str(d.get(k)) == v:
+                        return d
+        raise SetupError(f"{port}: no answer to {line.split(' ')[1]!r}")
+    finally:
+        s.close()
+
+
+def identify(port: str, seconds: int, opener: Callable | None = None) -> dict:
+    return console(port, f"POT! identify {int(seconds)}", "cmd=identify", opener=opener)
+
+
+def set_wifi(port: str, ssid: str, password: str, opener: Callable | None = None) -> bool:
+    """Potluck's own station (the `wifi` module). Neither value is logged or returned."""
+    def q(x):
+        return '"' + x.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    if not 8 <= len(password) <= 64:
+        raise SetupError("a Wi-Fi password is 8 to 64 characters")
+    d = console(port, f"POT! wifi sta {q(ssid)} {q(password)}", "t=wifi_cfg", opener=opener)  # as tools/wifi_set.py
+    if d.get("result") != "sta_saved":
+        raise SetupError(f"the board did not save it ({d.get('result')})")
+    return True  # it takes effect at the board's next boot
+
+
+def enrol_board(port: str, ca_key: str, registry: str, node_id: int | None = None) -> dict:
+    """potluck.enrol with the cell's registry (M19/M20 step 1). The CA key comes from an unlocked vault or its file."""
+    from . import enrol as en
+    from .signing import read_key
+    info, cert = en.enrol(port, read_key(ca_key), registry=en.Registry(registry), node_id=node_id)
+    return {"node": f"{info['assigned']:04x}", "mac_node": f"{int(info['node']):04x}",
+            "reboot_needed": info["assigned"] != int(info["node"])}
+
+
+# ---- jobs -------------------------------------------------------------------------------------------------------
+
+class Jobs:
+    """Background work the dashboard follows: {id, kind, port, state: running|done|failed, pct, result, error}."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.jobs: dict[str, dict] = {}
+
+    def start(self, kind: str, port: str, fn: Callable[[Callable[[int], None]], dict | None]) -> str:
+        jid = uuid.uuid4().hex[:12]
+        job = {"id": jid, "kind": kind, "port": port, "state": "running", "pct": 0, "result": None, "error": None,
+               "started": time.time()}
+        with self.lock:
+            busy = [j for j in self.jobs.values() if j["port"] == port and j["state"] == "running"]
+            if busy:
+                raise SetupError(f"{port} is busy with {busy[0]['kind']}")
+            self.jobs[jid] = job
+
+        def pct(n: int) -> None:
+            with self.lock:
+                job["pct"] = max(job["pct"], n)
+
+        def run() -> None:
+            try:
+                res = fn(pct)
+                with self.lock:
+                    job.update(state="done", pct=100, result=res)
+            except Exception as exc:  # noqa: BLE001 -- a job reports what went wrong, never takes the hub down
+                with self.lock:
+                    job.update(state="failed", error=str(exc))
+
+        threading.Thread(target=run, daemon=True, name=f"setup-{kind}").start()
+        return jid
+
+    def get(self, jid: str) -> dict | None:
+        with self.lock:
+            j = self.jobs.get(jid)
+            return dict(j) if j else None
+
+    def all(self) -> list[dict]:
+        with self.lock:
+            return [dict(j) for j in self.jobs.values()]
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    try:
+        if not argv or argv[0] == "ports":
+            for p in list_ports():
+                print(f"{p['port']:8} {p['vid']}:{p['pid']}  {p['chip']:13} {p['description']}")
+            return 0
+        if argv[0] == "probe":
+            print(json.dumps(probe(argv[1])))
+            return 0
+        if argv[0] == "identify":
+            print(json.dumps(identify(argv[1], int(argv[2]) if len(argv) > 2 else 20)))
+            return 0
+        print(__doc__.split("\n\n")[1])
+        return 2
+    except (SetupError, OSError) as exc:
+        print(f"setup: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

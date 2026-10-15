@@ -10,6 +10,7 @@ import socket
 import struct
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -189,6 +190,31 @@ class Entities(unittest.TestCase):
                          {"installed_version": "fb1dabd-a1", "latest_version": "1c7b6b6-a1", "title": "Potluck firmware"})
         cell = st["potluck/ef76cc2e/hub/cell/state"]
         self.assertEqual((cell["apps_working"], cell["problems"]["passive-sensor"]), (1, True))
+
+class Setup(Pair):
+    """M20's setup wizard on the hub: owner actions on the PC's own address only."""
+
+    def wait(self, jid):
+        for _ in range(300):
+            j = self.req(self.local_addr, "GET", f"/api/setup/jobs/{jid}")[1]
+            if j["state"] != "running":
+                return j
+            time.sleep(0.02)
+        self.fail("job still running")
+
+    def test_setup_lives_on_the_pcs_own_address_only(self) -> None:
+        self.assertEqual(self.req(self.local_addr, "GET", "/api/setup/ports")[0], 200)
+        self.assertIn(self.req(self.lan_addr, "GET", "/api/setup/ports")[0], (401, 404))
+        code = self.req(self.lan_addr, "POST", "/api/setup/probe", {"port": "COM99"})[0]
+        self.assertIn(code, (401, 404))  # never served to the network side
+
+    def test_a_probe_of_a_port_with_no_board_fails_as_a_job_and_a_foreign_build_is_refused(self) -> None:
+        code, r = self.req(self.local_addr, "POST", "/api/setup/probe", {"port": "COM99-not-there"})
+        self.assertEqual(code, 202)
+        self.assertEqual(self.wait(r["job"])["state"], "failed")
+        code, r = self.req(self.local_addr, "POST", "/api/setup/flash", {"port": "COM98", "build": self.tmp.name})
+        self.assertEqual(code, 403)
+
 
 
 if __name__ == "__main__":

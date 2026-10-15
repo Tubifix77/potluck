@@ -873,7 +873,22 @@ uint8_t scaled(uint8_t v) {
     return static_cast<uint8_t>(s == 0 ? 1 : s);
 }
 
+// M20: "light up this board" -- the setup wizard's rooms step and the dashboard's identify. While it runs, the LED
+// blinks blue fast whatever the status is: the owner asked for it, and the board must be findable even while searching.
+uint32_t g_identify_until_ms = 0;
+
 void render(Colour c, uint32_t now_ms) {
+    if (g_identify_until_ms != 0 && static_cast<int32_t>(g_identify_until_ms - now_ms) > 0) {
+        if ((now_ms % 400u) < 200u) {
+            show(0, 0, kBrightness);
+        } else {
+            show(0, 0, 0);
+        }
+        g_last_shown = "identify";
+        g_last_app = false;
+        return;
+    }
+    g_identify_until_ms = 0;
     switch (c) {
         case Colour::Purple:
             show(kBrightness, 0, kBrightness);
@@ -2619,6 +2634,14 @@ bool handle_test(const char* line, size_t len) {
     while (len > 0 && (buf[len - 1] == '\r' || buf[len - 1] == '\n' || buf[len - 1] == ' ')) buf[--len] = 0;
     unsigned node = 0;
     int value = 0;
+    unsigned secs = 0;
+    if (std::sscanf(buf, "POT! identify %u", &secs) == 1) {
+        // M20: blink blue for `secs` seconds (at most 300; 0 stops it) so a person can find this board.
+        if (secs > 300) secs = 300;
+        status_led::g_identify_until_ms = secs == 0 ? 0 : now_ms_() + secs * 1000u;
+        std::printf("{\"t\":\"test\",\"cmd\":\"identify\",\"seconds\":%u}\n", secs);
+        return true;
+    }
     if (std::sscanf(buf, "POT! write %x %d", &node, &value) == 2) {
         const bool outside = std::strstr(buf, " outside") != nullptr;
         lock_node();
