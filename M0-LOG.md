@@ -5799,3 +5799,36 @@ repositories do not make it a fork) -- enrolment stays by cable (ADR-007), the C
 review:** the hub's own address (127.0.0.1, no login) accepted a POST from any web page and any Host -- a page elsewhere
 could have approved a pairing; every POST there needs X-Potluck-Request and the Host must be 127.0.0.1 or localhost
 (`c9a4065`, hub restarted).
+
+**M20 step 2, the afternoon and evening (2026-10-15).** The setup wizard's hub side and page, Add-boards mode
+(`b700ce2`..`44ea20e`): find boards on USB, probe (esptool `flash-id`), flash the build the cell's boards run,
+enrol under the cell's registry, Wi-Fi, reset, light a board up (`POT! identify`, blue blink, shown on B), a room
+per board into the cluster file, `apply` as a job; owner actions on 127.0.0.1 only. Found by doing it: **a probe
+restarts the board** (A rebooted at 17:19 from a hand-run `flash-id` while the plan build ran), so the page never
+probes a port that was there when it opened -- it works on ports that appear afterwards, or one the owner marks as
+new. A new cell keeps its secrets only in the vault (`9947230`; `apply --passphrase-stdin`, never argv or the
+environment -- its test found `apply` returning after a vault that had opened). Clicked through end to end against a
+pretend cell with every hardware call replaced.
+
+**M20's kill line -- the frame link sharing the console UART with the logs -- did not fire** (`21a3ef7`, rolled out
+at firmware counter 42, package 75). A sender writes each frame as 0x00, the COBS frame, 0x00 in one driver call
+(printf already goes through the same driver, which serialises writers); text never holds a 0x00 (`pot::ConsoleDemux`:
+text outside a frame goes to the console's line reader at once, a chunk that is no frame is handed back as text, two
+zeros resync). On the bench, `potctl` over **C's own USB cable** (COM5, 115200, no adapter): HELLO admitted as 0x8160,
+B's die temperature read through it, then **2,196 reads in 2 minutes, 0 timeouts**, C logging on the same line
+throughout (`captures/s45-console-link-soak.txt`). The host opens the port with DTR and RTS off (a board's own USB port
+wires them to reset and boot). Not yet: the hub on a console port, 115200's throughput for a firmware rollout, a
+log burst during a deploy.
+
+**The floor plan, with passive-sensor's session** (the owner: a map where a moving person is placed, a rough plan
+rather than a wall editor; asked to send passive-sensor the job and let it catch up on Potluck first). Split: Potluck
+draws the plan and holds the boards' positions; passive-sensor estimates. Built here: a board's `"position": [x, y]`
+in the cluster file becomes a pinned `builtin:position` actor in the signed package (node-<id>/sys/pos/{x,y}, so a cell
+with no PC keeps them, `4eabd7d`); the plan (size and rooms) in the cluster file, `?` for an output published only
+sometimes (counted, never waited for by verify or "working"), `kMaxOutputs` 8 -> 12 (`08d0f9c`); the dashboard's Plan
+tab -- rooms, boards by state, any actor declaring the seven-output position kind drawn as its zone, editable on the
+PC (`daabb91`). passive-sensor's evidence (PS-0): a drop places a person on a link's line, movement near it, **a rise
+alone places nobody** (+2.7 dB from 1.4 m off a link, +3.3 dB from 11 m away); with three boards the honest claim is
+link-zone level, labelled "estimated zone" (not a probability contour). Its accuracy in metres is a [MEASURE]: the
+PS-1 walk to taped spots, the owner's to run. The bench's board positions are ROUGH, read off the owner's drawing with
+the room assumed 13 m across.
