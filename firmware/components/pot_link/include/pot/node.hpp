@@ -387,7 +387,9 @@ class Node {
     //
     // `owner_alive` is resolved here from the peer table, because §4 rule 2's Unavailable outranks
     // any cached freshness and the namespace deliberately does not track liveness itself.
-    NsError read(uint32_t path_hash, Reading& out, bool* is_local = nullptr);
+    // `observe`: a look that is not a use -- the console's per-entry statistics -- adopts nothing and does not count as a
+    // read for eviction (it read every entry every period, so no replica was ever evicted: bench, 2026-10-15).
+    NsError read(uint32_t path_hash, Reading& out, bool* is_local = nullptr, bool observe = false);
 
     // Publish a value for a resource this node owns — the driver's path, not access-checked.
     NsError publish(uint32_t path_hash, const Value& v);

@@ -1243,17 +1243,17 @@ void Node::pending_expire(uint32_t now_ms) {
     }
 }
 
-NsError Node::read(uint32_t path_hash, Reading& out, bool* is_local) {
+NsError Node::read(uint32_t path_hash, Reading& out, bool* is_local, bool observe) {
     const NsEntry* e = ns_.find(path_hash);
     const uint32_t full_before = ns_.full_refusals();
-    if (e == nullptr && adopt_peer_sys_resource(path_hash)) {
+    if (e == nullptr && !observe && adopt_peer_sys_resource(path_hash)) {
         e = ns_.find(path_hash);  // M13: a peer's built-in, for a local reader (the presenter) as for a peer's READ
     }
-    if (e == nullptr && adopt_ != nullptr && adopt_(adopt_ctx_, path_hash)) {
+    if (e == nullptr && !observe && adopt_ != nullptr && adopt_(adopt_ctx_, path_hash)) {
         e = ns_.find(path_hash);  // M8.2: an actor output on another node, declared on demand
         if (e != nullptr) ns_.mark_adopted(path_hash, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
     }
-    if (e != nullptr && (e->flags & kNsFlagAdopted) != 0) {
+    if (e != nullptr && !observe && (e->flags & kNsFlagAdopted) != 0) {
         ns_.touch(path_hash, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);  // still read: keep it
     }
     if (e == nullptr) {

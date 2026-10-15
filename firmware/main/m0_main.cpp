@@ -2016,7 +2016,7 @@ void emit_ns_records() {
 
         Reading r;
         xSemaphoreTake(g_mutex, portMAX_DELAY);
-        const NsError st = g_node->read(e.path_hash, r);
+        const NsError st = g_node->read(e.path_hash, r, nullptr, true);  // a look, not a use: keeps eviction honest
         xSemaphoreGive(g_mutex);
         if (st != NsError::Ok) {
             continue;

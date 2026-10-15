@@ -5759,3 +5759,22 @@ verify and the hub read, and `"outputs": []` means "publishes nothing"); the boa
 read-time replicas: C holds rf_fusion and keeps the eight link replicas it reads; B kept the same eight from the
 minutes it held rf_fusion while C was updating -- replicas are never removed, which is the one part of question 2
 still to build (eviction of replicas nobody reads).
+
+**Replica eviction, finished on the bench (2026-10-15):** the first rollout evicted nothing -- B kept its eight link
+replicas for 40 minutes -- because the console's per-entry statistics read every entry through `Node::read` each period,
+which counted as a use. `Node::read(..., observe)` now looks without adopting or keeping an entry alive, and the
+statistics printer uses it (`tests/test_actor_runtime.cpp`: a look does not keep a replica, a use does).
+
+**M19 planned: cells of cells** (the owner's idea, 2026-10-15). Researched with the-prompt procedure under the
+zero-assumption contract by three research agents -- Espressif (ESP-NOW limits, ESP-WIFI-MESH, Mesh-Lite, the esp-now
+component), sensor-network clustering and mesh standards (LEACH, HEED, TAG, Push-Sum, Jelasity, SWIM, Thread, Zigbee,
+Bluetooth Mesh), federation (KubeFed, Karmada, ClusterSet, Consul, Kubernetes' caps, DNS) -- with the quotes the plan
+leans on re-checked against raw pages and registered (ledger "M19 research"); pot_sim measured the airtime (a 10-board
+cell 10.1 %, 20 boards 26.1 %, a slow upper cell of 10 about 3.5 %). The owner's player-manager tree holds, amended by
+the evidence: the foreman is a role (fixed heads die first -- LEACH) with a standby (Consul's 3-5 servers), a board holds
+at most two memberships (which is the owner's "keep the foreman of foremen away from level 1"), a cell exports a chosen
+summary rather than a mirror (DNS, KubeFed), cross-cell reads are L4, flooding is out, and a tree spans space rather
+than adding airtime. An external review found fourteen problems, ten binding -- one CA would merge neighbouring cells
+(groups first), one heartbeat window per board, package and reconciler scope, ADR-005/006 forbid election (assigned by
+HRW instead), referrals must not be forwarding, the peer budget, a tree-wide channel, missing accept lines, a kill line
+that had already passed, MAC-derived node ids that collide -- all adopted into section 13.

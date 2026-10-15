@@ -470,6 +470,39 @@ TEST(actor_runtime, a_read_that_finds_no_entry_asks_the_adopt_handler) {
     CHECK_EQ(asked, 1);  // declared now: not asked again
 }
 
+TEST(actor_runtime, an_adopted_replica_is_evicted_when_unread_and_a_look_does_not_keep_it) {
+    // Section 15 question 2 (bench, 2026-10-15): the console's per-entry statistics read every entry each period, so
+    // no replica was ever evicted. A look (observe) neither adopts nor keeps an entry alive; a use does.
+    OneNode n;
+    n.node->start();
+    const uint32_t h = path_hash("potluck://lab/node-0200/test/link-0300/mean");
+    n.node->set_adopt_handler(
+        [](void* ctx, uint32_t ph) {
+            NsDecl d;
+            d.path_hash = ph;
+            d.owner_node = 0x200;
+            d.type = ValueType::F32;
+            return static_cast<Node*>(ctx)->ns().declare(d) == NsError::Ok;
+        },
+        n.node);
+    Reading r;
+    g_now = 1000;
+    CHECK(n.node->read(h, r, nullptr, true) == NsError::NotFound);  // a look adopts nothing
+    n.node->read(h, r);                                              // a use adopts it
+    CHECK(n.node->ns().find(h) != nullptr);
+    for (g_now = 2000; g_now < 1000 + 700000; g_now += 5000) {
+        n.node->read(h, r, nullptr, true);  // the statistics printer, every 5 s
+        n.node->tick(g_now);
+    }
+    CHECK(n.node->ns().find(h) == nullptr);  // evicted: nothing used it for 10 minutes
+    n.node->read(h, r);                      // used again: adopted again
+    for (const uint32_t t0 = g_now; g_now < t0 + 700000; g_now += 5000) {
+        n.node->read(h, r);  // a real reader, every 5 s
+        n.node->tick(g_now);
+    }
+    CHECK(n.node->ns().find(h) != nullptr);  // kept
+}
+
 TEST(actor_runtime, a_portable_actors_outputs_are_all_declared_and_move_together) {
     OneNode n;
     const uint8_t cfg[3] = {9, 0, 0};
