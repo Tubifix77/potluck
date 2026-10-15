@@ -286,6 +286,27 @@ class Fixtures(unittest.TestCase):
         self.assertIn("violation", err.getvalue())
 
 
+class AcrossCells(unittest.TestCase):
+    """M19 (Review of M19 #5): a binding between boards that share no cell is L4 -- a foreman's referral."""
+
+    def doc(self, actor_class: int, cells: tuple[str, str]) -> dict:
+        doc = two_nodes()
+        for n in doc["nodes"]:
+            n["owns"][0]["latency_class"] = 3
+        doc["actors"][0].update(latency_class=actor_class, needs=["potluck://lab/node-1002/adc/0"])
+        doc["actors"] += [{"name": f"pos_{nid:04x}", "module": "builtin:position", "latency_class": 4, "pin": nid,
+                           "config": {"cells": cl}} for nid, cl in ((0x1001, cells[0]), (0x1002, cells[1]))]
+        return doc
+
+    def test_an_l3_actor_bound_across_cells_is_refused_and_l4_is_fine(self) -> None:
+        errors = check(parse(self.doc(3, ("1", "2"))))
+        self.assertEqual(len(errors), 1)
+        self.assertIn("across cells", str(errors[0]))
+        self.assertIn("far", str(errors[0]))
+        self.assertEqual(check(parse(self.doc(4, ("1", "2")))), [])
+        self.assertEqual(check(parse(self.doc(3, ("1", "1,2")))), [])  # a shared cell: one hop, as before
+
+
 class Descriptions(unittest.TestCase):
     def test_every_class_has_words_a_person_can_read(self) -> None:
         for c in range(5):

@@ -1209,6 +1209,10 @@ def plan_package(c: Cluster, cache: Path, log) -> Package | None:
         raise ApplyError(f"the composed manifest is not valid: {exc}") from None
     if problems:
         raise ApplyError("the composed manifest is not valid:\n  " + "\n  ".join(str(p) for p in problems))
+    from . import locality
+    across = locality.check_cells(m)  # M19 (Review of M19 #5): a binding across cells is L4
+    if across:
+        raise ApplyError("a binding crosses cells:\n  " + "\n  ".join(str(e) for e in across))
     from . import keystore
     for k in ("ca", "deploy_key", "deploy_cert", "deploy_bcert"):
         if not c.keys[k].exists() and keystore.lookup(c.keys[k]) is None:  # M20: a key may live only in the vault

@@ -207,6 +207,48 @@ def check(m: Manifest) -> list[LocalityError]:
                     f"transport can carry, not what the actor declares"))
 
     errors.extend(_check_headroom(m))
+    errors.extend(check_cells(m))
+    return errors
+
+
+def node_cells(m: Manifest) -> dict[int, set[int]]:
+    """M19: each board's cells, as its builtin:position actor names them (config "cells", numbers)."""
+    out: dict[int, set[int]] = {}
+    for a in m.actors:
+        if a.module == "builtin:position" and a.pin is not None and a.config.get("cells"):
+            out[a.pin] = {int(t) for t in str(a.config["cells"]).split(",") if t}
+    return out
+
+
+def check_cells(m: Manifest) -> list[LocalityError]:
+    """M19 (Review of M19 #5): a binding between boards that share no cell goes through a foreman's referral -- two
+    hops at least, one per level -- so it is L4, best effort. An actor that declares itself tighter and binds a
+    resource in another cell is refused. A portable actor's cell is the one all its eligible boards share."""
+    cells = node_cells(m)
+    if not cells:
+        return []
+    errors: list[LocalityError] = []
+    for actor in m.actors:
+        if actor.latency_class >= 4 or not actor.needs:
+            continue
+        where = m.placement_of(actor)
+        homes = [where] if where is not None else list(actor.nodes) or [n.node_id for n in m.nodes]
+        mine = None
+        for h in homes:
+            if h in cells:
+                mine = set(cells[h]) if mine is None else mine & cells[h]
+        if not mine:
+            continue  # a board in no cell, or a portable actor across cells (refused by the image's scope)
+        for path in actor.needs:
+            owner = m.owner_of(path)
+            if owner is None or owner.node_id not in cells or cells[owner.node_id] & mine:
+                continue
+            errors.append(LocalityError(
+                actor.name, path,
+                f"actor is {describe_class(actor.latency_class)} in cell(s) {sorted(mine)}, and the resource is owned "
+                f"by '{owner.label}' (0x{owner.node_id:04x}) in cell(s) {sorted(cells[owner.node_id])}. A binding "
+                f"across cells goes through a foreman's referral, which is {describe_class(4)} -- declare the actor "
+                f"L4, or bind a resource of its own cell (Review of M19 #5)"))
     return errors
 
 
