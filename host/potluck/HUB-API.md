@@ -235,6 +235,9 @@ binary sensor per app. They are available while the hub is (`potluck/<cell>/hub`
 report under the same name replaces the first. The model then lists it in `integrations` beside the
 cell's own presenter: `{"name", "kind": "program", "where": <who sent it>, "state", "since_at", "detail", "last_at"}`,
 and a report older than 60 s reads `disconnected` ("silent for N s"). Report at least every 30 s while running.
+A program that stopped for good stays listed as down until the owner forgets it: `POST /api/integrations/forget
+{"name": ...}` on 127.0.0.1 only (the dashboard's Integrations tab has a Forget button there) -> 200, or 409 for a
+program still connected; it comes back the next time it reports.
 
 Every program has a share of what the hub may ask of the cell, by who it is -- a login or token by name; on 127.0.0.1
 the `X-Potluck-Client: <name>` header it sends (send one), else its address: requests 20 a second (bursts of 40),

@@ -156,9 +156,18 @@
     var dead = boards.filter(function (b) { return b.state === "dead"; });
     var unknown = boards.filter(function (b) { return b.state === "unknown"; });
     var working = apps.filter(function (a) { return a.working; }).length;
-    var inUse = ints.filter(function (i) { return i.state !== "off"; });
-    var conn = ints.filter(function (i) { return i.state === "connected"; }).length;
-    var disc = ints.filter(function (i) { return i.state === "disconnected"; });
+    // A role a board holds (presenting) is listed per board, but it is one integration: connected when any board
+    // holds it; the others standing by are not "not connected".
+    var byName = {};
+    ints.forEach(function (i) {
+      var k = i.kind === "board" ? "board:" + i.name : "program:" + i.name, c = byName[k];
+      if (!c) { byName[k] = { name: i.name, state: i.state }; return; }
+      if (i.state === "connected" || (i.state === "disconnected" && c.state !== "connected")) c.state = i.state;
+    });
+    var roles = Object.keys(byName).map(function (k) { return byName[k]; });
+    var inUse = roles.filter(function (i) { return i.state !== "off"; });
+    var conn = roles.filter(function (i) { return i.state === "connected"; }).length;
+    var disc = roles.filter(function (i) { return i.state === "disconnected"; });
     var d = lastDeploy(m), hub = m.hub || {}, cell = m.cell || {};
 
     var v = $("verdict");
@@ -184,7 +193,7 @@
     setTile("sum-apps", notw.length ? "bad" : "ok", working + "<small>/" + apps.length + "</small>",
       notw.length ? "not: " + notw.join(", ") : "all working");
     var isub = disc.length ? disc.map(function (i) { return esc(i.name) + " down"; }).join(", ") :
-      ints.filter(function (i) { return i.state !== "connected"; }).map(function (i) { return esc(i.name) + " " + esc(i.state); }).join(", ");
+      roles.filter(function (i) { return i.state !== "connected"; }).map(function (i) { return esc(i.name) + " " + esc(i.state); }).join(", ");
     setTile("sum-integrations", disc.length ? "bad" : "ok", conn + "<small>/" + inUse.length + " connected</small>", isub || "all connected");
     if (d) {
       var dcls = ["reverted", "refused", "failed"].indexOf(d.result) >= 0 ? "bad" : d.result === "running" ? "warn" : "ok";
@@ -269,6 +278,11 @@
   }
   document.addEventListener("click", function (e) {
     var b = e.target;
+    if (b.matches && b.matches("button[data-forget]")) {
+      b.disabled = true;
+      post("api/integrations/forget", { name: b.getAttribute("data-forget") });
+      return;
+    }
     if (!b.matches || !b.matches("button[data-pair]")) return;
     b.disabled = true;
     post("api/pairing", { pair_id: b.getAttribute("data-pair"), approve: b.getAttribute("data-approve") === "1" });
@@ -395,8 +409,10 @@
       (m.integrations || []).map(function (i) {
         return '<tr id="' + fid(i.name) + '">' + td("Integration", "<b>" + esc(i.name) + "</b>") + td("Kind", esc(i.kind)) +
           td("Where", blink(m, i.where)) + td("State", sbadge(i.state)) + td("Since", ago(i.since_at, "", " ago")) +
-          td("Detail", esc(i.detail || "")) + "</tr>";
-      })) + '<p class="muted small">Programs reading the hub\'s API (M18) are not listed in API version 1.</p>';
+          td("Detail", esc(i.detail || "") + (i.kind === "program" && i.state !== "connected" && !S.who.login ?
+            ' <button type="button" data-forget="' + esc(i.name) + '">Forget</button>' : "")) + "</tr>";
+      })) + '<p class="muted small">A program that stopped for good, or a test, can be forgotten here on the hub\'s PC; ' +
+        'it comes back the next time it reports.</p>';
   }
 
   function renderDeploys(m) {

@@ -88,6 +88,18 @@ class Reports:
                                   "t": time.monotonic()}
         return True
 
+    def forget(self, name: str) -> bool:
+        """The owner's: drop a program that is no longer connected (it stopped for good, or was a test) -- the hub
+        otherwise lists it as down for as long as it runs. A connected program is never forgotten."""
+        with self.lock:
+            r = self.reports.get(name)
+            if r is None:
+                return False
+            if time.monotonic() - r["t"] <= REPORT_FRESH_S and r["state"] == "connected":
+                return False
+            del self.reports[name]
+            return True
+
     def snapshot(self) -> list[dict]:
         now = time.monotonic()
         out = []

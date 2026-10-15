@@ -76,8 +76,15 @@ class Api(HubFixture):
             ints = {i["name"]: i for i in self.req("GET", "/api/model")[1]["integrations"]}
             self.assertEqual(ints["Node-RED"]["state"], "disconnected")
             self.assertIn("silent for", ints["Node-RED"]["detail"])
+            # The owner forgets it on the PC's own address (this fixture's API has no logins): gone from the list.
+            self.assertEqual(self.req("POST", "/api/integrations/forget", {"name": "Node-RED"})[0], 200)
+            names = [i["name"] for i in self.req("GET", "/api/model")[1]["integrations"]]
+            self.assertNotIn("Node-RED", names)
         finally:
             hc.REPORT_FRESH_S = old
+        # A connected program is never forgotten.
+        self.req("POST", "/api/integrations", {"name": "HA", "state": "connected"}, client="ha")
+        self.assertEqual(self.req("POST", "/api/integrations/forget", {"name": "HA"})[0], 409)
 
 
 class Shares(unittest.TestCase):

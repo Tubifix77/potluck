@@ -1047,6 +1047,18 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 model.record("pair_answer", None, {"pair_id": pid, "approve": approve, "ok": ok})
                 self._json(200 if ok else 404, {"ok": ok})
                 return
+            if self.path == "/api/integrations/forget" and sessions is None:
+                # The owner's, on the PC's own address only: a program that stopped for good, or a test, stops being
+                # listed as down. A connected one is refused (409).
+                try:
+                    name = str(self._body()["name"])
+                except (ValueError, KeyError):
+                    self._json(400, {"ok": False, "result": "expected {\"name\": ...}"})
+                    return
+                ok = model.reports.forget(name)
+                model.record("integration_forgotten", None, {"name": name, "ok": ok})
+                self._json(200 if ok else 409, {"ok": ok})
+                return
             if self.path == "/api/login" and sessions is not None:
                 try:
                     req = self._body()
