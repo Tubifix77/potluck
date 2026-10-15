@@ -79,6 +79,9 @@ class ModuleSpec:
     #: M20 (passive-sensor's D20): "peers": {"nearest": K} -- each board's {peer} outputs exist for its K nearest boards
     #: in its room only (node-<id>/sys/near, which `apply` computes), so they are counted for K, not every board. 0: all.
     peers_nearest: int = 0
+    #: M20: "per_room": true -- a portable module `apply` runs once per room of the cluster file, as <actor>_<room>
+    #: placed among that room's boards; a cluster file with no rooms keeps the one actor.
+    per_room: bool = False
 
 
 _REGISTRY: dict[str, ModuleSpec] = {}
@@ -159,7 +162,11 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
             if not isinstance(k, int) or isinstance(k, bool) or not 1 <= k <= NEAR_MAX:
                 raise ModuleError(f"{w}: 'peers' is {{\"nearest\": K}}, K 1..{NEAR_MAX} (a board's set travels as "
                                   f"node-<id>/sys/near, eight bytes)")
-        out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req), "outputs" in m, k))
+        per_room = m.get("per_room", False)
+        if not isinstance(per_room, bool) or (per_room and place != "portable"):
+            raise ModuleError(f"{w}: 'per_room' is true or false, and only for a portable module")
+        out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req), "outputs" in m, k,
+                              per_room))
     return out
 
 

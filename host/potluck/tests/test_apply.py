@@ -152,6 +152,31 @@ class ClusterFile(unittest.TestCase):
         self.assertEqual(near[0x0600], [0x0100, 0x0200, 0x0300, 0x0400])
         self.assertEqual(ap.near_sets(c, 2)[0x0400], [0x0100, 0x0200])  # unplaced itself: the lowest ids
 
+    def test_a_per_room_module_runs_once_per_room_among_that_rooms_boards(self):
+        from potluck import reconcile as rc
+        mods._REGISTRY["ext:t/fuse"] = mods.ModuleSpec(
+            "ext:t/fuse", 0xF5, "portable", (mods.Field("outputs", "path"), mods.Field("mirror", "path")), "t",
+            outputs=("act/{actor}/out",), per_room=True)
+        frag = {"schema": 1, "system": "lab", "nodes": [],
+                "actors": [{"name": "fuse", "module": "ext:t/fuse", "latency_class": 4,
+                            "config": {"outputs": "potluck://lab/act/fuse/", "mirror": "potluck://lab/x/<room>"}}]}
+        self.assertEqual((ap.room_slug("Living room"), ap.room_slug("Børn's #2"), ap.room_slug("!!")),
+                         ("living_room", "b_rn_s_2", "room"))
+        c = self.cluster(boards=[{"node": "0100", "label": "a", "room": "Living room"},
+                                 {"node": "0200", "label": "b", "room": "Kitchen"},
+                                 {"node": "0300", "label": "c", "room": "Living room"}])
+        m = mf.parse(ap.compose(c, [(frag, self.d, "frag")]))
+        acts = {a.name: a for a in m.actors if a.module == "ext:t/fuse"}
+        self.assertEqual(sorted(acts), ["fuse_kitchen", "fuse_living_room"])
+        a = acts["fuse_living_room"]
+        self.assertEqual((a.nodes, a.config["outputs"], a.config["mirror"]),
+                         ((0x100, 0x300), "potluck://home/act/fuse_living_room/", "potluck://home/x/living_room"))
+        self.assertEqual([n for n, _ in rc.eligible(m, a)], [0x100, 0x300])
+        dp.compile_image(m, 5)
+        # no rooms: the one actor, unchanged
+        m0 = mf.parse(ap.compose(self.cluster(), [(frag, self.d, "frag")]))
+        self.assertEqual([a.name for a in m0.actors if a.module == "ext:t/fuse"], ["fuse"])
+
     def test_fragments_are_matched_by_label_renumbered_and_rehomed(self):
         c = self.cluster()
         frag = {"schema": 1, "system": "lab", "nodes": [

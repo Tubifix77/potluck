@@ -756,6 +756,46 @@ def near_sets(c: Cluster, k: int) -> dict[int, list[int]]:
     return out
 
 
+def room_slug(name: str) -> str:
+    """M20: a room's name as a path-safe piece -- lowercase, [a-z0-9_], every other run of characters one '_':
+    "Living room" -> "living_room". Empty after that (a name of signs only): "room"."""
+    import re
+    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "room"
+
+
+def per_room(c: Cluster, actors: list[dict]) -> list[dict]:
+    """M20: each actor of a module with "per_room" becomes one per room of the cluster file -- <name>_<slug>, placed
+    only among that room's boards, `<room>` and its own act/<name>/ in string config values rewritten for it. With no
+    rooms the actor stays as it is."""
+    from . import modules as mods
+    rooms = sorted(set(c.rooms.values()))
+    if not rooms:
+        return actors
+    slugs: dict[str, str] = {}
+    for r in rooms:  # two names with one slug ("Hall", "hall"): numbered
+        s, i = room_slug(r), 2
+        while s in slugs.values():
+            s, i = f"{room_slug(r)}_{i}", i + 1
+        slugs[r] = s
+    out = []
+    for a in actors:
+        spec = mods.get(str(a.get("module", "")))
+        if spec is None or not spec.per_room:
+            out.append(a)
+            continue
+        base = a["name"]
+        for r in rooms:
+            name = f"{base}_{slugs[r]}"
+            b = copy.deepcopy(a)
+            b["name"] = name
+            b["nodes"] = [n for n, _ in c.boards if c.rooms.get(n) == r]
+            for k, v in list(b.get("config", {}).items()):
+                if isinstance(v, str):
+                    b["config"][k] = v.replace("<room>", slugs[r]).replace(f"/act/{base}/", f"/act/{name}/")
+            out.append(b)
+    return out
+
+
 def room_numbers(c: Cluster) -> dict[str, int]:
     """M20: the rooms the cluster file names, sorted by name and numbered from 1 -- what node-<id>/sys/room holds."""
     return {name: i + 1 for i, name in enumerate(sorted(set(c.rooms.values())))}
@@ -831,6 +871,10 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
                 raise ApplyError(f"{where}: binding '{k}' differs from another fragment's")
             bindings[k] = v
         links.extend(doc.get("links", []))
+    actors = per_room(c, actors)  # M20: one per room where a module asks
+    names = {a["name"]: names.get(a["name"], "per_room") for a in actors}
+    if len(names) != len(actors):
+        raise ApplyError("an actor made per room has the name of another actor")
     out = {"schema": 1, "system": c.system, "min_core_version": 1, "nodes": list(nodes.values()), "actors": actors}
     if bindings:
         out["bindings"] = bindings

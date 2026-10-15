@@ -225,6 +225,8 @@ class ActorSpec:
     #: differently -- the "signed configuration" half of "a signed configuration and a state
     #: machine". Part of the canonical bytes, so the signature covers it.
     config: dict[str, Any] = field(default_factory=dict)
+    #: M20: a portable actor placed only among these nodes (one per room, `per_room`); empty: wherever it may run.
+    nodes: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -348,6 +350,7 @@ class Manifest:
                     # Only when present, so a manifest without configuration keeps the digest it
                     # had before this field existed, and every package already signed stays valid.
                     **({} if not a.config else {"config": dict(a.config)}),
+                    **({} if not a.nodes else {"nodes": list(a.nodes)}),  # M20; absent keeps older digests
                 }
                 for a in self.actors
             ],
@@ -459,7 +462,7 @@ _RESOURCE_KEYS = ("path", "unit", "kind", "access", "latency_class", "staleness_
                   "staleness_policy", "safety_relevant")
 _NODE_KEYS = ("node_id", "label", "power", "headroom_bytes", "allow_background", "owns", "kind", "placement")
 _ACTOR_KEYS = ("name", "module", "latency_class", "needs", "headroom_bytes", "priority",
-               "on_host_loss", "pin", "config")
+               "on_host_loss", "pin", "config", "nodes")
 _TOP_KEYS = ("schema", "system", "min_core_version", "nodes", "actors", "bindings", "links",
             "placement", "outside")
 _LINK_KEYS = ("a", "b", "transport")
@@ -572,11 +575,23 @@ def _parse_actor(d: Any, where: str, errors: list[ManifestError]) -> ActorSpec |
             else:
                 config[k] = v
 
+    nodes_raw = d.get("nodes", [])
+    nodes: list[int] = []
+    if not isinstance(nodes_raw, list):
+        errors.append(ManifestError(f"{where}.nodes", "must be a list of node ids"))
+    else:
+        for i, n in enumerate(nodes_raw):
+            v = _int(n, f"{where}.nodes[{i}]", errors, low=NODE_ID_MIN, high=NODE_ID_MAX)
+            if v is not None:
+                nodes.append(v)
+        if nodes and pin is not None:
+            errors.append(ManifestError(f"{where}.nodes", "a pinned actor runs on its pin; nodes is for a portable one"))
+
     if name is None or module is None or cls is None or headroom is None or priority is None:
         return None
     return ActorSpec(name=name, module=module, latency_class=cls, needs=tuple(needs),
                      headroom_bytes=headroom, priority=priority, on_host_loss=on_host_loss, pin=pin,
-                     config=config)
+                     config=config, nodes=tuple(nodes))
 
 
 def parse(doc: Any, *, require_placement: bool = False) -> Manifest:

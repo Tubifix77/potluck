@@ -89,6 +89,8 @@ def eligible(m: Manifest, a: ActorSpec) -> list[tuple[int, int]]:
         return [(a.pin, 1)]
     out: list[tuple[int, int]] = []
     for n in m.nodes:
+        if a.nodes and n.node_id not in a.nodes:
+            continue  # M20: placed only among its own nodes (one per room)
         if n.kind == "host" and not n.placement:
             continue  # M8: a host that only offers named services; M10's placement hosts opt in
         hub_presents = a.module == "builtin:present" and bool(a.config.get("hub"))

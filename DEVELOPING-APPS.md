@@ -243,6 +243,11 @@ ties to the lower id; unplaced boards after placed ones, by id; a board with no 
 the board holds it as `node-<id>/sys/near` (bytes: up to four u16 ids, little-endian, nearest first, 0-padded). Read
 your own board's set locally; `apply --plan` counts the module's `{peer}` outputs for that set, not every board.
 
+A portable module that works one room at a time says `"per_room": true` in its descriptor; `apply` then runs
+each of its actors once per room of the cluster file, as `<name>_<room>` (the room's name lowercased, every run of
+other characters one `_`: "Living room" -> `living_room`), placed only among that room's boards, with `<room>` and
+its own `act/<name>/` rewritten in its string config values. A cluster file with no rooms keeps the one actor.
+
 An actor that knows where something is declares seven outputs under one prefix, and the dashboard's floor plan
 draws it: `act/<name>/state` (u32: 0 nobody, 1 present but not placed, 2 placed), `x`, `y` (f32, Unit::Metre,
 plan coordinates as above), `a`, `b` (f32, Unit::Metre, the semi-axes of the zone), `theta` (f32, Unit::Radian,
