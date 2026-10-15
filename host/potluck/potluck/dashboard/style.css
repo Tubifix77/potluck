@@ -205,12 +205,15 @@ table.rt { width: 100%; border-collapse: collapse; font-size: 0.92em; }
 .room-row button { margin-top: 0; }
 .out { max-height: 260px; overflow: auto; font-size: 0.8em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* the floor plan (M20), plan.js -- drawn in metres; strokes stay hairlines at any zoom */
-svg.plan { display: block; width: 100%; max-height: 70vh; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; touch-action: none; }
+svg.plan { display: block; width: 100%; height: 70vh; max-height: 640px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; touch-action: none; }
 svg.plan line.grid { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+svg.plan line.grid.g10 { stroke: var(--muted); stroke-opacity: 0.45; }
+.plan-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; }
+.plan-bar button { min-width: 2.4em; }
 svg.plan rect.outline { fill: none; stroke: var(--muted); stroke-width: 2; vector-effect: non-scaling-stroke; }
 svg.plan .room rect { fill: var(--role-bg); fill-opacity: 0.5; stroke: var(--role); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 svg.plan .room.sel rect { stroke-width: 3; }
-svg.plan .room text, svg.plan .board text { font-size: 0.42px; fill: var(--text); }
+svg.plan .room text, svg.plan .board text { fill: var(--text); }
 svg.plan .room text { fill: var(--role); }
 svg.plan .board circle { stroke: var(--panel); stroke-width: 2; vector-effect: non-scaling-stroke; }
 svg.plan .board.movable { cursor: grab; }

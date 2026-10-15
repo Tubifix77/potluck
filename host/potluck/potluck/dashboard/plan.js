@@ -7,7 +7,7 @@
 
   var NS = "http://www.w3.org/2000/svg";
   var KIND = ["state", "x", "y", "a", "b", "theta", "conf"];  // DEVELOPING-APPS.md: the position kind
-  var P = { dragging: null, placing: null, editRoom: null, msg: "", saving: false };
+  var P = { dragging: null, placing: null, editRoom: null, msg: "", saving: false, view: null, viewKey: "", pan: null };
 
   function el(tag, attrs, text) {
     var e = document.createElement(tag);
@@ -57,6 +57,25 @@
     return { x: p.x, y: p.y };
   }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  // The view that shows every room and placed board with a margin, or the whole plan when nothing is on it.
+  function fit(plan, boards) {
+    var xs = [], ys = [];
+    plan.rooms.forEach(function (r) { xs.push(r.x, r.x + r.w); ys.push(r.y, r.y + r.h); });
+    boards.forEach(function (b) { if (b.position) { xs.push(b.position[0]); ys.push(b.position[1]); } });
+    if (!xs.length) return { x: 0, y: 0, w: plan.width, h: plan.height };
+    var x0 = Math.min.apply(null, xs) - 2, x1 = Math.max.apply(null, xs) + 2;
+    var y0 = Math.min.apply(null, ys) - 2, y1 = Math.max.apply(null, ys) + 2;
+    var w = Math.max(x1 - x0, 6), h = Math.max(y1 - y0, 6);
+    return { x: Math.max(0, x0), y: Math.max(0, y0), w: Math.min(w, plan.width), h: Math.min(h, plan.height) };
+  }
+  // Zoom by `f` (less than 1 zooms in) about a point on the plan (the view's centre by default); 2 m to the whole plan.
+  function zoom(plan, f, cx, cy) {
+    var V = P.view;
+    if (cx === undefined) { cx = V.x + V.w / 2; cy = V.y + V.h / 2; }
+    var w = clamp(V.w * f, 2, Math.max(plan.width, plan.height)), k = w / V.w;
+    P.view = { x: cx - (cx - V.x) * k, y: cy - (cy - V.y) * k, w: w, h: V.h * k };
+  }
   function r1(v) { return Math.round(v * 10) / 10; }
 
   function render(host, m, editable, refresh) {
@@ -70,17 +89,23 @@
       return;
     }
     var W = plan.width, H = plan.height;
-    var svg = sv("svg", { viewBox: "0 0 " + W + " " + H, "class": "plan", role: "img",
+    // The view: what part of the plan is shown. Kept across redraws; first fitted to what is on the plan.
+    var key = W + "x" + H;
+    if (!P.view || P.viewKey !== key) { P.view = fit(plan, m.boards || []); P.viewKey = key; }
+    var V = P.view;
+    var U = clamp(V.w / 32, 0.25, 4);  // the size of a label and a board on screen, in metres at this zoom
+    var svg = sv("svg", { viewBox: V.x + " " + V.y + " " + V.w + " " + V.h, "class": "plan", role: "img",
       "aria-label": "Floor plan, " + W + " by " + H + " m" });
-    for (var gx = 1; gx < W; gx++) svg.appendChild(sv("line", { x1: gx, y1: 0, x2: gx, y2: H, "class": "grid" }));
-    for (var gy = 1; gy < H; gy++) svg.appendChild(sv("line", { x1: 0, y1: gy, x2: W, y2: gy, "class": "grid" }));
+    var step = V.w > 60 ? 10 : V.w > 25 ? 5 : 1;  // grid lines every 1, 5 or 10 m, as the zoom allows
+    for (var gx = step; gx < W; gx += step) svg.appendChild(sv("line", { x1: gx, y1: 0, x2: gx, y2: H, "class": gx % 10 ? "grid" : "grid g10" }));
+    for (var gy = step; gy < H; gy += step) svg.appendChild(sv("line", { x1: 0, y1: gy, x2: W, y2: gy, "class": gy % 10 ? "grid" : "grid g10" }));
     svg.appendChild(sv("rect", { x: 0, y: 0, width: W, height: H, "class": "outline" }));
     plan.rooms.forEach(function (r, i) {
       var g = sv("g", { "class": "room" + (P.editRoom === i ? " sel" : "") });
       g.appendChild(sv("rect", { x: r.x, y: r.y, width: r.w, height: r.h }));
-      g.appendChild(sv("text", { x: r.x + 0.2, y: r.y + 0.55 }, r.name));
+      g.appendChild(sv("text", { x: r.x + U * 0.4, y: r.y + U * 1.1, "font-size": U }, r.name));
       if (editable) g.addEventListener("click", function () {
-        if (P.placing) return;  // that click is a board's new place, not a choice of room
+        if (P.placing || P.panned) return;  // that click is a board's new place, or the end of a pan
         P.editRoom = i;
         render(host, m, editable, refresh);
       });
@@ -104,9 +129,9 @@
     (m.boards || []).forEach(function (bd) {
       if (!bd.position) { unplaced.push(bd); return; }
       var g = sv("g", { "class": "board" + (editable ? " movable" : ""), "data-node": bd.node });
-      var c = sv("circle", { cx: bd.position[0], cy: bd.position[1], r: 0.28, fill: stateColour(bd.state) });
+      var c = sv("circle", { cx: bd.position[0], cy: bd.position[1], r: U * 0.55, fill: stateColour(bd.state) });
       g.appendChild(c);
-      var t = sv("text", { x: bd.position[0] + 0.38, y: bd.position[1] + 0.15 }, bd.label || bd.node);
+      var t = sv("text", { x: bd.position[0] + U * 0.8, y: bd.position[1] + U * 0.35, "font-size": U }, bd.label || bd.node);
       g.appendChild(t);
       g.appendChild(sv("title", {}, (bd.label || bd.node) + " (" + bd.node + "), " + bd.state + ", at " +
         bd.position[0] + ", " + bd.position[1] + " m"));
@@ -122,7 +147,7 @@
           var q = toPlan(svg, evt);
           d.x = r1(clamp(q.x, 0, W)); d.y = r1(clamp(q.y, 0, H));
           c.setAttribute("cx", d.x); c.setAttribute("cy", d.y);
-          t.setAttribute("x", d.x + 0.38); t.setAttribute("y", d.y + 0.15);
+          t.setAttribute("x", d.x + U * 0.8); t.setAttribute("y", d.y + U * 0.35);
         });
         g.addEventListener("pointerup", function () {
           var d = P.dragging;
@@ -143,6 +168,43 @@
         post({ node: node, position: [r1(clamp(q.x, 0, W)), r1(clamp(q.y, 0, H))] }).then(refresh);
       });
     }
+    // Zoom: the wheel, about the pointer; pan: drag the empty plan. A board's own drag wins (it is a child).
+    svg.addEventListener("wheel", function (evt) {
+      evt.preventDefault();
+      var q = toPlan(svg, evt);
+      zoom(plan, evt.deltaY < 0 ? 1 / 1.25 : 1.25, q.x, q.y);
+      render(host, m, editable, refresh);
+    }, { passive: false });
+    svg.addEventListener("pointerdown", function (evt) {
+      if (P.dragging || P.placing || evt.target.closest(".board")) return;
+      P.pan = { x: evt.clientX, y: evt.clientY, v: { x: V.x, y: V.y }, k: V.w / svg.getBoundingClientRect().width, moved: false };
+      svg.setPointerCapture(evt.pointerId);
+    });
+    svg.addEventListener("pointermove", function (evt) {
+      var p = P.pan;
+      if (!p) return;
+      var dx = (evt.clientX - p.x) * p.k, dy = (evt.clientY - p.y) * p.k;
+      if (Math.abs(dx) + Math.abs(dy) > p.k * 3) p.moved = true;
+      V.x = p.v.x - dx; V.y = p.v.y - dy;
+      svg.setAttribute("viewBox", V.x + " " + V.y + " " + V.w + " " + V.h);
+    });
+    svg.addEventListener("pointerup", function () {
+      var moved = P.pan && P.pan.moved;
+      P.pan = null;
+      P.panned = moved;  // the click that follows a pan is not a click
+      setTimeout(function () { P.panned = false; }, 0);
+      if (moved) render(host, m, editable, refresh);
+    });
+    var bar = el("div", { "class": "plan-bar" });
+    [["+", "Zoom in", function () { zoom(plan, 1 / 1.5); }], ["\u2212", "Zoom out", function () { zoom(plan, 1.5); }],
+     ["Fit", "Fit to the boards and rooms", function () { P.view = fit(plan, m.boards || []); }],
+     ["All", "The whole plan", function () { P.view = { x: 0, y: 0, w: W, h: H }; }]].forEach(function (d) {
+      var b = el("button", { type: "button", "class": "small", title: d[1], "aria-label": d[1] }, d[0]);
+      b.addEventListener("click", function () { d[2](); render(host, m, editable, refresh); });
+      bar.appendChild(b);
+    });
+    bar.appendChild(el("span", { "class": "muted small" }, W + " x " + H + " m; showing " + Math.round(V.w) + " m across"));
+    host.appendChild(bar);
     host.appendChild(svg);
     var info = el("div", { "class": "plan-info small" });
     msgs.forEach(function (t) { info.appendChild(el("p", { "class": "muted" }, t)); });
@@ -173,8 +235,8 @@
 
   function newPlanForm(refresh) {
     var f = el("form", { "class": "plan-form" });
-    var w = el("input", { type: "number", min: "1", max: "1000", step: "0.5", value: "12", "aria-label": "Width in metres" });
-    var h = el("input", { type: "number", min: "1", max: "1000", step: "0.5", value: "8", "aria-label": "Depth in metres" });
+    var w = el("input", { type: "number", min: "1", max: "1000", step: "0.5", value: "100", "aria-label": "Width in metres" });
+    var h = el("input", { type: "number", min: "1", max: "1000", step: "0.5", value: "100", "aria-label": "Depth in metres" });
     f.appendChild(el("label", {}, "Width (m) ")).appendChild(w);
     f.appendChild(el("label", {}, "Depth (m) ")).appendChild(h);
     f.appendChild(el("button", { type: "submit" }, "Make the plan"));
