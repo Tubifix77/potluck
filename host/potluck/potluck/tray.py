@@ -66,25 +66,31 @@ def potluck_dir() -> Path:
     return Path(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.cache")) / "potluck"
 
 
-def cell_file() -> Path | None:
-    """The cluster file the tray starts a hub on: tray.json's "cluster", else the one cell the wizard made."""
+def tray_config() -> dict:
+    """%LOCALAPPDATA%/potluck/tray.json: {"cluster": <file>, "hub_args": [...]} -- both optional. hub_args are added to
+    the hub's command line (say --listen with its TLS files, for the dashboard on the house network)."""
     try:
         cfg = json.loads((potluck_dir() / "tray.json").read_text(encoding="utf-8"))
-        if cfg.get("cluster"):
-            return Path(cfg["cluster"])
+        return cfg if isinstance(cfg, dict) else {}
     except (OSError, ValueError):
-        pass
+        return {}
+
+
+def cell_file() -> Path | None:
+    """The cluster file the tray starts a hub on: tray.json's "cluster", else the one cell the wizard made."""
+    if tray_config().get("cluster"):
+        return Path(tray_config()["cluster"])
     cells = sorted((potluck_dir() / "cells").glob("*/*.json"))
     cells = [p for p in cells if p.stem == p.parent.name]  # <name>/<name>.json, as setup.new_cell makes it
     return cells[0] if len(cells) == 1 else None
 
 
-def hub_command(cluster: Path | None) -> list[str]:
+def hub_command(cluster: Path | None, extra: list[str] | None = None) -> list[str]:
     if getattr(sys, "frozen", False):  # potluck-tray.exe: the hub is potluck.exe beside it
         base = [str(Path(sys.executable).with_name("potluck.exe")), "hub"]
     else:
         base = [sys.executable, "-u", "-m", "potluck.hub"]
-    return base + (["--cluster", str(cluster)] if cluster else [])
+    return base + (["--cluster", str(cluster)] if cluster else []) + [str(a) for a in (extra or [])]
 
 
 def start_hub() -> subprocess.Popen | None:
@@ -93,7 +99,9 @@ def start_hub() -> subprocess.Popen | None:
     cluster = cell_file()
     out = open(logs / "hub.log", "ab")
     cwd = str(cluster.parent) if cluster else str(potluck_dir())
-    return subprocess.Popen(hub_command(cluster), stdout=out, stderr=subprocess.STDOUT, cwd=cwd,
+    extra = tray_config().get("hub_args") if cluster else None  # a hub with no cell serves the wizard only
+    return subprocess.Popen(hub_command(cluster, extra if isinstance(extra, list) else None), stdout=out,
+                            stderr=subprocess.STDOUT, cwd=cwd,
                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
