@@ -829,3 +829,26 @@ it); potctl, the agent and apply run beside it. It refuses an old `pot_hostnode`
 `links`, `rssi` and `telemetry` fill from it (HUB-API.md); the dashboard's heap and radio-link tables show it. From a
 script: `from potluck import telemetry as tm; tm.health(bridge, 0x7368); tm.links(bridge, 0x7368)`.
 `build/tests/pot_sim.exe --nodes 20 --scenario telemetry --tel-ms 10000` is the pull's airtime at 20 boards.
+
+## 19. M20: the setup wizard, the console link, the floor plan and the library
+
+Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on `--listen`.
+
+- **The setup wizard:** `setup.html` ("Add boards" in the dashboard's header). On a PC with no cell the hub starts with
+  no port and no cluster file (`python -m potluck.hub` from `host/potluck/`) and the page opens on "Make your cell": a
+  name and a passphrase; the first board plugged in then becomes the hub's link. On a cell, Add boards: plug the new
+  boards in **after** the page has opened -- a port that was there before is never probed, because checking a board
+  (`esptool flash-id`) restarts it.
+- **The frame link over a board's own USB console:** in the cluster file, `"port"` is that board's COM port and `"baud":
+  115200` (the console's rate; the adapter on GPIO17/18 stays at 921600). One host per board: a board answers on the UART
+  it last heard from, so never run the hub on the adapter and a tool on the same board's console at once.
+- **Seeing a board's log on its own cable:** `POTLUCK_CONSOLE_TEXT=<file>` makes `Bridge` (the hub, `apply`,
+  `potluck.fw`, `potctl`) append the log text between frames to that file; add `POTLUCK_CONSOLE_TEXT_SAFE=1` to keep only
+  update and crash lines -- required for B and C, whose logs can name networks.
+- **The floor plan:** the Plan tab. Make a plan (100 x 100 m by default), add rooms, drag boards; each drag is saved at
+  once in the cluster file (`<file>.bak` keeps the version before), and the tab names the boards whose place is not on
+  the board yet -- "Apply to the cell" sends it (a package change, about 20 s, no restart).
+- **The library:** the Library tab -- apps on and off, "Test the broker", per resource Hidden / Visible / Controllable,
+  then "Apply to the cell".
+- **pot_sim for an app's read load:** `build/tests/pot_sim.exe --nodes 20 --scenario d20` (passive-sensor's design: a
+  fusion per room) or `--scenario perlink` (the design before it), against `--scenario none` on the same seed.

@@ -1141,8 +1141,12 @@ rooms, `apply`), the hub's side at `/api/setup/*` on 127.0.0.1 only; **the frame
 beside the logs -- M20's kill line, which did not fire** (2,196 reads over C's cable in two minutes, no timeout); the
 floor plan (rooms, the boards' positions held by the boards themselves as `node-<id>/sys/pos/{x,y}` from the signed
 package, zoom and pan, a 100 x 100 m default) and the position kind an app publishes -- an estimated zone, never a
-point -- with passive-sensor's fusion as its first user. Not yet: the library toggles, Home Assistant's broker test, the
-packaged installer and tray icon, a firmware rollout through the console's 115200 baud.
+point -- with passive-sensor's fusion as its first user (one fusion per room: `per_room`; each board's nearest boards in its
+room, `"peers": {"nearest": K}`, held by the board as `sys/near`; a kind's outputs adopted on demand, so positions cost
+no board an entry per board); the library (apps on and off as a package change, Home Assistant's broker tried from the
+PC, per resource hidden / visible / controllable). A firmware rollout through the console at 115200 reaches each board in
+about 150-185 s; once the board on the cable did not keep its own image (not reproduced in isolation; the host can now
+keep a console link's log). Not yet: the packaged installer and tray icon, the store.
 
 ## 14. Risk register
 
