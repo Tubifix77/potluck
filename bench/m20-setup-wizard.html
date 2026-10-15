@@ -110,6 +110,8 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
 .mem label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 .role { font-family: var(--f-mono); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
 .warnline { color: var(--led-red); font-size: 13px; }
+.calm { display: flex; gap: 12px; align-items: center; max-width: 64ch; margin: 18px 0 0; padding: 12px 16px; border-radius: 12px; background: var(--soft); font-size: 15px; }
+.calm svg { flex: none; width: 22px; height: 22px; }
 .summary { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-size: 15px; max-width: 620px; }
 .summary dt { color: var(--muted); } .summary dd { margin: 0; font-weight: 700; }
 .mono { font-family: var(--f-mono); font-size: 13px; }
@@ -125,8 +127,7 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
 </style>
 
 <div class="banner">
-  <span><b>Mockup</b> of M20's first-run wizard: nothing is flashed, saved or sent.</span>
-  <label for="large"><input id="large" type="checkbox"> Simulate a large setup (24 boards, needs M19)</label>
+  <span><b>Mockup</b> of M20's first-run wizard: nothing is flashed, saved or sent. Up to 20 boards it simulates three; more than 20 (a large setup, needs M19) it simulates 24.</span>
 </div>
 
 <div class="window" role="application" aria-label="Potluck setup">
@@ -154,6 +155,7 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
   var BASE = [
     { id: "welcome", t: "Welcome" },
     { id: "cell", t: "Name your cell" },
+    { id: "count", t: "How many boards" },
     { id: "apps", t: "Choose apps" },
     { id: "plug", t: "Plug in boards" },
     { id: "install", t: "Install" },
@@ -166,7 +168,7 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
     { id: "done", t: "Done" }
   ];
   var S = {
-    i: 0, cell: "home", pass: "", backup: false, large: false,
+    i: 0, cell: "home", pass: "", backup: false, large: false, count: 3, batch: 0, BATCH: 6,
     apps: { extender: false, presence: true, ha: true },
     boards: [], detecting: null, installed: false, installing: false,
     wifi: { ssid: "", pass: "", hs: "", hspass: "" },
@@ -197,7 +199,7 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function found() { return S.large ? largeList() : SMALL; }
   function needWifi() { return S.apps.extender || S.apps.ha; }
-  function skipped(st) { return (st.id === "wifi" && !needWifi()) || (st.large && !S.large); }
+  function skipped(st) { return (st.id === "wifi" && !needWifi()) || (st.large && !S.large) || (st.id === "install" && S.large); }
   function good() { return S.boards.filter(function (b) { return b.ok; }); }
   function steps() { return BASE.filter(function (st) { return !st.large || S.large; }); }
   function cur() { return steps()[S.i]; }
@@ -227,6 +229,16 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
         '<button type="button" id="backupbtn">' + (S.backup ? "Backup made &#10003;" : "Make a backup of the keys") + "</button>" +
         '<p style="color:var(--muted);font-size:13.5px;max-width:60ch">The backup is one file, encrypted with your passphrase. Without the keys, every board has to be set up again.</p>';
     },
+    count: function () {
+      function pick(n, label, sub) {
+        return '<button type="button" class="choice" data-count="' + n + '" aria-pressed="' + (S.count === n) + '"><h3>' + label + '<span class="tick">' + (S.count === n ? "&#10003;" : "") + '</span></h3><p>' + sub + "</p></button>";
+      }
+      return "<h1>How many boards are you setting up?</h1>" +
+        '<p class="lead">Most people do not have every board plugged in at once. Tell me roughly how many there will be, and I will plan the rest: installing them in batches, and whether they need to be split into groups.</p>' +
+        '<div class="choices">' + pick(3, "A few", "Up to 10 boards: one room or a flat. One group.") + pick(15, "A house", "11 to 20 boards. Still one group.") + pick(24, "More than 20", "Split into groups that talk through one board each (needs M19).") + "</div>" +
+        '<label class="field" for="countn" style="margin-top:18px">Or type the number<input id="countn" type="text" inputmode="numeric" value="' + S.count + '"></label>' +
+        '<p class="calm"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--accent)" stroke-width="2"/><path d="M12 7v10M7 12h10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/></svg><span><b>You can always add more boards later.</b> A rough number is fine: the dashboard adds boards whenever you get more, and if boards far apart cannot hear each other, I will notice after you place them and suggest groups.</span></p>';
+    },
     apps: function () {
       function c(key, title, where, text) {
         return '<button type="button" class="choice" data-app="' + key + '" aria-pressed="' + S.apps[key] + '"><span class="where">' + where + "</span><h3>" + title + '<span class="tick">' + (S.apps[key] ? "&#10003;" : "") + "</span></h3><p>" + text + "</p></button>";
@@ -242,7 +254,20 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
     plug: function () {
       var f = found(), list;
       if (S.large) {
-        list = '<div class="grid">' + S.boards.map(function (b, k) { return chip(b, k); }).join("") + "</div>";
+        var batch = S.boards.slice(S.batch, S.batch + S.BATCH);
+        var doneN = good().filter(function (b) { return (b.progress || 0) >= 100; }).length;
+        var batchDone = batch.length > 0 && batch.every(function (b) { return (b.progress || 0) >= 100; });
+        var allDone = doneN >= f.length;
+        var expect = Math.min(S.BATCH, f.length - S.batch);
+        return "<h1>Plug in your boards and install</h1>" +
+          '<p class="lead">Plug in as many boards as you have ports for (' + S.BATCH + " here). Each one installs by itself; when a batch is done, swap them for the next ones.</p>" +
+          '<div class="bar' + (allDone ? " full" : "") + '" style="max-width:720px;margin-bottom:6px"><i style="width:' + Math.round(doneN * 100 / f.length) + '%"></i></div>' +
+          '<p class="bmeta" style="margin:0 0 14px">' + doneN + " of " + f.length + " installed</p>" +
+          '<div class="grid">' + batch.map(function (b, k) { return chip(b, S.batch + k, '<span class="sub"><i style="width:' + (b.progress || 0) + '%"></i></span>'); }).join("") + "</div>" +
+          (allDone ? '<div class="waiting">All ' + f.length + " boards are installed.</div>"
+            : batchDone ? '<p style="margin-top:16px"><button type="button" class="primary" id="nextbatch">I have plugged in the next boards</button></p><div class="waiting">Unplug these ' + batch.length + " and plug in the next ones.</div>"
+            : '<div class="waiting"><span class="spin" aria-hidden="true"></span>' + (batch.length < expect ? "Looking for boards&hellip;" : "Installing&hellip;") + "</div>") +
+          '<p class="calm"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--accent)" stroke-width="2"/><path d="M12 7v10M7 12h10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/></svg><span><b>You can always add more boards later.</b> Stopping here is fine too: the boards you installed already work, and the rest can join from the dashboard.</span></p>';
       } else {
         list = '<div class="boards">' + S.boards.map(function (b) {
           return '<div class="board' + (b.ok ? "" : " bad") + '"><span class="pcb"><span class="led"></span></span><span><span class="bname">' + esc(b.chip) + " on " + esc(b.port) + '</span><br><span class="bmeta">' + esc(b.flash) + " flash &middot; " + esc(b.psram) + " PSRAM &middot; id " + esc(b.node) + "</span></span>" +
@@ -255,7 +280,8 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
       return "<h1>Plug your ESP32-S3 boards into this computer's USB ports</h1>" +
         '<p class="lead">I\'ll find each board as you plug it in. ' + (S.large ? "With many boards, a powered USB hub helps: plug in as many as it takes, and swap them as each finishes." : "Plug them in now, one after another or all at once.") + "</p>" +
         list +
-        (S.boards.length < f.length ? '<div class="waiting"><span class="spin" aria-hidden="true"></span>Looking for boards&hellip; ' + S.boards.length + " found</div>" : '<div class="waiting">' + doneMsg + "</div>");
+        (S.boards.length < f.length ? '<div class="waiting"><span class="spin" aria-hidden="true"></span>Looking for boards&hellip; ' + S.boards.length + " found</div>" : '<div class="waiting">' + doneMsg + "</div>") +
+        '<p class="calm"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--accent)" stroke-width="2"/><path d="M12 7v10M7 12h10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/></svg><span><b>You can always add more boards later.</b> Plug in the boards you have now; more can join from the dashboard any time.</span></p>';
     },
     install: function () {
       var apps = [S.apps.presence && "presence sensing", S.apps.extender && "Wi-Fi extender", S.apps.ha && "Home Assistant"].filter(Boolean);
@@ -371,6 +397,7 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
         '<dl class="summary"><dt>Name</dt><dd>' + esc(S.cell || "home") + "</dd><dt>Boards</dt><dd>" + good().length + " working</dd>" +
         (S.large ? "<dt>Groups</dt><dd>" + cells + "</dd><dt>Between groups</dt><dd>one board each, picked by Potluck, with a standby</dd>" : "<dt>Rooms</dt><dd>" + esc(Object.values(S.rooms).filter(Boolean).join(", ") || "not set") + "</dd>") +
         "<dt>Apps</dt><dd>" + esc(apps.join(", ") || "none yet") + "</dd><dt>Key backup</dt><dd>" + (S.backup ? "made" : "not yet -- the dashboard will remind you") + "</dd></dl>" +
+        '<p class="calm"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--accent)" stroke-width="2"/><path d="M12 7v10M7 12h10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/></svg><span><b>You can always add more boards later.</b> In the dashboard, Add boards puts new ones in the right room and group.</span></p>' +
         '<p style="margin-top:20px"><button type="button" class="primary" id="opendash">Open the dashboard</button></p>';
     }
   };
@@ -408,7 +435,8 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
   function canNext() {
     var id = cur().id;
     if (id === "cell") return S.cell.trim().length > 0 && S.pass.length >= 10;
-    if (id === "plug") return good().length > 0 && S.boards.length >= found().length;
+    if (id === "count") return S.count >= 1;
+    if (id === "plug") return S.large ? good().filter(function (b) { return (b.progress || 0) >= 100; }).length >= found().length : good().length > 0 && S.boards.length >= found().length;
     if (id === "install") return S.installed;
     if (id === "wifi") return !!S.wifi.ssid && S.wifi.pass.length >= 8 && (!S.apps.extender || S.wifi.hspass.length >= 8);
     if (id === "survey") return S.surveyed;
@@ -417,7 +445,7 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
     return true;
   }
   var HINTS = {
-    welcome: "Takes about 10 minutes", cell: "Choose a passphrase of 10 characters or more", apps: "You can change these later",
+    welcome: "Takes about 10 minutes", count: "A rough number is fine", cell: "Choose a passphrase of 10 characters or more", apps: "You can change these later",
     plug: "Wait until every board is found", install: "Press Install to start", wifi: "Passwords of 8 characters or more",
     rooms: "Rooms are optional", place: "Then press Next", survey: "Takes a minute or two",
     groups: "Each group needs 2 to 10 boards", chargers: "At least 2 per group", done: ""
@@ -444,6 +472,16 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
       $("backupbtn").addEventListener("click", function () { S.backup = true; this.innerHTML = "Backup made &#10003;"; });
       meter();
     }
+    if (id === "count") {
+      document.querySelectorAll("[data-count]").forEach(function (b) {
+        b.addEventListener("click", function () { setCount(+b.getAttribute("data-count")); render(); });
+      });
+      $("countn").addEventListener("input", function (e) {
+        var n = parseInt(e.target.value, 10);
+        if (n > 0) { setCount(n); document.querySelectorAll("[data-count]").forEach(function (b) { b.setAttribute("aria-pressed", "false"); }); rail(); refresh(); }
+      });
+    }
+    if (id === "plug" && $("nextbatch")) $("nextbatch").addEventListener("click", function () { S.batch += S.BATCH; startDetect(); render(); });
     if (id === "apps") document.querySelectorAll("[data-app]").forEach(function (b) {
       b.addEventListener("click", function () { var k = b.getAttribute("data-app"); S.apps[k] = !S.apps[k]; render(); });
     });
@@ -486,12 +524,27 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
   }
   function startDetect() {
     if (S.detecting || S.boards.length >= found().length) return;
-    var f = found(), gap = S.large ? 260 : 1400;
+    var f = found(), gap = S.large ? 380 : 1400, stop = S.large ? Math.min(f.length, S.batch + S.BATCH) : f.length;
+    if (S.boards.length >= stop) return;
     S.detecting = setInterval(function () {
-      if (S.boards.length >= f.length) { clearInterval(S.detecting); S.detecting = null; return; }
-      S.boards.push(Object.assign({}, f[S.boards.length]));
+      if (S.boards.length >= stop) { clearInterval(S.detecting); S.detecting = null; return; }
+      var b = Object.assign({}, f[S.boards.length]);
+      S.boards.push(b);
+      if (S.large) autoInstall(b);
       if (cur().id === "plug") render();
     }, gap);
+  }
+  function autoInstall(b) {
+    var t = setInterval(function () {
+      b.progress = Math.min(100, (b.progress || 0) + 4 + Math.random() * 5);
+      if (b.progress >= 100) clearInterval(t);
+      if (cur().id === "plug") render();
+    }, 200);
+  }
+  function setCount(n) {
+    var was = S.large;
+    S.count = n; S.large = n > 20;
+    if (was !== S.large) resetBoards();
   }
   function install() {
     S.installing = true; render();
@@ -522,18 +575,9 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
   }
   function resetBoards() {
     if (S.detecting) { clearInterval(S.detecting); S.detecting = null; }
-    S.boards = []; S.installed = false; S.installing = false; S.surveyed = false; S.surveying = false; S.groups = null; S.charger = {}; S.identify = 0; S.rooms = {};
+    S.boards = []; S.batch = 0; S.installed = false; S.installing = false; S.surveyed = false; S.surveying = false; S.groups = null; S.charger = {}; S.identify = 0; S.rooms = {};
   }
 
-  $("large").addEventListener("change", function (e) {
-    S.large = e.target.checked;
-    resetBoards();
-    var id = cur() ? cur().id : "welcome";
-    var order = steps().map(function (s) { return s.id; });
-    var keep = ["welcome", "cell", "apps"].indexOf(id) >= 0 ? id : "plug";
-    S.i = Math.max(0, order.indexOf(keep));
-    render();
-  });
   $("next").addEventListener("click", function () {
     if (!canNext()) return;
     var st = steps();
