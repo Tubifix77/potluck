@@ -5751,3 +5751,11 @@ On the bench after the rollout (firmware `e1a1af9`, package 70): the boards repo
 census's figures), no full refusals, no deferred checkpoint writes. `apply --plan` predicted 15/16/16: the difference is
 exactly what it cannot see -- passive-sensor's rf_link (13 per board) and rf_fusion (3) make outputs their descriptor
 does not declare (the plan names both), and rf_fusion's holder reads eight link replicas no descriptor states.
+
+**passive-sensor 1f6d4ce on the bench (package 71, VERIFIED):** its presence colour is blue and its descriptor lists
+every output (rf_link's per-link ones as `{peer}`; paths now node-<me>/rf/link/node-<peer>/<field>). `apply --plan`
+predicted 32/31/31 entries with nothing uncounted (after `39fd394`: the cabled board is charged only with what the
+verify and the hub read, and `"outputs": []` means "publishes nothing"); the boards report 33/40/40. The rest is
+read-time replicas: C holds rf_fusion and keeps the eight link replicas it reads; B kept the same eight from the
+minutes it held rf_fusion while C was updating -- replicas are never removed, which is the one part of question 2
+still to build (eviction of replicas nobody reads).
