@@ -296,6 +296,7 @@ bool Node::move_cell(uint8_t ch, uint16_t delay_ms) {
     }
     ++ch_counters_.moves_sent;
     pending_channel_ = ch;
+    pending_from_peer_ = false;
     pending_channel_at_ms_ = (hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0) + delay_ms;
     if (pending_channel_at_ms_ == 0) pending_channel_at_ms_ = 1;
     return true;
@@ -338,20 +339,46 @@ void Node::handle_channel(PeerLink* p, const Frame& f) {
     }
     move_rx_last_[idx] = c.move_id;
     ++ch_counters_.moves_followed;
+    // M19: a move this board is already making -- its own, or one it is carrying (and then hears carried back by a
+    // board of the other cell) -- stays what it was; only a new one is a peer's, to carry.
+    if (!(pending_channel_at_ms_ != 0 && pending_channel_ == c.channel)) pending_from_peer_ = true;
     pending_channel_ = c.channel;
     pending_channel_at_ms_ = (hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0) + c.delay_ms;
     if (pending_channel_at_ms_ == 0) pending_channel_at_ms_ = 1;
+}
+
+// M19 (Review of M19 #7): the channel is tree-wide. A board in two cells (a foreman, its standby) that moves with one
+// of them would leave the other behind -- that cell never heard the move, since a board admits only its own cells'
+// frames. So it carries it: back on the old channel for a moment, it announces the move there (move_cell, signed),
+// and its own announced move brings it home. Each board in two cells carries a change once (it carries only when it
+// retunes), so a tree of any depth follows, level by level, and nothing loops.
+void Node::carry_move(uint8_t from) {
+    if (from == 0 || from == channel_ || (groups_ & 0xFF) == 0 || (groups_ >> 8) == 0 || departed_) return;
+    carry_from_ = from;
 }
 
 void Node::tick_channel(uint32_t now) {
     if (pending_channel_at_ms_ != 0 && static_cast<int32_t>(now - pending_channel_at_ms_) >= 0) {
         pending_channel_at_ms_ = 0;
         if (pending_channel_ != channel_) {
+            const uint8_t was = channel_;
             retune(pending_channel_);
             emit(EventKind::ChannelChanged, nullptr, pending_channel_, 1);
+            // A peer's move reached only the cell it was said in; a board's own was heard in both of its cells.
+            if (pending_from_peer_) carry_move(was);
         }
         last_alive_ms_ = now;
         if (!departed_) send_hello(true);
+    }
+    if (carry_from_ != 0 && !sweeping_ && !visiting_ && pending_channel_at_ms_ == 0) {
+        const uint8_t to = channel_, from = carry_from_;
+        carry_from_ = 0;
+        retune(from);
+        if (move_cell(to, 300)) {
+            ++ch_counters_.moves_carried;  // and the move it scheduled brings this board back in 300 ms
+        } else {
+            retune(to);
+        }
     }
     if (cfg_.channel_fixed || hal_.set_channel == nullptr || departed_) return;
     const size_t alive = peers_.count_in_state(PeerState::Alive);
@@ -368,6 +395,7 @@ void Node::tick_channel(uint32_t now) {
             last_alive_ms_ = now;
             emit(EventKind::ChannelChanged, nullptr, channel_, 6);
             if (!departed_) send_hello(true);
+            carry_move(sweep_home_);  // M19: found it elsewhere -- the other cell is still at home
             return;
         }
         if (static_cast<int32_t>(now - scan_next_ms_) >= 0) {
@@ -411,6 +439,7 @@ void Node::tick_channel(uint32_t now) {
                 last_alive_ms_ = now;
                 emit(EventKind::ChannelChanged, nullptr, channel_, 6);
                 if (!departed_) send_hello(true);
+                carry_move(search_home_);  // M19
             }
             return;
         }
@@ -1139,9 +1168,11 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
                             (!peer_fixed && me_settling && (!peer_settling || h.node_id < cfg_.node_id));
         if (declared != 0 && declared != channel_ && !cfg_.channel_fixed && declared >= cfg_.channel_lo &&
             declared <= cfg_.channel_hi && follow && hal_.set_channel != nullptr) {
+            const uint8_t was = channel_;
             retune(declared);
             scanning_ = false;
             emit(EventKind::ChannelChanged, p, declared, 5);
+            if (peer_fixed) carry_move(was);  // M19: the station's channel; a scan's guess is nothing to carry
         }
     }
     p->hb_period_ms = (h.hb_period_cs != 0) ? h.hb_period_cs * 10u : cfg_.hb_period_ms;

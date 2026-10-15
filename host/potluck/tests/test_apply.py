@@ -263,6 +263,17 @@ class ClusterFile(unittest.TestCase):
             with self.assertRaises(ap.ApplyError):
                 self.tree([3], cells={"cell0": {"parent": "tree", "export": bad}, "tree": {}})
 
+    def test_in_a_tree_the_presenting_role_lives_in_the_cell_it_names(self):
+        fw = {"modules": ["present", "wifi"]}
+        with self.assertRaisesRegex(ap.ApplyError, "present.cell"):
+            ap.compose(self.tree([3, 3], firmware=fw, present={"broker": "10.0.0.2"}), [])
+        c = self.tree([3, 3], firmware=fw, present={"broker": "10.0.0.2", "cell": "cell1"})
+        m = mf.parse(ap.compose(c, []))
+        pres = next(a for a in m.actors if a.module == "builtin:present")
+        self.assertEqual(pres.nodes, (0x103, 0x104, 0x105))
+        self.assertNotIn("cell", pres.config)
+        self.assertTrue(any("one channel for the whole tree" in x for x in ap.check_peers(c, 0x100)))
+
     def test_a_foreman_is_a_board_of_one_federating_cell(self):
         with self.assertRaisesRegex(ap.ApplyError, "exactly one cell"):  # two memberships at most, the role adds one
             self.cluster(boards=[{"node": "0100", "cells": ["a", "b"], "foreman": True}], cells={"a": {"parent": "t"}})

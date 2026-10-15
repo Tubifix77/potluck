@@ -357,6 +357,9 @@ class Node {
         // M8.1 bench: after a fruitless sweep, single-channel visits looking for it (each shorter
         // than the death window), first every 2 s, then ever more rarely.
         uint32_t search_visits;
+        // M19 (Review of M19 #7): moves this board carried to its other cell -- a board in two cells that moved with
+        // one of them goes back to the old channel for a moment and announces the move there.
+        uint32_t moves_carried;
     };
     const ChannelCounters& channel_counters() const { return ch_counters_; }
 
@@ -749,6 +752,10 @@ class Node {
     static constexpr uint32_t kSearchMaxMs = 60000;
     bool settling(uint32_t now) const { return scanning_ || static_cast<int32_t>(settle_until_ms_ - now) > 0; }
     uint8_t pending_channel_ = 0;
+    // M19 (Review of M19 #7): the channel a board in two cells just left, to announce the move on (tick_channel).
+    uint8_t carry_from_ = 0;
+    bool pending_from_peer_ = false;  // the pending move was a peer's (handle_channel), not this board's own
+    void carry_move(uint8_t from);
     uint32_t pending_channel_at_ms_ = 0;
     uint32_t move_tx_ = 0;
     uint32_t move_rx_last_[kMaxPeers]{};

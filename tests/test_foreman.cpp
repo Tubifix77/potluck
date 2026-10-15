@@ -94,16 +94,19 @@ struct FNode {
     NodeHal hal{};
     std::vector<PortableSpec> specs;
     float temp = 0;
+    uint8_t ch = 1;  // the radio's channel, when the tree models channels
 };
 
 struct Tree {
     std::vector<FNode> nodes;
     uint32_t now_us = 0;
+    bool channels = false;  // model the radio's channel: a frame is heard only on the channel it was sent on
     struct Flight {
         uint32_t due_us;
         size_t from, to;
         bool bcast;
         std::vector<uint8_t> data;
+        uint8_t ch;
     };
     std::vector<Flight> air;
 
@@ -124,6 +127,8 @@ struct Tree {
         t.hal.send = &Tree::send;
         t.hal.now_ms = [](void* c) { return static_cast<FNode*>(c)->tree()->now_us / 1000; };
         t.hal.now_us = [](void* c) { return static_cast<FNode*>(c)->tree()->now_us; };
+        t.ch = 1;
+        if (channels) t.hal.set_channel = [](void* c, uint8_t ch) { static_cast<FNode*>(c)->ch = ch; };
         t.node = new Node(cfg, t.hal);
         t.node->set_groups(t.cell, 0);
         // its own temperature, and a replica of each cell-mate's (what the image's pinned outputs would declare)
@@ -186,7 +191,8 @@ struct Tree {
         for (Flight& f : due) {
             FNode& from = nodes[f.from];
             FNode& to = nodes[f.to];
-            const bool heard = !to.down && to.node != nullptr;  // one radio space: admission does the separating
+            // one radio space: admission does the separating (and the channel, when modelled)
+            const bool heard = !to.down && to.node != nullptr && (!channels || to.ch == f.ch);
             if (heard) to.node->on_rx(from.mac, f.data.data(), f.data.size(), now_us, -50);
             if (!f.bcast && !from.down && from.node != nullptr) from.node->on_tx_done(to.mac, heard, now_us);
         }
@@ -246,7 +252,8 @@ int32_t Tree::send(void* ctx, const uint8_t mac[kMacLen], const uint8_t* data, s
     for (size_t i = 0; i < c->nodes.size(); ++i) {
         if (i == from->index) continue;
         if (bcast || std::memcmp(c->nodes[i].mac, mac, kMacLen) == 0) {
-            c->air.push_back(Flight{c->now_us + 3000, from->index, i, bcast, std::vector<uint8_t>(data, data + len)});
+            c->air.push_back(Flight{c->now_us + 3000, from->index, i, bcast, std::vector<uint8_t>(data, data + len),
+                                    from->ch});
         }
     }
     return 0;
@@ -363,4 +370,25 @@ TEST(foreman, the_host_compilers_foreman_declaration_parses_here) {
     bad[7] = 0x07;  // the first eligible node becomes 0x0107
     const ActorDecl bd{kPortableNode, ActorType::Foreman, static_cast<uint8_t>(bad.size()), bad.data()};
     CHECK(!foreman_config(bd, c));
+}
+
+TEST(foreman, a_channel_move_in_one_cell_is_carried_to_the_whole_tree) {
+    // Review of M19 #7: cell 1 moves to channel 6. Its foreman and standby carry the move to the upper cell, whose
+    // other two members carry it to cell 2 -- whose third board never heard cell 1 at all.
+    Tree t;
+    t.channels = true;
+    t.build();
+    t.run(10000);
+    CHECK(t.by_id(0x102).node->move_cell(6, 300));
+    t.run(8000);
+    for (FNode& n : t.nodes) CHECK_EQ(static_cast<int>(n.ch), 6);
+    CHECK(t.by_id(0x100).node->channel_counters().moves_carried + t.by_id(0x101).node->channel_counters().moves_carried >= 1);
+    CHECK(t.alive_at(t.by_id(0x202), 0x200) && t.alive_at(t.by_id(0x200), 0x100));
+    CHECK_EQ(t.by_id(0x102).node->channel_counters().moves_carried, 0u);  // in one cell: nothing to carry
+    // and it does not keep going: a second look later finds no new carries
+    uint32_t before = 0, after = 0;
+    for (FNode& n : t.nodes) before += n.node->channel_counters().moves_carried;
+    t.run(5000);
+    for (FNode& n : t.nodes) after += n.node->channel_counters().moves_carried;
+    CHECK_EQ(after, before);
 }

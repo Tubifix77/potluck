@@ -477,7 +477,7 @@ def load_cluster(path: str) -> Cluster:
         if "present" not in board_modules:
             raise ApplyError("present: the cell presents itself only with the 'present' module in the firmware -- "
                              "add it to firmware.modules")
-        extra_keys = set(present) - {"broker", "keepalive_s", "period_ms", "tls_ca", "hub"}
+        extra_keys = set(present) - {"broker", "keepalive_s", "period_ms", "tls_ca", "hub", "cell"}
         if extra_keys:
             raise ApplyError(f"present: unknown key(s) {sorted(extra_keys)}")
         if "hub" in present and not isinstance(present["hub"], bool):
@@ -994,6 +994,9 @@ def check_peers(c: Cluster, cabled: int | None = None) -> list[str]:
         lines.append(f"plan: peers {labels[n]} (0x{n:04x}): {u['peers']} of {PEER_CAP} ({', '.join(parts)})")
         if u["peers"] > PEER_CAP:
             over.append((-u["peers"], n, f"{labels[n]} (0x{n:04x}) would need {u['peers']} unicast peers"))
+    if c.parents and (c.present or c.extender):
+        lines.append("plan: one channel for the whole tree (Review of M19 #7): a board in two cells carries every move "
+                     "to the other, so every Wi-Fi exit in the tree must reach a router on the same channel")
     if over:
         over.sort()
         named = "; ".join(x for _, _, x in over[:3]) + (f"; and {len(over) - 3} more board(s)" if len(over) > 3 else "")
@@ -1093,7 +1096,19 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
         # M13: the presenting role, as one portable actor; the reconciler gives it to a connected board.
         if "present" in names:
             raise ApplyError(f"an actor named 'present' is in {names['present']}; the name belongs to the presenting role")
-        actors.append({"name": "present", "module": "builtin:present", "latency_class": 4, "config": dict(c.present)})
+        pcfg = {k: v for k, v in c.present.items() if k != "cell"}
+        pact = {"name": "present", "module": "builtin:present", "latency_class": 4, "config": pcfg}
+        if c.cells:
+            # M19 (Review of M19 #3, #7): in a tree the presenting role lives in one cell, named in the cluster file --
+            # the cell whose boards reach the broker. Every Wi-Fi exit pins the whole tree to its router's channel, so
+            # a tree's exits must all reach routers on one channel (the boards cannot check this; apply says so).
+            cell = c.present.get("cell")
+            inside = [n for n, _ in c.boards if cell in c.cells.get(n, ())]
+            if not inside:
+                raise ApplyError("present.cell: in a tree of cells the presenting role lives in one cell -- name it "
+                                 "(a cell whose boards reach the broker)")
+            pact["nodes"] = inside
+        actors.append(pact)
     numbers = room_numbers(c)
     from . import modules as mods
     k = max((s.peers_nearest for s in mods.registered()), default=0)  # an app asks for nearest sets
