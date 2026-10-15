@@ -199,9 +199,13 @@ input[type=text], input[type=password], select { font: inherit; padding: 10px 12
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function found() { return S.large ? largeList() : SMALL; }
   function needWifi() { return S.apps.extender || S.apps.ha; }
-  function skipped(st) { return (st.id === "wifi" && !needWifi()) || (st.large && !S.large) || (st.id === "install" && S.large); }
+  function skipped(st) { return (st.id === "wifi" && !needWifi()) || (st.large && !S.large); }
   function good() { return S.boards.filter(function (b) { return b.ok; }); }
-  function steps() { return BASE.filter(function (st) { return !st.large || S.large; }); }
+  function steps() {
+    // a large setup installs as boards are plugged in, so its Install step is part of step 4, not a separate one
+    return BASE.filter(function (st) { return (!st.large || S.large) && !(st.id === "install" && S.large); })
+      .map(function (st) { return st.id === "plug" && S.large ? { id: "plug", t: "Plug in and install" } : st; });
+  }
   function cur() { return steps()[S.i]; }
 
   function rail() {
