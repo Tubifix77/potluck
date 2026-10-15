@@ -598,7 +598,7 @@ Three consequences:
 ### 9.3 Trust model
 
 - **Cluster CA.** One offline root key. Not on the workstation that runs `potctl`. Not in the repo. *(M20, planned 2026-10-15, amends this when it is built: the CA and deploy keys live on the hub's PC encrypted at rest under the owner's passphrase, unlocked only for an owner action on 127.0.0.1 -- enrol, certify an author, deploy, restore -- and wiped from memory after it; the process serving `--listen` never holds them.)*
-- **Node identity.** Per-node keypair generated on-device at provisioning; the private key never leaves. Node certificate signed by the cluster CA binds `node_id` ↔ public key.
+- **Node identity.** Per-node keypair generated on-device at provisioning; the private key never leaves. Node certificate signed by the cluster CA binds `node_id` ↔ public key. *(Since 2026-10-15, M19/M20 step 1: the CA assigns the id at enrolment -- the MAC's tail unless the cell already has it, kept unique by a registry beside the CA key -- and a board boots with the id its certificate names; never a host's id below 0x0100.)*
 - **Session keys.** Pairwise, derived at `HELLO_ACK` via ECDH over the node certificates, rotated on epoch change. `auth_tag` on data frames is HMAC-SHA256 truncated to 64 bits under the session key.
 - **Ed25519 signatures — not HMAC — on:** `HELLO`, `DEPLOY_*`, `MIGRATE_*`, `SAFE_STATE`, and any `WRITE` to a resource flagged `safety_relevant`. These are the frames whose forgery is worth an attacker's time, and they are rare enough that signature cost does not matter.
 - **Deploy key.** Separate from the CA. Signs manifests. Compromise means bad code, not a forged cluster identity — a deliberate separation so the two failures are recoverable independently.

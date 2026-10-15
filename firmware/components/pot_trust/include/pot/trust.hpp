@@ -31,6 +31,12 @@ constexpr size_t kCaFpLen = 4;
 constexpr size_t kNodeCertLen = 112;
 constexpr size_t kNodeCertSignedLen = 48;
 
+// M19/M20 step 1 (2026-10-15): the cluster CA may assign a board a node id other than the one its MAC gives, so that
+// ids stay unique across a large cell (a MAC's last two bytes collide: about 7 % at 100 boards). A board accepts a
+// certificate naming another id only in the board range -- at or above this, never a host's id (0x00fe) or 0xffff --
+// and boots with the id its certificate names from then on. Mirrors pot/lease.hpp's kLeaseMinBoardId.
+constexpr uint16_t kAssignedNodeIdMin = 0x0100;
+
 struct NodeCert {
     uint16_t node_id;
     uint8_t ca_fp[kCaFpLen];
@@ -105,6 +111,10 @@ void identity_from_seed(Identity& id, const uint8_t seed[kEdSeedLen]);
 
 // Accept a certificate only if it verifies under `ca_pub`, names `node_id`, and binds this node's own
 // public key. On anything else the identity is unchanged.
+// The node id an enrolled identity's certificate names, or 0 when it is not enrolled: the id a board boots with
+// (the CA may have assigned it -- kAssignedNodeIdMin).
+uint16_t identity_cert_node_id(const Identity& id);
+
 CertError identity_install_cert(Identity& id, uint16_t node_id, const uint8_t ca_pub[kEdPubLen],
                                 const uint8_t* cert, size_t len);
 

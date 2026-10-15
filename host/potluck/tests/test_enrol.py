@@ -101,7 +101,9 @@ class FakeBoard:
             ca_pub, cert = bytes.fromhex(parts[2]), bytes.fromhex(parts[3])
             try:
                 c = en.verify_cert(cert, ca_pub)
-                ok = c.node_id == self.node_id and c.node_pub == self.pub and self.refuse is None
+                # the firmware's rule (M19/M20 step 1): its own id, or an assigned one in the board range
+                ok = ((c.node_id == self.node_id or 0x0100 <= c.node_id < 0xFFFF) and c.node_pub == self.pub
+                      and self.refuse is None)
             except en.EnrolError:
                 ok = False
             if ok:
@@ -138,6 +140,47 @@ class TestConversation(unittest.TestCase):
         with self.assertRaises(en.EnrolError) as cm:
             en.enrol("COMX", ca(), issued=1)
         self.assertIn("wrong_node", str(cm.exception))
+
+
+class TestRegistry(unittest.TestCase):
+    """M19/M20 step 1: the cell's node ids stay unique; a colliding MAC id gets the lowest free id."""
+
+    def setUp(self):
+        self._open = en._open
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.tmp.name, "nodes.json")
+
+    def tearDown(self):
+        en._open = self._open
+        self.tmp.cleanup()
+
+    def test_a_board_keeps_its_mac_id_and_keeps_it_when_enrolled_again(self):
+        board = FakeBoard(0x8160)
+        en._open = lambda port: board
+        info, cert = en.enrol("COMX", ca(), issued=1, registry=en.Registry(self.path))
+        self.assertEqual(info["assigned"], 0x8160)
+        info, cert = en.enrol("COMX", ca(), issued=1, registry=en.Registry(self.path))
+        self.assertEqual((info["assigned"], en.verify_cert(cert, ca().public).node_id), (0x8160, 0x8160))
+
+    def test_a_colliding_mac_id_gets_the_lowest_free_id(self):
+        reg = en.Registry(self.path)
+        reg.record(0x8160, "00" * 32)  # another board already has 0x8160
+        reg.record(0x0100, "11" * 32)
+        board = FakeBoard(0x8160)
+        en._open = lambda port: board
+        info, cert = en.enrol("COMX", ca(), issued=1, registry=en.Registry(self.path))
+        self.assertEqual((info["assigned"], en.verify_cert(cert, ca().public).node_id), (0x0101, 0x0101))
+        self.assertIn("0101", json.load(open(self.path))["nodes"])
+
+    def test_an_explicit_id_another_board_has_is_refused_and_a_hosts_id_too(self):
+        reg = en.Registry(self.path)
+        reg.record(0x4242, "00" * 32)
+        with self.assertRaises(en.EnrolError):
+            reg.choose(0x8160, "ab" * 32, 0x4242)
+        with self.assertRaises(en.EnrolError):
+            reg.choose(0x8160, "ab" * 32, 0x00FE)
+        self.assertEqual(reg.choose(0x8160, "ab" * 32, 0x5000), 0x5000)
 
 
 if __name__ == "__main__":

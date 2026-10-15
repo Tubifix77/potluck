@@ -175,12 +175,19 @@ CertError identity_install_cert(Identity& id, uint16_t node_id, const uint8_t ca
     NodeCert c{};
     const CertError e = node_cert_check(cert, len, ca_pub, c);
     if (e != CertError::Ok) return e;
-    if (c.node_id != node_id) return CertError::WrongNode;
+    // A certificate for another id is the CA assigning one (step 1 of M19/M20), accepted only in the board range;
+    // the key check below still ties it to this board, and the new id takes effect at the next boot.
+    if (c.node_id != node_id && (c.node_id < kAssignedNodeIdMin || c.node_id == 0xFFFF)) return CertError::WrongNode;
     if (std::memcmp(c.node_pub, id.pub, kEdPubLen) != 0) return CertError::WrongKey;
     std::memcpy(id.ca_pub, ca_pub, kEdPubLen);
     std::memcpy(id.cert, cert, kNodeCertLen);
     id.enrolled = true;
     return CertError::Ok;
+}
+
+uint16_t identity_cert_node_id(const Identity& id) {
+    if (!id.enrolled) return 0;
+    return static_cast<uint16_t>(id.cert[6] | (id.cert[7] << 8));
 }
 
 EnrolRequest parse_enrol_line(const char* line, size_t len) {

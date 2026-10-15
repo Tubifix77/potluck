@@ -135,8 +135,10 @@ python -m potluck.enrol --port COM7 --ca-key ..\..\keys\ca.key
 ```
 
 It asks the board for the key it made at its first boot, signs a certificate for it with your CA and hands it
-back; the board checks it and saves it. Note the node id it prints. The certificate takes effect at the next
-boot: press each board's **RST** button. Within a few seconds the LEDs turn **green** -- the boards found each
+back; the board checks it and saves it. Note the node id it prints: normally the one the board's MAC gives, but if
+your cell already has a board with that id, the board gets the next free one (the cell's ids are kept in
+`keys
+odes.json`, beside the CA key). The certificate takes effect at the next boot: press each board's **RST** button. Within a few seconds the LEDs turn **green** -- the boards found each
 other (still yellow: they do not hear each other yet -- see Troubleshooting; red: a link losing over half its
 heartbeats, or a board that died).
 

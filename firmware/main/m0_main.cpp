@@ -3577,6 +3577,18 @@ extern "C" void app_main(void) {
             cfg.node_id = 0x0001;
         }
     }
+    // M19/M20 step 1: an enrolled board takes the id its certificate names -- the cluster CA may have assigned one
+    // (kAssignedNodeIdMin) to keep ids unique in a large cell. Unenrolled, or a certificate for this same id: as before.
+    {
+        Identity enrolled;
+        if (trust_load(enrolled)) {
+            const uint16_t cid = identity_cert_node_id(enrolled);
+            if (cid >= kAssignedNodeIdMin && cid != kNodeBroadcast && cid != cfg.node_id) {
+                ESP_LOGI(kTag, "node id 0x%04x from this board's certificate (its MAC gives 0x%04x)", cid, cfg.node_id);
+                cfg.node_id = cid;
+            }
+        }
+    }
 
     NodeHal hal;
     hal.ctx = nullptr;

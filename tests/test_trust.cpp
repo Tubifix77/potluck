@@ -94,9 +94,14 @@ TEST(trust, a_node_accepts_only_its_own_certificate) {
     Identity id;
     CHECK(identity_install_cert(id, 0x7368, g.ca, g.cert, kNodeCertLen) == CertError::NoKey);
     identity_from_seed(id, g.node_seed);
-    // Right key, wrong node id: a certificate for 0x7368 does not enrol 0x8160.
-    CHECK(identity_install_cert(id, 0x8160, g.ca, g.cert, kNodeCertLen) == CertError::WrongNode);
-    CHECK(!id.enrolled);
+    // Right key, another node id in the board range: the CA assigning an id (M19/M20 step 1) -- accepted, and the
+    // identity names it; the board boots with it next time.
+    {
+        Identity assigned = id;
+        CHECK(identity_install_cert(assigned, 0x8160, g.ca, g.cert, kNodeCertLen) == CertError::Ok);
+        CHECK_EQ(identity_cert_node_id(assigned), 0x7368);
+    }
+    CHECK_EQ(identity_cert_node_id(id), 0);  // not enrolled: no id from a certificate
     // Right node id, but this node holds a different key.
     Identity other;
     uint8_t seed2[32] = {7};

@@ -1,6 +1,7 @@
 """Node enrolment -- ARCHITECTURE.md section 9.3, M5.
 
     python -m potluck.enrol --port COM4 --ca-key keys/ca.key          # enrol the board on COM4
+    python -m potluck.enrol --port COM4 --ca-key keys/ca.key --node-id 4242   # ... giving it this id
     python -m potluck.enrol --port COM4 --show                        # just print what it reports
     python -m potluck.enrol --check-cert <hex> --ca keys/ca.pub       # verify a certificate offline
     python -m potluck.enrol --guest-cert keys/acme.pub --author 7 --ca-key keys/ca.key --out keys/acme.gcert
@@ -12,9 +13,18 @@ Section 9.3: "Per-node keypair generated on-device at provisioning; the private 
 Node certificate signed by the cluster CA binds node_id <-> public key." And "Provisioning is
 physical. A node joins by being connected over USB and enrolled." So this talks to a board over its
 own USB console -- not the frame link, not the radio -- asks for the public key it generated, signs a
-certificate binding that key to the node id the board derived from its own MAC, and hands the
-certificate back together with the CA's public key. The board refuses a certificate that names
-another node, another key, or that the CA it was given did not sign.
+certificate binding that key to a node id, and hands the certificate back together with the CA's
+public key. The board refuses a certificate for another key, a host's id, or one the CA it was given
+did not sign.
+
+THE NODE ID (M19/M20 step 1, 2026-10-15)
+
+The id is the one the board derives from its MAC's last two bytes -- unless the cell already has that id
+for another board, because two boards' MAC tails can collide (about 7 % at 100 boards). The cell's ids
+are kept in a registry beside the CA key (`nodes.json`, or `--registry <file>`): a board enrolled again
+keeps its id, a board whose MAC id is taken gets the lowest free id from 0x0100 up, and `--node-id`
+names one outright (refused if another board has it). A board whose certificate names a new id takes it
+at its next boot.
 
 THE NODE CERTIFICATE, v1 (112 bytes, little-endian; firmware/components/pot_trust parses the same)
 
@@ -170,12 +180,62 @@ def query(port: str) -> dict:
         s.close()
 
 
-def enrol(port: str, ca: KeyPair, issued: int | None = None) -> tuple[dict, bytes]:
+ASSIGNED_MIN = 0x0100  # pot/trust.hpp's kAssignedNodeIdMin: below it are hosts' ids
+
+
+class Registry:
+    """The cell's node ids and the key each belongs to -- so no two boards share an id (M19/M20 step 1)."""
+
+    def __init__(self, path: str | None):
+        self.path = path
+        self.nodes: dict[int, dict] = {}
+        if path:
+            try:
+                with open(path, encoding="utf-8") as f:
+                    doc = json.load(f)
+                self.nodes = {int(k, 16): v for k, v in doc.get("nodes", {}).items()}
+            except FileNotFoundError:
+                pass
+
+    def choose(self, mac_id: int, pub_hex: str, wanted: int | None = None) -> int:
+        """The id this board gets: `wanted`, else its MAC id unless another board has it, else the lowest free."""
+        def owner(n):
+            return self.nodes.get(n, {}).get("pub")
+        if wanted is not None:
+            if not ASSIGNED_MIN <= wanted <= 0xFFFE:
+                raise EnrolError(f"--node-id 0x{wanted:04x}: a board's id is 0x{ASSIGNED_MIN:04x}..0xfffe")
+            if owner(wanted) not in (None, pub_hex):
+                raise EnrolError(f"node id 0x{wanted:04x} already belongs to another board in this cell")
+            return wanted
+        for n, v in self.nodes.items():
+            if v.get("pub") == pub_hex:
+                return n  # this board, enrolled before: it keeps its id
+        if owner(mac_id) is None and mac_id >= ASSIGNED_MIN:
+            return mac_id
+        n = ASSIGNED_MIN
+        while n in self.nodes:
+            n += 1
+        if n > 0xFFFE:
+            raise EnrolError("no free node id left in this cell")
+        return n
+
+    def record(self, node_id: int, pub_hex: str) -> None:
+        self.nodes[node_id] = {"pub": pub_hex, "enrolled_at": int(time.time())}
+        if self.path:
+            with open(self.path, "w", encoding="utf-8") as f:
+                json.dump({"schema": 1, "nodes": {f"{k:04x}": v for k, v in sorted(self.nodes.items())}}, f, indent=2)
+                f.write("\n")
+
+
+def enrol(port: str, ca: KeyPair, issued: int | None = None, registry: Registry | None = None,
+          node_id: int | None = None) -> tuple[dict, bytes]:
     s = _open(port)
     try:
         info = _ask(s, "POT! id")
-        node_id = int(info["node"])
+        mac_id = int(info["node"])
         node_pub = bytes.fromhex(info["pub"])
+        reg = registry if registry is not None else Registry(None)
+        node_id = reg.choose(mac_id, node_pub.hex(), node_id)
         cert = build_cert(ca, node_id, node_pub, issued)
         verify_cert(cert, ca.public)  # never send what we would not accept ourselves
         reply = _ask(s, f"POT! cert {ca.public.hex()} {cert.hex()}", timeout=10.0)
@@ -184,6 +244,8 @@ def enrol(port: str, ca: KeyPair, issued: int | None = None) -> tuple[dict, byte
         after = _ask(s, "POT! id")
         if not after.get("enrolled") or after.get("ca_fp") != ca_fingerprint(ca.public).hex():
             raise EnrolError(f"the board accepted, but now reports {after}")
+        reg.record(node_id, node_pub.hex())
+        after["assigned"] = node_id
         return after, cert
     finally:
         s.close()
@@ -254,9 +316,17 @@ def main(argv: list[str] | None = None) -> int:
         if "--show" in argv:
             print(json.dumps(query(port)))
             return 0
-        ca = read_key(_flag(argv, "--ca-key") or "")
-        info, cert = enrol(port, ca)
-        print(f"enrolled node 0x{int(info['node']):04x} on {port} under CA {ca.id}")
+        ca_path = _flag(argv, "--ca-key") or ""
+        ca = read_key(ca_path)
+        import os
+        reg_path = _flag(argv, "--registry") or os.path.join(os.path.dirname(os.path.abspath(ca_path)), "nodes.json")
+        wanted = _flag(argv, "--node-id")
+        info, cert = enrol(port, ca, registry=Registry(reg_path), node_id=int(wanted, 16) if wanted else None)
+        new_id = info["assigned"]
+        print(f"enrolled node 0x{new_id:04x} on {port} under CA {ca.id} (registry {reg_path})")
+        if new_id != int(info["node"]):
+            print(f"its MAC gives 0x{int(info['node']):04x}, which this cell already has: it takes 0x{new_id:04x} at its "
+                  f"next boot -- press its reset button")
         print(f"certificate {cert.hex()}")
         return 0
     except (EnrolError, SigningError, OSError, KeyError, ValueError) as exc:

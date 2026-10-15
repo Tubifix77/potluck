@@ -50,6 +50,26 @@ struct TestCa {
     }
 };
 
+TEST(trust, an_assigned_id_is_accepted_in_the_board_range_and_never_a_hosts) {
+    // M19/M20 step 1: the CA may give a board another id than its MAC's; a host's id (below 0x0100) or 0xffff, never.
+    TestCa ca(1);
+    Identity id;
+    uint8_t seed[32] = {9};
+    identity_from_seed(id, seed);
+    uint8_t cert[kNodeCertLen];
+    ca.issue(0x4242, id.pub, cert);
+    Identity a = id;
+    CHECK(identity_install_cert(a, 0x6300, ca.pub, cert, kNodeCertLen) == CertError::Ok);
+    CHECK_EQ(identity_cert_node_id(a), 0x4242);
+    ca.issue(0x00FE, id.pub, cert);
+    Identity h = id;
+    CHECK(identity_install_cert(h, 0x6300, ca.pub, cert, kNodeCertLen) == CertError::WrongNode);
+    CHECK(!h.enrolled);
+    ca.issue(0xFFFF, id.pub, cert);
+    Identity b = id;
+    CHECK(identity_install_cert(b, 0x6300, ca.pub, cert, kNodeCertLen) == CertError::WrongNode);
+}
+
 Identity enrolled_identity(const TestCa& ca, uint16_t node_id, uint8_t salt, uint32_t issued = 0) {
     Identity id;
     uint8_t seed[32];
