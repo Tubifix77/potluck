@@ -37,6 +37,8 @@ bool position_config(const ActorDecl& a, PositionConfig& out) {
     }
     out.cells[0] = a.cfg[36];
     out.cells[1] = a.cfg[37];
+    out.cell_window[0] = a.cfg[38];
+    out.cell_window[1] = a.cfg[39];
     const bool placed = !(out.x == -1.0f && out.y == -1.0f);  // -1, -1: a room and no place
     if (placed && !(in_plan(out.x) && in_plan(out.y))) return false;
     if (out.cells[1] != 0 && (out.cells[0] == 0 || out.cells[1] == out.cells[0])) return false;  // first, then a second
@@ -65,7 +67,7 @@ NsDecl position_decl(uint16_t node, uint32_t hash, Unit unit, ValueType type) {
 PositionActor::~PositionActor() { node_.set_groups(0, 0); }  // the package no longer names its cells
 
 bool PositionActor::start(uint32_t now_ms) {
-    node_.set_groups(cfg_.cells[0], cfg_.cells[1]);  // M19: admission follows the package
+    node_.set_groups(cfg_.cells[0], cfg_.cells[1], cfg_.cell_window[0] * 100u, cfg_.cell_window[1] * 100u);  // M19
     const uint16_t me = node_.config().node_id;
     if (cfg_.placed()) {
         if (node_.ns().declare(position_decl(me, cfg_.x_hash)) != NsError::Ok) return false;

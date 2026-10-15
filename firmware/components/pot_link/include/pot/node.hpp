@@ -309,7 +309,13 @@ class Node {
     // that shares none of them is refused, and frames from a known peer that no longer shares one are ignored, so it
     // drops out within its window (two cells within earshot under one CA never merge -- Review of M19 #1). A board
     // with no cells (a fresh one waiting for its package) and a host are admitted by anyone, and admit anyone.
-    void set_groups(uint8_t a, uint8_t b);
+    //
+    // Review of M19 #2, one window per membership: each cell may carry a death window of its own (an upper cell of
+    // foremen, far apart, a slower one). A peer this board shares only windowed cells with is judged by at least the
+    // tightest of those windows; one it shares a cell with no window of its own (a base cell) by its own announced
+    // window, as before. So a foreman, one radio in two cells, judges its cell-mates fast and its fellow foremen slowly.
+    void set_groups(uint8_t a, uint8_t b, uint32_t window_a_ms = 0, uint32_t window_b_ms = 0);
+    uint32_t window_floor(uint16_t theirs) const;
     uint16_t groups() const { return groups_; }
     bool shares_group(uint16_t theirs) const;
     uint32_t group_refusals() const { return group_refusals_; }
@@ -680,6 +686,8 @@ class Node {
     bool relay_ = false;
     bool relayed_[kMaxPeers]{};
     uint16_t groups_ = 0;                  // M19: ours, low byte first
+    uint32_t group_window_ms_[2]{};        // M19: each of our cells' own death window, 0 = none (a base cell)
+    void apply_cell_window(PeerLink& p, uint16_t theirs) const;
     uint16_t peer_groups_[kMaxPeers]{};    // M19: each peer's, as its last HELLO said
     uint32_t group_refusals_ = 0;
     bool rx_via_relay_ = false;  // set by on_rx for the frame being dispatched

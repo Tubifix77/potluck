@@ -1070,3 +1070,35 @@ TEST(node, a_board_of_another_cell_is_never_admitted_and_one_that_moves_away_fal
     CHECK_EQ(c.nodes[0].node->peers().count_in_state(PeerState::Alive), static_cast<size_t>(0));
     CHECK_EQ(c.nodes[2].node->peers().count_in_state(PeerState::Alive), static_cast<size_t>(2));
 }
+
+TEST(node, a_foreman_judges_its_cell_mates_by_their_window_and_its_fellow_foremen_by_the_upper_cells) {
+    // Review of M19 #2: F (node 0) is in cell 1 and the upper cell 2 (window 5 s); M (node 1) in cell 1; G (node 2), a
+    // foreman of another cell, in cell 2 only. A 2 s silence kills M in F's eyes (600 ms) but not G.
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    c.nodes[0].node->set_groups(1, 2, 0, 5000);
+    c.nodes[1].node->set_groups(1, 0);
+    c.nodes[2].node->set_groups(2, 0, 5000, 0);
+    c.start_all();
+    c.advance_ms(3000);
+    CHECK_EQ(c.nodes[0].node->peers().count_in_state(PeerState::Alive), static_cast<size_t>(2));
+    CHECK_EQ(c.nodes[0].node->window_floor(c.nodes[2].node->groups()), 5000u);
+    CHECK_EQ(c.nodes[0].node->window_floor(c.nodes[1].node->groups()), 0u);
+    c.deaf.push_back({0, 1});
+    c.deaf.push_back({0, 2});
+    c.advance_ms(2000);
+    auto peer = [&](size_t of) -> const PeerLink* {
+        const PeerTable& t = c.nodes[0].node->peers();
+        for (size_t k = 0; k < PeerTable::capacity(); ++k) {
+            if (t.slot(k).state != PeerState::Free && t.slot(k).node_id == c.nodes[of].node->config().node_id) return &t.slot(k);
+        }
+        return nullptr;
+    };
+    const PeerLink* m = peer(1);
+    const PeerLink* g = peer(2);
+    CHECK(m != nullptr && m->state == PeerState::Dead);
+    CHECK(g != nullptr && g->state == PeerState::Alive);
+    c.deaf.clear();
+    c.advance_ms(2000);
+    CHECK_EQ(c.nodes[0].node->peers().count_in_state(PeerState::Alive), static_cast<size_t>(2));
+}

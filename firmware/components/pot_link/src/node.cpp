@@ -3,6 +3,7 @@
 #include "pot/node.hpp"
 #include "pot/sys_resources.hpp"
 
+#include <algorithm>
 #include <cstring>
 
 #include "pot/opcodes.hpp"
@@ -551,11 +552,31 @@ void Node::announce_change() {
     next_announce_ms_ = hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0;
 }
 
-void Node::set_groups(uint8_t a, uint8_t b) {
+void Node::set_groups(uint8_t a, uint8_t b, uint32_t window_a_ms, uint32_t window_b_ms) {
+    group_window_ms_[0] = a != 0 ? window_a_ms : 0;
+    group_window_ms_[1] = b != 0 ? window_b_ms : 0;
     const uint16_t g = static_cast<uint16_t>(a | b << 8);
     if (g == groups_) return;
     groups_ = g;
     announce_change();  // the HELLO says something new
+}
+
+void Node::apply_cell_window(PeerLink& p, uint16_t theirs) const {
+    const uint32_t w = window_floor(theirs);
+    if (w == 0 || p.hb_period_ms == 0 || w <= p.hb_period_ms * p.miss_limit) return;
+    p.miss_limit = static_cast<uint8_t>(std::min<uint32_t>(255, (w + p.hb_period_ms - 1) / p.hb_period_ms));
+}
+
+uint32_t Node::window_floor(uint16_t theirs) const {
+    if (groups_ == 0 || theirs == 0) return 0;
+    uint32_t floor = 0;
+    for (int i = 0; i < 2; ++i) {
+        const uint8_t m = static_cast<uint8_t>(groups_ >> (8 * i));
+        if (m == 0 || (m != static_cast<uint8_t>(theirs) && m != static_cast<uint8_t>(theirs >> 8))) continue;
+        if (group_window_ms_[i] == 0) return 0;  // a shared cell with no window of its own: the peer's own window
+        floor = floor == 0 ? group_window_ms_[i] : std::min(floor, group_window_ms_[i]);
+    }
+    return floor;
 }
 
 bool Node::shares_group(uint16_t theirs) const {
@@ -1100,6 +1121,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
     }
     p->hb_period_ms = (h.hb_period_cs != 0) ? h.hb_period_cs * 10u : cfg_.hb_period_ms;
     p->miss_limit = (h.hb_miss_limit != 0) ? h.hb_miss_limit : cfg_.hb_miss_limit;
+    apply_cell_window(*p, h.groups);  // M19: a peer met only in a windowed cell is judged by that window
     pin_version(*p, h.espnow_version);
     note(peer_on_frame(*p, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0, h.boot_epoch), p);
 
@@ -1141,6 +1163,7 @@ void Node::handle_hello_ack(PeerLink* p, const Frame& f) {
     p->node_id = a.node_id;
     p->hb_period_ms = (a.hb_period_cs != 0) ? a.hb_period_cs * 10u : cfg_.hb_period_ms;
     p->miss_limit = (a.hb_miss_limit != 0) ? a.hb_miss_limit : cfg_.hb_miss_limit;
+    apply_cell_window(*p, peer_groups_[peers_.index_of(p)]);
     pin_version(*p, a.espnow_version);
     note(peer_on_frame(*p, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0, a.boot_epoch), p);
 }

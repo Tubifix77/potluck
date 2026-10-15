@@ -21,7 +21,8 @@
 // which it sets on the node (Node::set_groups) when it starts and clears when it stops, so admission follows the package.
 //
 //   config: x_hash u32, y_hash u32, room_hash u32, x f32, y f32 (-1: not placed; else 0..1000 m), room u32 (0: none),
-//           near_hash u32, near u16[4] (0: none; no ids at all: no sys/near), cell u8[2] (0: none)
+//           near_hash u32, near u16[4] (0: none; no ids at all: no sys/near), cell u8[2] (0: none),
+//           cell_window u8[2] (each cell's own death window in 100 ms steps; 0: none -- Review of M19 #2)
 
 #pragma once
 
@@ -34,7 +35,7 @@
 
 namespace pot {
 
-constexpr uint8_t kPositionCfgLen = 38;
+constexpr uint8_t kPositionCfgLen = 40;
 constexpr size_t kPositionNearMax = 4;
 constexpr uint32_t kPositionPeriodMs = 10000;
 constexpr float kPositionMaxM = 1000.0f;
@@ -45,7 +46,8 @@ struct PositionConfig {
     uint32_t room;
     uint32_t near_hash;
     uint16_t near[kPositionNearMax];
-    uint8_t cells[2];  // M19
+    uint8_t cells[2];        // M19
+    uint8_t cell_window[2];  // M19: 100 ms steps, 0 = none
     bool placed() const { return x >= 0.0f; }
     uint8_t near_count() const {
         uint8_t n = 0;

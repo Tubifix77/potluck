@@ -115,8 +115,8 @@ class ClusterFile(unittest.TestCase):
         img = dp.compile_image(m, 5)
         hx, hy = (dp.path_hash(p) for p in dp.position_paths("home", 0x0100))
         hr, hn = dp.path_hash(dp.room_path("home", 0x0100)), dp.path_hash(dp.near_path("home", 0x0100))
-        self.assertIn(struct.pack("<HBB", 0x0100, dp.ACTOR_POSITION, 38) +
-                      struct.pack("<IIIffII4H2B", hx, hy, hr, 1.5, 2.25, 0, hn, 0, 0, 0, 0, 0, 0), img)
+        self.assertIn(struct.pack("<HBB", 0x0100, dp.ACTOR_POSITION, 40) +
+                      struct.pack("<IIIffII4H4B", hx, hy, hr, 1.5, 2.25, 0, hn, 0, 0, 0, 0, 0, 0, 0, 0), img)
         _, _, reads = ap.expected(m, [0x100, 0x200])
         self.assertIn("potluck://home/node-0100/sys/pos/y", reads)
         for bad in ([1], [-1, 0], [0, 1001], ["1", 2], [True, 1]):
@@ -150,6 +150,18 @@ class ClusterFile(unittest.TestCase):
         for bad in (["a", "b", "c"], [], ["a", "a"], [3]):
             with self.assertRaisesRegex(ap.ApplyError, "cells"):
                 self.cluster(boards=[{"node": "0100", "cells": bad}])
+        # Review of M19 #2: an upper cell's own window rides with each of its boards
+        c = self.cluster(boards=[{"node": "0100", "label": "a", "cells": ["house", "upper"]},
+                                 {"node": "0200", "label": "b", "cells": ["upper"]}],
+                         cells={"upper": {"window_ms": 5000}})
+        m = mf.parse(ap.compose(c, []))
+        cfg = {a.name: a.config.get("cell_windows") for a in m.actors if a.module == "builtin:position"}
+        self.assertEqual(cfg, {"pos_0100": "0,5000", "pos_0200": "5000"})
+        dp.compile_image(m, 5)
+        with self.assertRaisesRegex(ap.ApplyError, "window_ms"):
+            self.cluster(boards=[{"node": "0100", "cells": ["u"]}], cells={"u": {"window_ms": 150}})
+        with self.assertRaisesRegex(ap.ApplyError, "no board"):
+            self.cluster(boards=[{"node": "0100", "cells": ["u"]}], cells={"v": {"window_ms": 1000}})
 
     def test_each_boards_nearest_set_follows_passive_sensors_rule(self):
         # D20: same room when the board has one; by distance, ties to the lower id; unplaced after placed, by id

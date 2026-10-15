@@ -247,7 +247,7 @@ def near_ids(text: str) -> list[int]:
 def _position_config(m: Manifest, a, where: str) -> bytes:
     """x_hash, y_hash, room_hash u32; x, y f32 (-1 = not placed); room u32 (0 = none); near_hash u32, near u16[4]
     (0-padded) -- pot/position.hpp."""
-    extra = set(a.config) - {"x", "y", "room", "near", "cells"}
+    extra = set(a.config) - {"x", "y", "room", "near", "cells", "cell_windows"}
     if extra:
         raise DeployError(f"{where}: unknown position config key(s) {sorted(extra)}")
     if a.pin is None:
@@ -272,12 +272,19 @@ def _position_config(m: Manifest, a, where: str) -> bytes:
         raise DeployError(f"{where}: cells is cell numbers, comma-separated") from None
     if len(cells) > 2 or any(not 1 <= c <= 255 for c in cells) or len(set(cells)) != len(cells):
         raise DeployError(f"{where}: a board belongs to at most two cells, numbered 1..255")
+    try:
+        windows = [int(t) for t in str(a.config.get("cell_windows", "")).split(",") if t]
+    except ValueError:
+        raise DeployError(f"{where}: cell_windows is milliseconds, comma-separated") from None
+    windows += [0] * (len(cells) - len(windows))
+    if len(windows) != len(cells) or any(w % 100 or not 0 <= w <= 25500 for w in windows):
+        raise DeployError(f"{where}: a cell's window is 0..25500 ms in 100 ms steps, one per cell")
     if not 0 <= room <= 0xFFFF or (not placed and room == 0 and not near and not cells):
         raise DeployError(f"{where}: a position actor needs a position, a room (1..65535), its nearest boards or a cell")
     hx, hy = (path_hash(p) for p in position_paths(m.system, a.pin))
-    return struct.pack("<IIIffII4H2B", hx, hy, path_hash(room_path(m.system, a.pin)), x, y, room,
+    return struct.pack("<IIIffII4H4B", hx, hy, path_hash(room_path(m.system, a.pin)), x, y, room,
                        path_hash(near_path(m.system, a.pin)), *(near + [0] * (4 - len(near))),
-                       *(cells + [0] * (2 - len(cells))))
+                       *(cells + [0] * (2 - len(cells))), *([w // 100 for w in windows] + [0] * (2 - len(windows))))
 
 
 def _led_switch_config(m: Manifest, a, where: str) -> bytes:

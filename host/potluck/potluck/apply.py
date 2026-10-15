@@ -286,6 +286,9 @@ class Cluster:
     #: M19: the cells (groups) each board belongs to, by name -- one, or two for a foreman. A cluster file with none
     #: is one cell as before; with cells, a board admits only boards of its own cells.
     cells: dict[int, tuple[str, ...]] = field(default_factory=dict)
+    #: M19 (Review #2): a cell's own death window in ms (an upper cell of foremen, far apart, a slower one); absent:
+    #: its members are judged by their own announced windows, as in one cell.
+    cell_windows: dict[str, int] = field(default_factory=dict)
 
 
 def _rel(base: Path, p: str) -> Path:
@@ -350,7 +353,7 @@ def load_cluster(path: str) -> Cluster:
     if not isinstance(doc, dict) or doc.get("schema") != SCHEMA:
         raise ApplyError(f"{path}: not a cluster file (\"schema\": \"{SCHEMA}\")")
     allowed = {"schema", "system", "port", "baud", "boards", "keys", "firmware", "apps", "package", "verify",
-               "comment", "outside", "present", "plan"}
+               "comment", "outside", "present", "plan", "cells"}
     extra = set(doc) - allowed
     if extra:
         raise ApplyError(f"{path}: unknown key(s) {sorted(extra)}")
@@ -505,6 +508,17 @@ def load_cluster(path: str) -> Cluster:
     cl.positions = positions
     cl.plan = check_plan(doc.get("plan"))
     cl.cells = cells
+    cw = {}
+    for name, spec in (doc.get("cells") or {}).items():
+        if not isinstance(spec, dict) or set(spec) - {"window_ms"}:
+            raise ApplyError(f"cells['{name}']: {{\"window_ms\": <ms>}}")
+        w = spec.get("window_ms", 0)
+        if not isinstance(w, int) or isinstance(w, bool) or w % 100 or not 0 <= w <= 25500:
+            raise ApplyError(f"cells['{name}'].window_ms: 0..25500, in steps of 100")
+        if name not in {n for v in cells.values() for n in v}:
+            raise ApplyError(f"cells['{name}']: no board is in this cell")
+        cw[name] = w
+    cl.cell_windows = cw
     if len({n for v in cells.values() for n in v}) > 255:
         raise ApplyError("cells: at most 255 named cells in one tree")
     return cl
@@ -925,6 +939,8 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
             cfg["near"] = ",".join(f"{q:04x}" for q in near[nid])
         if nid in c.cells:
             cfg["cells"] = ",".join(str(cnum[n]) for n in c.cells[nid])
+            if any(c.cell_windows.get(n) for n in c.cells[nid]):
+                cfg["cell_windows"] = ",".join(str(c.cell_windows.get(n, 0)) for n in c.cells[nid])
         actors.append({"name": name, "module": "builtin:position", "latency_class": 4, "pin": nid, "config": cfg})
     return out
 
