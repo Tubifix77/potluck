@@ -61,6 +61,24 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-15 (evening): **M20 step 2 mostly built; M20's kill line did not fire; the floor plan with passive-sensor** (M0-LOG session 45).
+>
+> Built since the morning (all host-tested, the hardware parts shown on the bench): the setup wizard (`setup.html`: a
+> first run that makes the cell and attaches the hub to the first board, and Add boards -- never probes a port that was
+> there when the page opened, because a probe restarts a board); **the frame link over a board's own USB console, beside
+> the logs** (`pot::ConsoleDemux`; 2,196 reads over C's cable in 2 min, 0 timeouts -- M20's kill line did not fire); the
+> floor plan (Plan tab, 100 x 100 m, zoom and pan; positions held by the boards, `node-<id>/sys/pos/{x,y}`, `sys/room`,
+> `sys/near`, adopted by other boards on demand); the library (Library tab: apps on/off as a package change, Home
+> Assistant's broker tested from the PC, per resource hidden/visible/controllable); `"?"` outputs, `kMaxOutputs` 12,
+> `"peers": {"nearest": K}`, `per_room`. pot_sim `--scenario d20|perlink`. **passive-sensor's session** (the owner told it
+> to catch up and take the job) owns sensing only -- the map, pot_sim and hub_mock are Potluck's; its D20 (evidence at the
+> edge, a fusion per room) builds against `67f8f5d` and comes back as a commit to deploy. **Bench:** firmware `08d0f9c`
+> (counter 43), package 76 from `keys/desk-m14-hub.json` with passive-sensor `830f6ce`; board positions ROUGH (from the
+> owner's drawing, 13 m assumed; `keys/desk-m14-hub.json.pre-plan` is the file before); the hub resident on today's
+> code (`captures/hub-6.log`). **Owed by the owner:** drag the boards to their real places on the Plan tab and draw the
+> rooms; passive-sensor's PS-1 walk (~40 min); whether to push to GitHub (today's commits are local). Next for Potluck:
+> the packaged installer and tray icon, a firmware rollout through the console's 115200 baud, then M19.
+>
 > ## HANDOVER, 2026-10-15: **M19 and M20 planned; building in the agreed order -- step 1 done, step 2 under way** (M0-LOG session 45).
 >
 > **Order (ARCHITECTURE section 13, "The order of building M19 and M20"):** step 1 CA-assigned node ids (**done**, `d22d6cf`);
