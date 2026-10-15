@@ -10,6 +10,7 @@
   var order = [];           // ports in the order they appeared
   var build = null;         // GET api/setup/build
   var wanted = 1;
+  var firstRun = false;     // a PC with no cell yet: the wizard makes one, and its first board becomes the hub's link
 
   function $(id) { return document.getElementById(id); }
   function el(tag, cls, text) {
@@ -174,7 +175,8 @@
     api("GET", "api/setup/build").then(function (r) {
       if (r._status !== 200) { $("fw-what").textContent = r.result || "The cell's firmware was not found."; return; }
       build = r;
-      $("fw-what").textContent = "Potluck " + r.version + ", what the cell's boards run now.";
+      $("fw-what").textContent = r.version ? "Potluck " + r.version + ", what the cell's boards run now."
+        : "Potluck, " + (r.note || "the firmware on this PC") + ".";
       var btn = $("do-install");
       btn.disabled = false;
       btn.textContent = "Install on " + readyBoards().length + " board" + (readyBoards().length === 1 ? "" : "s");
@@ -235,6 +237,18 @@
         });
       });
     });
+    if (firstRun) {
+      chain = chain.then(function () {
+        var first = list.filter(function (b) { return b.state === "joined"; })[0];
+        if (!first) return;
+        setWhat(first, "In the cell as " + first.label + "; connecting this PC to the cell through it...");
+        return api("POST", "api/setup/attach", { port: first.port }).then(function (r) {
+          if (!r.ok) throw new Error(r.result || "could not connect");
+          firstRun = false;
+          setWhat(first, "In the cell as " + first.label + "; this PC talks to the cell through it", "ok");
+        }).catch(function (e) { say("This PC could not connect to the cell through " + first.port + ": " + e.message); });
+      });
+    }
     chain.then(function () {
       $("pp").value = ""; $("wifi-pw").value = "";
       if (list.some(function (b) { return b.state === "joined"; })) roomsStep();
@@ -313,6 +327,15 @@
         $("s-count").hidden = true;
         return;
       }
+      if (!c.system) {  // no cell yet
+        firstRun = true;
+        $("li-name").hidden = false;
+        show("s-name");
+        return api("GET", "api/setup/ports").then(function (r) {  // never probe what was plugged in before
+          (r.ports || []).forEach(function (p) { baseline[p.port] = true; });
+          listOld(r.ports || []);
+        });
+      }
       cell = c;
       document.title = "Add boards to " + (c.system || "the cell");
       $("cell-name").textContent = c.system || "";
@@ -327,6 +350,28 @@
       });
     }, function () { say("The hub does not answer."); });
 
+    $("do-cell").onclick = function () {
+      var sys = $("cell-sys").value.trim(), pp = $("cell-pp").value;
+      if (!/^[!-~]{1,31}$/.test(sys) || sys.indexOf("/") >= 0) { say("A name is 1 to 31 letters, digits or signs, without spaces or '/'."); return; }
+      if (pp.length < 10) { say("The passphrase needs 10 characters or more."); return; }
+      if (pp !== $("cell-pp2").value) { say("The two passphrases differ."); return; }
+      $("do-cell").disabled = true;
+      api("POST", "api/setup/newcell", { system: sys, passphrase: pp }).then(function (r) {
+        $("cell-pp").value = ""; $("cell-pp2").value = "";
+        if (!r.ok) { $("do-cell").disabled = false; say(r.result || "the cell was not made"); return; }
+        return api("GET", "api/setup/cell").then(function (c) {
+          cell = c;
+          document.title = "Add boards to " + c.system;
+          $("cell-name").textContent = c.system;
+          var spans = document.querySelectorAll(".cell");
+          for (var i = 0; i < spans.length; i++) spans[i].textContent = c.system;
+          $("n-now").textContent = "0";
+          $("n-add").max = String(remaining());
+          checkCount();
+          show("s-count");
+        });
+      });
+    };
     $("n-add").oninput = checkCount;
     $("go-plug").onclick = function () { wanted = parseInt($("n-add").value, 10) || 1; show("s-plug"); scanPorts(); };
     $("go-install").onclick = function () { show("s-install"); findBuild(); };
@@ -334,7 +379,7 @@
     $("do-join").onclick = joinAll;
     $("go-done").onclick = function () { show("s-done"); $("pp2-row").hidden = !cell.vault; };
     $("do-apply").onclick = applyAll;
-    show("s-count");
+    if (!firstRun) show("s-count");
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);

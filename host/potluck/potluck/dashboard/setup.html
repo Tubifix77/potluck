@@ -15,7 +15,7 @@
 
   Landmarks (tests/test_dashboard.py checks them; keep them):
     #steps        the step list; each step a <section class="step" data-step="...">
-    #s-count #s-plug #s-install #s-join #s-rooms #s-done
+    #s-name (a PC with no cell yet) #s-count #s-plug #s-install #s-join #s-rooms #s-done
     #boards       the new boards, one card each (.nb[data-port])
 -->
 <header class="top">
@@ -27,9 +27,20 @@
 <main class="wizard">
   <p id="w-msg" class="banner" role="alert" hidden></p>
   <ol id="steps" class="steps">
-    <li data-for="s-count">How many</li><li data-for="s-plug">Plug in</li><li data-for="s-install">Install</li>
+    <li data-for="s-name" id="li-name" hidden>Your cell</li><li data-for="s-count">How many</li><li data-for="s-plug">Plug in</li><li data-for="s-install">Install</li>
     <li data-for="s-join">Join the cell</li><li data-for="s-rooms">Rooms</li><li data-for="s-done">Done</li>
   </ol>
+
+  <section id="s-name" class="step" data-step="name" hidden>
+    <h2>Make your cell</h2>
+    <p>A cell is your boards working as one. Give it a short name, and a passphrase that locks its keys on this PC.</p>
+    <label>Name <input id="cell-sys" maxlength="31" autocomplete="off" placeholder="home"></label>
+    <label>Passphrase (10 characters or more) <input id="cell-pp" type="password" autocomplete="new-password"></label>
+    <label>The same again <input id="cell-pp2" type="password" autocomplete="new-password"></label>
+    <p class="note warn">Write the passphrase down. It is kept nowhere: without it, nobody -- you included -- can add a
+      board or change the cell's apps. Losing it means setting the cell up again.</p>
+    <button id="do-cell" type="button">Make the cell</button>
+  </section>
 
   <section id="s-count" class="step" data-step="count">
     <h2>Add boards to <span class="cell"></span></h2>

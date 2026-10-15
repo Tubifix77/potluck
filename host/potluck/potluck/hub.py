@@ -1135,8 +1135,12 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                     # the firmware the cell runs (most of its boards), and its build on this PC, for new boards
                     vers = [b.get("firmware", {}).get("version") for b in model.snapshot()["boards"]]
                     vers = [v for v in vers if v]
-                    if not vers:
-                        self._json(409, {"ok": False, "result": "no board reports its firmware yet"})
+                    if not vers:  # M20's first run: no board yet -- the newest firmware built on this PC
+                        try:
+                            self._json(200, {"version": None, "build": str(st.newest_build()),
+                                             "note": "the newest firmware built on this PC"})
+                        except st.SetupError as exc:
+                            self._json(409, {"ok": False, "result": str(exc)})
                         return
                     v = max(set(vers), key=vers.count)
                     try:

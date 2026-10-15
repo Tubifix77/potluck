@@ -133,6 +133,19 @@ def flash_parts(build_dir: str | Path) -> list[tuple[str, Path]]:
     return parts
 
 
+def newest_build(cache: Path | None = None) -> Path:
+    """M20's first run, when no board reports a firmware yet: the newest complete build on this PC (a packaged release
+    carries its own image instead)."""
+    if cache is None:
+        from .apply import default_cache
+        cache = default_cache()
+    builds = [b for b in (cache / "fw").glob("*/build-*")
+              if (b / "flasher_args.json").exists() and (b / "potluck_m0.bin").exists()]
+    if not builds:
+        raise SetupError("no Potluck firmware is built on this PC yet -- `potluck apply --plan` builds it")
+    return max(builds, key=lambda b: (b / "potluck_m0.bin").stat().st_mtime)
+
+
 def cell_build(version: str, cache: Path | None = None) -> Path:
     """The cached build of firmware `version` ("<commit>-<key6>", as boards report it): new boards get exactly the
     firmware the cell runs (M20, Add boards), never merely the newest on the PC."""
