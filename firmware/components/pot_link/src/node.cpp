@@ -1299,7 +1299,7 @@ uint16_t Node::request_read(uint16_t peer_node_id, uint32_t path_hash) {
     }
     PendingNs* q = pending_claim();
     if (q == nullptr) {
-        return 0;  // four already outstanding; the caller retries rather than us queueing forever
+        return 0;  // kMaxPendingNs (20) already outstanding; the caller retries rather than us queueing forever
     }
 
     const uint16_t msg_id = next_msg_id(*p);

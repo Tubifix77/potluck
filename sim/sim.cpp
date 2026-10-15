@@ -178,7 +178,7 @@ void scenario_present(Cell& c, uint32_t sec) {
 // reads two values per directed link of the whole cell every 2 s.
 constexpr size_t kRoom = 5;
 uint32_t d20_hash(size_t owner, uint32_t k) { return 0x60000000u + static_cast<uint32_t>(owner) * 64u + k; }
-uint32_t g_d20_reads = 0;   // reads that went out (request_read keeps at most four outstanding a node)
+uint32_t g_d20_reads = 0;   // reads that went out (request_read refuses past kMaxPendingNs, 20, outstanding a node)
 uint32_t g_d20_wanted = 0;  // reads the design asks for
 
 void d20_declare(Cell& c, uint32_t per_owner) {
@@ -226,8 +226,9 @@ void scenario_perlink(Cell& c, uint32_t sec) {
     g_d20_wanted += static_cast<uint32_t>((c.size() - 1) * per_owner);
 }
 
-// The fusion keeps its four read slots full, every step, walking every link's two values in turn -- the fastest it
-// could go; whether that reaches the reads a window wants is the question.
+// The fusion issues up to four reads every step (until request_read refuses one: all 20 slots taken), walking every
+// link's two values in turn -- about the fastest it could go; whether that reaches the reads a window wants is the
+// question.
 void perlink_step(Cell& c, void*) {
     static size_t o = 1;
     static uint32_t k = 0;
@@ -347,7 +348,7 @@ void tel_step(Cell& c, void*) {
     store_telemetry_request(r, w, sizeof(w));
     const uint16_t m = c.node(0).node->send_deploy(r.target, kOpTelemetry, w, sizeof(w));
     if (m == 0) {
-        ++g_tel.refused;  // the board is not alive in node 0's view, or four requests are already out
+        ++g_tel.refused;  // the board is not alive in node 0's view, or every pending slot is taken
         return;
     }
     g_tel.awaiting = m;
