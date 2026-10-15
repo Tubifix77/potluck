@@ -447,6 +447,45 @@ TEST(actor_runtime, an_every_node_actors_per_link_output_on_another_node_is_adop
     CHECK(!rt.adopt(n.node->ns(), path_hash("potluck://lab/nothing"), cell, 3));
 }
 
+namespace {
+// M20: a pinned kind with outputs_on_demand (a board's position): another board's outputs are not declared at boot.
+size_t pos_outputs(const ActorDecl& d, uint16_t node, uint16_t peer, NsDecl* out, size_t cap) {
+    if (peer != 0 || cap < 1 || node != d.node_id) return 0;
+    char buf[48];
+    std::snprintf(buf, sizeof(buf), "node-%04x/sys/pos/x", static_cast<unsigned>(node));
+    out[0] = NsDecl{};
+    out[0].path_hash = path_hash_from(kLabPrefix, buf);
+    out[0].owner_node = node;
+    out[0].type = ValueType::F32;
+    out[0].staleness_bound_ms = 30000;
+    return 1;
+}
+const ActorKind kOnDemandTable[] = {
+    {static_cast<ActorType>(0x82), "pos", &probe_check, &probe_create, nullptr, &pos_outputs, true},
+    {static_cast<ActorType>(0x83), "pinned", &probe_check, &probe_create, nullptr, &pos_outputs},
+};
+}  // namespace
+
+TEST(actor_runtime, a_kind_with_outputs_on_demand_is_adopted_when_read_never_declared_at_boot) {
+    OneNode n;  // node 0x100
+    const uint8_t cfg[3] = {1, 0, 0};
+    const DeployImage img = image({{0x200, static_cast<ActorType>(0x82), 3, cfg},
+                                   {0x300, static_cast<ActorType>(0x83), 3, cfg}});
+    ActorRuntime rt(kOnDemandTable, 2);
+    ActorEnv env;
+    env.node = n.node;
+    CHECK(rt.load(img, 0x100, env, nullptr));
+    rt.start(env, 0, nullptr);
+    const uint32_t on_demand = path_hash("potluck://lab/node-0200/sys/pos/x");
+    const uint32_t at_boot = path_hash("potluck://lab/node-0300/sys/pos/x");
+    CHECK(n.node->ns().find(at_boot) != nullptr);     // an ordinary pinned kind: its replica declared at boot
+    CHECK(n.node->ns().find(on_demand) == nullptr);   // on demand: nothing until something reads it
+    const uint16_t cell[3] = {0x100, 0x200, 0x300};
+    CHECK(rt.adopt(n.node->ns(), on_demand, cell, 3));
+    const NsEntry* e = n.node->ns().find(on_demand);
+    CHECK(e != nullptr && e->owner_node == 0x200);
+}
+
 TEST(actor_runtime, a_read_that_finds_no_entry_asks_the_adopt_handler) {
     OneNode n;
     static int asked = 0;

@@ -184,6 +184,10 @@ struct ActorKind {
     // portable actor's are declared and fenced by the reconciler. The actor itself declares its own
     // on its own node (it may call this hook to do so). nullptr: the type publishes nothing others read.
     size_t (*outputs)(const ActorDecl& decl, uint16_t node, uint16_t peer, NsDecl* out, size_t cap) = nullptr;
+    // M20: a pinned kind whose outputs other boards read rarely (a board's position, its room): not declared at boot
+    // on the other boards but adopted when first read, like an every-node one -- so they cost a reader one entry
+    // while it reads, not every board an entry per board (and an adopted replica nobody reads is evicted).
+    bool outputs_on_demand = false;
 };
 
 // 12 since M20: passive-sensor's fusion publishes presence, motion and the seven-output position kind (9). The

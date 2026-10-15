@@ -134,6 +134,7 @@ size_t ActorRuntime::start(const ActorEnv& env, uint32_t now_ms, const char** fa
         for (size_t i = 0; i < n_others_; ++i) {
             const Held& o = others_[i];
             if (o.decl.node_id == kEveryNode) continue;  // adopted on demand: the members are not known yet
+            if (o.kind->outputs_on_demand) continue;      // M20: adopted when first read (a position, a room)
             NsDecl out[kMaxOutputs];
             const size_t n = o.kind->outputs(o.decl, o.decl.node_id, 0, out, kMaxOutputs);
             for (size_t j = 0; j < n && j < kMaxOutputs; ++j) {

@@ -234,7 +234,14 @@ A board the owner has placed on the floor plan holds its own position: `node-<id
 metres from the plan's top-left corner, x to the right, y down (the cluster file's `"position": [x, y]` on that
 board; `apply` compiles it into the signed package as a pinned `builtin:position` actor, so a cell with no PC keeps
 it). A board with no position declares neither -- treat NotFound as "not placed". Read them like any resource
-(above); each costs the reader one replica, counted by `apply --plan`.
+(above); each costs the reader one replica while it reads (others adopt them on demand, never at boot).
+The same actor holds `node-<id>/sys/room` (u32): the rooms the cluster file names, sorted by name and numbered from
+1, so two boards are room-mates when theirs are equal and non-zero. An app that keeps something per link only for a
+board's nearest boards says so in its descriptor -- `"peers": {"nearest": K}`, K 1..4 -- and `apply` then works out
+each board's set (the other boards in its room, or every board when it has none; by distance between positions,
+ties to the lower id; unplaced boards after placed ones, by id; a board with no position takes the lowest ids) and
+the board holds it as `node-<id>/sys/near` (bytes: up to four u16 ids, little-endian, nearest first, 0-padded). Read
+your own board's set locally; `apply --plan` counts the module's `{peer}` outputs for that set, not every board.
 
 An actor that knows where something is declares seven outputs under one prefix, and the dashboard's floor plan
 draws it: `act/<name>/state` (u32: 0 nobody, 1 present but not placed, 2 placed), `x`, `y` (f32, Unit::Metre,

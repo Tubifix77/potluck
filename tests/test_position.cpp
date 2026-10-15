@@ -26,8 +26,14 @@ std::vector<uint8_t> from_hex(const char* hex) {
     return v;
 }
 
-// potluck.deploy.compile_image at counter 3: pos_7368 (builtin:position) pinned to B at x 3.5 m, y 12.25 m.
-const char* kGolden = "504f5444010100000300000025a1f52be11b9e171400000068730c10666ab25bf96bb25c0000604000004441";
+// potluck.deploy.compile_image at counter 3: pos_7368 (builtin:position) pinned to B at x 3.5 m, y 12.25 m, room 2,
+// nearest C then A; and one with a room and no place.
+const char* kGolden =
+    "504f544401010000030000007f5936465fb35a752800000068730c24666ab25bf96bb25c5286b12000006040000044410200000027d1e20b"
+    "6081006300000000";
+const char* kRoomOnly =
+    "504f5444010100000300000057f54b1fcde4d76e2800000068730c24666ab25bf96bb25c5286b120000080bf000080bf0100000027d1e20b"
+    "0000000000000000";
 
 }  // namespace
 
@@ -41,18 +47,34 @@ TEST(position, the_host_compilers_position_declaration_parses_here) {
     CHECK(position_config(d.actors[0], c));
     CHECK_EQ(c.x_hash, path_hash("potluck://lab/node-7368/sys/pos/x"));
     CHECK_EQ(c.y_hash, path_hash("potluck://lab/node-7368/sys/pos/y"));
-    CHECK(c.x == 3.5f && c.y == 12.25f);
+    CHECK_EQ(c.room_hash, path_hash("potluck://lab/node-7368/sys/room"));
+    CHECK(c.x == 3.5f && c.y == 12.25f && c.placed());
+    CHECK_EQ(c.room, 2u);
+    CHECK_EQ(c.near_hash, path_hash("potluck://lab/node-7368/sys/near"));
+    CHECK(c.near_count() == 2 && c.near[0] == 0x8160 && c.near[1] == 0x6300);
+    NsDecl outs[kMaxOutputs];
+    CHECK_EQ(kPositionKind.outputs(d.actors[0], 0x7368, 0, outs, kMaxOutputs), size_t{4});
+    CHECK(kPositionKind.outputs_on_demand);  // other boards adopt them when they read them
+    // A room and no place: one entry, the room.
+    const auto img2 = from_hex(kRoomOnly);
+    DeployImage d2{};
+    CHECK(parse_image(img2.data(), img2.size(), d2, &why));
+    PositionConfig c2{};
+    CHECK(position_config(d2.actors[0], c2));
+    CHECK(!c2.placed() && c2.room == 1u);
+    CHECK_EQ(kPositionKind.outputs(d2.actors[0], 0x7368, 0, outs, kMaxOutputs), size_t{1});
+    CHECK_EQ(outs[0].path_hash, path_hash("potluck://lab/node-7368/sys/room"));
     // Out of the plan, or not a number: refused.
     ActorDecl bad = d.actors[0];
     uint8_t cfg[kPositionCfgLen];
     bad.cfg = cfg;
     const float nan = std::nanf("");
     std::memcpy(cfg, d.actors[0].cfg, sizeof cfg);
-    std::memcpy(cfg + 8, &nan, 4);
+    std::memcpy(cfg + 12, &nan, 4);
     CHECK(!position_config(bad, c));
     const float far = 1001.0f;
     std::memcpy(cfg, d.actors[0].cfg, sizeof cfg);
-    std::memcpy(cfg + 12, &far, 4);
+    std::memcpy(cfg + 16, &far, 4);
     CHECK(!position_config(bad, c));
 }
 
@@ -68,7 +90,9 @@ TEST(position, the_board_holds_its_place_as_two_good_entries_and_keeps_them_fres
     const uint32_t hx = path_hash("potluck://lab/node-7368/sys/pos/x");
     const uint32_t hy = path_hash("potluck://lab/node-7368/sys/pos/y");
     alignas(PositionActor) unsigned char mem[sizeof(PositionActor)];
-    auto* a = new (mem) PositionActor(node, PositionConfig{hx, hy, 3.5f, 12.25f});
+    const uint32_t hr = path_hash("potluck://lab/node-7368/sys/room");
+    const uint32_t hn = path_hash("potluck://lab/node-7368/sys/near");
+    auto* a = new (mem) PositionActor(node, PositionConfig{hx, hy, hr, 3.5f, 12.25f, 2, hn, {0x8160, 0x6300, 0, 0}});
     g_t = 1000;
     CHECK(a->start(g_t));
     a->tick(g_t);
@@ -78,6 +102,12 @@ TEST(position, the_board_holds_its_place_as_two_good_entries_and_keeps_them_fres
     CHECK(r.value.as_f32(v) && v == 3.5f && r.quality == Quality::Good);
     CHECK(node.read(hy, r) == NsError::Ok);
     CHECK(r.value.as_f32(v) && v == 12.25f);
+    uint32_t room = 0;
+    CHECK(node.read(hr, r) == NsError::Ok);
+    CHECK(r.value.as_u32(room) && room == 2u);
+    CHECK(node.read(hn, r) == NsError::Ok);
+    CHECK(r.value.type == ValueType::Bytes && r.value.len == 8 && r.value.raw[0] == 0x60 && r.value.raw[1] == 0x81 &&
+          r.value.raw[2] == 0x00 && r.value.raw[3] == 0x63 && r.value.raw[4] == 0);
     g_t += 3 * kPositionPeriodMs - 1;  // re-published every period: still GOOD long after the start
     for (uint32_t t = 1000; t <= g_t; t += 1000) a->tick(t);
     CHECK(node.read(hx, r) == NsError::Ok);

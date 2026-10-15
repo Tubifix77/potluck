@@ -227,20 +227,50 @@ def position_paths(system: str, node_id: int) -> tuple[str, str]:
     return f"{base}/x", f"{base}/y"
 
 
+def room_path(system: str, node_id: int) -> str:
+    """M20: a board's room as a number -- the rooms the cluster file names, sorted by name and numbered from 1 -- so an
+    app can tell which boards share a room (passive-sensor's same-room links). Declared only when the board has one."""
+    return f"potluck://{system}/node-{node_id:04x}/sys/room"
+
+
+def near_path(system: str, node_id: int) -> str:
+    """M20: the boards nearest this one in its room (Bytes: up to four u16 ids, nearest first), as `apply` works them
+    out when an app asks ("peers": {"nearest": K}) -- the board's own entry, read locally by its apps."""
+    return f"potluck://{system}/node-{node_id:04x}/sys/near"
+
+
+def near_ids(text: str) -> list[int]:
+    """The "near" config value: hex node ids, comma-separated ("7368,8160")."""
+    return [int(t, 16) for t in text.split(",") if t]
+
+
 def _position_config(m: Manifest, a, where: str) -> bytes:
-    extra = set(a.config) - {"x", "y"}
+    """x_hash, y_hash, room_hash u32; x, y f32 (-1 = not placed); room u32 (0 = none); near_hash u32, near u16[4]
+    (0-padded) -- pot/position.hpp."""
+    extra = set(a.config) - {"x", "y", "room", "near"}
     if extra:
         raise DeployError(f"{where}: unknown position config key(s) {sorted(extra)}")
     if a.pin is None:
         raise DeployError(f"{where}: a position is a board's own, so it is pinned")
+    placed = "x" in a.config or "y" in a.config
     try:
-        x, y = float(a.config["x"]), float(a.config["y"])
+        x, y = (float(a.config["x"]), float(a.config["y"])) if placed else (-1.0, -1.0)
+        room = int(a.config.get("room", 0))
     except (KeyError, TypeError, ValueError):
-        raise DeployError(f"{where}: a position needs numbers x and y (metres)") from None
-    if not (0.0 <= x <= POSITION_MAX_M and 0.0 <= y <= POSITION_MAX_M):
+        raise DeployError(f"{where}: a position needs numbers x and y (metres), a room a number") from None
+    if placed and not (0.0 <= x <= POSITION_MAX_M and 0.0 <= y <= POSITION_MAX_M):
         raise DeployError(f"{where}: position ({x}, {y}) is outside 0..{POSITION_MAX_M:g} m")
+    try:
+        near = near_ids(str(a.config.get("near", "")))
+    except ValueError:
+        raise DeployError(f"{where}: near is hex node ids, comma-separated") from None
+    if len(near) > 4 or any(not 0x0001 <= n <= 0xFFFE or n == a.pin for n in near) or len(set(near)) != len(near):
+        raise DeployError(f"{where}: near names up to four other boards, each once")
+    if not 0 <= room <= 0xFFFF or (not placed and room == 0 and not near):
+        raise DeployError(f"{where}: a position actor needs a position, a room (1..65535) or its nearest boards")
     hx, hy = (path_hash(p) for p in position_paths(m.system, a.pin))
-    return struct.pack("<IIff", hx, hy, x, y)
+    return struct.pack("<IIIffII4H", hx, hy, path_hash(room_path(m.system, a.pin)), x, y, room,
+                       path_hash(near_path(m.system, a.pin)), *(near + [0] * (4 - len(near))))
 
 
 def _led_switch_config(m: Manifest, a, where: str) -> bytes:

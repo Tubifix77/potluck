@@ -28,6 +28,8 @@ counted in the namespace like any other, but neither ``apply``'s verify nor the 
 
 from __future__ import annotations
 
+NEAR_MAX = 4  # pot/position.hpp's kPositionNearMax: node-<id>/sys/near holds four u16 ids
+
 import json
 import struct
 from dataclasses import dataclass
@@ -74,6 +76,9 @@ class ModuleSpec:
     # Whether the descriptor has an "outputs" key at all: `[]` says "publishes nothing" (an LED driver), a missing
     # key says nothing -- apply --plan names only the latter as uncounted.
     outputs_declared: bool = False
+    #: M20 (passive-sensor's D20): "peers": {"nearest": K} -- each board's {peer} outputs exist for its K nearest boards
+    #: in its room only (node-<id>/sys/near, which `apply` computes), so they are counted for K, not every board. 0: all.
+    peers_nearest: int = 0
 
 
 _REGISTRY: dict[str, ModuleSpec] = {}
@@ -147,7 +152,14 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
             if not isinstance(f, dict) or not isinstance(f.get("name"), str) or f.get("kind") not in _KINDS:
                 raise ModuleError(f"{fw}: needs a name and a kind, one of {sorted(_KINDS)}")
             fields.append(Field(f["name"], f["kind"], f.get("default"), f.get("min"), f.get("max")))
-        out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req), "outputs" in m))
+        peers = m.get("peers")
+        k = 0
+        if peers is not None:
+            k = peers.get("nearest") if isinstance(peers, dict) and set(peers) == {"nearest"} else None
+            if not isinstance(k, int) or isinstance(k, bool) or not 1 <= k <= NEAR_MAX:
+                raise ModuleError(f"{w}: 'peers' is {{\"nearest\": K}}, K 1..{NEAR_MAX} (a board's set travels as "
+                                  f"node-<id>/sys/near, eight bytes)")
+        out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req), "outputs" in m, k))
     return out
 
 

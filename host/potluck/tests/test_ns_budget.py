@@ -66,6 +66,26 @@ class Budget(unittest.TestCase):
         b, _ = ap.ns_budget(m, boards, cabled=0x6300)
         self.assertEqual(b[0x7368]["package"], 2)  # both declared on every board
 
+    def test_a_module_with_nearest_peers_is_counted_for_its_set_and_positions_cost_only_their_board(self) -> None:
+        # M20 / D20: twenty boards, four rooms of five, "peers": {"nearest": 4} -- flat in cell size
+        from potluck import deploy as dp
+        mods._REGISTRY["ext:t/near"] = mods.ModuleSpec("ext:t/near", 0xF4, "every", (), "t",
+                                                        outputs=("{node}/rf/evidence", "{node}/link/{peer}/mean"),
+                                                        peers_nearest=4)
+        boards = [0x1000 + i for i in range(20)]
+        actors = [{"name": "link", "module": "ext:t/near", "latency_class": 4}]
+        for i, n in enumerate(boards):
+            near = [q for q in boards if q != n and (q - 0x1000) // 5 == i // 5][:4]
+            actors.append({"name": f"pos_{n:04x}", "module": "builtin:position", "latency_class": 4, "pin": n,
+                           "config": {"x": float(i), "y": 0.0, "room": i // 5 + 1,
+                                      "near": ",".join(f"{q:04x}" for q in near)}})
+        b, _ = ap.ns_budget(manifest(boards, actors), boards, cabled=boards[0])
+        n = boards[7]
+        self.assertEqual(b[n]["own"], 1 + 4 + 4)  # evidence, 4 links, and its own x, y, room, near
+        self.assertEqual(b[n]["package"], 0)      # no board holds another's position at boot
+        self.assertLess(b[boards[0]]["total"], 128)
+        self.assertIn(dp.near_path("lab", n), {p for p in ap.expected(manifest(boards, actors), boards)[2]})
+
     def test_twenty_boards_with_per_link_outputs_do_not_fit(self) -> None:
         boards = [0x1000 + i for i in range(20)]
         mods._REGISTRY["ext:t/link"] = mods.ModuleSpec("ext:t/link", 0xF1, "every", (), "t", outputs=tuple(

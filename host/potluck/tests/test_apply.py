@@ -114,12 +114,43 @@ class ClusterFile(unittest.TestCase):
         self.assertEqual(mf.cross_check(m), [])
         img = dp.compile_image(m, 5)
         hx, hy = (dp.path_hash(p) for p in dp.position_paths("home", 0x0100))
-        self.assertIn(struct.pack("<HBB", 0x0100, dp.ACTOR_POSITION, 16) + struct.pack("<IIff", hx, hy, 1.5, 2.25), img)
+        hr, hn = dp.path_hash(dp.room_path("home", 0x0100)), dp.path_hash(dp.near_path("home", 0x0100))
+        self.assertIn(struct.pack("<HBB", 0x0100, dp.ACTOR_POSITION, 36) +
+                      struct.pack("<IIIffII4H", hx, hy, hr, 1.5, 2.25, 0, hn, 0, 0, 0, 0), img)
         _, _, reads = ap.expected(m, [0x100, 0x200])
         self.assertIn("potluck://home/node-0100/sys/pos/y", reads)
         for bad in ([1], [-1, 0], [0, 1001], ["1", 2], [True, 1]):
             with self.assertRaisesRegex(ap.ApplyError, "position"):
                 self.cluster(boards=[{"node": "0100", "position": bad}])
+
+    def test_rooms_are_numbered_by_name_and_held_by_the_boards(self):
+        # M20 / passive-sensor's D20: room-mates are boards whose node-<id>/sys/room is equal and non-zero
+        c = self.cluster(boards=[{"node": "0100", "label": "A", "room": "Kitchen"},
+                                 {"node": "0200", "label": "B", "room": "Hall", "position": [1, 1]},
+                                 {"node": "0300", "label": "C"}])
+        self.assertEqual(ap.room_numbers(c), {"Hall": 1, "Kitchen": 2})
+        m = mf.parse(ap.compose(c, []))
+        cfg = {a.name: dict(a.config) for a in m.actors if a.module == "builtin:position"}
+        self.assertEqual(cfg, {"pos_0100": {"room": 2}, "pos_0200": {"x": 1.0, "y": 1.0, "room": 1}})
+        dp.compile_image(m, 5)
+        _, _, reads = ap.expected(m, [0x100, 0x200, 0x300])
+        self.assertIn("potluck://home/node-0100/sys/room", reads)
+        self.assertNotIn("potluck://home/node-0100/sys/pos/x", reads)
+
+    def test_each_boards_nearest_set_follows_passive_sensors_rule(self):
+        # D20: same room when the board has one; by distance, ties to the lower id; unplaced after placed, by id
+        c = self.cluster(boards=[
+            {"node": "0100", "label": "a", "room": "R", "position": [0, 0]},
+            {"node": "0200", "label": "b", "room": "R", "position": [3, 0]},
+            {"node": "0300", "label": "c", "room": "R", "position": [0, 3]},   # ties with b: the lower id first
+            {"node": "0400", "label": "d", "room": "R"},                        # unplaced: after the placed
+            {"node": "0500", "label": "e", "room": "S", "position": [1, 0]},   # nearest, but another room
+            {"node": "0600", "label": "f"}])                                    # no room, no place: the lowest ids
+        near = ap.near_sets(c, 4)
+        self.assertEqual(near[0x0100], [0x0200, 0x0300, 0x0400])  # fewer than 4 room-mates: all of them
+        self.assertEqual(near[0x0500], [])                         # alone in its room
+        self.assertEqual(near[0x0600], [0x0100, 0x0200, 0x0300, 0x0400])
+        self.assertEqual(ap.near_sets(c, 2)[0x0400], [0x0100, 0x0200])  # unplaced itself: the lowest ids
 
     def test_fragments_are_matched_by_label_renumbered_and_rehomed(self):
         c = self.cluster()

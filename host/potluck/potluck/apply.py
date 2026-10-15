@@ -733,6 +733,34 @@ def _rehome(obj: Any, old: str, new: str, ids: dict[int, int]) -> Any:
     return obj
 
 
+def near_sets(c: Cluster, k: int) -> dict[int, list[int]]:
+    """M20 (passive-sensor's D20 rule): each board's K nearest boards. Candidates: the other boards in its room when it
+    has one, else every other board; ranked by distance between positions, ties to the lower id; boards with no
+    position after every placed one, by id; a board with no position takes the K lowest ids among its candidates;
+    fewer than K candidates, all of them. Directional: A may list B while B does not list A."""
+    ids = [n for n, _ in c.boards]
+    out: dict[int, list[int]] = {}
+    for n in ids:
+        cands = [q for q in ids if q != n and (n not in c.rooms or c.rooms.get(q) == c.rooms[n])]
+        me = c.positions.get(n)
+        if me is None:
+            ranked = sorted(cands)
+        else:
+            def key(q):
+                p = c.positions.get(q)
+                if p is None:
+                    return (1, 0.0, q)
+                return (0, (p[0] - me[0]) ** 2 + (p[1] - me[1]) ** 2, q)
+            ranked = sorted(cands, key=key)
+        out[n] = ranked[:k]
+    return out
+
+
+def room_numbers(c: Cluster) -> dict[str, int]:
+    """M20: the rooms the cluster file names, sorted by name and numbered from 1 -- what node-<id>/sys/room holds."""
+    return {name: i + 1 for i, name in enumerate(sorted(set(c.rooms.values())))}
+
+
 def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
     """One manifest document from the fragments: the cluster's boards as its nodes (what each fragment says
     about a board merged in), every fragment's actors and bindings. `fragments` is (doc, root, where)."""
@@ -815,13 +843,24 @@ def compose(c: Cluster, fragments: list[tuple[dict, Path, str]]) -> dict:
         if "present" in names:
             raise ApplyError(f"an actor named 'present' is in {names['present']}; the name belongs to the presenting role")
         actors.append({"name": "present", "module": "builtin:present", "latency_class": 4, "config": dict(c.present)})
-    for nid, (x, y) in sorted(c.positions.items()):
-        # M20: each board's place on the floor plan, held by the board itself (node-<id>/sys/pos/{x,y}).
+    numbers = room_numbers(c)
+    from . import modules as mods
+    k = max((s.peers_nearest for s in mods.registered()), default=0)  # an app asks for nearest sets
+    near = near_sets(c, k) if k else {}
+    for nid in sorted(set(c.positions) | set(c.rooms) | {n for n, ids in near.items() if ids}):
+        # M20: each board's place on the floor plan and its room, held by the board itself (node-<id>/sys/pos/{x,y},
+        # node-<id>/sys/room).
         name = f"pos_{nid:04x}"
         if name in names:
             raise ApplyError(f"an actor named '{name}' is in {names[name]}; the name belongs to board 0x{nid:04x}'s position")
-        actors.append({"name": name, "module": "builtin:position", "latency_class": 4, "pin": nid,
-                       "config": {"x": x, "y": y}})
+        cfg: dict[str, Any] = {}
+        if nid in c.positions:
+            cfg["x"], cfg["y"] = c.positions[nid]
+        if nid in c.rooms:
+            cfg["room"] = numbers[c.rooms[nid]]
+        if near.get(nid):
+            cfg["near"] = ",".join(f"{q:04x}" for q in near[nid])
+        actors.append({"name": name, "module": "builtin:position", "latency_class": 4, "pin": nid, "config": cfg})
     return out
 
 
@@ -1007,7 +1046,12 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
             if a.module == "builtin:led_switch" and node is not None:
                 reads.append(dp.led_switch_path(m.system, node))
             if a.module == "builtin:position" and node is not None:
-                reads += list(dp.position_paths(m.system, node))
+                if "x" in a.config:
+                    reads += list(dp.position_paths(m.system, node))
+                if a.config.get("room"):
+                    reads.append(dp.room_path(m.system, node))
+                if a.config.get("near"):
+                    reads.append(dp.near_path(m.system, node))
             reads += _outputs(m, spec, a, [node] if node is not None else [])
     if m.system != "lab":
         for n in boards:
@@ -1043,11 +1087,31 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
     from . import modules as mods
     from . import reconcile as rc
 
+    # M20: each board's position actor -- its entries are its own (others adopt them when they read them), and its
+    # "near" set is whom a module with "peers": {"nearest": K} keeps per-link outputs for.
+    pos_own: dict[int, set[str]] = {n: set() for n in boards}
+    near: dict[int, list[int]] = {}
+    for a in m.actors:
+        node = m.placement_of(a) if a.module == "builtin:position" else None
+        if node is None:
+            continue
+        if "x" in a.config:
+            pos_own.setdefault(node, set()).update(dp.position_paths(m.system, node))
+        if a.config.get("room"):
+            pos_own.setdefault(node, set()).add(dp.room_path(m.system, node))
+        if a.config.get("near"):
+            near[node] = dp.near_ids(str(a.config["near"]))
+            pos_own.setdefault(node, set()).add(dp.near_path(m.system, node))
+
     def expand(spec, a, n: int) -> list[str]:
         out = []
         for t in (spec.outputs if spec is not None else ()):
             t = t.lstrip("?").replace("{actor}", a.name).replace("{node}", f"node-{n:04x}")
-            for p in ([q for q in boards if q != n] if "{peer}" in t else [None]):
+            if "{peer}" in t:
+                links = near.get(n, [])[:spec.peers_nearest] if spec.peers_nearest else [q for q in boards if q != n]
+            else:
+                links = [None]
+            for p in links:
                 out.append(f"potluck://{m.system}/" + (t.replace("{peer}", f"node-{p:04x}") if p is not None else t))
         return out
 
@@ -1077,14 +1141,15 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
             if a.module == "builtin:led_switch":
                 package.add(dp.led_switch_path(m.system, node))
             if a.module == "builtin:position":
-                package.update(dp.position_paths(m.system, node))
+                continue  # its board's own (pos_own); others adopt them when they read them
             package.update(expand(spec, a, node))
             if spec is not None and not (spec.outputs or spec.outputs_declared):
                 silent.append(a.module)
-    own = {n: {p for spec, a in every for p in expand(spec, a, n)} for n in boards}
+    own = {n: {p for spec, a in every for p in expand(spec, a, n)} | pos_own.get(n, set()) for n in boards}
     # What the verify and the hub read through the cabled board: not the {peer} outputs, which neither reads (a reader
     # of those, such as a capture tool, adds them while it runs).
-    own_read = {n: {p for spec, a in every for p in _outputs(m, spec, a, [n])} for n in boards}
+    own_read = {n: {p for spec, a in every for p in _outputs(m, spec, a, [n])} |
+                {p for p in pos_own.get(n, set()) if not p.endswith("/sys/near")} for n in boards}
     out_paths = {(p if p.startswith("potluck://") else f"potluck://{m.system}/{p.lstrip('/')}") for p in outside}
     result: dict[int, dict] = {}
     for n in boards:
