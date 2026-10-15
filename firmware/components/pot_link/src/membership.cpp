@@ -100,7 +100,14 @@ uint8_t elapsed_periods(const PeerLink& p, uint32_t now_ms) {
     if (p.hb_period_ms == 0) {
         return 0;
     }
-    const uint32_t silent_ms = now_ms - p.last_rx_ms;  // unsigned: wrap-safe for any real interval
+    // Wrap-safe for any real interval -- and a frame stamped after the tick's clock was read (a tick passed a time
+    // taken before that pass's frames were handled) is no silence at all. Unsigned, it was four billion ms: a live
+    // peer declared dead at 255 misses, and a foreman role that flapped every 100 ms (M19, pot_stubs).
+    const int32_t delta = static_cast<int32_t>(now_ms - p.last_rx_ms);
+    if (delta <= 0) {
+        return 0;
+    }
+    const uint32_t silent_ms = static_cast<uint32_t>(delta);
     const uint32_t periods = silent_ms / p.hb_period_ms;
     return periods > 255u ? 255u : static_cast<uint8_t>(periods);
 }

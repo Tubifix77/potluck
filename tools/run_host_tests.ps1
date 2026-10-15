@@ -18,7 +18,11 @@ param(
     [string]$Filter = "",
     [string]$BuildDir = "build/tests",
     # M12: another CMake source directory -- an app's tests using tests/testkit -- run with CTest.
-    [string]$Source = ""
+    [string]$Source = "",
+    # Build only these targets (pot_tests, pot_stubs, ...) -- while a long pot_sim run holds its executable open.
+    [string[]]$Target = @(),
+    # An optimised build (in its own -BuildDir): pot_stubs hosting many nodes, each checking Ed25519 signatures.
+    [switch]$Release
 )
 
 $ErrorActionPreference = "Stop"
@@ -92,11 +96,17 @@ $generator = if ($ninjaExe) { @("-G", "Ninja") } else { @() }
 $asanFlag = if ($Asan) { "-DPOT_ASAN=ON" } else { "-DPOT_ASAN=OFF" }
 
 $srcDir = if ($Source) { $Source } else { "tests" }
-& $cmakeExe -S $srcDir -B $BuildDir @generator -DCMAKE_BUILD_TYPE=Debug $asanFlag
+$buildType = if ($Release) { "Release" } else { "Debug" }
+& $cmakeExe -S $srcDir -B $BuildDir @generator "-DCMAKE_BUILD_TYPE=$buildType" $asanFlag
 if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
 
-& $cmakeExe --build $BuildDir --config Debug
+$targetArgs = if ($Target.Count -gt 0) { @("--target") + $Target } else { @() }
+& $cmakeExe --build $BuildDir --config $buildType @targetArgs
 if ($LASTEXITCODE -ne 0) { throw "build failed" }
+if ($Target.Count -gt 0 -and -not ($Target -contains "pot_tests")) {
+    Write-Host "built: $($Target -join ', ')"
+    exit 0
+}
 
 if ($Source) {
     $ctestExe = Join-Path (Split-Path $cmakeExe) "ctest.exe"

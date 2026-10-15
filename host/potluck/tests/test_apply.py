@@ -286,6 +286,27 @@ class ClusterFile(unittest.TestCase):
         self.assertNotIn("cell", pres.config)
         self.assertTrue(any("one channel for the whole tree" in x for x in ap.check_peers(c, 0x100)))
 
+    def test_stub_boards_are_in_the_tree_and_the_verify_expects_only_what_the_real_boards_keep(self):
+        # M19's bench: three real boards in "bench", a stub cell the PC hosts, both under "upper"
+        boards = [{"node": f"{n:04x}", "label": f"r{i}", "cells": ["bench"], **({"foreman": True} if i else {})}
+                  for i, n in enumerate((0x100, 0x101, 0x102))]
+        boards += [{"node": f"{n:04x}", "label": f"s{i}", "cells": ["s1"], "stub": True,
+                    **({"foreman": True} if i < 2 else {})} for i, n in enumerate((0xF101, 0xF102, 0xF103))]
+        c = self.cluster(boards=boards, cells={"bench": {"parent": "upper"}, "s1": {"parent": "upper"},
+                                               "upper": {"window_ms": 5000}})
+        self.assertEqual(c.stubs, {0xF101, 0xF102, 0xF103})
+        m = mf.parse(ap.compose(c, []))
+        pkg = ap.Package(m, {}, dp.compile_image(m, 5))
+        real = [0x100, 0x101, 0x102]
+        _, _, reads = ap.expected(m, real)
+        per, here, kept = ap.tree_expectations(c, pkg, real, reads)
+        self.assertEqual(per, {0x100: 1, 0x101: 2, 0x102: 2})  # its cell's role; a board that may hold it, s1's too
+        self.assertEqual(here, 1)
+        self.assertIn("potluck://home/cell-bench/alive", kept)
+        self.assertFalse(any("cell-s1" in p or "node-f1" in p for p in kept))
+        with self.assertRaisesRegex(ap.ApplyError, "stub"):
+            self.cluster(boards=[{"node": "0100", "stub": True}])
+
     def test_a_foreman_is_a_board_of_one_federating_cell(self):
         with self.assertRaisesRegex(ap.ApplyError, "exactly one cell"):  # two memberships at most, the role adds one
             self.cluster(boards=[{"node": "0100", "cells": ["a", "b"], "foreman": True}], cells={"a": {"parent": "t"}})

@@ -172,6 +172,9 @@ struct NodeConfig {
     // key), so this trusts the cable's endpoint to be the operator, not to be the CA.
     bool has_trusted_mac = false;
     uint8_t trusted_mac[kMacLen] = {};
+    // M19: how many leading bytes of trusted_mac make a MAC trusted -- 6, one link; 4, a family: the cable carries the
+    // PC's node and the stub nodes the PC hosts (02:00:00:00:<id>), each a peer of its own.
+    uint8_t trusted_mac_len = kMacLen;
 
     // M5.1 CR-1: the channel, and finding the cell again. A node that has lost every peer for
     // `scan_after_ms` hops channel_lo..channel_hi, `scan_dwell_ms` on each, greeting on each, and stays

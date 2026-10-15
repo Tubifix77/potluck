@@ -316,6 +316,15 @@ TEST(heartbeat, misses_saturate_rather_than_wrap) {
     CHECK_EQ(static_cast<int>(p.state), static_cast<int>(PeerState::Dead));
 }
 
+TEST(heartbeat, a_frame_stamped_after_the_ticks_clock_is_no_silence) {
+    // M19 (pot_stubs): a tick passed a time read before that pass's frames were handled saw now < last_rx; unsigned,
+    // that was four billion ms of silence and a live peer declared dead at 255 misses.
+    PeerLink p = wireless_peer(1000);
+    CHECK_EQ(static_cast<int>(peer_on_tick(p, 999)), static_cast<int>(MembershipChange::None));
+    CHECK_EQ(static_cast<uint32_t>(p.misses), 0u);
+    CHECK_EQ(static_cast<int>(p.state), static_cast<int>(PeerState::Alive));
+}
+
 // ------------------------------------------------------------------------------------------
 // PeerTable
 // ------------------------------------------------------------------------------------------

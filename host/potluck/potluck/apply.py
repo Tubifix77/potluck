@@ -302,10 +302,17 @@ class Cluster:
     exports: dict[str, dict[str, dict[str, str]]] = field(default_factory=dict)
     #: M19: how often a cell's foreman publishes its summary, ms (default FOREMAN_PERIOD_MS).
     cell_periods: dict[str, int] = field(default_factory=dict)
+    #: M19: boards the PC hosts as stub nodes for a tree's bench tests (`"stub": true`, ids STUB_FIRST..STUB_LAST): in
+    #: the tree and the package, never reached through the cable -- potluck.stubs gives them the package.
+    stubs: frozenset[int] = frozenset()
+    #: M19: package.manifests entries that name the cell their portable actors live in (index -> cell).
+    manifest_cells: dict[int, str] = field(default_factory=dict)
 
 
 #: M19: a board's unicast peers -- ESP-NOW's 20 less the broadcast entry (node.hpp's kMaxUnicastPeers).
 PEER_CAP = 19
+#: M19: the node ids a stub board may have (m0_main.cpp's kStubFirst..kStubLast: the cable gives each its own address).
+STUB_FIRST, STUB_LAST = 0xF000, 0xFDFF
 #: M19: a foreman's summary period, ms, unless the cell says (cells.<name>.period_ms).
 FOREMAN_PERIOD_MS = 2000
 #: M19: pot/foreman.hpp's limits -- the boards a foreman's config names, its exports besides `alive`.
@@ -398,6 +405,7 @@ def load_cluster(path: str) -> Cluster:
     positions: dict[int, tuple[float, float]] = {}
     cells: dict[int, tuple[str, ...]] = {}
     foremen: list[int] = []
+    stubs: set[int] = set()
     for i, bd in enumerate(doc.get("boards", [])):
         if not isinstance(bd, dict) or "node" not in bd:
             raise ApplyError(f"boards[{i}]: {{\"node\": \"<hex id>\", \"label\": \"...\"}}")
@@ -420,6 +428,11 @@ def load_cluster(path: str) -> Cluster:
                     all(isinstance(v, str) and 1 <= len(v) <= 31 and v.isprintable() for v in cl_raw)):
                 raise ApplyError(f"boards[{i}].cells: one or two cell names, 1..31 printable characters each")
             cells[nid] = tuple(cl_raw)
+        st = bd.get("stub", False)  # M19: a stub node the PC hosts (potluck.stubs), for a tree's bench tests
+        if not isinstance(st, bool) or (st and not STUB_FIRST <= nid <= STUB_LAST):
+            raise ApplyError(f"boards[{i}].stub: true for a stub node, whose id is {STUB_FIRST:04x}..{STUB_LAST:04x}")
+        if st:
+            stubs.add(nid)
         fm = bd.get("foreman", False)  # M19: may hold its cell's foreman role (mains power)
         if not isinstance(fm, bool):
             raise ApplyError(f"boards[{i}].foreman: true or false")
@@ -506,11 +519,14 @@ def load_cluster(path: str) -> Cluster:
         raise ApplyError("apps: two apps share a name")
     pkg = doc.get("package", {})
     manifests = []
+    manifest_cells: dict[int, str] = {}
     for i, m in enumerate(pkg.get("manifests", [])):
         if isinstance(m, str):
             manifests.append((_rel(base, m), base))
         elif isinstance(m, dict) and isinstance(m.get("manifest"), str):
             manifests.append((_rel(base, m["manifest"]), _rel(base, m.get("root", "."))))
+            if isinstance(m.get("cell"), str):  # M19: in a tree, the cell its portable actors live in
+                manifest_cells[len(manifests) - 1] = m["cell"]
         else:
             raise ApplyError(f"package.manifests[{i}]: a path, or {{\"manifest\": ..., \"root\": ...}}")
     modules = [_rel(base, m) for m in pkg.get("modules", [])]
@@ -542,6 +558,8 @@ def load_cluster(path: str) -> Cluster:
                  float(ver.get("timeout_s", 240)), list(ver.get("read", [])), outside, tuple(board_modules),
                  dict(present) if present else None)
     cl.writers = writers
+    cl.stubs = frozenset(stubs)
+    cl.manifest_cells = manifest_cells
     cl.rooms = rooms
     cl.positions = positions
     cl.plan = check_plan(doc.get("plan"))
@@ -1217,11 +1235,15 @@ def plan_package(c: Cluster, cache: Path, log) -> Package | None:
         if missing:
             raise ApplyError(f"component '{spec.component}' requires {', '.join(missing)} in the firmware: name it in "
                              f"the cluster file's firmware.modules")
-    for mp, root in c.manifests:
+    for k, (mp, root) in enumerate(c.manifests):
         try:
-            fragments.append((json.loads(mp.read_text(encoding="utf-8")), root, str(mp)))
+            frag = json.loads(mp.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise ApplyError(f"{mp}: {exc}") from None
+        if k in c.manifest_cells:  # M19: its portable actors live in that cell (compose places them there)
+            for act in frag.get("actors", []):
+                act["_cell"] = c.manifest_cells[k]
+        fragments.append((frag, root, str(mp)))
     if not fragments:
         if not c.boards:
             raise ApplyError("no package and no boards: name the boards (\"boards\"), or give a package")
@@ -1344,6 +1366,9 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
             portable += 1
             for name, _t in gs.parse_outputs(a.config["outputs"], a.name):
                 reads.append(dp.guest_output_path(m.system, a.name, name))
+        elif a.module == "builtin:foreman":  # M19: portable; its summary, every export
+            portable += 1
+            reads += [dp.cell_path(m.system, a.config["cell_name"], name) for name, *_ in dp.foreman_exports(a)]
         elif a.module in ("builtin:ticker", "builtin:present") or (spec is not None and spec.placement == "portable"):
             # Every board's NODE_STATUS counts every portable actor of the package (portable_total), wherever it runs;
             # the ones a placement host may run are pc_runnable(), for the count of those running on the boards.
@@ -1523,6 +1548,45 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
     return result, sorted(set(silent))
 
 
+def tree_expectations(c: Cluster, pkg: Package, boards: list[int], reads: list[str]
+                      ) -> tuple[dict[int, int], int, list[str]]:
+    """M19: what the verify expects of a tree's real boards -- each board's portable total is the portable actors it
+    keeps (a version-5 image's scope), the ones running on the real boards are those of the real boards' cells, and the
+    reads are those the cabled board can resolve: not a stub's, not a cell's summary that no real board's cell keeps.
+    Returns (portable total per board, portable actors of the real cells, the reads)."""
+    import re
+
+    from . import deploy as dp
+    _, _, count, _, _, _, body_len = struct.unpack_from("<IBBHI8sI", pkg.image)
+    body = pkg.image[dp.IMAGE_HEADER_LEN:dp.IMAGE_HEADER_LEN + body_len]
+    scope = dp.scope_of(body, count) or [(0, 0)] * count
+    decls = dp._decls(body, count)
+    cells_n = dp.board_cells(body, count)
+
+    def mine(n: int) -> set[int]:
+        out = set(cells_n.get(n, ()))
+        for (node, _t, cfg), (cell, also) in zip(decls, scope):
+            if node == 0xFFFE and also and cell in out and n in dp._eligible_ids(cfg):
+                out.add(also)
+        return out
+    per = {}
+    for n in boards:
+        m = mine(n)
+        per[n] = sum(1 for (node, _t, _c), (cell, also) in zip(decls, scope)
+                     if node == 0xFFFE and (not m or cell == 0 or cell in m or (also and also in m)))
+    real = {x for n in boards for x in cells_n.get(n, ())}
+    here = sum(1 for (node, _t, _c), (cell, _a) in zip(decls, scope) if node == 0xFFFE and (cell in real or cell == 0))
+    slugs = {room_slug(name) for name, num in cell_numbers(c).items() if num in real}
+    kept = []
+    for p in reads:
+        cm = re.search(r"/cell-([a-z0-9_]+)/", p)
+        nm = re.search(r"/node-([0-9a-f]{4})/", p)
+        if (cm and cm.group(1) not in slugs) or (nm and int(nm.group(1), 16) in c.stubs):
+            continue
+        kept.append(p)
+    return per, here, kept
+
+
 def pc_runnable(m) -> int:
     """How many of the package's portable actors a placement host may hold -- while the PC is in the cell they run
     there, not on a board (M14: the ticker drawn to the PC, the presenting role with present.hub)."""
@@ -1564,14 +1628,20 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             if w:
                 log(f"note: {w}")
         pkg = plan_package(c, cache, log)
-        boards = [n for n, _ in c.boards] or [n.node_id for n in pkg.manifest.nodes if n.kind != "host"]
+        # M19: stub boards are in the tree and the package, never on the cable: potluck.stubs hosts them
+        boards = [n for n, _ in c.boards if n not in c.stubs] or [n.node_id for n in pkg.manifest.nodes
+                                                                 if n.kind != "host" and n.node_id not in c.stubs]
         if pkg is not None:
             pinned_want, portable_want, reads = expected(pkg.manifest, boards)
             pc_may_run = pc_runnable(pkg.manifest)
+            portable_by, here_want = {n: portable_want for n in boards}, portable_want
+            if c.cells:  # M19: each board keeps its cells' portable actors, and reads what its cells hold
+                portable_by, here_want, reads = tree_expectations(c, pkg, boards, reads)
             log(f"package: '{c.system}', {len(pkg.manifest.actors)} actor(s) ({portable_want} portable), "
                 f"image {len(pkg.image)} B, for {len(boards)} board(s)")
         else:
             pinned_want, portable_want, reads = {n: 0 for n in boards}, 0, []
+            portable_by, here_want = {n: 0 for n in boards}, 0
             pc_may_run = 0
             log(f"package: none -- firmware only, for {len(boards)} board(s)")
         reads = list(dict.fromkeys(reads + c.verify_reads))
@@ -1784,7 +1854,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                     b.hello(timeout=1.0)  # a board that rebooted forgets the host
                     continue
                 if st.pkg_counter == counter and not st.pending and st.pinned_running >= pinned_want[n] \
-                        and st.portable_total == portable_want:
+                        and st.portable_total == portable_by[n]:
                     done[n] = st
                     seen_at[n] = time.monotonic()
                     log(f"verify: 0x{n:04x} confirmed package {counter}: {','.join(st.actors) or '-'}")
@@ -1797,13 +1867,13 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
         # M0-LOG session 42 -- first "3 running, the package has 4" with the ticker on the PC, then, counted the other
         # way, no board ever confirmed a package with such an actor).
         here = sum(s.portable_here for s in done.values())
-        lo = portable_want - pc_may_run
-        if len(done) == len(boards) and not lo <= here <= portable_want:
+        lo = here_want - pc_may_run
+        if len(done) == len(boards) and not lo <= here <= here_want:
             # The reconciler may still be settling a move; give it one more look.
             time.sleep(10)
             here = sum((node_status(b, n) or done[n]).portable_here for n in boards)
-            if not lo <= here <= portable_want:
-                problems.append(f"{here} portable actor(s) running on the boards, the package has {portable_want}"
+            if not lo <= here <= here_want:
+                problems.append(f"{here} portable actor(s) running on the boards, the package has {here_want}"
                                 + (f" ({pc_may_run} of them the PC may hold)" if pc_may_run else ""))
         for p in reads:
             # GOOD, not merely a value: the cabled board answers a read of another board's output from its

@@ -728,7 +728,8 @@ uint16_t Node::next_msg_id(PeerLink& p) {
 }
 
 bool Node::is_trusted_link(const uint8_t mac[kMacLen]) const {
-    return cfg_.has_trusted_mac && std::memcmp(mac, cfg_.trusted_mac, kMacLen) == 0;
+    const size_t n = cfg_.trusted_mac_len >= 1 && cfg_.trusted_mac_len <= kMacLen ? cfg_.trusted_mac_len : kMacLen;
+    return cfg_.has_trusted_mac && std::memcmp(mac, cfg_.trusted_mac, n) == 0;
 }
 
 void Node::set_trust(const Identity* id, bool require) {
@@ -1084,7 +1085,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         announce_change();
     }
 
-    if (p == nullptr && !shares_group(h.groups)) {
+    if (p == nullptr && !shares_group(h.groups) && !is_trusted_link(src_mac)) {
         // M19: another cell's board -- refused before any signature work, so a neighbouring cell's HELLOs cannot
         // spend the verification budget this cell's admissions need (refusing on an unverified claim costs nothing).
         ++group_refusals_;
@@ -1108,7 +1109,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
 
     if (p != nullptr) {
         peer_groups_[peers_.index_of(p)] = h.groups;  // M19: what it belongs to now (verified, or the cable)
-        if (!shares_group(h.groups)) {
+        if (!shares_group(h.groups) && !is_trusted_link(src_mac)) {
             ++group_refusals_;  // no longer a cell of ours: left to fall silent within its window
             return;
         }
@@ -2106,8 +2107,10 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
             return;
         }
     } else {
-        if (f.hdr.opcode != kOpHello && !shares_group(peer_groups_[peers_.index_of(p)])) {
-            return;  // M19: no longer a cell of ours -- not heard, so it falls silent within its window
+        if (f.hdr.opcode != kOpHello && !shares_group(peer_groups_[peers_.index_of(p)]) && !is_trusted_link(src_mac)) {
+            // M19: no longer a cell of ours -- not heard, so it falls silent within its window. The cable is no cell:
+            // what comes down it (the PC's node, the stubs it hosts) is heard, and relayed to the cells it names.
+            return;
         }
         p->last_rssi = rssi;
         if (was_broadcast) {

@@ -309,6 +309,15 @@ int32_t radio_send(const uint8_t mac[kMacLen], const uint8_t* data, size_t len) 
     return err;
 }
 
+#if CONFIG_POT_SERIAL_LINK
+// M19: the cable's family of addresses -- the PC's node (kHostMac) and the stub nodes the PC hosts for a tree's tests,
+// 02:00:00:00:<id>, each a peer of its own. Ids in kStubFirst..kStubLast get their own; every other frame from the
+// cable is the PC's node, as before.
+constexpr uint16_t kStubFirst = 0xF000;
+constexpr uint16_t kStubLast = 0xFDFF;
+inline bool cable_mac(const uint8_t mac[kMacLen]) { return std::memcmp(mac, kHostMac, 4) == 0; }
+#endif
+
 int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
     tee_frame("tx", mac, 0, data, len);
     if (len <= sizeof(g_rec_write) && len > kHeaderSize && data[6] == kOpWrite &&
@@ -334,8 +343,8 @@ int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t 
     }
 #endif
 #if CONFIG_POT_SERIAL_LINK
-    if (std::memcmp(mac, kHostMac, kMacLen) == 0) {
-        return serial_port_send(data, len);
+    if (cable_mac(mac)) {
+        return serial_port_send(data, len);  // the PC's node, or a stub it hosts (M19)
     }
     if (std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0) {
         const uint32_t heard = g_host_heard_ms.load();
@@ -345,10 +354,11 @@ int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t 
     return radio_send(mac, data, len);
 }
 
+
 // M19: a reclaimed peer's radio entry. The bus and the cable keep no list.
 bool hal_del_peer(void*, const uint8_t mac[kMacLen]) {
 #if CONFIG_POT_SERIAL_LINK
-    if (std::memcmp(mac, kHostMac, kMacLen) == 0) return true;
+    if (cable_mac(mac)) return true;
 #endif
 #if CONFIG_POT_CAN
     uint16_t can_node = 0;
@@ -367,7 +377,7 @@ bool hal_add_peer(void*, const uint8_t mac[kMacLen]) {
     }
 #endif
 #if CONFIG_POT_SERIAL_LINK
-    if (std::memcmp(mac, kHostMac, kMacLen) == 0) {
+    if (cable_mac(mac)) {
         // The UART has no peer list to join; the link either exists or it does not.
         return serial_port_running();
     }
@@ -1755,9 +1765,16 @@ void link_task(void*) {
             uint32_t srecv = 0;
             while (serial_port_rx_pop(sbuf, sizeof(sbuf), slen, srecv)) {
                 xSemaphoreTake(g_mutex, portMAX_DELAY);
-                tee_frame("rx", kHostMac, 0, sbuf, slen);
+                uint8_t cmac[kMacLen];
+                std::memcpy(cmac, kHostMac, kMacLen);
+                Frame cf{};
+                if (parse(sbuf, slen, cf) == FrameError::Ok && cf.hdr.src >= kStubFirst && cf.hdr.src <= kStubLast) {
+                    cmac[4] = static_cast<uint8_t>(cf.hdr.src >> 8);  // M19: a stub node the PC hosts
+                    cmac[5] = static_cast<uint8_t>(cf.hdr.src & 0xFF);
+                }
+                tee_frame("rx", cmac, 0, sbuf, slen);
                 g_host_heard_ms.store(now_ms_() == 0 ? 1 : now_ms_());  // M10: broadcasts follow it down the cable
-                g_node->on_rx(kHostMac, sbuf, slen, srecv, 0);
+                g_node->on_rx(cmac, sbuf, slen, srecv, 0);
                 xSemaphoreGive(g_mutex);
             }
         }
@@ -3118,7 +3135,7 @@ void tick(uint32_t now) {
     for (size_t i = 0; i < PeerTable::capacity(); ++i) {
         const PeerLink& q = g_node->peers().slot(i);
         if (q.state != PeerState::Alive) continue;
-        if (cfg.has_trusted_mac && std::memcmp(q.mac, cfg.trusted_mac, kMacLen) == 0) continue;  // the cable
+        if (cfg.has_trusted_mac && std::memcmp(q.mac, cfg.trusted_mac, cfg.trusted_mac_len) == 0) continue;  // the cable
         ++radio_peers;
     }
     if (radio_peers > 0 && g_node->tx_tally().beacons >= deploy_rt::kTrialHeartbeats) {
@@ -3595,6 +3612,7 @@ extern "C" void app_main(void) {
     // unsigned. Deploys over that cable still need a signed package.
     cfg.has_trusted_mac = true;
     std::memcpy(cfg.trusted_mac, kHostMac, kMacLen);
+    cfg.trusted_mac_len = 4;  // M19: the PC's node and the stubs it hosts (cable_mac)
 #endif
     // Polarity is "opt in to the bad one", because the knob is a plain bool rather than the Kconfig
     // `choice` it wants to be — a choice member cannot be set from an sdkconfig.defaults overlay and
