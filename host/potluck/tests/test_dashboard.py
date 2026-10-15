@@ -32,7 +32,7 @@ TOP_KEYS = {"api", "at", "hub", "cell", "boards", "apps", "resources", "integrat
 # The first screen's landmarks, documented in index.html's header comment.
 LANDMARKS = {"conn", "status", "verdict", "problems", "summary", "sum-boards", "sum-apps", "sum-integrations",
              "sum-deploy", "sum-hub", "sum-channel", "signals", "use", "tabs", "tab-cell", "tab-apps", "tab-data",
-             "tab-integrations", "tab-deploys", "tab-events"}
+             "tab-integrations", "tab-deploys", "tab-events", "tab-plan"}
 
 
 class Mock:
@@ -337,6 +337,13 @@ class PageTest(unittest.TestCase):
         self.assertTrue(LANDMARKS <= p.ids, LANDMARKS - p.ids)
         # nothing from the network: every script and stylesheet is a file next to the page
         self.assertTrue(all(r and "//" not in r for r in p.refs), p.refs)
+
+    def test_the_floor_plan_writes_only_through_the_owners_setup_call_and_draws_zones_not_points(self):
+        js = self.read("plan.js")
+        self.assertEqual(set(re.findall(r'"(api/[a-z/]+)', js)), {"api/setup/board"})
+        self.assertIn('["state", "x", "y", "a", "b", "theta", "conf"]', js)  # DEVELOPING-APPS.md's position kind
+        self.assertIn("ellipse", js)
+        self.assertIn('src="plan.js"', self.read("index.html"))
 
     def test_the_setup_wizard_has_its_steps_and_speaks_only_to_api_setup(self):
         p = _Ids()

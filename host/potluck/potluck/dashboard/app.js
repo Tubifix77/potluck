@@ -460,8 +460,16 @@
     S.evDirty = false;
   }
 
+  // M20: the floor plan (plan.js). Editable on the PC's own address only, where the hub has /api/setup/*.
+  function renderPlan(m) {
+    if (!window.PotluckPlan) return;
+    window.PotluckPlan.render($("tab-plan"), m, !S.who.login, function () {
+      getJSON("api/model").then(function (fresh) { onModel(fresh); }).catch(function () {});
+    });
+  }
+
   // ---- routing --------------------------------------------------------------------------------------------------
-  var TABS = ["cell", "apps", "data", "integrations", "deploys", "events"];
+  var TABS = ["cell", "plan", "apps", "data", "integrations", "deploys", "events"];
   function route(scroll) {
     var h = decodeURIComponent((location.hash || "").slice(1)), i = h.indexOf("/");
     var tab = i < 0 ? h : h.slice(0, i), focus = i < 0 ? "" : h.slice(i + 1);
@@ -486,7 +494,8 @@
     var m = S.model;
     if (S.tab === "events") return renderEvents();
     if (!m) return;
-    ({ cell: renderCell, apps: renderApps, data: renderData, integrations: renderIntegrations, deploys: renderDeploys })[S.tab](m);
+    ({ cell: renderCell, plan: renderPlan, apps: renderApps, data: renderData, integrations: renderIntegrations,
+       deploys: renderDeploys })[S.tab](m);
     if (S.focus) { var el = document.getElementById(fid(S.focus)); if (el) el.classList.add("focus"); }
   }
 

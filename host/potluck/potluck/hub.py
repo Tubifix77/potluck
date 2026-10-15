@@ -844,7 +844,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
     host, _, p = addr.rpartition(":")
     from . import hubauth
 
-    PUBLIC = {"/", "/index.html", "/app.js", "/style.css", "/api/login", "/api/whoami", "/api/hello"}
+    PUBLIC = {"/", "/index.html", "/app.js", "/plan.js", "/style.css", "/api/login", "/api/whoami", "/api/hello"}
     setup_state: dict = {}  # M20's setup wizard: its jobs, made on first use (owner actions, 127.0.0.1 only)
 
     def setup_jobs():
