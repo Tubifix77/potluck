@@ -201,6 +201,21 @@ class PureFunctions(unittest.TestCase):
         dead = next(x for x in p if x["text"] == "Board C 8160 is dead")
         self.assertEqual(dead["since"], "1970-01-01T00:16:30+00:00")
 
+    def test_a_starting_hub_names_no_problem_for_what_it_has_not_looked_at_yet(self):
+        m = {"at": 1_000, "hub": {"link": "up", "starting": True},
+             "boards": [{"node": "6300", "state": "alive"}, {"node": "8160", "state": "unknown"}],
+             "apps": [{"name": "die", "placement": "pinned", "nodes": ["6300"], "running_on": ["6300"], "working": None,
+                       "detail": "starting", "outputs": ["p1"]},
+                      {"name": "led", "placement": "pinned", "nodes": ["6300"], "running_on": ["6300"], "working": True,
+                       "outputs": ["p2"]}],
+             "resources": [{"path": "p1", "name": "x", "owner": "6300", "quality": "STALE", "settled_quality": "STARTING",
+                            "age_ms": 9_000},
+                           {"path": "p2", "name": "y", "owner": "6300", "quality": "STALE", "settled_quality": "GOOD",
+                            "age_ms": 9_000}]}  # one late read of a GOOD value: not a problem either
+        self.assertEqual(api.problems(m), [])
+        s = api.summarize(m)
+        self.assertEqual((s["apps_working"], s["apps_not_working"], s["starting"]), (1, [], True))
+
     def test_summary_counts(self):
         m = {"hub": {"link": "up", "version": "abc"}, "cell": {"system": "lab", "cell_id": "ef76cc2e"},
              "boards": [{"node": "1", "state": "alive"}, {"node": "2", "label": "B", "state": "asleep"},

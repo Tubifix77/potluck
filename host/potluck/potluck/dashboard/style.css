@@ -152,6 +152,7 @@ table.rt { width: 100%; border-collapse: collapse; font-size: 0.92em; }
 .events { list-style: none; margin: 0; padding: 0; font-size: 0.9em; }
 .events li { display: grid; grid-template-columns: 5.2rem 6.5rem 9rem 1fr; gap: 8px; padding: 5px 4px; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; }
 .events li.bad { border-left-color: var(--bad); } .events li.ok { border-left-color: var(--ok); }
+.events li.earlier { opacity: 0.6; }
 .ev-t { font-variant-numeric: tabular-nums; color: var(--muted); }
 .ev-k { font-weight: 600; overflow-wrap: anywhere; }
 .ev-d { overflow-wrap: anywhere; }

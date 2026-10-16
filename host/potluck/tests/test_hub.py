@@ -319,6 +319,33 @@ class Telemetry(HubFixture):
                                            "rx_frames": 2000, "tx_cb_ok": 990, "tx_cb_fail": 10,
                                            "rtt_p50_ms": 5.1, "rtt_p99_ms": 16.0, "rtt_timeouts": 0xFFFF})
 
+    def test_a_boards_history_on_the_hubs_first_look_is_logged_as_earlier_at_its_own_time(self) -> None:
+        from unittest import mock
+
+        import test_telemetry as tt
+        from potluck import telemetry as tm
+
+        h = tm.parse_health(bytes.fromhex(tt.HEALTH_GOLDEN))  # up 3600 s
+        _, _, links = tm.parse_links(bytes.fromhex(tt.LINKS_GOLDEN))
+        with self.model.lock:
+            self.model.boards[0x1001] = {"state": "alive", "since_at": 0, "last_ok": time.monotonic()}
+        old = tm.EventTel(seq=1, at_ms=600_000, kind=tm.EVENT_KINDS.index("peer_dead"), node=0x7368, a=0, b=0)
+        new = tm.EventTel(seq=2, at_ms=3_599_000, kind=tm.EVENT_KINDS.index("peer_dead"), node=0x7368, a=0, b=0)
+        with mock.patch.object(self.model, "board_ids", return_value=[0x1001]), \
+                mock.patch.object(tm, "health", return_value=h), mock.patch.object(tm, "links", return_value=links), \
+                mock.patch.object(tm, "actors", return_value=[]), \
+                mock.patch.object(tm, "events", side_effect=[([old], 2), ([new], 3)]):
+            self.model.pull_telemetry()  # the hub's first look: what the board kept happened before it watched
+            first = [e for e in self.model.events if e["kind"] == "board_peer_dead"]
+            self.assertEqual(len(first), 1)
+            self.assertTrue(first[0]["earlier"])
+            self.assertAlmostEqual(first[0]["at"], hb._hub_ms() - 3_000_000, delta=5_000)  # 50 min before now
+            self.assertEqual(self.model.link_deaths, {})  # history is not a death the hub saw
+            self.model.pull_telemetry()  # the same boot, later: news
+            second = [e for e in self.model.events if e["kind"] == "board_peer_dead"][1]
+            self.assertNotIn("earlier", second)
+            self.assertEqual(self.model.link_deaths, {(0x1001, 0x7368): 1})
+
 class RelayedFrames(unittest.TestCase):
     """M0-LOG session 42: with the cabled board relaying (M10), other boards' frames come down the cable too."""
 
@@ -382,14 +409,15 @@ class Settled(unittest.TestCase):
         from potluck.value import Quality, Reading
         events = []
         me = NS(lock=threading.Lock(), resources={}, SETTLE_READS=hb.Model.SETTLE_READS,
-                _event_locked=lambda kind, n, d: events.append(d))
+                STARTUP_S=hb.Model.STARTUP_S, _event_locked=lambda kind, n, d: events.append(d))
         path = "potluck://lab/act/alarm/out"
 
         def read(q):
             hb.Model._record(me, path, Reading(quality=int(q)))
             return me.resources[path]["quality"], me.resources[path]["settled"]
 
-        self.assertEqual(read(Quality.GOOD), ("GOOD", "GOOD"))
+        self.assertEqual(read(Quality.GOOD), ("GOOD", None))       # one read: no verdict yet (STARTING)
+        self.assertEqual(read(Quality.GOOD), ("GOOD", "GOOD"))     # it starts GOOD -- not a change, no event
         self.assertEqual(read(Quality.STALE), ("STALE", "GOOD"))   # shown as read; not settled
         self.assertEqual(read(Quality.GOOD), ("GOOD", "GOOD"))
         self.assertEqual(events, [])                               # nothing logged for the blip
@@ -398,6 +426,25 @@ class Settled(unittest.TestCase):
         self.assertEqual(events, [{"path": path, "from": "GOOD", "to": "STALE"}])
         self.assertEqual(read(Quality.GOOD), ("GOOD", "STALE"))    # and one good read does not settle it back
         self.assertEqual(read(Quality.GOOD), ("GOOD", "GOOD"))
+
+    def test_a_hub_start_is_quiet_until_a_quality_holds_and_says_so(self):
+        from types import SimpleNamespace as NS
+        from unittest import mock
+        from potluck.value import Quality, Reading
+        events = []
+        me = NS(lock=threading.Lock(), resources={}, SETTLE_READS=hb.Model.SETTLE_READS,
+                STARTUP_S=hb.Model.STARTUP_S, _event_locked=lambda kind, n, d: events.append(d))
+        hb.Model._record(me, "p", Reading(quality=int(Quality.STALE)))
+        self.assertEqual(hb.Model._resource_json(NS(cluster=None, _safety=lambda p: False), "p",
+                                                 me.resources["p"])["settled_quality"], "STARTING")
+        hb.Model._record(me, "p", Reading(quality=int(Quality.STALE)))
+        self.assertEqual((me.resources["p"]["settled"], events), ("STALE", []))  # where it starts is not a change
+        # a resource that never holds a quality for two reads still gets a verdict once STARTUP_S has passed
+        t = time.monotonic()
+        for i, q in enumerate((Quality.GOOD, Quality.STALE, Quality.GOOD)):
+            with mock.patch.object(hb.time, "monotonic", return_value=t + i * hb.Model.STARTUP_S):
+                hb.Model._record(me, "q", Reading(quality=int(q)))
+        self.assertEqual(me.resources["q"]["settled"], "STALE")
 
 
 class Panels(unittest.TestCase):

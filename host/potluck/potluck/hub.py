@@ -518,12 +518,18 @@ class Model:
             old = self.resources.get(path)
             q = Quality.name_of(r.quality)
             streak = old.get("streak", 1) + 1 if old is not None and old["quality"] == q else 1
-            settled = old.get("settled", old["quality"]) if old is not None else q
-            if streak >= self.SETTLE_READS and settled != q:
+            settled = old.get("settled") if old is not None else None
+            first = old.get("first", time.monotonic()) if old is not None else time.monotonic()
+            if settled is None:
+                # starting: the first quality that holds (or whatever it reads after STARTUP_S) is where it starts --
+                # not a change, so no event (found 2026-10-16: a hub start lit the dashboard with one-read warnings)
+                if streak >= self.SETTLE_READS or time.monotonic() - first >= self.STARTUP_S:
+                    settled = q
+            elif streak >= self.SETTLE_READS and settled != q:
                 self._event_locked("quality_changed", None, {"path": path, "from": settled, "to": q})
                 settled = q
             self.resources[path] = {"reading": r, "quality": q, "at": _hub_ms(), "streak": streak,
-                                    "settled": settled}
+                                    "settled": settled, "first": first}
 
     def pull_telemetry(self) -> None:
         """M15: every answering board's health, links, actors and new events, over the radio, one pull for every
@@ -589,12 +595,18 @@ class Model:
                     b["reset"], b["reset_epoch"] = reset, h.boot_epoch
                 elif h.boot_epoch != old_epoch:
                     b["reset"] = None  # a new boot whose reason is not known yet: never the last boot's
+                # The first answer this hub gets from a board carries the board's kept history: those events
+                # happened before the hub was watching. They are logged as `earlier`, at the time they happened --
+                # not as news (found 2026-10-16: every hub start replayed half an hour of probe timeouts as new).
+                earlier = old_epoch is None
+                now_ms, up_ms = _hub_ms(), h.uptime_s * 1000
                 for e in evs:
-                    if e.kind_name == "peer_dead":
+                    if e.kind_name == "peer_dead" and not earlier:
                         self.link_deaths[(n, e.node)] = self.link_deaths.get((n, e.node), 0) + 1
                     self._event_locked("board_" + e.kind_name, n,
                                        {"peer": f"{e.node:04x}", "a": e.a, "b": e.b, "board_ms": e.at_ms,
-                                        "board_seq": e.seq})
+                                        "board_seq": e.seq},
+                                       at=now_ms - max(0, up_ms - e.at_ms) if earlier else None, earlier=earlier)
 
     def _read_reset(self, n: int) -> str | None:
         """Why board n last started (its sys/reset), by name; None from firmware before 2026-10-16 or no answer. Read
@@ -653,10 +665,14 @@ class Model:
                 d["detail"] = f"{'live' if d['kind'] == 'package' else 'confirmed'} on {len(on)} board(s)"
                 self._event_locked("deploy", None, {k: v for k, v in d.items() if not k.startswith("_")})
 
-    def _event_locked(self, kind: str, board: int | None, detail: dict) -> None:
+    def _event_locked(self, kind: str, board: int | None, detail: dict, at: int | None = None,
+                      earlier: bool = False) -> None:
         self.seq += 1
-        self.events.append({"seq": self.seq, "at": _hub_ms(), "board": f"{board:04x}" if board else "hub",
-                            "kind": kind, "detail": detail})
+        ev = {"seq": self.seq, "at": _hub_ms() if at is None else at, "board": f"{board:04x}" if board else "hub",
+              "kind": kind, "detail": detail}
+        if earlier:
+            ev["earlier"] = True  # from a board's history, before this hub was watching
+        self.events.append(ev)
 
     # the JSON the API serves (HUB-API.md)
     def snapshot(self) -> dict:
@@ -666,6 +682,11 @@ class Model:
             events_tail = list(self.events)[-1:]
             deploys = [{k: v for k, v in d.items() if not k.startswith("_")} for d in self.deploys]
         apps = self._apps_json(boards, resources)
+        starting = self.starting()
+        if starting:
+            for a in apps:
+                if not a["working"]:
+                    a["working"], a["detail"] = None, "starting: the hub has not seen the whole cell yet"
         panels = self._panels_json(resources)
         return {
             "api": API_VERSION,
@@ -678,7 +699,7 @@ class Model:
                     "telemetry_period_ms": self.telemetry_period_ms, "telemetry": dict(self.telemetry_counts),
                     "relay": dict(self.hub.relay_counts), "retention": self._retention_json(),
                     "pairing": self.pairing.pending() if self.pairing is not None else [],
-                    "clients": self.fair.snapshot(), "tls_fp": self.tls_fp},
+                    "clients": self.fair.snapshot(), "tls_fp": self.tls_fp, "starting": starting},
             "cell": self._cell_json(boards),
             "boards": boards,
             "apps": apps,
@@ -757,6 +778,19 @@ class Model:
 
     #: reads in a row a new quality must hold before it counts as the resource's settled quality
     SETTLE_READS = 2
+    #: the longest a hub start is quiet: until every board has answered and every resource has settled, or this long
+    STARTUP_S = 30.0
+
+    def starting(self) -> bool:
+        """The hub has not yet seen the whole cell once: some board has not answered yet, or some resource has not held
+        one quality for SETTLE_READS reads. Never longer than STARTUP_S -- a fault is never hidden past that."""
+        if time.monotonic() - self.started >= self.STARTUP_S:
+            return False
+        with self.lock:
+            if any(b.get("status") is None for b in self.boards.values()):
+                return True
+            have = dict(self.resources)
+        return any(have.get(p, {}).get("settled") is None for p in self.resource_paths())
 
     def _resource_json(self, path: str, r: dict) -> dict:
         rd = r["reading"]
@@ -770,7 +804,7 @@ class Model:
                 value = round(value, 6)
         unit = unit_suffix(rd.unit)
         return {"path": path, "name": name, "owner": owner, "value": value, "unit": unit, "quality": r["quality"],
-                "settled_quality": r.get("settled", r["quality"]),
+                "settled_quality": r.get("settled") or "STARTING",
                 "age_ms": rd.age_ms + max(0, _hub_ms() - r["at"]), "latency_class": rd.latency_class,
                 "exposed": outside is not None, "outside_writable": outside == "read_write",
                 "safety_relevant": self._safety(path),
@@ -850,7 +884,7 @@ class Model:
                 if owners == {"00fe"}:
                     running = ["00fe"]
             outs = actor_reads(m, a, [int(n, 16) for n in nodes])[1]  # its own outputs, not its board's
-            bad_outs = [p for p in outs if quality.get(p) not in (None, "GOOD")]
+            bad_outs = [p for p in outs if quality.get(p) not in (None, "GOOD", "STARTING")]
             if portable:
                 ok, why = len(running) == 1, ("" if len(running) == 1 else f"running on {len(running)} nodes")
             else:

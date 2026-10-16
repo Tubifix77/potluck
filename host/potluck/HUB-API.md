@@ -132,6 +132,10 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   (the cable to the cell). `hub.tls_fp`: with `--listen`, the SHA-256 of its certificate; `null` without.
   `hub.relay`: counts for the PC's other tools that go through the hub, `{clients, requests, replies, unmatched,
   fanned_out, node_frames_out, node_frames_in}`. `hub.telemetry` counts `{pulls, replies, failures, events}`.
+- `hub.starting`: `true` while the hub has not yet seen the whole cell once -- some board has not answered, or some
+  resource has not held one quality for two reads -- and never longer than 30 s after it started. Meanwhile an app not
+  yet seen working has `working: null` (not `false`), a board not heard yet is not a problem, and the dashboard says
+  "Starting up" instead of a verdict. After it, a fault shows as usual.
 - `cell.channel`, `cell.other_cell_frames`, `signals.saturation.namespace` and `signals.saturation.airtime` are
   reserved: version 1 always sends `null`. `cell.presenter`: the board running the presenting actor, or `null`.
   `signals.saturation.peers` is the boards the hub knows against 21 (a board and the 20 peers it can hold);
@@ -177,6 +181,7 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   while `quality` is not GOOD. Their words are text: show them as text, never as markup.
 - `app.placement`: `pinned` | `portable` | `every`. `app.working`: as `python -m potluck.apply` verifies -- running
   where the package says (portable: exactly once in the cell), and every output GOOD. `detail` says why not.
+  `null` while `hub.starting`, for an app the hub has not seen working yet.
 - `resource.value`: a number, a bool, or `null` when it has none to show (strict and not GOOD, or no value at all).
 - `resource.quality` (never omitted): `GOOD` (fresh), `STALE` (older than its staleness bound, still shown),
   `UNAVAILABLE` (its owner is dead or unreachable: no value), `NO_DATA` (never published yet), `FAULTY` (the owner says
@@ -185,6 +190,8 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   through the cabled board's copy, which is refreshed at the hub's previous read, so a value published every second can
   read `STALE` once and `GOOD` the next time. `quality` shows each read as it is; `app.working`, the dashboard's
   problems and the `quality_changed` event follow `settled_quality`, so one late read is not reported as a fault.
+  `STARTING` until a resource has held one quality for two reads since the hub started (or for 30 s): where it starts is
+  not a change, so no `quality_changed` is logged for it.
 - `resource.owner`: the board whose resource it is, for a board's own resource (`node-XXXX/...`); `null` for an
   actor's output (`act/...`), which can move between boards. `resource.type`: `bool` | `i32` | `u32` | `f32` | `i64` |
   `u64` | `f64` | `bytes` -- what it holds, `null` until it first has a value. A strict resource (its staleness policy
@@ -224,7 +231,9 @@ Kinds, in three groups:
   `board_channel_changed`, `board_actor_started`, `board_actor_stopped`, `board_actor_owner`. `board` is the board that
   logged it; detail `{peer, a, b, board_ms, board_seq}`: the other node it concerns, two numbers whose meaning depends
   on the kind, the board's uptime clock when it happened and its own sequence number. `at` is the hub's clock when the
-  hub pulled it, not when it happened.
+  hub pulled it, not when it happened -- except for `"earlier": true`: the history a board kept from before this hub
+  watched it, pulled on the hub's first look at that board. Its `at` is when it happened (from the board's uptime),
+  and it is shown as history, not as news; `board.links[].deaths` does not count it.
 - **What the hub saw**: `board_alive`, `board_dead`, `board_asleep`, `board_unknown` (a board's state changed; detail
   `{was}`), `board_rebooted` (its uptime went back; `{up_s}`), `board_restarted` (a new boot seen in its telemetry while
   the hub watched; `{reason, epoch}`, with `board.reset`'s reason), `telemetry_unsupported` (`{why}`),

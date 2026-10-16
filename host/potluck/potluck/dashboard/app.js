@@ -83,14 +83,14 @@
 
   // ---- layer 1: is anything broken? ---------------------------------------------------------------------------
   function problems(m) {
-    var P = [], bb = boardsBy(m);
+    var P = [], bb = boardsBy(m), starting = !!(m.hub && m.hub.starting);
     var add = function (sev, html, href) { P.push({ sev: sev, html: html, href: href }); };
     if (m.hub && m.hub.link !== "up")
       add("bad", "The hub's link to the cell is " + esc(m.hub.link) + (m.hub.link_detail ? ": " + esc(m.hub.link_detail) : "") +
         " -- board states below are as last heard", "#cell/hub");
     (m.boards || []).forEach(function (b) {
       if (b.state === "dead") add("bad", "Board " + esc(bname(m, b.node)) + " dead " + ago(b.since_at, "for "), "#cell/" + b.node);
-      else if (b.state === "unknown") add("warn", "Board " + esc(bname(m, b.node)) + " never heard since the hub started", "#cell/" + b.node);
+      else if (b.state === "unknown" && !starting) add("warn", "Board " + esc(bname(m, b.node)) + " never heard since the hub started", "#cell/" + b.node);
       if (b.firmware && b.firmware.state && b.firmware.state !== "confirmed" && b.state !== "dead")
         add("warn", "Board " + esc(bname(m, b.node)) + ": firmware " + esc(b.firmware.counter) + " " + esc(b.firmware.state), "#cell/" + b.node);
       if (b.package && b.package.state && b.package.state !== "confirmed" && b.state !== "dead")
@@ -106,16 +106,17 @@
     (m.apps || []).forEach(function (a) {
       var badOut = (a.outputs || []).map(function (p) { return res[p]; })
         // settled: a quality that held for two reads -- one late read of another board's value is not a problem
-        .filter(function (r) { return r && (r.settled_quality || r.quality) !== "GOOD" && !shown[r.path]; })
+        // STARTING: read fewer than two times since the hub started -- no verdict yet
+        .filter(function (r) { var q = r && (r.settled_quality || r.quality); return r && q !== "GOOD" && q !== "STARTING" && !shown[r.path]; })
         .filter(function (r) { return !(bb[r.owner] && bb[r.owner].state === "dead"); });  // the dead board is the headline
       var placed = a.placement === "portable" ? (a.running_on || []).length === 1 :
         (a.nodes || []).every(function (n) { return (a.running_on || []).indexOf(n) >= 0; });
-      if (!a.working && placed && badOut.length) {  // the outputs are the reason: say so, with an age that ticks
+      if (a.working === false && placed && badOut.length) {  // the outputs are the reason: say so, with an age that ticks
         var r = badOut[0];
         shown[r.path] = 1;
         add("bad", "App " + esc(a.name) + " not working: output " + esc(r.name) + " " + esc(r.quality) + " " +
           ago(m.at - r.age_ms, "for "), "#data/" + r.path);
-      } else if (!a.working) add("bad", "App " + esc(a.name) + " not working" + (a.detail ? ": " + esc(a.detail) : ""), "#apps/" + a.name);
+      } else if (a.working === false) add("bad", "App " + esc(a.name) + " not working" + (a.detail ? ": " + esc(a.detail) : ""), "#apps/" + a.name);
       badOut.forEach(function (r) {
         if (shown[r.path]) return;
         shown[r.path] = 1;
@@ -189,6 +190,13 @@
     var d = lastDeploy(m), hub = m.hub || {}, cell = m.cell || {};
 
     var v = $("verdict");
+    if (hub.starting && !bad && !warn) {  // the hub's first look at the cell: neither green nor a warning yet
+      v.className = "verdict";
+      $("verdict-title").textContent = "Starting up";
+      $("verdict-text").textContent = "The hub is reading the cell for the first time: " + alive + " of " + boards.length +
+        " boards heard, " + working + " of " + apps.length + " apps seen working so far.";
+      $("problems").innerHTML = "";
+    } else {
     v.className = "verdict " + (bad ? "bad" : warn ? "warn" : "ok");
     var nb = bad === 1 ? "1 problem" : bad + " problems", nw = warn === 1 ? "1 warning" : warn + " warnings";
     $("verdict-title").textContent = bad && warn ? nb + ", " + nw : bad ? nb : warn ? nw : "All is well";
@@ -201,15 +209,17 @@
       return '<li class="' + p.sev + '"><a href="' + esc(p.href) + '"><span class="pmark" aria-hidden="true"></span><span>' +
         p.html + "</span></a></li>";
     }).join("");
+    }
 
     var bsub = dead.map(function (b) { return esc(b.label || b.node) + " dead " + ago(b.since_at, "", ""); })
-      .concat(unknown.map(function (b) { return esc(b.label || b.node) + " never heard"; }))
+      .concat(unknown.map(function (b) { return esc(b.label || b.node) + (hub.starting ? " not heard yet" : " never heard"); }))
       .concat(asleep.map(function (b) { return esc(b.label || b.node) + " asleep " + ago(b.since_at, "", ""); }));
-    setTile("sum-boards", dead.length ? "bad" : unknown.length ? "warn" : "ok",
+    setTile("sum-boards", dead.length ? "bad" : unknown.length ? (hub.starting ? "" : "warn") : "ok",
       alive + "<small>/" + boards.length + "</small>", bsub.join(", ") || "all alive");
-    var notw = apps.filter(function (a) { return !a.working; }).map(function (a) { return esc(a.name); });
-    setTile("sum-apps", notw.length ? "bad" : "ok", working + "<small>/" + apps.length + "</small>",
-      notw.length ? "not: " + notw.join(", ") : "all working");
+    var notw = apps.filter(function (a) { return a.working === false; }).map(function (a) { return esc(a.name); });
+    var startw = apps.filter(function (a) { return a.working === null; }).map(function (a) { return esc(a.name); });
+    setTile("sum-apps", notw.length ? "bad" : startw.length ? "" : "ok", working + "<small>/" + apps.length + "</small>",
+      notw.length ? "not: " + notw.join(", ") : startw.length ? "starting: " + startw.join(", ") : "all working");
     var isub = disc.length ? disc.map(function (i) { return esc(i.name) + " down"; }).join(", ") :
       roles.filter(function (i) { return i.state !== "connected"; }).map(function (i) { return esc(i.name) + " " + esc(i.state); }).join(", ");
     setTile("sum-integrations", disc.length ? "bad" : "ok", conn + "<small>/" + inUse.length + " connected</small>", isub || "all connected");
@@ -373,7 +383,7 @@
           " (of " + (a.nodes || []).map(esc).join(", ") + ")";
         return '<tr id="' + fid(a.name) + '">' + td("App", "<b>" + esc(a.name) + "</b>") + td("Module", "<code>" + esc(a.module) + "</code>") +
           td("Placement", esc(a.placement)) + td("Runs on", where + '<span class="small muted">' + of + "</span>") +
-          td("Working", a.working ? badge("working", "ok") : badge("not working", "bad") +
+          td("Working", a.working ? badge("working", "ok") : a.working === null ? badge("starting", "idle") : badge("not working", "bad") +
             (a.detail ? '<div class="small">' + esc(a.detail) + "</div>" : "")) +
           td("Outputs", (a.outputs || []).map(function (p) {
             var r = res[p];
@@ -467,14 +477,16 @@
     }
     var fb = $("ev-board").value, fk = $("ev-kind").value;
     var list = S.events.filter(function (e) { return (!fb || e.board === fb) && (!fk || e.kind === fk); });
-    var shown = list.slice(-300).reverse();
+    // newest first by when it happened: a board's earlier history sits where it belongs, not where it was pulled
+    var shown = list.slice(-300).sort(function (a, b) { return (b.at - a.at) || (b.seq - a.seq); });
     $("ev-count").textContent = list.length + " event(s)" + (list.length > shown.length ? ", newest " + shown.length + " shown" : "");
     $("events-body").innerHTML = shown.map(function (e) {
-      var cls = /dead|down|fail|refused|revert/.test(e.kind) || (e.detail && /refused|reverted|failed/.test(e.detail.result || "")) ? "bad" :
+      // earlier: from a board's history, before this hub was watching -- shown, but not as news
+      var cls = e.earlier ? "earlier" : /dead|down|fail|refused|revert/.test(e.kind) || (e.detail && /refused|reverted|failed/.test(e.detail.result || "")) ? "bad" :
         /alive|up|started/.test(e.kind) ? "ok" : "";
       return '<li class="' + cls + '"><span class="ev-t" title="' + esc(new Date(e.at).toISOString()) + '">' + clock(e.at) + "</span>" +
         '<span class="ev-b">' + (e.board === "hub" ? "hub" : blink(m, e.board)) + '</span><span class="ev-k">' + esc(e.kind) +
-        '</span><span class="ev-d">' + fmtDetail(e.detail) + "</span></li>";
+        '</span><span class="ev-d">' + fmtDetail(e.detail) + (e.earlier ? ' <span class="small muted">(before the hub started)</span>' : "") + "</span></li>";
     }).join("") || '<li class="muted">No events.</li>';
     S.evDirty = false;
   }

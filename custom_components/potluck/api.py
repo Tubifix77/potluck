@@ -275,8 +275,10 @@ def summarize(model: dict) -> dict:
         "boards_unknown": by_state.get("unknown", []),
         "apps_total": len(apps),
         "apps_working": sum(1 for a in apps if a.get("working") is True),
+        # working null: the hub is starting and has not seen the app working yet -- not a fault
         "apps_not_working": [{"name": a.get("name"), "detail": a.get("detail") or ""}
-                             for a in apps if a.get("working") is not True],
+                             for a in apps if a.get("working") is False],
+        "starting": bool(hub.get("starting")),
         "last_deploy": last_deploy(model),
         "link": hub.get("link"),
         "link_detail": hub.get("link_detail") or "",
@@ -302,6 +304,7 @@ def problems(model: dict) -> list[dict]:
 
     boards = {str(b.get("node")): b for b in (model.get("boards") or []) if isinstance(b, dict)}
     hub = model.get("hub") or {}
+    starting = bool(hub.get("starting"))  # the hub's first look at the cell: nothing is a fault for lack of a look
     if hub and hub.get("link") != "up":
         add("problem", f"The hub's link to the cell is {hub.get('link')}"
             + (f": {hub['link_detail']}" if hub.get("link_detail") else "") + "; board states are as last heard")
@@ -310,7 +313,7 @@ def problems(model: dict) -> list[dict]:
         state = b.get("state")
         if state == "dead":
             add("problem", f"Board {name} is dead", b.get("since_at"))
-        elif state == "unknown":
+        elif state == "unknown" and not starting:
             add("warning", f"Board {name} has not been heard since the hub started")
         for part in ("firmware", "package"):
             p = b.get(part) or {}
@@ -325,17 +328,19 @@ def problems(model: dict) -> list[dict]:
     at = model.get("at")
     for a in model.get("apps") or []:
         outs = [res[p] for p in (a.get("outputs") or []) if p in res]
-        bad = [r for r in outs if r.get("quality") != "GOOD" and r.get("path") not in shown
+        # the settled quality (it held for two reads); STARTING: not read twice yet since the hub started
+        bad = [r for r in outs if r.get("settled_quality", r.get("quality")) not in ("GOOD", "STARTING")
+               and r.get("path") not in shown
                and not (boards.get(str(r.get("owner")), {}).get("state") == "dead")]  # the dead board is the headline
         running = a.get("running_on") or []
         placed = (len(running) == 1 if a.get("placement") == "portable"
                   else all(n in running for n in (a.get("nodes") or [])))
-        if not a.get("working") and placed and bad:
+        if a.get("working") is False and placed and bad:
             r = bad[0]
             shown.add(r.get("path"))
             since = at - r["age_ms"] if isinstance(at, int) and isinstance(r.get("age_ms"), int) else None
             add("problem", f"App {a.get('name')} not working: output {r.get('name')} {r.get('quality')}", since)
-        elif not a.get("working"):
+        elif a.get("working") is False:
             add("problem", f"App {a.get('name')} not working" + (f": {a['detail']}" if a.get("detail") else ""))
         for r in bad:
             if r.get("path") in shown:

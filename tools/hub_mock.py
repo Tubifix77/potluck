@@ -107,6 +107,7 @@ class SimCell:
         self.other_cell_since: int | None = None
         self.link_down_since: int | None = None
         self.reverted_at: int | None = None
+        self.starting_until: int | None = None
         self.led = False
         self.led_at = t0 - 20 * MIN
         self.deaths: dict[tuple[str, str], int] = {}
@@ -409,12 +410,13 @@ class SimCell:
                         "link_detail": "" if self.link_down_since is None else
                         "COM6: no frames for %d s" % ((now - self.link_down_since) // 1000),
                         "frames_rx": 120345 + link_up_for * 61 // 1000, "frames_tx": 30211 + link_up_for * 15 // 1000,
-                        "pull_period_ms": self.period_ms, "clock_error_ms": 35},
+                        "pull_period_ms": self.period_ms, "clock_error_ms": 35,
+                        "starting": self.starting_until is not None and now < self.starting_until},
                 "cell": {"system": SYSTEM, "cell_id": CELL_ID, "channel": 1, "package": PACKAGE, "firmware": FIRMWARE,
                          "other_cell_frames": 0 if other is None else 1 + (now - other) * 3 // 1000,
                          "presenter": PRESENTER},
                 "boards": boards,
-                "apps": self._apps(now, {r["path"]: r for r in res}),
+                "apps": self._starting_apps(now, self._apps(now, {r["path"]: r for r in res}), res, boards),
                 "resources": res,
                 "integrations": self._integrations(now),
                 "deploys": self._deploys(),
@@ -427,6 +429,32 @@ class SimCell:
                                    "internal_ram": round(0.24 + 0.01 * math.sin(s / 17.0), 2),
                                    "airtime": round(0.26 + 0.03 * math.sin(s / 5.0) + (0.12 if other else 0), 2)}},
             }
+
+    def set_starting(self, seconds: float) -> None:
+        """The hub just started (HUB-API.md, hub.starting): for `seconds` C is not heard yet, one app is not seen working
+        yet, and A's history from before the hub watched arrives as `earlier` events."""
+        with self.lock:
+            now = self.clock()
+            self.hub_start, self.starting_until = now, now + int(seconds * 1000)
+            for k in range(3):
+                at = now - (30 - k) * MIN
+                self.events.append({"seq": self.seq, "at": at, "board": "6300", "kind": "board_probe_timeout",
+                                    "detail": {"peer": "00fe", "a": k, "b": 0, "board_ms": at - self.boot_at["6300"],
+                                               "board_seq": 3191 + k}, "earlier": True})
+                self.seq += 1
+
+    def _starting_apps(self, now: int, apps: list[dict], res: list[dict], boards: list[dict]) -> list[dict]:
+        if self.starting_until is None or now >= self.starting_until:
+            return apps
+        for b in boards:
+            if b["node"] == "8160":
+                b["state"] = "unknown"
+        if apps:
+            apps[0]["working"], apps[0]["detail"] = None, "starting: the hub has not seen the whole cell yet"
+            for r in res:
+                if r["path"] in apps[0].get("outputs", []):
+                    r["settled_quality"] = "STARTING"
+        return apps
 
     def events_since(self, since: int | None) -> dict:
         with self.lock:
@@ -604,6 +632,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--reverted", action="store_true", help="the last deploy was reverted")
     ap.add_argument("--other-cell", action="store_true", help="another cell shares the channel")
     ap.add_argument("--link-down", action="store_true", help="the hub's serial link is down")
+    ap.add_argument("--starting", type=float, default=0, metavar="SECONDS",
+                    help="the hub just started: hub.starting for SECONDS (C not heard yet, one app not seen working)")
     return ap.parse_args(argv)
 
 
@@ -624,6 +654,8 @@ def build(args: argparse.Namespace, clock=None) -> MockServer:
         cell.set_other_cell(True)
     if args.link_down:
         cell.set_link_down(True)
+    if args.starting:
+        cell.set_starting(args.starting)
     return MockServer((args.host, args.port), cell)
 
 
