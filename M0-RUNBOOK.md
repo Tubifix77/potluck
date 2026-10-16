@@ -859,6 +859,9 @@ Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on 
   a hub at login when none runs (the cell in `%LOCALAPPDATA%\potluck\tray.json`'s "cluster", else the one the wizard
   made, else setup mode), and starts one again whenever the hub stops answering for three polls (9 s), at most once a
   minute. Unpackaged: `python -m potluck.tray --start-hub`.
+- **esptool in the package** is `Potluck\esptool\esptool.exe`, a program of its own (GPLv2+, with its `LICENSE` and
+  `SOURCE.txt`), never imported by the Apache-2.0 hub: `potluck.setup` runs it (`python -m esptool` from source,
+  `POTLUCK_ESPTOOL` to name another).
 - **The release firmware in the package:** `tools\build_package.ps1` also runs `python -m potluck.release
   dist\Potluck\firmware` -- what `apply` builds for a cell with no apps (Potluck and the sandbox), its flashed files and
   `release.json` -- so the wizard on a PC with no ESP-IDF flashes that (`-NoFirmware` leaves it out). Building it needs
