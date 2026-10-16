@@ -1,5 +1,16 @@
 # When the boards arrive
 
+> **History, not instructions.** This is the maintainer's bring-up diary from 2026-10-01 to 2026-10-07, when the
+> first three boards arrived and Potluck first ran on hardware. It is kept as written for its reasoning and its
+> bench lessons (the two USB-C sockets, power, the frame-link wiring), not as steps to follow: its "now", its
+> orders ("do not start M3+") and its test counts are those of that week. Every milestone it looks forward to has
+> since been accepted ([STATUS.md](STATUS.md)).
+>
+> To set up boards today, read [GETTING-STARTED.md](GETTING-STARTED.md): `potluck apply` builds, flashes and deploys
+> a whole cell from one cluster file, and the operator's details are in [M0-RUNBOOK.md](M0-RUNBOOK.md). The
+> hardware facts are collected in [bench/esp32-s3-bench-datasheet.md](bench/esp32-s3-bench-datasheet.md). Where this
+> diary names a board's port (COM3, ...) or node id, that was one bench; yours will differ.
+
 The project was **deliberately paused on 2026-08-01** — not stalled: everything buildable without
 hardware is built, verified, and public, and the next line of work *requires* a physical ESP32-S3 on
 a USB cable. This file is the resumption path. It assumes months may have passed and nobody
@@ -88,8 +99,8 @@ recorded because some of it contradicts what this file assumed:
 **The USB-to-UART bridge is a CH343, not a CP2102.** `USB-Enhanced-SERIAL CH343 (COM3)`,
 `VID_1A86 PID_55D3` — WCH's part, not Silicon Labs'. Windows 11 already had the driver and the port
 enumerated on the first plug with no install, so the practical advice below is unchanged, but the
-*reason* given for it was wrong. Nothing in this project cares which bridge it is: CH343 handles the
-921600 console baud comfortably.
+*reason* given for it was wrong. Nothing in this project cares which bridge it is. (The console runs at
+115200 baud; 921600 is the frame link's rate, through the separate adapter.)
 
 **The board is what the listing claimed**, which is not guaranteed with a clone (a reviewer notes
 there is no Espressif seal):
@@ -111,26 +122,24 @@ them as ordinary GPIOs. They are not.
 
 ### The board register
 
-Node ids derive from the MAC — `node_id = (mac[4] << 8) | mac[5]` — so which board answers to which
-id is decided by the silicon, not by a config. Record each board here as it is first read, and write
-the same label on the board itself.
+In that week, node ids derived from the MAC — `node_id = (mac[4] << 8) | mac[5]` — so which board
+answered to which id was decided by the silicon, not by a config. (Since 2026-10-15 enrolment keeps the
+MAC-derived id unless another board in the cell has it, and then assigns the lowest free id from 0x0100.) The maintainer recorded each board's label, MAC, derived
+id, port, USB serial and firmware history here as it was first read, and wrote the same label on the
+board; the per-board details are left out of this public copy. Keep such a register for your own boards.
 
-| Label | MAC | Derived node id | Notes |
-|---|---|---|---|
-| **A** | `b8:1f:3f:da:63:00` | **0x6300** | 2026-10-01. COM3, CH343 serial `5CBC414102`. Flashed with Potluck (fw `095f21e`); full 16 MB factory image backed up. Since 2026-10-07: **enrolled** (M5). Since 2026-10-08: fw `fd1478d` (PSRAM build), package `m6-ticker` at counter 5. Since 2026-10-11 (session 38): firmware counter 8 over the cell, `m7-node` of `f738486`, package `m7-guests` at counter 28. Since 2026-10-11: firmware counter 9 -- Potluck + sandbox + passive-sensor (B also the extender), package `room-and-guests` at counter 29 |
-| **B** | `b8:1f:3f:da:73:68` | **0x7368** | 2026-10-01. COM4, CH343 serial `5C93086589`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up. Since 2026-10-07: **enrolled** (session 24; it was M5's refused board until then), CAN module on GPIO4/5. Since 2026-10-08: fw `fd1478d` (PSRAM build), package `m6-ticker` at counter 5. Since 2026-10-11 (session 38): firmware counter 8 over the cell, `extender-m7` of `5799bd4` (the extender with the sandbox; still the owner's Wi-Fi credentials), package `m7-guests` at counter 28. Since 2026-10-11: firmware counter 9 -- Potluck + sandbox + passive-sensor (B also the extender), package `room-and-guests` at counter 29 |
-| **C** | `b8:1f:3f:da:81:60` | **0x8160** | 2026-10-01. COM5, CH343 serial `5C93086538`. Flashed with Potluck (fw `095f21e`); first 2 MB of factory image backed up. Since 2026-10-07: **enrolled** (M5), CAN module on GPIO4/5. Since 2026-10-08: fw `fd1478d` (PSRAM build), package `m6-ticker` at counter 5. Since 2026-10-11 (session 38): firmware counter 8 over the cell, `m7-node` of `f738486`, package `m7-guests` at counter 28. Since 2026-10-11: firmware counter 9 -- Potluck + sandbox + passive-sensor (B also the extender), package `room-and-guests` at counter 29 |
-
-**The CH343 carries a unique serial, so the boards identify themselves.** `5CBC414102` is board A and
-`5C93086589` is board B, visible in Device Manager's instance id without unplugging anything. This
-file assumed the unplug-and-see-what-vanishes trick would be needed to tell three identical boards
-apart; it is not, and the trick is only a fallback now. Backups live in `D:/esp/board-backups/`,
-named by MAC so a restore cannot go to the wrong board.
+**The CH343 carries a unique serial, so the boards identify themselves**, visible in Device Manager's
+instance id without unplugging anything. This file assumed the unplug-and-see-what-vanishes trick would be
+needed to tell three identical boards apart; it is not, and the trick is only a fallback now. Back up each
+board's factory image before the first flash, named by MAC so a restore cannot go to the wrong board.
 
 ## Prep before the parcel lands
 
-Day one should be flashing, not tooling. None of this needs hardware, and **none of it has been
-started** — it is listed so a session can offer it rather than discover it on the day.
+Day one should be flashing, not tooling. None of this needs hardware, and **none of it had been
+started** when this was written — it is listed so a session can offer it rather than discover it on the day.
+*(All of it was done that week, item 1 differently: there is no `tools\flash.ps1`. A single board is
+flashed with `tools\build_firmware.ps1 -Flash -Port COMx`, and today `potluck apply` builds and flashes
+or updates a whole cell from its cluster file.)*
 
 | # | What | Why it is not already done |
 |---|---|---|
@@ -203,7 +212,7 @@ statistics stream `potluck-capture` records. No separate power supply is needed 
 Not flashing, and not power — both of those already arrive on the board's own USB cable. It exists to
 reach the **frame link**, and only that.
 
-> **As built (2026-10-04):** the HW-598A CP2102 module on COM6, three wires to board A — adapter
+> **As built (2026-10-04):** the HW-598A CP2102 module on its own USB port, three wires to board A — adapter
 > TXD→GPIO18, RXD→GPIO17, GND→G — straight, with nothing in line. Driver, pin order, the order to wire
 > in, and the commands that use it: [bench/m1-wiring.html](bench/m1-wiring.html). One rule learned the
 > hard way: never leave the adapter wired to a board while the adapter itself is unplugged.
@@ -332,7 +341,8 @@ avoidable — **both drivers install with no hardware present.** Note they are d
 
 | chip | on what | driver |
 |---|---|---|
-| **CP2102N** | the three DevKitC-1 boards' USB-to-UART port | [Silicon Labs CP210x VCP](https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers) |
+| **CH343** | the three DevKitC-1 boards' USB-to-UART port (this table said CP2102N until the boards arrived; Windows 11 already had the driver) | WCH's CH343 driver, if your OS lacks it |
+| **CP2102** | the frame-link adapter used here (the HW-598A needed Silicon Labs' driver) | [Silicon Labs CP210x VCP](https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers) |
 | **CH340 / CH340G** | *only* if the frame-link adapter uses CH340 rather than CP2102 | [WCH CH341SER](https://www.wch-ic.com/downloads/CH341SER_EXE.html) |
 
 Espressif's [Establish Serial Connection](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/establish-serial-connection.html)
@@ -347,11 +357,12 @@ page is the reference if a port still fails to enumerate. Confirm afterwards wit
 tools\run_all_tests.ps1 -Asan -Firmware
 ```
 
-Expect **ALL PASS on 19 lines** and the budget line `51.9 KB used, 12.1 KB of headroom`. This is not
+Expect **ALL PASS on 19 lines** and the budget line `51.9 KB used, 12.1 KB of headroom` (that week's
+figures; the suite has grown since, to 479 C++ test cases and 516 Python tests). This is not
 ritual — it proves the toolchain, the three wire-format implementations and the firmware are still
 in the state the coming measurements will be attributed to.
 
-If it fails after months of drift: the toolchain is pinned (ESP-IDF **v6.0.2** at `D:\esp\esp-idf`,
+If it fails after months of drift: the toolchain is pinned (ESP-IDF **v6.0.2**, found through `IDF_PATH` or `-IdfPath`,
 Xtensa GCC 15.2.0 — versions and sources in `.claude/zero-assumption/memory.md`). Diagnose against
 the pin; do not "upgrade to fix" before the soak, or the soak measures the upgrade.
 
@@ -365,7 +376,7 @@ One board cannot measure a link, but it retires real risk:
 
    ```powershell
    tools\build_firmware.ps1 -Flash -Port COM?
-   tools\capture.ps1 --port COM? --interval 5 --show-logs --duration 60
+   tools\capture.ps1 --port COM? --baud 115200 --interval 5 --show-logs --duration 60
    ```
 
 2. **Read the boot record. The first number that matters in the whole project is on it:** the
@@ -397,7 +408,7 @@ One board cannot measure a link, but it retires real risk:
    python -m potluck --replay captures/m2-10min.jsonl --expect-digest <the digest the session prints>
    ```
 
-   Exit 0 → tick M2 in the README's milestone table: **accepted**.
+   Exit 0 → tick M2 in the milestone table (then in the README; now [STATUS.md](STATUS.md)): **accepted**.
 
 ## With TWO boards
 
@@ -460,12 +471,12 @@ So, after the soak and needing no hardware beyond two boards and some space:
 **How it runs, as of 2026-10-03 (firmware `a652cab` on all three boards):**
 
 ```
-tools\soak.ps1 -Start -Ports COM3,COM5 -Label sweep-<date>
-python tools\sweep_report.py --walker 0x7368 captures\soak-sweep-<date>-COM3.jsonl captures\soak-sweep-<date>-COM5.jsonl
+tools\soak.ps1 -Start -Ports <port A>,<port C> -Label sweep-<date>
+python tools\sweep_report.py --walker <B's node id> captures\soak-sweep-<date>-<port A>.jsonl captures\soak-sweep-<date>-<port C>.jsonl
 tools\soak.ps1 -Stop
 ```
 
-- **A (COM3) and C (COM5) stay on the PC and are captured. B (0x7368) walks** on the mains charger,
+- **A and C stay on the PC and are captured. B walks** on the mains charger,
   powered through the same socket it uses on the PC. C is the control: if A-C degrades while B is far
   away, the cause was the house, not the distance.
 - **B's LED is the field indicator**: blue = not yet joined, green = hearing everyone (< 10 %
@@ -513,9 +524,10 @@ the big-mesh numbers being someone else's.
 ## After acceptance
 
 - Tick the checklist in the runbook, move M0 (and M1/M2) from *built* to **accepted** in the
-  README's milestone table — the one table this repo promises to keep honest.
+  milestone table (then in the README, now [STATUS.md](STATUS.md)) — the one table this repo promises
+  to keep honest.
 - **Read the parked finding from the pause** — [M0-LOG.md](M0-LOG.md), final section, *"During the
-  pause — a candidate M9 from Powersuit"*. Short version: the owner's Powersuit project was thrown
+  pause — a candidate M9 from Powersuit"*. Short version: the maintainer's Powersuit project was thrown
   at the architecture as a falsification test and passed — advisories model cleanly on the existing
   event resource kind — but it exposed that SUBSCRIBE/PUBLISH and the event queues are **fully
   specified and never scheduled by any milestone**, while the M6 demo and the home wake-word both

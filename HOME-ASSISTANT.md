@@ -16,9 +16,9 @@ Four words used below:
 - the **package**: what runs where, signed with the cell's keys. It is made from **manifests**, small JSON files listed
   in the cluster file's `package.manifests`; each says which board **owns** which resources (values such as
   `node-7368/hw/die_temp`) and which **actors** (the programs on the boards) produce them.
-- an **extender**: a board built with the Wi-Fi extender application and given your Wi-Fi; it is on your network
-  already. `python -m potluck.apply <cluster file> inventory` lists it among each board's modules; a cell without one
-  needs the `wifi` module.
+- an **extender**: a board running the Wi-Fi extender app that ships in the release image, given your Wi-Fi; it is
+  on your network already. `python -m potluck.apply <cluster file> inventory` lists it among each board's modules; a
+  cell without one needs the `wifi` module.
 
 There are two paths, and you want both:
 
@@ -40,21 +40,21 @@ There are two paths, and you want both:
 - A Wi-Fi network on **2.4 GHz** -- the boards have no 5 GHz radio. A network that offers both bands under one name
   is fine. A board that joins puts the cell on your router's channel: the whole cell follows the router.
 - A PC set up as in [GETTING-STARTED.md](GETTING-STARTED.md), "What you need" and step 1: ESP-IDF, the repository
-  cloned. Every `python` below is **ESP-IDF's Python**
-  (`%USERPROFILE%\.espressif\python_env\idf6.0_*\Scripts\python.exe`), run from `host\potluck\` unless it says the
-  repository's root.
-- From the cell's owner: **the cluster file and its `keys/` folder**. An enrolled board accepts only packages signed
-  by the cell's own keys, so a change to what the cell presents -- your broker's address -- must be signed with them.
-  Put the folder at `<repository>\keys\` and the cluster file beside it. Then open the cluster file and fix what
-  points at the owner's PC -- paths are relative to the cluster file, or absolute:
-  - `keys`: the key files, now `keys\...` next to it;
-  - `firmware.potluck.git`: your clone (`..`, if the file is in `keys\`); `rev` must be a commit that has the
-    `present` module (any commit from 2026-10-12 on);
-  - `port`: the COM port of the USB-serial adapter cabled to the cell (Device Manager > Ports);
-  - `apps`: an app is built from its own repository; an entry you cannot reach must go, and its actors leave the boards
-    with it (one package per cell). Ask the owner first.
-  If you are taking the cell over for good, enrol every board under your own keys instead (GETTING-STARTED.md,
-  steps 2 and 4).
+  cloned. This guide is written for Windows 11, the only system the host tools are tested on; on Linux (untested)
+  write `/` for `\` and ports as `/dev/ttyUSB0`. Every `python` below is **ESP-IDF's
+  Python** (`%USERPROFILE%\.espressif\python_env\idf6.0_*\Scripts\python.exe`), run from `host\potluck\` unless it says
+  the repository's root.
+- **The cell's cluster file and its keys, on this PC.** An enrolled board accepts only packages signed by the cell's
+  own keys, so a change to what the cell presents -- your broker's address -- must be signed with them: run the steps
+  below on the PC where you made the cell. If the cell was made on another PC, copy the cluster file and its key files
+  (the `keys` it names) here, then check what in the cluster file points at that PC -- paths are relative to the
+  cluster file, or absolute:
+  - `keys`: the key files;
+  - `firmware.potluck.git`: this PC's clone of the repository; `rev` must be release `v1.0.0` or later (the first with
+    everything this guide uses);
+  - `port`: the serial port to the cell on this PC (Device Manager > Ports);
+  - `apps`: an app is built from its own repository; an entry this PC cannot reach must go, and its actors leave the
+    boards with it (one package per cell).
 
 ## A. The boards in Home Assistant, with no PC
 
@@ -94,13 +94,23 @@ There are two paths, and you want both:
 
    ```json
    "firmware": {"potluck": {...}, "modules": ["sandbox", "present", "wifi"]},
-   "present": {"broker": "192.168.0.77:1883"},
+   "present": {"broker": "192.168.1.50:1883"},
    "outside": {"node-7368/hw/die_temp": "read", "node-7368/led/on": "read_write"}
    ```
 
-   The broker is an IP address with an optional port (the boards do not look up names). Nothing is exposed unless
-   `outside` names it; `apply` does not check that something produces each path, and a path nothing produces never
-   appears. A cell that presents is built with Wi-Fi's transmit aggregation off on every board (with it on, a
+   The broker is an IP address with an optional port (the boards do not look up names). Nothing reaches the broker
+   unless `outside` names it; `apply` does not check that something produces each path, and a path nothing produces
+   never appears. `outside` governs what the cell presents over MQTT and what may be written from outside; it does not
+   hide anything from the hub's own API, where a program you pair reads every resource (path B).
+
+   **Anyone who can publish on your broker can switch every resource you mark `read_write`**: the boards check a write
+   from the broker against `outside` (and never accept one for a safety-relevant resource), but they cannot tell Home
+   Assistant from any other client. Mark `read_write` only what must be controlled, give the broker a login (step 6),
+   and use TLS if the broker supports it: add `"tls_ca": "<file>"` to `present` -- the broker's CA certificate, PEM or
+   DER, relative to the cluster file -- and the boards and the hub connect on port 8883 instead of 1883 (a port in
+   `broker` wins). The certificate goes into the signed package; it is public, not a secret.
+
+   A cell that presents is built with Wi-Fi's transmit aggregation off on every board (with it on, a
    presenting board's radio stalled every 10-60 minutes), which costs an extender's hotspot some speed.
 4. **Apply it**: `python -m potluck.apply <cluster file> --plan`, read what it will do, then the same without
    `--plan`. It builds the firmware with the modules (5-9 minutes the first time), rolls it out board by board (about
@@ -131,20 +141,27 @@ There are two paths, and you want both:
    values arrive every 2 seconds. Home Assistant's discovery prefix must be the default, `homeassistant`. After Home
    Assistant or the broker restarts, the presenting board sends everything again by itself.
 
-**If nothing appears:** check that the board on your Wi-Fi is connected. `python tools\console_tap.py COM5 60
-board.log` (from the repository's root) records a minute of its console; the presenting board's file has lines
-`{"t":"present", ... "connected": 1, ...}`. Or the hub's dashboard (path B) lists its `present` module as `active`. Check too that your broker accepts connections from your Wi-Fi (an anonymous
-broker, or the login in step 6).
+**If nothing appears:** check that the board on your Wi-Fi is connected. From the repository's root,
+
+```
+python tools\json_capture.py COM5 board.jsonl 60
+```
+
+records a minute of the board's status lines (its JSON lines only); the presenting board's file has lines with
+`"rec": "present"` and `"connected": 1`. (`tools\console_tap.py` records the whole console instead, where the raw line
+reads `{"t":"present",...,"connected":1,...}` -- but the whole console includes ESP-IDF's log, which can name your
+Wi-Fi network: do not share that file.) Or the hub's dashboard (path B) lists the board's `present` module as `active`.
+Check too that your broker accepts the boards' connections: the login in step 6, and TLS if you set `tls_ca`.
 
 ## B. The hub and the Potluck integration
 
 1. **Make the hub a certificate**, once. The hub serves Home Assistant and phones over HTTPS with a certificate of its
    own. Find the PC's address with `ipconfig` (the IPv4 address on your house network), then in **Git Bash**, in
-   `host/potluck/`, with your address in place of `192.168.0.7`:
+   `host/potluck/`, with your address in place of `192.168.1.20`:
 
    ```
    MSYS_NO_PATHCONV=1 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
-     -keyout hub-key.pem -out hub-cert.pem -days 825 -subj "/CN=potluck-hub" -addext "subjectAltName=IP:192.168.0.7"
+     -keyout hub-key.pem -out hub-cert.pem -days 825 -subj "/CN=potluck-hub" -addext "subjectAltName=IP:192.168.1.20"
    ```
 
    (`MSYS_NO_PATHCONV=1` stops Git Bash from turning `/CN=...` into a file path.) Keep `hub-key.pem` to yourself. The
@@ -152,28 +169,36 @@ broker, or the login in step 6).
    announcement by itself, but a phone's browser warns until you make a certificate for the new address -- and a new
    certificate makes Home Assistant ask you to confirm it and allow it again. Better: give the PC a fixed address in
    the router.
-2. **Start the hub**, from `host\potluck\`, with the USB-serial adapter's port:
+2. **Start the hub** on the house network, from `host\potluck\`:
 
    ```
-   python -m potluck.hub --port COM6 --cluster <cluster file> --listen 0.0.0.0:8443 --tls-cert hub-cert.pem --tls-key hub-key.pem
+   python -m potluck.hub --cluster <cluster file> --listen 0.0.0.0:8443 --tls-cert hub-cert.pem --tls-key hub-key.pem
    ```
 
-   Add `--broker-login <file>` (two lines: the broker's user name and password) if your broker needs a login. A
-   healthy start prints, within seconds:
+   It opens the serial port the cluster file names, at the cluster file's `baud` (`--port COM6` names another port,
+   and `--baud` its rate: 115200 for a board's own USB cable, 921600 for a USB-serial adapter). Add `--broker-login <file>` (two lines: the broker's user
+   name and password) if your broker needs a login. A healthy start prints, within seconds:
 
    ```
    [hub] dashboard for the network at https://0.0.0.0:8443/ ...
-   [hub] announced as Potluck lab ef76cc2e._potluck._tcp.local. at 192.168.0.7
+   [hub] announced as Potluck lab ef76cc2e._potluck._tcp.local. at 192.168.1.20
    [hub] holding COM6; API http://127.0.0.1:8470/ ...
-   [hub] presenting: connected to 192.168.0.77:1883
+   [hub] presenting: connected to 192.168.1.50:1883
    ```
 
    The last line is the hub reaching your broker for its health entities. When Windows asks, allow Python **on
    private networks** (TCP 8443 for Home Assistant, UDP 5353 for the announcement), and make sure Windows calls your
    house network private, not public. The hub now answers on two addresses: `http://127.0.0.1:8470/`, its
    **dashboard**, on the PC itself (no login: that is you, the owner) and `https://<PC address>:8443/` for everyone
-   else (a login, or a paired program). It runs while its window is open; nothing starts it for you. `potluck apply`
-   and `potctl` work while it runs: they go through it.
+   else (a login, or a paired program). Started this way it runs while its window is open. `python -m potluck.apply`
+   and `python -m potluck.ctl` work while it runs: they go through it.
+
+   Only one hub runs on a PC: a second is refused (`REFUSED, nothing changed: a hub already runs on this PC`). With
+   Potluck's packaged Windows install, the tray icon already starts a hub at login and keeps it running, so give the
+   options to it instead: in `%LOCALAPPDATA%\potluck\tray.json` put `{"cluster": "<cluster file>", "hub_args":
+   ["--listen", "0.0.0.0:8443", "--tls-cert", "hub-cert.pem", "--tls-key", "hub-key.pem"]}` (relative paths are from
+   the cluster file's folder, so put the two `.pem` files there), then end the running `potluck.exe` in Task Manager;
+   the tray starts the hub again with them within a minute. Its output is in `%LOCALAPPDATA%\potluck\logs\hub.log`.
 3. **Install the integration with HACS**: in Home Assistant, HACS > the three dots > Custom repositories, add
    `https://github.com/Tubifix77/potluck` as type **Integration**. Close the dialog, type `Potluck` in the HACS page's
    search box, select **Potluck**, then **Download** (bottom right) and **Download** again in the dialog. Restart
@@ -183,19 +208,27 @@ broker, or the login in step 6).
    cell (`lab (ef76cc2e)`: its name and its cell id). Select **Add**, then **Submit**. Home Assistant asks the hub to
    be paired and waits up to 5 minutes.
 5. **Allow it on the PC**: open the dashboard, `http://127.0.0.1:8470/`, the **Cell** tab: the hub's card shows
-   **Asking to connect: Home Assistant**, with its address. Select **Allow**. Home Assistant finishes by itself and a
-   device **Potluck hub (lab)** appears. If the 5 minutes ran out, select Add again.
+   **Asking to connect: Home Assistant**, with the address it asks from. Allow only if that is your Home Assistant's
+   address: the announcement Home Assistant found is not authenticated, and this is the check that it paired with your
+   hub and nothing else. Select **Allow**. Home Assistant finishes by itself and a device **Potluck hub (lab)**
+   appears. If nobody allowed it within 5 minutes, Home Assistant says so and stops; add it by hand as below.
 
 **If Home Assistant discovers nothing** (Docker without host networking, another network segment, multicast
-blocked): Settings > Devices & services > Add integration > **Potluck**, the PC's address and `8443`. Home Assistant
-shows the fingerprint of the certificate it was served, as pairs of hex digits (`88:DE:35:...`); compare it with the
-hub's card on the PC (**Certificate**) -- the same digits, the same order -- then continue and allow as in step 5.
+blocked), **or to ask again**: Settings > Devices & services > Add integration > **Potluck**, the PC's address and
+`8443`. Home Assistant shows the fingerprint of the certificate it was served, as pairs of hex digits
+(`88:DE:35:...`); compare it with the hub's card on the PC (**Certificate**) -- the same digits, the same order --
+then continue and allow as in step 5.
+
+**What Home Assistant gets:** the integration pairs with the **look** right only: through the hub it reads the hub's
+whole view of the cell, every resource included, and writes nothing. Its switches and numbers are path A's MQTT
+entities, which write over the broker (step A.3 says who can).
 
 **Afterwards:** each board device also shows the hub's diagnostics (state, internal RAM free, uptime, signal, worst
 link delivery) and a **Firmware** update entity that shows the board's version against the newest in the cell and
-installs nothing; the cell's device shows apps working and a problem sensor per app ("passive-sensor problem"). With
-the PC off, these and the Potluck hub device go unavailable, and the boards' own entities stay live through path A.
-To take Home Assistant's access back: `python -m potluck.hubauth revoke "Home Assistant"`.
+installs nothing; the cell's device shows apps working and a problem sensor per app ("`<app>` problem"). These come
+from the hub over MQTT, with or without the integration. With the PC off, these and the Potluck hub device go
+unavailable, and the boards' own entities stay live through path A. To take Home Assistant's access back: `python -m
+potluck.hubauth revoke "Home Assistant"`.
 
 ## An automation on a board's LED
 

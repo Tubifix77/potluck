@@ -1,18 +1,22 @@
-# M0 runbook — two boards, one heartbeat
+# Potluck runbook — building, flashing, emulating, measuring
 
-**Potluck — S3 Edition.** Everything below was written and verified on **2026-08-01** with **no
-hardware attached**. The firmware compiles for ESP32-S3, all 18 gates are green, and the size report is
-in the repository.
+**Potluck — S3 Edition.** The operator's manual: how to build and flash the firmware, run it under
+emulation, and measure and test a cell on a bench. It is a living runbook, kept with the code; it was
+**last verified on 2026-10-16 on the reference bench** (three ESP32-S3-DevKitC-1 N16R8 boards and a CP2102
+USB-serial adapter, on Windows 11). The host tools are tested on Windows 11 only; Linux is untested.
 
-More than "it compiles": the firmware has been **run** under emulation, and `potctl` has read all six
-of a node's built-in resources across the frame link, so §4's read contract and the host bridge are
-demonstrated rather than assumed. What has *not* been demonstrated is anything involving a radio —
-which is every number §13-M0 asks for. That is what the boards are for, and it is why the acceptance
-checklist in [§6](#6-the-acceptance-checklist-13-m0) is still entirely unticked.
+It began as the M0 runbook ("two boards, one heartbeat", sections 0-9, whose acceptance checklist in
+[§6](#6-the-acceptance-checklist-13-m0) is ticked), and each later milestone added its bench procedure as a
+section of its own. **For setting up a cell, start with [GETTING-STARTED.md](GETTING-STARTED.md)**: today
+`potluck apply` builds, flashes and deploys a whole cell from one cluster file (section 15).
 
-Read [M0-LOG.md](M0-LOG.md) first — it records the decisions, the ARCHITECTURE.md corrections made
-along the way, the things left open, and the conclusions that were later **withdrawn**. Its newest
-session is the one that matters. Then this.
+**On the reference bench**, used in the examples below: board **A** (node `6300`) carries the frame-link
+adapter (`COM6` in the examples), **B** (`7368`) runs the Wi-Fi extender app, **C** (`8160`) is a plain board;
+their consoles were `COM3`, `COM4` and `COM5`. Substitute your own ports (`/dev/ttyUSB0` on Linux) and node
+ids (`python -m potluck.apply <cluster file> inventory` lists them).
+
+[M0-LOG.md](M0-LOG.md) is the project's decision log, newest session last: the reasoning behind what is
+here, including conclusions that were later **withdrawn**.
 
 ---
 
@@ -23,7 +27,7 @@ session is the one that matters. Then this.
 | What M0 proves | two ESP32s exchange 100 ms heartbeats over ESP-NOW and report **measured** PDR and delay |
 | Accept / kill | §13-M0, copied verbatim in [§6](#6-the-acceptance-checklist-13-m0) below |
 | Heartbeat timers | 100 ms period, dead at 6 misses = 600 ms (§8.2, wireless row) |
-| What you flash | one binary, both boards — node ids derive from each board's MAC |
+| What you flash | one binary, both boards — node ids derive from each board's MAC (enrolment keeps that id unless another board has it) |
 | Where the numbers land | `potluck-capture`'s summary, printed on Ctrl-C; the capture file has the raw stream |
 | The one thing to remember | **there is no one-way delay figure.** M0 measures RTT. See [§7](#7-the-delay-methodology--read-before-quoting-any-number). |
 
@@ -41,37 +45,38 @@ Confirm the bench is still as the last session left it:
 tools\run_all_tests.ps1 -Asan -Firmware
 ```
 
-Expect **`ALL PASS` on all 18 lines**, and the §6 budget line reading **51.9 KB used, 12.1 KB of
-headroom**. This takes a few minutes and it is worth it: it proves the toolchain, the codec, the
-heartbeat state machine, the namespace, the statistics and the serial format are all still in the state
-the measurements will be attributed to.
+Expect **`ALL PASS` on every line**, and the §6 budget line under the 64 KB cap of static internal RAM.
+This takes a few minutes and it is worth it: it proves the toolchain, the codec, the heartbeat state
+machine, the namespace, the statistics and the serial format are all still in the state the
+measurements will be attributed to.
 
-The 18 gates are: the C++ suite (158 cases, 36,536 checks), the same suite under AddressSanitizer, four
-fixture/corpus regenerations, ten Python suites (124 cases — including a differential fuzz run
-requiring the C++ and Python decoders to agree on all 9,226 fuzz inputs, and a namespace-wire corpus
-requiring them to agree byte-for-byte on all 89 READ/WRITE/REPLY cases), a strict-GCC portability gate
-over the portable core, and the firmware build with the §6 budget gate.
+The gates are: the C++ suite (479 test cases on 2026-10-16), the same suite under AddressSanitizer, the
+fixture and corpus regenerations, every Python test file (516 tests in 48 files — including a differential
+fuzz run requiring the C++ and Python decoders to agree on every fuzz input, and a namespace-wire corpus
+requiring them to agree byte for byte on every READ/WRITE/REPLY case), a strict-GCC portability gate over
+the portable core, and the firmware build with the §6 budget gate.
 
-Without `-Asan -Firmware` you get the 16 host gates only, which is the fast loop.
+Without `-Asan -Firmware` you get the host gates only, which is the fast loop.
 
 If anything fails, stop. A soak run against a broken codec produces numbers about the codec.
 
-### Prerequisites, all already installed on this machine
+### Prerequisites (the versions on the reference bench)
 
 | | |
 |---|---|
-| ESP-IDF | **v6.0.2** at `D:\esp\esp-idf` (the `stable` docs channel; see M0-LOG.md) |
-| Toolchain | xtensa-esp-elf gcc 15.2.0, cmake 4.0.3, ninja 1.12.1, under `~/.espressif` |
+| ESP-IDF | **v6.0.2**, installed anywhere, with `IDF_PATH` set (ESP-IDF's installer does) or `-IdfPath` passed to the scripts |
+| Toolchain | xtensa-esp-elf gcc 15.2.0, cmake 4.0.3, ninja 1.12.1, as ESP-IDF's tools installer puts them under `~/.espressif` |
+| Shell | PowerShell 7 (`pwsh`); Windows PowerShell 5.1 fails in ESP-IDF's `export.ps1` |
 | Host C++ | MSVC 14.51 from VS 18 Build Tools |
-| Python | 3.14.4. `pyserial` is needed **only** to read a live port |
+| Python | 3.14 (ESP-IDF's own environment). `pyserial` is needed **only** to read a live port |
 
 If `pyserial` is missing, `tools\capture.ps1` finds ESP-IDF's own Python, which has it. Nothing else
 is required — the decoder, the capture writer and the summary are standard library only.
 
 ### The ASCII mirror, and why you probably will not see it
 
-ESP-IDF v6.0.2 cannot build from a path containing a non-ASCII character on this machine. That used to
-matter enormously, because the repository lived at `D:\Projects\dμOS` and the μ broke the build in two
+ESP-IDF v6.0.2 cannot build from a path containing a non-ASCII character on Windows. That used to
+matter enormously, because the repository's folder was named `dμOS` and the μ broke the build in two
 independent ways — Xtensa GCC's argv handling and `esp-idf-kconfig`, each with a different and
 unhelpful error. A junction and a `subst` drive were tried and rejected; CMake resolves both back to
 the real path. Full measurements are in M0-LOG.md, decision 12.
@@ -87,7 +92,7 @@ path contains a non-ASCII character; building through an ASCII mirror
 ```
 
 then something above the repository has a non-ASCII character in it, and the build is running from
-`D:\esp\potluck-fw-<target>` instead. **Never edit the mirror** — it is overwritten on every build,
+`<system drive>\potluck-fw-<target>` (for example `C:\potluck-fw-esp32s3`) instead. **Never edit the mirror** — it is overwritten on every build,
 and only size reports are copied back. `-ForceMirror` exercises that path deliberately.
 
 The host tests always build in place. MSVC never had the problem.
@@ -123,7 +128,7 @@ Two further notes on this hardware:
 - **PSRAM is on** (since M6, `sdkconfig.defaults.esp32s3`): buffers that only tasks touch live in the R8's
   8 MB, and section 6's gate counts internal RAM only. (Until M6 it was deliberately off, so the M0
   measurement of the Wi-Fi stack's internal DRAM was unambiguous.) A board without PSRAM needs
-  `CONFIG_SPIRAM=n`, which compiles the reconciler out.
+  `CONFIG_SPIRAM=n` (with `potluck apply`, in the cluster file's `"firmware": {"extra": [...]}`).
 - **2.4 GHz only.** The merchant listing claims dual-band; it is wrong, no ESP32 has a 5 GHz radio.
   So the soak shares the band with every access point around it, and the channel you pick matters.
   Record it (§8).
@@ -197,16 +202,20 @@ and then:
 python -m potluck.ctl --port COM11 --node 1a2b ls
 ```
 
-Every built-in resource, each with its whole tuple:
+Every built-in resource (seven on every board), each with its whole tuple; your numbers will differ:
 
 ```
-heap free           213400 B  [GOOD, age 812 ms, ts 41230, class L3]
-heap largest block  180224 B  [GOOD, age 812 ms, ts 41230, class L3]
-uptime              41       [GOOD, age 812 ms, ts 41230, class L3]
-boot epoch          27       [GOOD, age 812 ms, ts 41230, class L3]
-peers alive         1        [GOOD, age 812 ms, ts 41230, class L3]
-worst peer RSSI     -58      [GOOD, age 812 ms, ts 41230, class L3]
+free internal DRAM   213400 B  [GOOD, age 812 ms, ts 41230, class L4]
+largest free block   180224 B  [GOOD, age 812 ms, ts 41230, class L4]
+uptime               41 s      [GOOD, age 812 ms, ts 41230, class L4]
+boot epoch           27        [GOOD, age 812 ms, ts 41230, class L4]
+peers alive          1         [GOOD, age 812 ms, ts 41230, class L4]
+worst peer RSSI      -58       [GOOD, age 812 ms, ts 41230, class L4]
+why it last started  1         [GOOD, age 812 ms, ts 41230, class L4]
 ```
+
+`L4` is the loosest latency class (these are diagnostics). *Why it last started* is ESP-IDF's reset-reason
+code (`sys/reset`): 1 power-on, 3 a software restart, 6 the task watchdog.
 
 There is no flag that prints just the number, on purpose — see [§7](#7-the-delay-methodology--read-before-quoting-any-number).
 
@@ -255,7 +264,7 @@ board:
 python -m potluck.ctl --tcp 127.0.0.1:5555 --node 1001 ls
 ```
 
-Expect `6/6 answered with a usable value`. `watch sys/peers-alive` should show `0` then `1` as the
+Expect `7/7 answered with a usable value`. `watch sys/peers-alive` should show `0` then `1` as the
 host's own heartbeats register it as a live peer, which is the quickest confirmation that §8.2's state
 machine is running and that the frame link works both ways.
 
@@ -267,7 +276,7 @@ BridgeError: write to tcp 127.0.0.1:5555 failed: could not connect: timed out
 ```
 
 — and that is the emulator, not the node: the console log keeps filling with statistics throughout. So
-do everything in one invocation (`ls` reads all six resources over a single connection; `watch` holds
+do everything in one invocation (`ls` reads all seven resources over a single connection; `watch` holds
 the connection open), or restart `run_qemu.ps1` between commands. A real board over a real serial port
 has no such limit; this is purely an artefact of the socket chardev.
 
@@ -448,7 +457,7 @@ Concretely, on the geometry you actually intend to deploy at:
       at the worst spot while unicast still delivered 99 %.**
 
 **Answered on the intended geometry, 2026-10-04: the kill criterion does not fire.** The distance
-sweep covered a two-storey house, up to ~16 m, four walls, a floor, and a dryer-and-fridge shadow.
+sweep covered a two-storey house, up to ~16 m, four walls, a floor, and the shadow of large appliances.
 M0 is accepted. Per-spot figures are in M0-LOG session 15 and `captures/sweep-2026-10-04-report.txt`.
 
 If any answer is no, that is the kill criterion firing. **Stop and reopen the transport decision.**
@@ -534,8 +543,8 @@ date — §6's convention, and the difference between a fact and a design budget
 | Symptom | Where to look |
 |---|---|
 | `cc1.exe: No such file or directory` on a file that exists | the non-ASCII path. Use `tools\build_firmware.ps1`, never bare `idf.py` in `firmware/` |
-| `idf.py` not found | `D:\esp\esp-idf\export.ps1` — the build script does this for you |
-| No `boot` line at all | wrong baud. The firmware sets 921600; `--baud 115200` if you changed `sdkconfig` |
+| `idf.py` not found | ESP-IDF's `export.ps1` (under `IDF_PATH`) has not run — the build script does this for you |
+| No `boot` line at all | wrong baud. The console runs at 115200 (`potluck-capture`'s default); 921600 is the frame link's rate, on the adapter |
 | Boards never discover each other | different channels, or one board's radio failed to start — the firmware refuses to run a soak on a dead radio and says so on the first line |
 | `espnow_ver: 1` unexpectedly | one board reports ESP-NOW v1, so the link is pinned to 226 B. Not an error, but note it: a v1 receiver silently *truncates* a longer frame (§5.3) |
 | `rtt-samples` stuck at 0 | probes leaving, replies not arriving. Check `tx-pdr%` — if it is high, the peer is receiving but not answering |
@@ -544,6 +553,14 @@ date — §6's convention, and the difference between a fact and a design budget
 | A `link` record missing fields | firmware/host skew. `potluck-capture` prints a warning naming unrecognised record types |
 
 ## 10. M4: CAN on two boards
+
+> **Sections 10-14 are the manual path.** They were written before `potluck apply` (section 15), and they pick
+> build variants, firmware and package counters, and the order of boards by hand. For a normal cell, `apply`
+> now does all of that from the cluster file: it reads every board's floors and goes one above, builds the one
+> image the cell needs, and updates the cabled board last. These sections are kept for the experiments that need
+> a variant of their own (CAN, a bench image) and as a description of what `apply` does underneath. Their board
+> names, ports and node ids are the reference bench's (see the top of this runbook); the keys they name live in
+> the git-ignored `keys/` folder.
 
 Wiring: [bench/m4-can-wiring.html](bench/m4-can-wiring.html). Each board runs a **radio-off variant**
 (v1 has no router, so a node on two transports would appear as two peers), built in its own
@@ -580,9 +597,12 @@ Each board prints a `{"t":"can"}` line every 10 s. What a pass looks like (sessi
 **Afterwards, put every board back on the normal build** and prove it:
 
 ```
-tools\build_firmware.ps1 -Clean -Flash -Port COM4      # then idf.py -p COM5 flash, -p COM3 flash
-python -m esptool --chip esp32s3 -p COM4 verify-flash 0x10000 firmware\build\potluck_m0.bin
+tools\build_firmware.ps1 -Clean -Flash -Port COM4      # then the same with -Port COM5 and -Port COM3
+python -m esptool --chip esp32s3 -p COM4 verify-flash 0x540000 firmware\build\potluck_m0.bin
 ```
+
+`0x540000` is the `factory` app partition (`firmware/partitions.csv`; it was at 0x10000 until 2026-10-11).
+`firmware\build\flash_args` lists every offset a cable flash writes.
 
 Flash all three from one build: beacon formats must agree across the cell.
 
@@ -615,11 +635,13 @@ python -m potluck.fw --port COM6 rollout ../../firmware/build/potluck_m0.bin --c
 A guest is a WebAssembly module from an author the owner certifies but does not trust with a node. It runs
 on boards built with `CONFIG_POT_WASM` (variants `m7-node`, and `extender-m7` for B), as a portable actor in
 the sandbox: fuel per tick, its own memory, nine imports (`guests/potluck_guest.rs`), and read-only outputs
-under `act/<actor>/`. A board without the option refuses an image that carries guests. From `host/potluck/`:
+under `act/<actor>/`. A board without the option refuses an image that carries guests. (B's image needs the
+Wi-Fi extender app's sources, which live in a private repository; the release image carries the app compiled
+in.) From `host/potluck/`:
 
 ```
 tools\build_firmware.ps1 -Clean -Variant m7-node -Extra "CONFIG_POT_WASM=y"
-tools\build_firmware.ps1 -Clean -Variant extender-m7 -Extra "CONFIG_POT_WASM=y" -PmeHotspot D:\Projects\poor-mans-extender\firmware\components
+tools\build_firmware.ps1 -Clean -Variant extender-m7 -Extra "CONFIG_POT_WASM=y" -PmeHotspot <the Wi-Fi extender app's firmware\components>
 python -m potluck.fw --port COM6 rollout ../../firmware/build-m7-node/potluck_m0.bin --counter N --key ../../keys/deploy.key --bcert ../../keys/deploy.bcert --targets 7368,8160,6300 --image-for 7368=../../firmware/build-extender-m7/potluck_m0.bin
 
 # once per author (the owner): a key for the author, certified by the cluster CA as role 3
@@ -705,21 +727,24 @@ cable looks like to the boards; the actor should be back on a board within ~0.7 
 
 ## 15. M12: the whole cell from one file
 
-From `host/potluck/`, with the ESP-IDF Python, in any shell. The bench's cell is `keys/desk-cell.json` (git-ignored:
-it names the private app repositories by path); `examples/cells/` holds the public presets.
+From `host/potluck/`, with the ESP-IDF Python, in any shell. `<cluster file>` is your cell's file -- start from
+a preset in `examples/cells/` (`minimal.json`: Potluck and the sandbox, no package; `hello.json`: the worked example of
+DEVELOPING-APPS.md), copied beside your keys with your boards' node ids and adapter port in it (GETTING-STARTED.md,
+"Your first package", shows one in full). From here on the runbook's examples write `my-cell.json`.
 
 ```
-python -m potluck.apply ../../keys/desk-cell.json --plan       # what it would change; changes nothing
-python -m potluck.apply ../../keys/desk-cell.json              # firmware where it differs, the package, verify
-python -m potluck.apply ../../keys/desk-cell.json inventory    # every board: firmware, package, counters, actors
+python -m potluck.apply <cluster file> --plan         # what it would change; changes nothing
+python -m potluck.apply <cluster file>                # firmware where it differs, the package, verify
+python -m potluck.apply <cluster file> inventory      # every board: firmware, package, counters, actors
 python -m potluck.deploy decl <manifest> --modules <descriptor>  # an actor's declaration bytes, for a test
 ```
 
 Counters, variants and the order are the tool's: it reads every board's floors and goes one above. Builds come
-from `git archive` exports into `%LOCALAPPDATA%\potluck\cache`, keyed by the firmware tree and the build script,
-so a commit that changes neither sends nothing to the boards (a first build is ~7-9 min, a board's update ~2 min).
-The acceptance variants beside it: `desk-no-room.json` (the room sensor off, live), `desk-c-off.json` (C left out,
-for the catch-up test), `desk-home.json` (cluster "home"), `fail-*.cluster.json` (refused before any change).
+from `git archive` exports into a cache (`%LOCALAPPDATA%\potluck\cache` on Windows, `~/.cache/potluck` elsewhere;
+`--cache` names another), keyed by the firmware tree and the build script, so a commit that changes neither sends
+nothing to the boards (a first build is ~7-9 min, a board's update ~2 min). For acceptance tests, keep variants of
+the file beside it -- an app switched off (a live package change), one board left out (the catch-up test), another
+cluster name -- and files that must be refused before any change.
 
 - **A whole-cell reset with every console recorded:** `python tools/reset_capture.py captures/<name>.log 25 75`
   (JSON lines only, so safe for B; all ports in one process). Do not start several `console_tap.py` jobs at once:
@@ -733,34 +758,35 @@ for the catch-up test), `desk-home.json` (cluster "home"), `fail-*.cluster.json`
 What the owner adds to a cluster file (section 15), and what each line does:
 
 ```json
-"firmware": {"potluck": {...}, "modules": ["sandbox", "present"], "extender": {...}},
-"present": {"broker": "192.168.0.77:1883", "keepalive_s": 10, "period_ms": 2000},
-"outside": {"node-7368/hw/die_temp": "read", "node-7368/led/on": "read_write", "act/rf_fusion/out": "read"}
+"firmware": {"potluck": {...}, "modules": ["sandbox", "present", "wifi"]},
+"present": {"broker": "192.168.1.50:1883", "keepalive_s": 10, "period_ms": 2000},
+"outside": {"node-7368/hw/die_temp": "read", "node-7368/led/on": "read_write", "act/<actor>/<output>": "read"}
 ```
 
-- `present` needs a network connection in the same image: the extender (a board whose hotspot has credentials)
-  or Potluck's own station (`"wifi"`; give a board the network with `tools/wifi_set.py <port> <file>`, run by the
-  owner). The role goes to one board that is on the network (HELLO's `connected` bit) and moves when it dies.
-- `outside` is everything another system may see; `read_write` needs a resource declared writable in some
-  node's `owns` and never one marked `safety_relevant`. The owning board checks again.
+- `present` needs a network connection in the same image: Potluck's own station (`"wifi"`; give a board the
+  network with `tools/wifi_set.py <port> <file>`, which the owner runs and which prints neither line), or the Wi-Fi
+  extender app on a board whose hotspot has credentials. The role goes to one board that is on the network (its
+  HELLO carries a `connected` bit) and moves when it dies.
+- `outside` is what the cell presents over MQTT; `read_write` needs a resource declared writable in some
+  node's `owns` and never one marked `safety_relevant`. The owning board checks again. Anyone who can publish on
+  the broker can write every `read_write` resource: give the broker a login and use TLS (section 18).
 - A broker with a login: `POT! present login <user> <password>` on each board that may present (the owner types
   it; it prints only the result).
 - `builtin:led_switch` (pinned, `r` `g` `b`, `blink_ms`) is B's status LED as `node-<id>/led/on`, the bench's
   stand-in for a lightbulb (`manifests/m13-present.json`).
 
-**The bench broker.** Home Assistant and Mosquitto run on the homelab since 2026-10-12 (HOME-ASSISTANT.md); for a
-run that wants every message logged with its own clock, the bench also has a small MQTT 3.1.1 broker, run from `/tmp` on the homelab laptop (nothing
-installed):
+**A bench broker.** For a real installation use your own broker (HOME-ASSISTANT.md). For a run that wants every
+message logged with its own clock, `tools/mqtt_bench_broker.py` is a small MQTT 3.1.1 broker in one file
+(standard library only, nothing to install); run it on any machine the boards can reach, here `192.168.1.50`:
 
 ```
-scp tools/mqtt_bench_broker.py homelab:/tmp/potluck-broker/
-ssh homelab 'cd /tmp/potluck-broker && setsid nohup python3 mqtt_bench_broker.py --port 1883 --log broker.jsonl > broker.out 2>&1 < /dev/null &'
-python tools/mqtt_tool.py --host 192.168.0.77 sub '#' --out captures/<name>.jsonl     # what Home Assistant would receive
-python tools/mqtt_tool.py --host 192.168.0.77 pub potluck/<cell>/<hash>/set ON        # what an automation sends
+python3 tools/mqtt_bench_broker.py --port 1883 --log broker.jsonl                    # on the broker machine
+python tools/mqtt_tool.py --host 192.168.1.50 sub '#' --out captures/<name>.jsonl     # what Home Assistant would receive
+python tools/mqtt_tool.py --host 192.168.1.50 pub potluck/<cell>/<hash>/set ON        # what an automation sends
 ```
 
-`<cell>` is the CA fingerprint's 8 hex digits (in every topic); `<hash>` the resource's path hash
-(`python -c "from potluck.paths import path_hash; print('%08x' % path_hash('potluck://lab/node-7368/led/on'))"`
+`<cell>` is the CA fingerprint's 8 hex digits (in every topic); `<hash>` the resource's path hash, FNV-1a/32 of
+its full URI (`python -c "from potluck.paths import path_hash; print('%08x' % path_hash('potluck://lab/node-7368/led/on'))"`
 from `host/potluck/`). The presenting board prints `{"t":"present",...}` every stats period: holding, connected,
 messages published, outside writes applied, sent and refused, and its internal heap (free, largest block, lowest).
 
@@ -803,10 +829,9 @@ host/potluck/tests/test_dashboard.py` (the mock against the contract, the page's
 ## 18. M13-M15 (2026-10-13): TLS to the broker, the cell's leases, the host node behind the hub, telemetry
 
 **TLS to the broker.** The cluster file's `present` block takes `"tls_ca": "<file>"` (the broker's CA, PEM or DER,
-relative to the cluster file) and a broker on its TLS port; `apply` puts the CA's DER in the signed manifest and the
-image carries it (version 4). `keys/desk-m13-tls.json` is the bench's: the house broker's listener 8883 and
-`keys/bench-broker-ca.crt` (the homelab's `/home/boas/mosquitto/config/certs/ca.crt`; the listener's lines are at the end
-of `mosquitto.conf`, the file before them is `mosquitto.conf.pre-tls`, and the port is published in the compose file).
+relative to the cluster file) and a broker on its TLS port (8883 when `"broker"` names no port); `apply` puts the CA's
+DER in the signed manifest and the image carries it (version 4). On the broker's side that is a TLS listener with a
+certificate signed by that CA -- for Mosquitto, a `listener 8883` block with `cafile`, `certfile` and `keyfile`.
 The present status line shows `tls`, PSRAM free and low-water, and `sender_stack_free`.
 
 **Aggregation.** A cell that presents is built with `CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n` on every board; `apply --plan`
@@ -816,7 +841,8 @@ NO_MEM and the station's TCP stopped until a chip reset); with it off, 13 h 19 m
 **Leases.** Nothing to run: `apply` takes the cell's deploy lease after planning and says
 `lease: the cell's deploy lease is ours (board 0x6300 holds it)`; a second `apply` meanwhile, from any PC, is
 `REFUSED, nothing changed: the cell's deploy lease is held by "apply on <PC>" ...`. A resident hub takes the hub lease;
-a second hub on the same PC is refused from `%LOCALAPPDATA%\potluck\hub.json`, one on another PC by the lease. A cell
+a second hub on the same PC is refused from `%LOCALAPPDATA%\potluck\hub.json` (`~/.cache/potluck/hub.json` elsewhere),
+one on another PC by the lease. A cell
 on firmware before M14 answers no LEASE: noted, not refused.
 
 **The placement host behind the hub.** With a hub holding COM6, `python -m potluck.hostnode --port COM6 --package
@@ -825,7 +851,7 @@ it); potctl, the agent and apply run beside it. It refuses an old `pot_hostnode`
 `tools\run_host_tests.ps1`.
 
 **Telemetry.** The hub pulls every board's health, links, actors and events every `--telemetry-ms` (default 10000;
-0 never): `python -m potluck.hub --cluster ../../keys/desk-m13.json --telemetry-ms 10000`. The model's `boards[].heap`,
+0 never): `python -m potluck.hub --cluster <cluster file> --telemetry-ms 10000`. The model's `boards[].heap`,
 `links`, `rssi` and `telemetry` fill from it (HUB-API.md); the dashboard's heap and radio-link tables show it. From a
 script: `from potluck import telemetry as tm; tm.health(bridge, 0x7368); tm.links(bridge, 0x7368)`.
 `build/tests/pot_sim.exe --nodes 20 --scenario telemetry --tel-ms 10000` is the pull's airtime at 20 boards.
@@ -844,18 +870,18 @@ Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on 
   it last heard from, so never run the hub on the adapter and a tool on the same board's console at once.
 - **Seeing a board's log on its own cable:** `POTLUCK_CONSOLE_TEXT=<file>` makes `Bridge` (the hub, `apply`,
   `potluck.fw`, `potctl`) append the log text between frames to that file; add `POTLUCK_CONSOLE_TEXT_SAFE=1` to keep only
-  update and crash lines -- required for B and C, whose logs can name networks.
+  update and crash lines -- use it for any board that holds Wi-Fi credentials, whose log can name networks.
 - **The floor plan:** the Plan tab. Make a plan (100 x 100 m by default), add rooms, drag boards; each drag is saved at
   once in the cluster file (`<file>.bak` keeps the version before), and the tab names the boards whose place is not on
   the board yet -- "Apply to the cell" sends it (a package change, about 20 s, no restart).
 - **The library:** the Library tab -- apps on and off, "Test the broker", per resource Hidden / Visible / Controllable,
   then "Apply to the cell".
-- **pot_sim for an app's read load:** `build/tests/pot_sim.exe --nodes 20 --scenario d20` (passive-sensor's design: a
+- **pot_sim for an app's read load:** `build/tests/pot_sim.exe --nodes 20 --scenario d20` (a room-presence app's design: a
   fusion per room) or `--scenario perlink` (the design before it), against `--scenario none` on the same seed.
 - **The packaged app and the tray icon:** `tools\build_package.ps1` builds `dist\Potluck\` (`potluck.exe`: hub, apply,
   setup, keystore, ctl...; `potluck-tray.exe`: the tray icon) with PyInstaller from `%LOCALAPPDATA%\potluck\build-env`
-  (made once; the script's top says how). The owner installs it with `packaging\install.ps1` -- run it yourself, not
-  from a Claude session, whose AppData is redirected -- and removes it with `packaging\uninstall.ps1`. The tray starts
+  (made once; the script's top says how). The owner installs it with `packaging\install.ps1` -- per user, so run it
+  in your own PowerShell as the user who will use it -- and removes it with `packaging\uninstall.ps1`. The tray starts
   a hub at login when none runs (the cell in `%LOCALAPPDATA%\potluck\tray.json`'s "cluster", else the one the wizard
   made, else setup mode), and starts one again whenever the hub stops answering for three polls (9 s), at most once a
   minute. Unpackaged: `python -m potluck.tray --start-hub`.
@@ -863,9 +889,10 @@ Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on 
   `SOURCE.txt`), never imported by the Apache-2.0 hub: `potluck.setup` runs it (`python -m esptool` from source,
   `POTLUCK_ESPTOOL` to name another).
 - **The release firmware in the package:** `tools\build_package.ps1` also runs `python -m potluck.release
-  dist\Potluck\firmware` -- what `apply` builds for a cell with no apps (Potluck and the sandbox), its flashed files and
-  `release.json` -- so the wizard on a PC with no ESP-IDF flashes that (`-NoFirmware` leaves it out). Building it needs
-  ESP-IDF on the packaging PC, once.
+  dist\Potluck\firmware` -- with `-FromCluster <cluster file>`, the image `apply` builds for that cell, with the built-in
+  apps it names (the published release is built this way); without it, Potluck and the sandbox only -- its flashed
+  files and `release.json`, so the wizard on a PC with no ESP-IDF flashes that (`-NoFirmware` leaves it out). Building
+  it needs ESP-IDF on the packaging PC, once.
 - **A release (what HACS updates from):** `python tools/make_release.py X.Y.Z` sets the integration's manifest version,
   commits and tags `vX.Y.Z` locally and prints the two publishing commands; `--publish` runs them (push, then `gh release
   create`, attaching `dist\Potluck` as a zip when it is built from this firmware tree). HACS reads the newest *release*;
@@ -876,9 +903,10 @@ Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on 
   CA for that one action), writes `store/` beside the cluster file and its fragment into the package; "Apply to the
   cell" sends it. A guest change reboots the boards into it, as any guest change does. "Show the store's list" fetches
   [Tubifix77/potluck-store](https://github.com/Tubifix77/potluck-store)'s `feed.json` and shows it only if `feed.sig`
-  verifies under `potluck.store.FEED_KEY`. **The store key** is `keys/potluck-store.key` (the owner's; back it up --
-  a new one means a Potluck release with its public half): edit `feed.json`, `python tools/store_feed.py sign
-  feed.json --key keys/potluck-store.key`, commit both. The example app's author key is `keys/potluck-examples.key`.
+  verifies under `potluck.store.FEED_KEY`. **Maintaining a store list** needs the store's private key, whose public
+  half is `FEED_KEY`: keep the store key out of the repository and backed up (a new one means a Potluck release with
+  its public half). Edit `feed.json`, run `python tools/store_feed.py sign feed.json --key <the store key>`, and
+  commit both.
 - **The wizard's Cells step (M19):** after Rooms, the wizard asks the hub for a tree (`POST /api/setup/tree`); twenty
   boards or fewer that all hear each other skip it. Otherwise: tick the boards on a charger, see the proposed cells and
   their foremen, "Use these cells" (once every cell has one), then Done applies.
@@ -896,29 +924,29 @@ cells' actors (image version 5).
   alive, exports, groups) shows on whichever board holds it; that board's `groups` names both cells. The standby -- the
   board ranked second -- stays in its own cell and joins the parent when it takes the role.
 - **Reading across cells:** on a board, `POT! read <path hash>` shows what it holds for a path (owner, quality, the
-  value as u32 and f32, unit, age) and asks the owner again; `POT! refer <via hex> <path hash>` asks for a path that
+  value as u32 and f32, unit, age) and asks the owning board again; `POT! refer <via hex> <path hash>` asks for a path that
   lives in another cell as a referral through that cell's foreman, then `POT! read` shows it. Path hashes:
   `python -c "from potluck.paths import path_hash; print(path_hash('potluck://lab/cell-bench/warmest'))"`.
 - **pot_sim:** `build/tests/pot_sim.exe --scenario tree2 --cells 10 --minutes 10` -- ten cells of ten in their own
   radio spaces under one upper cell, real reconcilers and foremen; `--kill-at <s>` puts cell 0's foreman to sleep for
   two minutes. It reports deaths, handovers, cell-seconds with no foreman or two, each radio space's airtime (and how
   much of it the reconciler's CASTs), and the sibling summaries read. A day takes about five hours.
-- **Stub cells on the bench** (the owner buys no more boards): the cluster file names stub boards (`"stub": true`,
-  ids f000..fdff, e.g. `keys/desk-m19-tree.json`), which `apply` composes into the tree and never contacts. Build the
+- **Stub cells on the bench** (a tree tested with three real boards): the cluster file names stub boards
+  (`"stub": true`, ids f000..fdff), which `apply` composes into the tree and never contacts. Build the
   host program optimised -- `tools\run_host_tests.ps1 -Release -BuildDir build/release -Target pot_stubs` (a Debug
   build fell behind its own heartbeats with nine stubs checking signatures) -- make sure the cabled board relays
   (`POT! relay 1`, kept across reboots), then from `host/potluck/`:
   `python -m potluck.stubs --port COM6 --package <the tree's signed package> [--watch f301:cell-bench/warmest]
   [--refer f101:8160:node-7368/hw/die_temp] [--sleep f102@120+90] [--out <file.jsonl>]`. The package is the one
-  `apply` kept (`%LOCALAPPDATA%\potluck\cache\packages\<system>-<counter>.pkg.json`); each stub's identity is made
+  `apply` kept (`packages\<system>-<counter>.pkg.json` in its cache, section 15); each stub's identity is made
   under the cell's CA the first time (`keys/stubs/`). Its stderr lines: `stub` (groups, peers, roles and the summary
   each reads), `watch`, `event`.
 - **The wizard's tree:** `POST /api/setup/tree {"chargers": ["0100", ...]}` on the hub proposes cells from the boards'
   link reports (potluck.survey); `"write": true` puts them into the cluster file, then Apply.
 - **Beyond the cable:** in a tree the cable reaches the cabled board's cells only. `apply` names the boards of other cells
   ("is in a cell the cable does not reach") and verifies what the cabled board can resolve; those boards take the
-  package and the firmware by catch-up. `apply --partial` lets boards that do not answer catch up (folding a tree back
-  into one cell: `keys/desk-m19-spaces.json` -> `keys/desk-m14-hub.json`).
+  package and the firmware by catch-up. `apply --partial` lets boards that do not answer catch up (for example when
+  folding a tree back into one cell: apply the one-cell file with `--partial`).
 - **Firmware catch-up:** a confirmed board announces its firmware counter every minute (first 45 s after boot); a peer
   with an older one asks and takes the holder's own image (1.2 MB in about 33 s, one peer at a time, the asker waits
   three minutes before asking again). The board on the PC's cable leaves its firmware to the PC (it carries the PC's

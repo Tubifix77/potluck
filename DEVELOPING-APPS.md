@@ -7,36 +7,38 @@ with [GETTING-STARTED.md](GETTING-STARTED.md).
 
 For anyone who wants to make an app for a Potluck cluster: code that reads the cluster's resources
 (sensors, radio, other apps' outputs), computes, and publishes results the rest of the cluster can read.
-It brings together what was spread across header comments, the [decision log](M0-LOG.md) and the
-experience of the first two apps built on Potluck: **passive-sensor**, which detects a person in a room
-from how their body weakens the boards' own radio links, and **poor-mans-extender**, a Wi-Fi extender that
-shares the radio with Potluck. Both live in their own (private) repositories, the way an app should.
+It draws on the experience of the first two apps built on Potluck: a **room-presence app**, which detects a
+person in a room from how their body weakens the boards' own radio links, and a **Wi-Fi extender app** that
+shares the radio with Potluck. Both live in repositories of their own, the way an app should (they are not
+public; they ship compiled into the release image).
 
-**Status of this manual (2026-10-11, rewritten for M12).** One command now takes a cell from a cluster file to
-running and verified: `python -m potluck.apply <cluster.json>` builds the firmware, rolls it out where it differs,
-signs and deploys the package and checks every output -- the counters, the order and the variants are the tool's,
-not yours (section 7). A package changes on the boards without a reboot, and checkpoints survive one. Apps test
-themselves in their own repositories with Potluck's test kit (section 8). Everything shown here is tested: the
-worked example in section 3 is built for the boards and tested on a PC by Potluck's own test suites, and section
-7's commands are the ones that brought a room sensor, a Wi-Fi extender and a guest onto three boards in one run.
-
-The manual was tested on readers with no other context (2026-10-11, twice); every place they got stuck is fixed
-in it.
+This manual is for **Potluck 1.0.0**, built with **ESP-IDF v6.0.2** and run with ESP-IDF's **Python 3.14**; the PC
+side is tested on Windows 11 only (Linux is untested). One command takes a cell from a cluster file to running
+and verified: `python -m potluck.apply <cluster.json>` builds the firmware, rolls it out where it differs, signs
+and deploys the package and checks every output -- the counters, the order and the variants are the tool's, not
+yours (section 7). A package changes on the boards without a reboot, and checkpoints survive one. Apps test
+themselves in their own repositories with Potluck's test kit (section 8). The worked example in section 3 is
+built for the boards and tested on a PC by Potluck's own test suites. Questions, bugs and type-number requests:
+[Potluck's issue tracker](https://github.com/Tubifix77/potluck/issues).
 
 Terms used throughout:
 
-- **Node** -- one board (or a PC running `pot_hostnode`), with a 16-bit id such as `0x7368`.
+- **Node** -- one board (or a PC running `pot_hostnode`), with a 16-bit id such as `0x1a2c`.
 - **Cell** -- the nodes that hear each other over ESP-NOW (Espressif's board-to-board radio protocol).
 - **Namespace** -- the cluster's shared map of named resources, `potluck://<system>/...`; every read
   returns a value *with* its age and quality ([section 4's tuple](ARCHITECTURE.md)).
 - **Actor** -- a unit of app code. Potluck decides which node runs it and drives it.
 - **Package** -- a signed manifest naming every actor the cluster runs; deploying one replaces the last.
+- **Replica** -- a node's local copy of a resource another node owns: a read anywhere answers from it, with the
+  age the value had when it was last fetched.
+- **Owner** -- you: the person whose keys sign the cluster's packages. (A resource's *owner node* is the node
+  that publishes it.)
 
 ---
 
 ## 1. Two ways to write an app
 
-| | **Native actor** (an external component) | **Guest** (a WebAssembly module, since M7) |
+| | **Native actor** (an external component) | **Guest** (a WebAssembly module) |
 |---|---|---|
 | Language | C++17, against `pot/actor.hpp` | anything that compiles to WebAssembly 1.0; the example guests are Rust |
 | Speed | native | ~50x slower than native, measured on the S3 |
@@ -44,10 +46,10 @@ Terms used throughout:
 | Trust | compiled into the owner's signed firmware: the owner trusts its author with the board | runs sandboxed: the owner trusts its author only with its own memory and its fuel |
 | Shipping | rebuild the firmware with your component, roll it out over the radio, then deploy a package | sign the module once as its author; the owner names it in a package -- no firmware change |
 | Cost per instance | its slot (384 B) and whatever it allocates | ~80 KB of heap (its 64 KiB memory page, in PSRAM) |
-| Needs | nothing extra | boards built with `CONFIG_POT_WASM`, an author certificate from the owner |
+| Needs | nothing extra | boards built with the `sandbox` module (`CONFIG_POT_WASM`), an author certificate from the owner |
 
-Choose **native** when the app needs radio samples, the LED, timing below a tick, or speed -- passive-sensor
-is native for all four reasons. Choose a **guest** when the code comes from someone the owner does not want
+Choose **native** when the app needs radio samples, the LED, timing below a tick, or speed -- the room-presence
+app is native for all four reasons. Choose a **guest** when the code comes from someone the owner does not want
 to trust with the board, or should change without a firmware update. The rest of this manual is about
 native actors until section 9, which covers guests.
 
@@ -67,7 +69,7 @@ your repository                          your cluster file (cluster.json)
                                            -> verified: every output read back
 ```
 
-1. Your actors are C++ classes in an [ESP-IDF component](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/build-system.html)
+1. Your actors are C++ classes in an [ESP-IDF component](https://docs.espressif.com/projects/esp-idf/en/v6.0.2/esp32s3/api-guides/build-system.html)
    (ESP-IDF's unit of code) in your own repository. Potluck finds it because a `potluck-modules.json` sits
    beside its `CMakeLists.txt`, and calls one function you define, `app_rows_<directory name>()`, for its
    registration rows. No Potluck file names your app.
@@ -102,19 +104,41 @@ healthy board). Read its four files in this order:
 - **`include/hello/hello.hpp`, `src/hello.cpp`** -- the config parser, the actor class and its registration row.
 - **`src/app_rows.cpp`** -- `app_rows_pot_hello()`, the one function Potluck calls.
 
-And its manifest, [`examples/apps/hello.json`](examples/apps/hello.json):
+And its manifest fragment, [`examples/apps/hello.json`](examples/apps/hello.json), whole -- a manifest needs
+`system`, a non-empty `nodes` list and `actors` (`schema` and `min_core_version` default to 1):
 
 ```json
-{"name": "hello", "module": "ext:hello/peers", "latency_class": 4, "config": {"period_ms": 5000}}
+{
+  "schema": 1,
+  "system": "lab",
+  "min_core_version": 1,
+  "nodes": [
+    {"node_id": 25344, "label": "A"},
+    {"node_id": 29544, "label": "B"},
+    {"node_id": 33120, "label": "C"}
+  ],
+  "actors": [
+    {
+      "name": "hello",
+      "module": "ext:hello/peers",
+      "latency_class": 4,
+      "config": {
+        "period_ms": 5000
+      }
+    }
+  ]
+}
 ```
 
-Put it on your boards with the preset [`examples/cells/hello.json`](examples/cells/hello.json) -- your boards' ids
-and your adapter's port in it, then `python -m potluck.apply ../../examples/cells/hello.json` from `host/potluck/`
-(section 7). The example adds 1,152 bytes to the image.
+Its three boards are the author's own cell: nothing in it needs them (no `owns`, no actor pinned to one), so
+`apply` ignores them and runs the actor on your boards, however many (section 6). Put it on your boards with the
+preset [`examples/cells/hello.json`](examples/cells/hello.json) -- your boards' ids and your adapter's port in it,
+then `python -m potluck.apply ../../examples/cells/hello.json` from `host/potluck/` (section 7).
 
 It is tested twice before any board: [`examples/apps/pot_hello/tests`](examples/apps/pot_hello/tests) runs the
 actor on a real `pot::Node` on the PC with Potluck's test kit, and `host/potluck/tests/test_examples.py` checks
-that the host tools compile `hello.json` to exactly the bytes the C++ test parses. Copy that pattern (section 8).
+that the host tools compile `hello.json` to exactly the bytes the C++ test
+[`tests/test_hello_app.cpp`](tests/test_hello_app.cpp) parses. Copy that pattern (section 8).
 
 ### A portable actor: what changes
 
@@ -136,8 +160,8 @@ portable, and differs in five places:
    it loads the image, declares every output on every node with no owner, and moves their owner with the actor.
    Your `start()` declares nothing; your `tick()` is called only while this node is the outputs' fenced owner.
 5. **Output paths come in through the config.** The board knows neither the actor's name nor the cluster's, so
-   give each output's full path as a `path` field (passive-sensor's fusion actor takes
-   `"confidence": "potluck://lab/act/rf_fusion/confidence"`), and the host sends its hash.
+   give each output's full path as a `path` field (the room-presence app's fusion actor takes one like
+   `"confidence": "potluck://lab/act/fusion/confidence"`), and the host sends its hash.
 
 The guest actor (`firmware/components/pot_wasm/src/guest.cpp`, `GuestActor` and `kGuestKind`) is a complete
 portable actor with several outputs, a remote input and a checkpoint, if you want one to read.
@@ -198,11 +222,11 @@ looser and may only *read* the resources it binds: an actor that owns an actuato
 - Declare an output once (`node.ns().declare(NsDecl{...})`), then `node.ns().publish(hash, value, now_ms)`.
 - **Publish a set of values that belong together with one `now_ms`.** `Node::publish` stamps each call with
   the clock at that moment, so a set published field by field can straddle a millisecond, and readers that
-  match fields by timestamp then see two windows (found by passive-sensor).
+  match fields by timestamp then see two windows (found by the room-presence app).
 - **A failed sensor read is `publish_faulty(hash)`, never the old number.** Readers then get quality FAULTY
   and no value until the next publish.
 - Output paths a board builds itself (one per peer, say) are hashed with `path_hash_from(system_prefix,
-  "node-7368/...")`: the board does not know the cluster's name, so the descriptor's `system_prefix` field
+  "node-1a2c/...")`: the board does not know the cluster's name, so the descriptor's `system_prefix` field
   sends the hash state for `potluck://<system>/`.
 - **`outputs()` is how the rest of the cell can read you.** Every node holds the image, so every node can
   declare a replica of your output from it; a read of your path anywhere then has an entry to answer from.
@@ -213,11 +237,11 @@ looser and may only *read* the resources it binds: an actor that owns an actuato
 `node.read(hash, reading, &is_local)` answers from the local namespace: a remote value comes from the replica
 **with the age it had when it was last fetched**. There is no push (SUBSCRIBE is reserved, not built), so a
 reader refreshes with `node.request_read(owner, hash)` and gets the fresh value on a later read --
-refresh-on-read: a remote value lags about one read period. Key consistency on the owner's sample
-timestamp, not on two reads of a sequence number (passive-sensor discarded 109 of 160 sets before it did).
+refresh-on-read: a remote value lags about one read period. Key consistency on the owner node's sample
+timestamp, not on two reads of a sequence number (the room-presence app discarded 109 of 160 sets before it did).
 Poll the minimum: ~70 reads a second pushed the heartbeat's 99th-percentile round trip to 42-85 ms.
 
-- **Whom to ask:** the owner is in the local entry: `const NsEntry* e = node.ns().find(hash)`, then
+- **Whom to ask:** the owner node is in the local entry: `const NsEntry* e = node.ns().find(hash)`, then
   `e->owner_node` (0 while nobody owns it, e.g. a portable actor not placed yet). `node.read()` first creates the
   entry if the image says the resource exists, so call it before `find()`.
 - **STALE carries a value.** Under the default "informative" policy, `Reading::get_f32()` returns true for a
@@ -228,7 +252,7 @@ Poll the minimum: ~70 reads a second pushed the heartbeat's 99th-percentile roun
   is not a contract. Treat NotFound like NO_DATA: skip this period, read again next.
 - **Units:** `Unit::None` when the unit has no code (degrees per minute, say); say the unit in the output's name.
 
-### Where the boards are, and showing a place on the floor plan (M20)
+### Where the boards are, and showing a place on the floor plan
 
 A board the owner has placed on the floor plan holds its own position: `node-<id>/sys/pos/x` and `/y`, f32 in
 metres from the plan's top-left corner, x to the right, y down (the cluster file's `"position": [x, y]` on that
@@ -271,12 +295,12 @@ shades it and never draws a point. An actor declares at most 12 outputs (`kMaxOu
 ### Checkpoints (portable actors)
 
 `ActorEnv::checkpoint` keeps up to 128 bytes for the next activation -- on another node after a failover, or on
-any node after every board has rebooted. Only the current owner saves, at most once a second; the newest copy
+any node after every board has rebooted. Only the node running the actor saves, at most once a second; the newest copy
 reaches every eligible node, including one that comes back, and each of them writes it to flash at most once a
 minute while it changes (so after a power cut the actor resumes from a state up to a minute old; measured on
-three boards: a guest's counter resumed 44 counts behind, `ck_restored` 1 on every board). Store what the state
+three boards: a guest's counter resumed 44 counts behind). Store what the state
 depends on with it: a baseline learned on one radio channel is wrong on
-another, so passive-sensor keeps the channel in its checkpoint. Put a version byte first, and refuse a
+another, so the room-presence app keeps the channel in its checkpoint. Put a version byte first, and refuse a
 checkpoint you do not recognise.
 
 - **`save()` may return false** -- within a second of the last save, or before this node's claim to the actor
@@ -292,23 +316,28 @@ pick blue or cyan -- any other colour (anything with red in it, white included, 
 app can look like the board's own status, and it
 lapses 5 s after the last call; `bg_submit(work, arg)` runs a computation on a background worker below
 everything the node does, refused when all workers are busy; `bg_yield` must be called every ~50 ms inside
-it (the task watchdog watches the idle task).
+it (the task watchdog watches the idle task: a core kept from it for 5 s resets the chip).
 
 ### Limits
 
+For the images `apply` builds, which have PSRAM (the ESP32-S3 N16R8); a board built with `CONFIG_SPIRAM=n` has
+the smaller figures in brackets.
+
 | | |
 |---|---|
-| actors in one image | 16 |
-| pinned actors on one node | 8 |
-| portable actors in a cell | 8 |
+| actors in one package (the declarations a board keeps) | 64 (16); in a tree of cells a package lists up to 255 and each board keeps its own cells' |
+| actors running on one node (pinned and every-node) | 8 |
+| portable actors in a cell | 16 (none: the reconciler is compiled out) |
 | eligible nodes per portable actor | 8 |
-| config bytes per actor | 48 |
-| outputs per actor | 8 per call of the `outputs()` hook -- per node, and per node and peer for per-link outputs, so a per-link actor can own more in all |
+| config bytes per actor | 160 (48) |
+| outputs per actor | 12 per call of the `outputs()` hook (`kMaxOutputs`) -- per node, and per node and peer for per-link outputs, so a per-link actor can own more in all |
+| guests in one package | 4 (boards built with the `sandbox` module) |
+| signed package | 32 KB (512 B; 2 KB with the presenting module) |
 | namespace entries per node | 128 |
 | checkpoint | 128 B |
 | actor slot | 384 B |
-| static internal RAM, whole node | 64 KB cap; 59.9 KB used by Potluck alone, 60.1 KB with the sandbox, the extender and the room sensor |
-| firmware image | 2 MB (an update slot); the image with everything above is 1.0 MB |
+| static internal RAM, whole node | 64 KB cap (65,536 B); the release image -- Potluck with the sandbox, `present`, `wifi`, `pocket` and the two built-in apps -- uses 63,485 B. `apply --plan` prints your image's figure |
+| firmware image | 2 MB (an update slot); the release image is 1,215,488 B |
 
 ---
 
@@ -318,19 +347,31 @@ it (the task watchdog watches the idle task).
 {"component": "<directory name>", "types": [first, last], "requires": ["sandbox"],
  "modules": [{"module": "ext:<app>/<actor>", "type": <n>, "placement": "pinned|every|portable",
               "outputs": ["{node}/<app>/<output>"],
-              "config": [{"name": "...", "kind": "...", "default": ..., "min": ..., "max": ...}]}]}
+              "config": [{"name": "...", "kind": "...", "default": ..., "min": ..., "max": ...}],
+              "peers": {"nearest": K}, "per_room": true,
+              "panel": {"kind": "room|value", "output": "act/{actor}/<output>", "label": "...", "on": "...", "off": "..."}}]}
 ```
+
+`component`, `types` and a non-empty `modules` are required; in each module, `module` (starting `ext:`), `type`
+(inside the component's block) and `placement`. Everything else is optional.
 
 - **`outputs`** (optional, but give it): the paths an actor of the module publishes, under `potluck://<system>/`,
   with `{node}` for `node-<id>` of the node it runs on and `{actor}` for its name -- `"{node}/hello/peers"`,
-  `"act/{actor}/out"`, and `{peer}` for one output per other board (`"{node}/link/{peer}/rssi"`). `potluck apply`
-  reads every one back before it says VERIFIED (the `{peer}` ones excepted), and counts them all in each board's
-  namespace table: a board holds 128 entries -- its built-ins, every output in the package, its own, and the replicas
-  its role reads -- and `apply --plan` prints the count per board and refuses a package that would not fit. An
-  output it is not told about it can neither check nor count.
+  `"act/{actor}/out"`, and `{peer}` for one output per other board (`"{node}/link/{peer}/rssi"`). A `?` in front
+  (`"?act/{actor}/x"`) marks an output published only sometimes (section 4). `potluck apply` reads every one back
+  before it says VERIFIED (the `{peer}` and `?` ones excepted), and counts them all in each board's namespace
+  table: a board holds 128 entries -- its built-ins, every output in the package, its own, and the replicas its
+  role reads -- and `apply --plan` prints the count per board and refuses a package that would not fit. An output
+  it is not told about it can neither check nor count.
 - **`requires`** (optional): Potluck's board modules your component needs in the same image -- `sandbox`,
-  `extender`, and from M13 `wifi`, `present`, `pocket`. `potluck apply` refuses a cluster file that builds your
-  component without them, naming what to add to its `firmware.modules`.
+  `extender`, `wifi`, `present`, `pocket`. `potluck apply` refuses a cluster file that builds your component
+  without them, naming what to add to its `firmware.modules`.
+- **`peers`** (optional): `{"nearest": K}`, K 1..4 -- the module keeps per-link outputs only for each board's K
+  nearest boards (section 4, "Where the boards are").
+- **`per_room`** (optional, portable modules only): `true` runs one actor per room of the cluster file (section 4).
+- **`panel`** (optional): a card on the dashboard's first screen -- `kind` `"room"` (for a `per_room` module) or
+  `"value"`, `output` one of the module's own `act/{actor}/` outputs, and `label`, `on`, `off` as text of at most
+  40 printable characters (section 4).
 - **Config kinds:** `u8 u16 u32 i8 i16 i32 f32 bool`; `path` (a namespace path, sent as its 32-bit hash);
   `node` (a node id or a label from the manifest); `system_prefix` (no value: the hash state after
   `potluck://<system>/`). Fields are encoded little-endian in the order listed; `min`/`max` are enforced on
@@ -344,8 +385,8 @@ it (the task watchdog watches the idle task).
 
 | block | holder |
 |---|---|
-| 0x80-0x8F | passive-sensor |
-| 0x90-0xEF | free: ask Potluck's maintainer for a block (an issue on the Potluck repository); it is recorded here. Until then, use one provisionally and say so in your README (JSON has no comments; the descriptor loader ignores keys it does not know) |
+| 0x80-0x8F | the room-presence app built into the release image |
+| 0x90-0xEF | free: ask Potluck's maintainer for a block ([an issue](https://github.com/Tubifix77/potluck/issues)); it is recorded here. Until then, use one provisionally and say so in your README (JSON has no comments; the descriptor loader ignores keys it does not know) |
 | 0xF0-0xFF | Potluck's own examples and tests (`pot_hello` is 0xF0) |
 
 ---
@@ -357,14 +398,16 @@ A manifest (JSON) names the cluster (`system`), its nodes and what they own, and
 others into the owner's one package (below):
 
 ```json
-{"name": "rf_fusion", "module": "ext:passive_sensor/rf_fusion", "latency_class": 4,
- "needs": ["potluck://lab/node-7368/hw/die_temp"], "pin": 29544, "config": {...}}
+{"name": "overheat", "module": "ext:my_app/overheat", "latency_class": 4,
+ "needs": ["potluck://lab/node-1a2c/hw/die_temp"], "pin": 6700, "config": {...}}
 ```
+
+(an actor object in the fragment's `actors` list; the whole shape is section 3's `hello.json`).
 
 - **`latency_class`** -- the deadline class of the actor's bindings, from ARCHITECTURE section 4: L0 under
   100 us (same silicon), L1 under 10 ms (same node), L2 under 20 ms (one wired hop), L3 under 500 ms (one
   radio hop), L4 best effort. An actor may only bind resources of its class or tighter, and the build refuses
-  a binding the transport cannot meet. Radio apps are typically L4 (passive-sensor's three actors all are);
+  a binding the transport cannot meet. Radio apps are typically L4 (the room-presence app's three actors all are);
   control loops use L0-L2 (`manifests/q1-joint.json`, `q1-vent.json` are worked examples). A setpoint written from
   afar but read by a tight loop is declared at its reader's class (L1, with a long `staleness_bound_ms`) and
   written by a looser actor: a resource may be tighter than the actor binding it.
@@ -373,12 +416,12 @@ others into the owner's one package (below):
   declared resource nor a binding"):
 
   ```json
-  {"node_id": 29544, "label": "B", "owns": [
-    {"path": "potluck://lab/node-7368/hw/die_temp", "unit": "celsius", "kind": "sampled",
+  {"node_id": 6700, "label": "hall", "owns": [
+    {"path": "potluck://lab/node-1a2c/hw/die_temp", "unit": "celsius", "kind": "sampled",
      "access": "read", "latency_class": 4, "staleness_bound_ms": 5000}]}
   ```
-  This holds for a pinned actor reading a built-in on its own board too: `builtin:die_temp` on node 0x8160 is
-  `potluck://<system>/node-8160/hw/die_temp`, and an actor that reads it lists it in `needs`, with the board's
+  This holds for a pinned actor reading a built-in on its own board too: `builtin:die_temp` on node 0x1a2d is
+  `potluck://<system>/node-1a2d/hw/die_temp`, and an actor that reads it lists it in `needs`, with the board's
   `owns` declaring it (as above). A package with no actor reading it needs no `owns` for it.
 - **`safety_relevant`** (in an `owns` entry, default false) -- mark a resource whose wrong value could hurt
   someone or something. It is then never writable from outside the cell, whatever the owner's cluster file says:
@@ -391,12 +434,16 @@ others into the owner's one package (below):
   |---|---|---|---|
   | `builtin:die_temp` | pinned | `period_ms` 200-60000 (1000) | `node-<id>/hw/die_temp`, the chip's temperature, f32 degC |
   | `builtin:ticker` | portable | `period_ms` 50-60000 (100) | `act/<name>/out`, a counter (the reconciler's test actor) |
-  | `builtin:svc_client` | pinned | `period_ms` 100-60000; one `needs` of `potluck://<system>/svc/<name>`; `on_host_loss` continue or hold | the PC service's answer |
-  | `builtin:led` | pinned | `r` `g` `b` 0-255, `blink`, `period_ms` 200-10000 | nothing shown since 2026-10-14: healthy is always green (the owner's LED scheme, GETTING-STARTED.md); kept so older packages still deploy |
-  | `builtin:led_switch` | pinned | `r` `g` `b` 0-255, `blink_ms` 0 or 200-25500 | `node-<id>/led/on`, a writable bool: the status LED shows the colour in green's place while it is true (M13; purple, yellow and red still win) |
-  | `builtin:mc_lender` / `builtin:mc_job` | pinned | M9's borrowed-core job (`slots`; `units`, `samples`, `seed`, `lend`, `start_after_ms`) | `node-<id>/job/mc/pi` |
+  | `builtin:svc_client` | pinned | `period_ms` 100-60000; one `needs` of `potluck://<system>/svc/<name>`; and on the actor itself, beside `pin` (never inside `config`), `"on_host_loss"`: `continue` or `hold` (the default) | the PC service's answer |
+  | `builtin:led` | pinned | `r` `g` `b` 0-255, `blink`, `period_ms` 200-10000 | nothing shown: a healthy board is always green (GETTING-STARTED.md's LED table); kept so older packages still deploy |
+  | `builtin:led_switch` | pinned | `r` `g` `b` 0-255, `blink_ms` 0 or 200-25500 | `node-<id>/led/on`, a writable bool: the status LED shows the colour in green's place while it is true (blue or cyan; any other colour is shown blue; purple, yellow and red still win) |
+  | `builtin:mc_lender` / `builtin:mc_job` | pinned | a demonstration job on borrowed idle cores (`slots`; `units`, `samples`, `seed`, `lend`, `start_after_ms`) | `node-<id>/job/mc/pi` |
   | `builtin:fault` | pinned | `panic_after_ms` | nothing: it crashes the node on purpose, to test reverts |
   | `guest:<name>` | portable | section 9 | `act/<actor>/<output>` |
+
+  `apply` adds three more built-ins itself, from the cluster file, so you do not write them: `builtin:position`
+  (a board's `position`, `room` and nearest boards), `builtin:present` (the cluster file's `present`) and
+  `builtin:foreman` (a tree's `cells`).
 
 - **One package per cluster, composed from fragments.** Deploying a package replaces the previous one, so the
   package lists *every* actor the cluster should run. Nobody writes it by hand: `potluck apply` composes it from
@@ -415,7 +462,8 @@ others into the owner's one package (below):
 ## 7. Building, rolling out, deploying: `potluck apply`
 
 A cluster file says what the cell should be; `apply` makes it so. From `host/potluck/`, with the ESP-IDF Python
-(it has `pyserial`), in any shell (PowerShell or Git Bash):
+(it has `pyserial`), in PowerShell 7 or Git Bash (`potluck apply ...` is the same command, once
+`python -m pip install -e host/potluck` has installed the package):
 
 ```
 python -m potluck.apply <cluster.json> --plan       # check everything, change nothing
@@ -423,8 +471,10 @@ python -m potluck.apply <cluster.json>              # make the cell what the fil
 python -m potluck.apply <cluster.json> inventory    # what every board runs: firmware, package, actors, counters
 ```
 
-A cluster file for the hello app on three boards (the preset [`examples/cells/hello.json`](examples/cells/hello.json);
-paths are relative to the file):
+A cluster file for the hello app on three boards (the preset [`examples/cells/hello.json`](examples/cells/hello.json),
+which lives in the Potluck checkout, so `"git": "../.."` and `"rev": "HEAD"` are the release you checked out --
+your own cluster file names Potluck's release tag instead, as in GETTING-STARTED.md; paths are relative to the
+file; the ids and the port are examples):
 
 ```json
 {"schema": "potluck-cluster/1", "system": "lab", "port": "COM6",
@@ -440,17 +490,17 @@ paths are relative to the file):
 | key | what it says |
 |---|---|
 | `system` | the cluster's name (section 6) |
-| `port` | the serial port of the PC's adapter, wired to one of the boards (`--port` overrides it) |
-| `boards` | every board: its node id in hex and a label (and optionally a `room`, a `position` on the floor plan, and -- past one cell, M19 -- its `cells`: one cell name, or two; a board admits only boards of its own cells; `"foreman": true` for a board on mains power that may hold its cell's foreman role, which needs exactly one cell, one with a `parent`; `"stub": true` for a board the PC hosts for a tree's bench tests, ids f000..fdff, never reached through the cable); the id is the one its certificate names -- the last two bytes of its MAC unless the cell assigned another at enrolment (`potluck.enrol --node-id`, or the next free one when two boards share one) |
-| `cells` | M19, a tree of cells (one signed package for the whole tree; each board keeps its cells' part; `apply --plan` checks every board's peers and namespace, and in a tree `apply` verifies through the cable only what the cable reaches -- the other cells take the package and the firmware by catch-up; `--partial` lets boards that do not answer catch up): per cell name, `parent` (the upper cell its foreman joins -- every federating cell needs a board marked `foreman`), `window_ms` (its own death window, 0..25500 in steps of 100: an upper cell's is longer), `period_ms` (how often its foreman publishes the summary, default 2000) and `export` -- what goes up, never a mirror: `{"warmest": {"max": "hw/die_temp", "unit": "celsius"}}` (max, min, sum, avg or count over every board's `node-<id>/<suffix>`), or `{"a_temp": {"copy": "node-0100/hw/die_temp", "type": "f32", "unit": "celsius"}}` for one resource; `alive`, the boards the foreman sees, is always one. Each export is `potluck://<system>/cell-<name>/<export>`, its age the oldest input's and its quality the worst input's. `apply --plan` counts every board's peers (19 at most: its cells, one seat per child cell in the upper cell, the PC on the cabled board's cells) and refuses a tree that does not fit, naming the board; a binding across cells is L4 |
-| `keys` | the owner's CA certificate and deploy key ([GETTING-STARTED.md](GETTING-STARTED.md) makes them) |
-| `firmware` | Potluck at a commit (`potluck`), its optional board modules by name (`modules`: `sandbox`; `wifi` -- Potluck's own Wi-Fi station, which puts the board on the house network, the owner giving it the network with `tools/wifi_set.py <port> <file>`; `present` -- the cell presenting itself to an MQTT broker; `pocket` -- the board's own access point and a read-only page for a phone in reach (M0-RUNBOOK section 16); each one costs flash and RAM, and some open the cell to the outside, so none is in an image unless named -- `"extra": ["CONFIG_POT_WASM=y"]` still means `sandbox`), extra Kconfig lines (`extra`), and `extender` if a board should be a Wi-Fi extender: `{"git": ..., "rev": ..., "components": "firmware/components"}`, like an app. Every board gets the same image; a board becomes an extender only if it holds Wi-Fi credentials, the others are ordinary members. Or `{"image": ..., "elf": ...}` for a build made elsewhere, or `null` to leave the firmware alone |
-| `apps` | each app: `git` (a local repository or a URL), `rev` (a commit or a tag), `components` (built into the firmware; every `potluck-modules.json` under it is loaded), `manifests` (its fragments), and in a tree `cell` -- the cell its portable actors live in (a portable actor lives in one cell; one whose boards span cells is refused) |
+| `port` | the serial port of the PC's adapter, wired to one of the boards (`COM6`; on Linux, untested, `/dev/ttyUSB0`; `--port` overrides it), and optionally `baud` (921600) |
+| `boards` | every board: its node id in hex and a label (and optionally a `room`, a `position` on the floor plan, and -- past one cell -- its `cells`: one cell name, or two; a board admits only boards of its own cells; `"foreman": true` for a board on mains power that may hold its cell's foreman role, which needs exactly one cell, one with a `parent`; `"stub": true` for a board the PC hosts for a tree's bench tests, ids f000..fdff, never reached through the cable); the id is the one its certificate names -- the last two bytes of its MAC unless the cell assigned another at enrolment (`potluck.enrol --node-id`, or the lowest free id from 0x0100 up when the MAC's id is taken) |
+| `cells` | a tree of cells (one signed package for the whole tree; each board keeps its cells' part; `apply --plan` checks every board's peers and namespace, and in a tree `apply` verifies through the cable only what the cable reaches -- the other cells take the package and the firmware by catch-up; `--partial` lets boards that do not answer catch up): per cell name, `parent` (the upper cell its foreman joins -- every federating cell needs a board marked `foreman`), `window_ms` (its own death window, 0..25500 in steps of 100: an upper cell's is longer), `period_ms` (how often its foreman publishes the summary, default 2000) and `export` -- what goes up, never a mirror: `{"warmest": {"max": "hw/die_temp", "unit": "celsius"}}` (max, min, sum, avg or count over every board's `node-<id>/<suffix>`), or `{"a_temp": {"copy": "node-0100/hw/die_temp", "type": "f32", "unit": "celsius"}}` for one resource; `alive`, the boards the foreman sees, is always one. Each export is `potluck://<system>/cell-<name>/<export>`, its age the oldest input's and its quality the worst input's. `apply --plan` counts every board's peers (19 at most: its cells, one seat per child cell in the upper cell, the PC on the cabled board's cells) and refuses a tree that does not fit, naming the board; a binding across cells is L4 |
+| `keys` | `ca`: the CA's public key (`ca.pub`); `deploy_key`, `deploy_cert`, `deploy_bcert`: the deploy key and its two certificates ([GETTING-STARTED.md](GETTING-STARTED.md), step 2, makes them). The CA's secret key is never named here |
+| `firmware` | Potluck at a commit or tag (`potluck`: `{"git": ..., "rev": ...}`), its optional board modules by name (`modules`: `sandbox` -- guests; `wifi` -- Potluck's own Wi-Fi station, which puts the board on your network, you giving it the network with `tools/wifi_set.py <port> <file>`; `present` -- the cell presenting itself to an MQTT broker; `pocket` -- the board's own access point and a read-only page for a phone in reach ([M0-RUNBOOK.md](M0-RUNBOOK.md), section 16); each one costs flash and RAM, and some open the cell to the outside, so none is in an image unless named -- `"extra": ["CONFIG_POT_WASM=y"]` still means `sandbox`), extra Kconfig lines (`extra`, such as `"CONFIG_SPIRAM=n"` for boards without PSRAM), and `extender` if a board should be a Wi-Fi extender: `{"git": ..., "rev": ..., "components": "firmware/components"}`, the extender app's repository, like an app (that repository is not public). Every board gets the same image; a board becomes an extender only if it holds Wi-Fi credentials, the others are ordinary members. Or `{"image": ..., "elf": ...}` for a build made elsewhere, or `null` to leave the firmware alone |
+| `apps` | each app: `name`, `git` (a local repository or a URL), `rev` (a commit or a tag), `components` (a folder built into the firmware; each of its direct subfolders with a `CMakeLists.txt` and a `potluck-modules.json` is an app component, and that descriptor is loaded -- nothing deeper is looked at), `manifests` (its fragments), `enabled` (false: built in, but adds nothing to the package), and in a tree `cell` -- the cell its portable actors live in (a portable actor lives in one cell; one whose boards span cells is refused) |
 | `package` | more fragments (`"manifests": [path, or {"manifest": path, "root": dir for its relative paths, "cell": in a tree, as an app's}]`), more descriptors (`"modules"`), and `guests_root` |
 | `verify` | `timeout_s`, and `read`: more paths to read back |
-| `present` | the cell presents itself to an MQTT broker, by Home Assistant's discovery (M13): `{"broker": "a.b.c.d[:port]", "keepalive_s": 10, "period_ms": 2000}`, and `"tls_ca": "<file>"` -- the broker's CA (PEM or DER, relative to the cluster file) -- to connect with TLS, the CA pinned by the package's signature. A cell that presents is built with Wi-Fi's AMPDU transmit aggregation off on every board (a board presenting over its own station with it on wedges its radio; `"extra": ["CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=y"]` overrides, at that risk), which costs the extender's hotspot some throughput. Needs `present` in `firmware.modules`, and a board on the network (the extender, or the `wifi` module). It shows only what `outside` names (M0-RUNBOOK section 16). `"hub": true` (M14): the PC's placement node presents whenever it is in the cell and the boards take the role back when it goes -- the same devices in Home Assistant, never two presenters; needs a placement host in the cell (`kind: "host"`, `placement: true`). In a tree, `"cell"` names the cell that presents |
-| `outside` | what systems outside the cell (Home Assistant, through the presenting module, M13) may do with each resource: `{"node-7368/hw/die_temp": "read", "node-7368/led/on": "read_write"}`, or for a writable one
-`{"mode": "read_write", "writers": ["Home Assistant"]}` to name the programs that may write it through the hub (M18), a path with or without `potluck://<system>/`. Nothing is exposed unless named here. `read_write` needs a resource some node declares in `owns` with write access, and never one marked `safety_relevant`. The owner's choice, so only the cluster file says it: a fragment with `outside` is refused |
+| `present` | the cell presents itself to an MQTT broker, by Home Assistant's discovery: `{"broker": "192.168.1.50[:port]", "keepalive_s": 10, "period_ms": 2000}` (an IPv4 address; port 1883 by default, 8883 with TLS), and `"tls_ca": "<file>"` -- the broker's CA (PEM or DER, relative to the cluster file) -- to connect with TLS, the CA pinned by the package's signature. A broker login is given to each board on its console ([HOME-ASSISTANT.md](HOME-ASSISTANT.md)). A cell that presents is built with Wi-Fi's AMPDU transmit aggregation off on every board (a board presenting over its own station with it on wedges its radio; `"extra": ["CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=y"]` overrides, at that risk), which costs an extender's hotspot some throughput. Needs `present` in `firmware.modules`, and a board on the network (an extender, or the `wifi` module). It presents only what `outside` names ([M0-RUNBOOK.md](M0-RUNBOOK.md), section 16). `"hub": true`: the PC's placement node presents whenever it is in the cell and the boards take the role back when it goes -- the same devices in Home Assistant, never two presenters; needs a placement host in the cell (`kind: "host"`, `placement: true`). In a tree, `"cell"` names the cell that presents |
+| `outside` | what the cell presents over MQTT (Home Assistant's discovery, through the `present` module), and what may be written from outside, per resource: `{"node-1a2c/hw/die_temp": "read", "node-1a2c/led/on": "read_write"}`, a path with or without `potluck://<system>/` (the dashboard's Library tab writes the same: Hidden, Visible, Controllable). Nothing is presented unless named here. `read_write` needs a resource some node declares in `owns` with write access, and never one marked `safety_relevant`. **Writes over MQTT** are checked by the owning board against exactly that -- `read_write` and not `safety_relevant` -- so anyone who can publish on your broker can write every resource you made `read_write`: give the broker a login and use TLS (`present.tls_ca`). For writes through the hub's API only, `{"mode": "read_write", "writers": ["kitchen-panel"]}` names the programs that may make them, by the name each was paired or logged in with; it does not apply to Home Assistant, which writes over MQTT. A program paired with the hub reads the hub's whole model, every resource, whatever `outside` says: pairing is your approval. Your choice, so only the cluster file says it: a fragment with `outside` is refused |
+| `plan` | the floor plan the dashboard draws: `{"width": m, "height": m, "rooms": [{"name", "x", "y", "w", "h"}]}`, metres from its top-left corner (the dashboard's Plan tab writes it) |
 
 What `apply` does, in order:
 
@@ -483,16 +533,19 @@ What `apply` does, in order:
    took, which boards took the package live, and which rebooted. `VERIFIED` (exit 0) or `NOT VERIFIED` and why
    (exit 1).
 
-Measured on three boards (2026-10-11): from minimal Potluck to a room sensor, the extender and a guest, 390 s
-from command to verified, 366 s of it the firmware on three boards; taking the room sensor off again, 23.5 s, no
-board rebooting, the guest's count carrying on; a fresh firmware build adds about 9 minutes the first time.
+Measured on three boards: from minimal Potluck to an image with the room-presence app, the extender app and a
+guest, 390 s from command to verified, 366 s of it the firmware on three boards; taking the room-presence app off
+again, 23.5 s, no board rebooting, the guest's count carrying on; a fresh firmware build adds about 9 minutes the
+first time.
 
-- **Builds** run in PowerShell 7 (`pwsh`) where it is installed; the build is `tools/build_firmware.ps1` from the
-  exported tree, its output in the cache (`%LOCALAPPDATA%\potluck\cache` on Windows, `~/.cache/potluck` elsewhere;
-  `--cache` moves it). An app built from a working tree it is still editing is how the first apps lost two days
-  to "transient" failures (section 10); `apply` cannot do that, and warns when `HEAD` has uncommitted changes it
-  will not build.
+- **Builds need PowerShell 7 (`pwsh`)**: `apply` runs `tools/build_firmware.ps1` from the exported tree, and
+  Windows PowerShell 5.1 fails inside ESP-IDF's `export.ps1`. It finds ESP-IDF v6.0.2 through `IDF_PATH`. The
+  output goes in the cache (`%LOCALAPPDATA%\potluck\cache` on Windows, `~/.cache/potluck` elsewhere; `--cache`
+  moves it). An app built from a working tree it is still editing is how the first apps lost two days to
+  "transient" failures (section 10); `apply` cannot do that, and warns when `HEAD` has uncommitted changes it will
+  not build.
 - **See it run:** `python -m potluck.ctl --port COM6 --node <cabled board> watch potluck://<system>/act/<name>/<output>`
+  (`COM6` stands for your adapter's port)
   reads an output once a second, with its age and quality; `--count N` stops after N reads; `--system` names the
   cluster for shorthand paths. The first read of another board's output is often NO_DATA or STALE: the cabled
   board answers from its copy and refreshes the copy as it does (section 4), so the next read is fresh.
@@ -559,11 +612,11 @@ refuses the pair by name.
   The declaration is what the host compiles for one actor -- node `u16` (little-endian), type `u8`, config length
   `u8`, then the config -- and Potluck prints it for your manifest, ready to paste:
   `python -m potluck.deploy decl <manifest> --modules <your descriptor> [--actor <name>]`. A **pinned** actor's
-  declaration carries its pin, so build the rig as that node -- `pot::testkit::Rig rig(0x8160);` -- and read its
-  outputs under `node-8160`; the default node, 0x0100, suits an every-node actor.
+  declaration carries its pin, so build the rig as that node -- `pot::testkit::Rig rig(0x1a2d);` -- and read its
+  outputs under `node-1a2d`; the default node, 0x0100, suits an every-node actor.
 
   Run it with `POTLUCK_DIR` set to your Potluck checkout (an environment variable, or `-DPOTLUCK_DIR=` to CMake). On Windows Potluck's script finds CMake, Ninja and a
-  compiler for you: `tools\run_host_tests.ps1 -Source <your repo>\tests -BuildDir <your repo>\build\tests`; elsewhere
+  compiler for you: `tools\run_host_tests.ps1 -Source <your repo>\tests -BuildDir <your repo>\build\tests`; elsewhere (untested)
   `cmake -S tests -B build && cmake --build build && ctest --test-dir build`. `rig.feed(path, value, type)`
   publishes an input as another actor would; `rig.start(row, &why, true)` gives a portable actor the checkpoint
   store, and `rig.restart()` builds a fresh instance from it, as a failover or a reboot does. The complete example
@@ -571,7 +624,7 @@ refuses the pair by name.
   runs, so the kit cannot drift from the core. Keep your pure logic (detectors, statistics) in functions with no
   Potluck dependency and test it the same way.
 - **Share the bytes.** Check that the host tools compile your manifest to the declaration your parser accepts
-  (`host/potluck/tests/test_examples.py` against `test_hello_app.cpp`). From your own repository, put
+  (`host/potluck/tests/test_examples.py` against [`tests/test_hello_app.cpp`](tests/test_hello_app.cpp)). From your own repository, put
   `<potluck>/host/potluck` on `sys.path` and `import potluck`; load your descriptor with
   `potluck.modules.load(path)` before compiling, and check placement with
   `python -m potluck.reconcile <manifest> --modules <descriptor>`.
@@ -579,9 +632,11 @@ refuses the pair by name.
   use it on any board that holds Wi-Fi credentials) or `tools/console_tap.py` (everything, without resetting
   the board). CTest counts one test per executable; the kit's own output lists every case. Read the first ten minutes of any long run with your report tool before trusting the rest.
   **Count deaths from the `peer_dead` events, never from sampled state.** Test with at least three boards: two
-  hide multi-node bugs. Reboot each board in turn -- passive-sensor's reboot tests found four Potluck faults.
-- **Run the cheapest experiment that can kill the idea first**, with its kill criterion written down
-  (passive-sensor's PS-0, the extender's step 0).
+  hide multi-node bugs. Reboot each board in turn -- the room-presence app's reboot tests found four Potluck faults.
+- **Run the cheapest experiment that can kill the idea first**, with its kill criterion written down. The
+  room-presence app began with a recording of every link's signal strength while a person walked a scripted
+  route through the room, before any detector existed (kill it if no link reacted beyond the empty room's own
+  noise); the extender app began by measuring its hotspot's throughput and latency beside a running cell.
 
 ---
 
@@ -607,7 +662,7 @@ published to `act/<actor>/<name>`), and sets its fuel per tick and its memory (0
 
 Full steps: [M0-RUNBOOK.md](M0-RUNBOOK.md), section 12.
 
-### Publishing a guest for any cell (the store, M20)
+### Publishing a guest for any cell (the store)
 
 A guest can be installed by owners you have never met, from your GitHub repository, through their dashboard's
 Library ("Apps from GitHub", off until the owner turns it on). Put `potluck-app.json` at the repository's root:
@@ -625,9 +680,20 @@ SHA-512. There is no certificate and there are no paths: on the first install th
 repository and certifies it for that cell, and the owner binds each input to one of their resources (of the same
 type; your `unit` is shown to them). If your key ever changes, every cell refuses the update until its owner removes
 the app and installs it again -- keep the key. Publish releases: the owner may name a tag, and an install is pinned to
-the module's hash. `name` is lowercase letters, digits and `_`; at most 8 inputs; `fuel` 1,000..50,000,000.
-`python tools/store_feed.py keygen` makes an author key and `python tools/store_feed.py app` writes a signed
-`potluck-app.json` for a module. An app may sit in a folder of a repository (the owner gives the folder too). The
+the module's hash. `name` is lowercase letters, digits and `_`, starts with a letter, at most 31 characters; at
+most 8 inputs, each `i32` or `f32`; `fuel` 1,000..50,000,000; `period_ms` 100..3,600,000. From the repository's
+root, with any Python 3.10 or newer:
+
+```
+python tools/store_feed.py keygen <author key file>
+python tools/store_feed.py app <module.wasm> --key <author key file> --name <name> --outputs "out:f32 alarm:i32" --out potluck-app.json
+```
+
+`keygen` writes the secret key (hex, one line -- keep it out of version control) and prints the public half; `app`
+writes a signed `potluck-app.json` for the module, with optional `--input name:type[:unit]` (repeated),
+`--description`, `--fuel` and `--period-ms`. It writes `module` as the file's bare name: put the module beside
+`potluck-app.json`, or edit the path to where it lies in the repository. An app may sit in a folder of a repository (the owner gives the
+folder too). The
 store's own list is [Tubifix77/potluck-store](https://github.com/Tubifix77/potluck-store): `feed.json`, signed by the
 store key Potluck carries; a pull request adds an app to it.
 
@@ -661,20 +727,21 @@ store key Potluck carries; a pull request adds an app to it.
 
 **State and failover**
 
-- A portable actor that moves without a checkpoint starts cold: passive-sensor's outputs read NO_DATA for ~66 s
-  while it relearned. Save a checkpoint, and put in it everything the state was learned under.
-- A board that comes back took the actor over before it had heard any checkpoint; Potluck now hands the newest
-  one to a node the moment it reappears (resume in ~0.5 s).
+- A portable actor that moves without a checkpoint starts cold: the room-presence app's outputs read NO_DATA for
+  ~66 s while it relearned. Save a checkpoint, and put in it everything the state was learned under.
+- A board that comes back used to take the actor over before it had heard any checkpoint; Potluck hands the
+  newest one to a node the moment it reappears (resume in ~0.5 s).
 
 **Credentials**
 
 - Wi-Fi names and passwords are the owner's to type; tools record only JSON status lines from a board that
   holds them, and its Wi-Fi log is kept at WARN so network names never reach a capture.
 
-**What the apps made Potluck add** -- the platform grew from its apps, which is the point. The extender brought
-channel following, the single-hop relay, the runtime death window, the BUSY bit, the PSRAM build and the
-"application owns the radio" seam (M5.1, M6.1). The room sensor brought the external-component seam itself,
-radio samples for actors, several outputs per actor with replicas on demand, checkpoints and the app LED (M8.2).
+**What the apps made Potluck add** -- the platform grew from its apps, which is the point. The extender app
+brought channel following, the single-hop relay, the death window a node can widen at run time, a busy flag in
+the heartbeat, the PSRAM build and the "application owns the radio" seam. The room-presence app brought the
+external-component seam itself, radio samples for actors, several outputs per actor with replicas on demand,
+checkpoints and the app LED.
 
 ---
 
@@ -687,6 +754,10 @@ declaration changed (its config or its placement) is stopped and a new instance 
 declared again -- readers see NO_DATA until it publishes; a portable one resumes from its checkpoint, as after a
 failover. An actor whose declaration did not change is not touched. An actor whose output path changes (another
 name, another cluster name) is a new actor, and starts without a checkpoint. A checkpoint restored after every
-board rebooted is up to a minute old. Your app inherits every one of them. The safety
+board rebooted is up to a minute old. And two restarts protect every board whatever its apps do: a board whose
+every radio send fails for 60 s restarts itself (on a busy 2.4 GHz band a board's radio can stop accepting sends,
+and this is what recovers it), and a task that keeps a core from its idle task for 5 s resets the chip (the task
+watchdog -- why `bg_yield` exists). The reason for a board's last reset is its `node-<id>/sys/reset` resource.
+Your app inherits every one of them. The safety
 line holds for apps too: Potluck must never be the only thing between a motor and a person
 ([ARCHITECTURE.md](ARCHITECTURE.md), section 12).

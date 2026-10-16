@@ -1,14 +1,14 @@
-# Bench hardware datasheet — the owner's ESP32-S3 kit
+# Bench hardware datasheet — the reference ESP32-S3 kit
 
-Everything known about the hardware on this bench, compiled 2026-10-06 from the Potluck repository:
-the owner's own readings, the zero-assumption ledger (`.claude/zero-assumption/memory.md`), and
-measurements taken on these exact boards (`M0-LOG.md`, `captures/`). Written to be handed to another
-project. **Every row says how it is known:**
+Everything known about the hardware on Potluck's reference bench (the maintainer's three boards), compiled
+2026-10-06 from the Potluck repository and updated since: the maintainer's own readings, the zero-assumption
+ledger (`.claude/zero-assumption/memory.md`), and measurements taken on these exact boards (`M0-LOG.md`,
+`captures/`). Written to be handed to another project. **Every row says how it is known:**
 
 | tag | meaning |
 |---|---|
 | **measured** | observed on these boards or modules, on this bench |
-| **owner** | read off the physical part by the owner |
+| **maintainer** | read off the physical part by the maintainer |
 | **datasheet** | from a primary vendor document (Espressif, TI, Silicon Labs) or the ESP-IDF source tree |
 | **seller** | from the AliExpress listing or its photos/schematic, not a datasheet |
 | **unknown** | not established; do not assume |
@@ -21,7 +21,7 @@ timing figures.
 
 ## 1. What is on the bench
 
-Ordered 2026-09-21 from AliExpress (DKK 408 all-in), arrived 2026-10-01.
+Bought from AliExpress in September 2026.
 
 | item | qty | notes |
 |---|---|---|
@@ -52,24 +52,20 @@ resistors, M-F jumpers. Anything that needs one of these has not been done.
 
 ### 2.2 The three boards
 
-Node id is derived from the MAC, `(mac[4] << 8) | mac[5]`, if you want the same naming.
+The three boards are called **A**, **B** and **C** below. A board's node id is derived from its MAC,
+`(mac[4] << 8) | mac[5]`; enrolment keeps that id unless another board in the cell already has it, and then
+assigns the lowest free id from 0x0100 up.
 
-| label | MAC | id | USB bridge serial | console port on the owner's PC |
-|---|---|---|---|---|
-| A | `b8:1f:3f:da:63:00` | 0x6300 | `5CBC414102` | COM3 |
-| B | `b8:1f:3f:da:73:68` | 0x7368 | `5C93086589` | COM4 |
-| C | `b8:1f:3f:da:81:60` | 0x8160 | `5C93086538` | COM5 |
-
-COM numbers are what Windows assigned on this PC; the bridge serial is stable and identifies each
-board without unplugging anything (measured). Factory images are backed up under
-`D:/esp/board-backups/` (A: full 16 MB; B, C: first 2 MB), named by MAC.
+Each board's USB bridge reports a serial number that is stable, so it identifies a board without unplugging
+anything; COM port numbers are whatever Windows assigns on a given PC (measured). Back up each board's factory
+image (`esptool read-flash`) before the first flash if you may want it again.
 
 ### 2.3 USB and serial
 
 | fact | value | how known |
 |---|---|---|
 | USB-to-UART bridge | **CH343** (WCH), `VID_1A86 PID_55D3`, "USB-Enhanced-SERIAL CH343" — **not** a CP210x. Windows 11 had the driver; no install needed | measured |
-| **Two USB-C sockets that look identical** | one is the CH343 UART (console, flashing, power); the other is the S3's native USB (GPIO19/20). Only the silkscreen tells them apart — tape-label them | owner, measured |
+| **Two USB-C sockets that look identical** | one is the CH343 UART (console, flashing, power); the other is the S3's native USB (GPIO19/20). Only the silkscreen tells them apart — tape-label them | maintainer, measured |
 | Native USB socket is dead while Wi-Fi runs **if** `CONFIG_ESP_PHY_ENABLE_USB=n` | Potluck sets it `n` because the USB PHY degrades Wi-Fi on the S3 (IDF's own Kconfig help says so). That is a firmware choice, not the hardware: with the default `y` the native port works but Wi-Fi suffers | datasheet (`esp_phy/Kconfig`), this repo's config |
 | Auto-reset | DTR/RTS reset is wired: esptool resets into the bootloader without holding BOOT | measured |
 | **Opening the console port with pyserial defaults reboots the board** | pyserial's defaults toggle DTR/RTS. To read without resetting: set `dtr=False, rts=False` **before** `open()` | measured (bisected on board A) |
@@ -78,7 +74,7 @@ board without unplugging anything (measured). Factory images are backed up under
 | Power, flashing, console and logging | all over the one CH343 USB cable; no separate supply needed | measured |
 | Charge-only cables | a power-only cable lights the board and never makes a COM port; swap the cable first | general bench experience, recorded in the repo |
 
-### 2.4 Headers (verified against Espressif's DevKitC-1 **v1.1** table, and checked pin-for-pin on board A by the owner)
+### 2.4 Headers (verified against Espressif's DevKitC-1 **v1.1** table, and checked pin-for-pin on board A by the maintainer)
 
 ```
 J1, pin 1 -> 22:  3V3, 3V3, RST, 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, 5V, G
@@ -130,7 +126,7 @@ GPIO48 and GPIO38 are driven (see 2.4 on which one it really is).
 | three boards on one **bus-powered** hub | not enough (500 mA shared against ~1050 mA of peaks); use separate PC ports or a mains-powered hub | derived from the row above |
 | failure mode of a weak supply | random brownout resets mid-transmit, which look like firmware or protocol faults rather than a power fault | derived, recorded as a bench rule |
 | the 6-port mains charger | runs all three boards; used for the distance sweep and the M3 power-cycle test | measured |
-| a small power bank | was too unstable for a board during the distance sweep; mains was fine | owner |
+| a small power bank | was too unstable for a board during the distance sweep; mains was fine | maintainer |
 | measured current draw of these boards | **unknown** (no multimeter) | — |
 
 ### 2.8 Memory, flash and CPU, as Potluck uses them
@@ -140,13 +136,13 @@ GPIO48 and GPIO38 are driven (see 2.4 on which one it really is).
 | internal SRAM windows | DRAM `0x3FC88000–0x3FD00000` (480 KB) and IRAM `0x40370000–0x403E0000` (448 KB) overlap **one unified pool**; static IRAM use shrinks the DRAM available | datasheet (ESP-IDF `soc.h`, memory-types guide) |
 | **Wi-Fi stack cost, ESP-NOW active** | **32,264 B** of internal DRAM (`esp_wifi_init` + `esp_wifi_start`); ESP-NOW itself adds only 152 B | measured (board A) |
 | free internal DRAM after the radio is up | 249,936 B free, largest block 204,800 B (early firmware, one node, no peers) | measured |
-| PSRAM | **8 MB octal, AP gen 3, 40 MHz by default**, memory test OK, 8,115 KB added to the heap (measured, `psram` build variant, 2026-10-07). The normal Potluck build still leaves it off | measured; `captures/m51-cr5-psram-membench.log` |
+| PSRAM | **8 MB octal, AP gen 3, 40 MHz by default**, memory test OK, 8,115 KB added to the heap (measured, then a `psram` build variant, 2026-10-07). Since 2026-10-08 Potluck's normal build is the PSRAM build (section 8) | measured; `captures/m51-cr5-psram-membench.log` |
 | PSRAM speed (160 MHz CPU, PSRAM 40 MHz, blocks larger than the cache) | internal→internal **239 MiB/s**; PSRAM→internal **31**; internal→PSRAM **17.5**; PSRAM→PSRAM **11.2** MiB/s. Blocks of 16 KB fit the data cache and measure ~240 for everything — measure with big blocks | measured |
 | `CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY` | moves lwIP's 12.8 KB of static BSS into PSRAM: internal RAM handed back for free | measured (map file) |
 | default CPU clock | Potluck runs at **160 MHz** (`CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=160`); 240 MHz is available | this repo's config |
-| Potluck's partition table | `nvs` 0x9000 (24 KB), `phy_init` 0xF000 (4 KB), `factory` app 0x10000 (1 MB), two 64 KB data slots at 0x110000 and 0x120000. The 16 MB flash is mostly unused | `firmware/partitions.csv` |
-| a full Potluck radio image | ~756 KB (fits the 1 MB app partition) | measured (build output) |
-| `uxTaskGetStackHighWaterMark()` | returns **bytes** on ESP-IDF, not words | ESP-IDF behaviour, recorded from the sibling Powersuit project |
+| Potluck's partition table | `nvs` 0x9000 (24 KB), `phy_init` 0xF000 (4 KB), two 64 KB module slots `modA`/`modB` at 0x110000 and 0x120000, `otadata` 0x130000 (8 KB), update slots `ota_0` 0x140000 and `ota_1` 0x340000 (2 MB each), `factory` app 0x540000 (2 MB). 0x10000-0x110000 (the old 1 MB factory slot) is left unused; flash above 0x740000 is unused | `firmware/partitions.csv` |
+| the release image (core, sandbox, presenting, Wi-Fi station, pocket page, the two built-in apps) | 1,215,488 B (fits the 2 MB app partitions) | measured (build output, 2026-10-16) |
+| `uxTaskGetStackHighWaterMark()` | returns **bytes** on ESP-IDF, not words | ESP-IDF behaviour, recorded from another ESP32-S3 project |
 
 ### 2.9 Random numbers (datasheet: ESP-IDF `esp_random.h`, `bootloader_random.h`)
 
@@ -187,7 +183,7 @@ Stack per Ed25519 verify: about 2.3 KB. Evidence: `captures/m5-crypto-bench-*-2e
 | ESP-NOW + Wi-Fi station on one chip | supported |
 | sleep with ESP-NOW | needs `esp_wifi_connectionless_module_set_wake_interval()`; station mode only |
 
-### 3.2 Measured performance (owner's house, channel 1, PCB antennas)
+### 3.2 Measured performance (the maintainer's house, channel 1, PCB antennas)
 
 **Standing condition:** the house is RF-noisy (much Wi-Fi and Bluetooth, and channel 1 is crowded).
 Every figure below includes that contention.
@@ -195,9 +191,9 @@ Every figure below includes that contention.
 | test | result |
 |---|---|
 | **24.52 h soak**, three boards ~10 cm apart | unicast delivery **100.0000 %** both ways on all six links (791,324 out / 6,337,757 in); round trip **p50 4–6 ms, p99 16–22 ms, p99.9 42–60 ms, none above 85 ms**; zero reboots, zero deaths; free DRAM identical at start and end |
-| **distance sweep**, ~10 × 20 m two-storey house, up to ~16 m, up to four walls and a floor | unicast 100 % at six of eight spots, worst 99.17 % out / 99.80 % in; worst p99 round trip 30–42 ms; **no cliff** |
+| **distance sweep** through a two-storey house, up to ~16 m, up to four walls and a floor | unicast 100 % at six of eight spots, worst 99.17 % out / 99.80 % in; worst p99 round trip 30–42 ms; **no cliff** |
 | where links start dropping | brief dropouts (each recovered within seconds) only where median RSSI was **−73 dBm or weaker**; none at −63 dBm or better |
-| what matters most indoors | **orientation and obstacles, more than distance**: the farthest spot (~16 m) was clean; one 3 m closer but behind a tumble dryer and fridge was the worst. Hold orientation fixed when comparing |
+| what matters most indoors | **orientation and obstacles, more than distance**: the farthest spot (~16 m) was clean; a closer one behind large household appliances was the worst. Hold orientation fixed when comparing |
 | close range | RSSI −13 to −32 dBm at desk distances |
 
 Evidence: `captures/soak-2026-10-02-report.txt`, `captures/sweep-2026-10-04-report.txt` and
@@ -214,8 +210,8 @@ any channel other than 1, through a human body (a ~20 dB penalty is cited in the
 
 | fact | value | how known |
 |---|---|---|
-| 4-pin control header | **TX, RX, GND, 3.3V** reading top to bottom with the pins pointing left (the seller lists the same pins as 3.3V / GND / RX / TX, from the other end) | owner + seller |
-| bus header | **CANL, CANH** top to bottom, in that same orientation; CANH/CANL are also on a blue screw terminal, in parallel | owner + seller |
+| 4-pin control header | **TX, RX, GND, 3.3V** reading top to bottom with the pins pointing left (the seller lists the same pins as 3.3V / GND / RX / TX, from the other end) | maintainer + seller |
+| bus header | **CANL, CANH** top to bottom, in that same orientation; CANH/CANL are also on a blue screw terminal, in parallel | maintainer + seller |
 | wiring to the ESP32 | **straight, not crossed**: ESP32 CAN-TX → module TX (the transceiver's driver input D), ESP32 CAN-RX → module RX (its receiver output R) | seller's schematic + measured working |
 | supply | **3.3 V** (3.0–3.6 V), from the board's 3V3 pin | seller; measured working |
 | logic thresholds | input low ≤ 0.8 V, high ≥ 2 V: the S3's 3.3 V logic drives it fine | seller |
@@ -249,7 +245,7 @@ any channel other than 1, through a human body (a ~20 dB penalty is cited in the
 
 | fact | value | how known |
 |---|---|---|
-| pins, top to bottom | **3V3, TXD, RXD, GND, +5V** (the seller's text lists them in a different order) | owner |
+| pins, top to bottom | **3V3, TXD, RXD, GND, +5V** (the seller's text lists them in a different order) | maintainer |
 | chip | reports as an original **CP2102**, `USB\VID_10C4&PID_EA60&REV_0100` | measured (Device Manager) |
 | driver | needed Silicon Labs' **CP210x Universal Windows Driver v11.6.0**, installed through Device Manager. The package's `.bat` said success but installed nothing (device code 28) | measured |
 | logic level | the CP2102's UART runs from its own 3.0–3.6 V regulator, so **TXD cannot exceed 3.6 V**: safe to wire straight to an S3 GPIO | datasheet (CP2102 Rev 1.2) |
@@ -277,11 +273,11 @@ numbers belong to one house, one PC, one toolchain and these three boards.
 | fact | value | how known |
 |---|---|---|
 | **Adjacent 2.4 GHz channels leak into each other at close range** | at ~10 cm a board tuned to channel 10 heard a board on 11; design any channel-finding logic to confirm the channel a peer declares | measured |
-| **The owner's house Wi-Fi (Google Wifi) is on channel 1** — the same as Potluck's default | found by an SSID-filtered scan from a board; the Google Home app documents the band, not the channel | measured; Google Nest help 6293481 |
+| **A house Wi-Fi network can sit on Potluck's default channel (1)** — the bench's did | find yours with a scan from a board; a router's app may show the band but not the channel | measured |
 | **A phone streaming video through an ESP32-S3 repeater on the same channel** | Potluck cell: no false death in 16 min; heartbeat delivery ~99.1-99.3 %; RTT p50 unchanged, p99 up to 85-110 ms one way, max 157 ms | measured, `captures/soak-step0-*` |
 | **Ed25519 verify 27 ms, sign 9 ms, X25519 19 ms; P-256 verify 442 ms; HMAC-SHA-512 frame tag ≤ 0.83 ms** | 160 MHz, size-optimised build | measured |
 | **An Ed25519 operation needs ~2-3 KB of task stack** | a 4 KB task that also does other work overflowed | measured |
-| **This PC has no Wi-Fi adapter** (wired Ethernet) | the PC cannot scan or join Wi-Fi itself; use a board | observed |
+| **The bench PC has no Wi-Fi adapter** (wired Ethernet) | that PC cannot scan or join Wi-Fi itself; a board can | observed |
 
 ## 8. Added 2026-10-08 (M6)
 
@@ -290,7 +286,7 @@ numbers belong to one house, one PC, one toolchain and these three boards.
 | **Potluck's firmware is now the PSRAM build** | `CONFIG_SPIRAM=y`, octal, BSS allowed in PSRAM (`sdkconfig.defaults.esp32s3`). Buffers that only tasks touch live there; nothing an interrupt touches, no task stack | Potluck source, M0-LOG session 26 |
 | **With BSS in PSRAM, a module without PSRAM does not boot** | ESP-IDF: with external BSS "the option to ignore failure is not available". An S3 without the R in its part number needs `CONFIG_SPIRAM=n` | ESP-IDF v6.0.2 external-ram guide |
 | **PSRAM is unreadable while flash is being written** | the cache is off during a flash write, and PSRAM goes with it; tasks are held still then, interrupts need not be. Writing flash *from* a PSRAM buffer is still fine: ESP-IDF copies it through internal RAM in 32-byte chunks | ESP-IDF v6.0.2 external-ram guide and `esp_flash_api.c` |
-| **Potluck's own internal static RAM** | 49.4 KB of its 64 KB cap (was 63.6 KB before the move); a no-PSRAM build fits at 63.6 KB without the reconciler | measured, `idf.py size-components` |
+| **Potluck's own internal static RAM** | 63,485 B of its 65,536 B cap for the release image (core, sandbox, presenting, Wi-Fi station, pocket page, the two built-in apps), measured by `potluck apply --plan` on 2026-10-16 | measured |
 | **A rebooted, enrolled board admits its peers 1.9-3.5 s after it starts** | one HELLO interval (2 s) plus a signature check; anything that must "hear the cell first" after a reboot has to wait at least this long | measured, three boards |
 | **A portable actor moves when its board dies** | reads served by another board 0.46-0.69 s after the running board is held in reset (15 kills, 600 ms death window); handed back without running twice when it returns | measured, M0-LOG session 26 |
 | **Console baud 115200; the CP2102 frame link 921600** | two different rates on purpose; reading a console at the wrong one shows nothing at all | Potluck sdkconfig |

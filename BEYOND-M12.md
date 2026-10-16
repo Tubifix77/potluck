@@ -1,6 +1,23 @@
 # Beyond M12: the hub, the dashboard and integrations
 
-**Settled (2026-10-12):** this draft became M13-M18 in [ARCHITECTURE.md](ARCHITECTURE.md) section 13, all built and accepted by 2026-10-14; it stays as the reasoning behind them.
+> **History, not instructions.** This is the design discussion of 2026-10-11/12 that led to the hub, the dashboard
+> and the integrations. It is **superseded by [ARCHITECTURE.md](ARCHITECTURE.md) section 13**, where the milestones
+> were defined, built and accepted (by 2026-10-14), and it is kept only as the reasoning behind them. Where the two
+> disagree, ARCHITECTURE.md is right. For using what was built, read [HUB-API.md](host/potluck/HUB-API.md),
+> [INTEGRATIONS.md](INTEGRATIONS.md) and [HOME-ASSISTANT.md](HOME-ASSISTANT.md).
+>
+> **Its milestone numbers differ from the final ones in section 8's sketches.** Final numbering: M13 the cell presents
+> itself and M13.1 a phone reaches the nearest board (both added after this draft); draft M13 "the hub" became
+> **M14**; draft M14 "telemetry" became **M15**; draft M15 "the dashboard" became **M16**; draft M16 "integrations,
+> Home Assistant first" became **M17** (Home Assistant) and **M18** (the integration layer); draft M17 "the owner's
+> programs" became part of **M18**. Section 3's table already uses the final numbers.
+>
+> **Its open questions (section 7) were settled** in ARCHITECTURE.md section 13 and by what was built -- among them, the
+> hub is one Python program with an HTTP/JSON API (no gRPC), writes from outside are declared per resource, and one
+> presenter at a time. Read them as the questions that were asked, not as questions still open.
+>
+> "The owner" in this document is the project's maintainer, who gave the ideas; the user manuals use "the owner" for
+> whoever owns a cell.
 
 **A discussion draft (started 2026-10-11, rewritten the same day), not a decision.** Nothing here is part of the
 architecture until it is agreed and moved into [ARCHITECTURE.md](ARCHITECTURE.md) section 13 as milestones with

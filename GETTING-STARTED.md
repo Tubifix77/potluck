@@ -4,6 +4,8 @@ From a handful of ESP32-S3 boards on your desk to a cluster that reads one board
 work on whichever board is alive, and survives you pulling a board's plug -- in about an hour, most of it
 installing tools. Then [DEVELOPING-APPS.md](DEVELOPING-APPS.md) takes you on to your own apps.
 
+This guide is for **Potluck 1.0.0**. Questions and bugs: [the issue tracker](https://github.com/Tubifix77/potluck/issues).
+
 ## Why you would use it
 
 You have more microcontrollers than jobs for them, or more jobs than one board can do, or hardware spread
@@ -13,7 +15,7 @@ every time, and every board needs a cable to change what it does. Potluck is the
 system:
 
 - **One namespace for all of it.** Every board's sensors and every app's results have a name like
-  `potluck://lab/node-7368/hw/die_temp`, readable from any board or from your PC -- and every read says how
+  `potluck://lab/node-1a2c/hw/die_temp`, readable from any board or from your PC -- and every read says how
   old the value is and whether it can be trusted (`GOOD`, `STALE`, `UNAVAILABLE`, `FAULTY`), never a bare
   number.
 - **Work that moves.** An actor that is not tied to one board's pins runs on whichever board the cluster
@@ -29,8 +31,8 @@ system:
 
 When it is **not** the tool: anything that must be the only thing between a motor and a person (no software
 system should be -- Potluck says so in its [architecture](ARCHITECTURE.md), section 12); control loops that
-need a deadline across boards tighter than the radio gives (a radio hop is classed under 500 ms, and loops
-under 10 ms stay on one board); and, in this edition, chips other than the ESP32-S3.
+need a deadline across boards tighter than the radio gives (a radio hop is classed under 500 ms; a binding
+under 10 ms stays on one board); and, in this edition, chips other than the ESP32-S3.
 
 ## What you need
 
@@ -44,19 +46,30 @@ under 10 ms stay on one board); and, in this edition, chips other than the ESP32
   PC talks to the cluster through it, wired to any one board. (Each board's USB cable, on the socket
   labelled UART, is its console -- for flashing and logs -- not this link.)
 
-**Software** (Windows; the tools are PowerShell-first)
+**Software** -- Potluck's PC side is tested on **Windows 11 only**; the tools are PowerShell-first.
 
 - [ESP-IDF v6.0.2](https://docs.espressif.com/projects/esp-idf/en/v6.0.2/esp32s3/get-started/index.html),
-  Espressif's framework for these chips -- that version: newer ones are untested with Potluck -- installed where the build script looks for it (`D:\esp\esp-idf`) or
-  wherever you like with `-IdfPath`. It brings its own Python with `pyserial`, which every command below that
-  talks to a board needs.
+  Espressif's framework for these chips -- that version: newer ones are untested with Potluck. Install it
+  anywhere and set `IDF_PATH` to it (ESP-IDF's installer does), or pass `-IdfPath <folder>` to
+  `tools\build_firmware.ps1`. It brings its own Python (3.14 in the install Potluck is tested with) with
+  `pyserial`, which every command below that talks to a board needs.
 - [PowerShell 7](https://learn.microsoft.com/powershell/scripting/install/install-powershell-on-windows)
-  (`pwsh`). The older Windows PowerShell 5.1 fails inside ESP-IDF's `export.ps1`.
-- [Git](https://git-scm.com/) (with Git Bash), Python 3.10 or newer, and -- only to run Potluck's own tests --
-  a C++ compiler (Visual Studio Build Tools).
+  (`pwsh`), **required** for every firmware build. The older Windows PowerShell 5.1 fails inside ESP-IDF's
+  `export.ps1`.
+- [Git](https://git-scm.com/) (with Git Bash), and -- only to run Potluck's own tests -- Python 3.10 or newer
+  on the `PATH` and a C++ compiler (Visual Studio Build Tools).
 
-Linux: Potluck's host tools and tests run there (`tools/run_all_tests.sh`), and PowerShell 7 runs on Linux,
-but the firmware steps below have only been exercised on Windows.
+**Linux is untested.** The host tools are Python and serial ports there are named like `/dev/ttyUSB0`, but
+neither the firmware steps below nor the tests (`tools/run_all_tests.sh` has never been run) have been
+exercised on Linux.
+
+**No ESP-IDF on the PC that runs the cell?** Potluck also builds as a Windows program of its own:
+`tools\build_package.ps1` makes `dist\Potluck` (`potluck.exe`, a tray icon, Espressif's flasher and the release
+firmware), and `packaging\install.ps1` installs it for your user. Building the package needs ESP-IDF and a Python
+packaging environment once (the top of `tools\build_package.ps1` says how); the PC it is installed on needs
+neither. The tray icon starts at login and keeps a hub (below) running; with no cell yet the hub runs in setup
+mode, and the tray's menu opens the setup wizard (http://127.0.0.1:8470/setup.html), which finds your boards on
+USB, flashes and enrols them and makes the cell. The rest of this guide is the route by hand.
 
 ## 0. Try it with no boards (optional)
 
@@ -67,17 +80,20 @@ reading below.
 ## 1. Get Potluck
 
 ```
-git clone https://github.com/Tubifix77/potluck.git
+git clone --branch v1.0.0 https://github.com/Tubifix77/potluck.git
 cd potluck
 pwsh tools\run_all_tests.ps1
 ```
 
-The tests take a few minutes and need the C++ compiler; `ALL PASS` means your toolchain builds Potluck's core
-and its host tools work. Skip them if you only want to use Potluck.
+`--branch v1.0.0` checks out the release; your cluster file pins the same tag (step 6), so what you build is
+what was released. The tests take a few minutes and need the C++ compiler; `ALL PASS` means your toolchain
+builds Potluck's core and its host tools work. Skip them if you only want to use Potluck.
 
 Commands below that start with `python -m potluck` run from `host\potluck\`, with ESP-IDF's Python (on
 Windows: `%USERPROFILE%\.espressif\python_env\idf6.0_py3.14_env\Scripts\python.exe`, or whichever
-`idf6.0_*` folder your install made). Keys go in `keys\` at the repository's root, which git ignores.
+`idf6.0_*` folder your install made). Installed into that Python (`python -m pip install -e host\potluck`), the
+package also gives a `potluck` command with the main ones as sub-commands: `potluck apply ...` is
+`python -m potluck.apply ...`. Keys go in `keys\` at the repository's root, which git ignores.
 
 ## 2. Make your cluster's keys
 
@@ -118,12 +134,12 @@ self-test) and then shows **yellow: searching**, until it hears another board.
 | **yellow** | searching: no other board heard (yet, or for over 10 minutes), or hunting for the cell's radio channel |
 | **red** | disconnected, dead or stalled: a board it knew died in the last 10 minutes, a link losing over half its heartbeats, or its own radio failing to send |
 | **green** | on the Potluck network, all well. An app may show its own colour in green's place -- blue or cyan (a Home Assistant LED switch, an app's state); purple, yellow and red always win |
+| **blinking blue** | identify: the setup wizard or the dashboard asked this board to show itself, for as many seconds as it asked |
 
-The build also rewrites the size reports Potluck keeps in `firmware\size\`, so `git status` shows them changed and
-later builds are stamped `-dirty`; `git checkout -- firmware/size` puts them back if you care.
-
-Each board's **node id** is the last two bytes of its MAC address: a board with MAC `b8:1f:3f:da:73:68` is node
-`0x7368`. You will need them; step 4 prints them.
+Each board's **node id** is normally the last two bytes of its MAC address: a board whose MAC ends in `1a:2c` is
+node `0x1a2c`. You will need them; step 4 prints them. (The ids in this guide -- `1a2b`, `1a2c`, `1a2d` -- and the
+ports -- `COM7` for a board, `COM6` for the adapter -- are examples: use your own. On Linux, untested, a port is
+a name like `/dev/ttyUSB0`.)
 
 ## 4. Enrol each board
 
@@ -136,9 +152,9 @@ python -m potluck.enrol --port COM7 --ca-key ..\..\keys\ca.key
 
 It asks the board for the key it made at its first boot, signs a certificate for it with your CA and hands it
 back; the board checks it and saves it. Note the node id it prints: normally the one the board's MAC gives, but if
-your cell already has a board with that id, the board gets the next free one (the cell's ids are kept in
-`keys
-odes.json`, beside the CA key). The certificate takes effect at the next boot: press each board's **RST** button. Within a few seconds the LEDs turn **green** -- the boards found each
+your cell already has a board with that id, the board gets the lowest free id from `0x0100` up (`--node-id <hex>`
+names one yourself). The cell's ids are kept in `keys\nodes.json`, beside the CA key. The certificate takes effect
+at the next boot: press each board's **RST** button. Within a few seconds the LEDs turn **green** -- the boards found each
 other (still yellow: they do not hear each other yet -- see Troubleshooting; red: a link losing over half its
 heartbeats, or a board that died).
 
@@ -150,7 +166,7 @@ it in a browser). Plug the adapter in first, and never leave it wired to a board
 
 ```
 python -m potluck.ctl --port COM6 info
-python -m potluck.ctl --port COM6 --node 7368 ls
+python -m potluck.ctl --port COM6 --node 1a2c ls
 ```
 
 with the adapter's port and one of your node ids: `ls` lists that board's built-in resources -- read through
@@ -168,34 +184,36 @@ list as many as you have:
 {
   "schema": 1, "system": "lab", "min_core_version": 1,
   "nodes": [
-    {"node_id": 25344, "label": "A"},
-    {"node_id": 29544, "label": "B"},
-    {"node_id": 33120, "label": "C"}
+    {"node_id": 6699, "label": "kitchen"},
+    {"node_id": 6700, "label": "hall"},
+    {"node_id": 6701, "label": "garden"}
   ],
   "actors": [
-    {"name": "temp_b", "module": "builtin:die_temp", "latency_class": 4, "pin": 29544,
+    {"name": "temp_hall", "module": "builtin:die_temp", "latency_class": 4, "pin": 6700,
      "config": {"period_ms": 1000}},
     {"name": "ticker", "module": "builtin:ticker", "latency_class": 3, "config": {"period_ms": 500}}
   ]
 }
 ```
 
-(Node ids are decimal in a package: `0x7368` is 29544.) `temp_b` publishes board B's chip temperature; `ticker`
-is a counter that runs on one board, chosen by the cluster -- with more than 8 boards, among the 8 it ranks best.
-And the cluster file, `my-cell.json`, beside it:
+(Node ids are decimal in a package: `0x1a2c` is 6700; `python -c "print(0x1a2c)"` converts yours.) `temp_hall`
+publishes the hall board's chip temperature; `ticker` is a counter that runs on one board, chosen by the cluster
+-- with more than 8 boards, among the 8 it ranks best. And the cluster file, `my-cell.json`, beside it:
 
 ```json
 {
   "schema": "potluck-cluster/1", "system": "lab", "port": "COM6",
-  "boards": [{"node": "6300", "label": "A"}, {"node": "7368", "label": "B"}, {"node": "8160", "label": "C"}],
+  "boards": [{"node": "1a2b", "label": "kitchen"}, {"node": "1a2c", "label": "hall"},
+             {"node": "1a2d", "label": "garden"}],
   "keys": {"ca": "<repo>/keys/ca.pub", "deploy_key": "<repo>/keys/deploy.key",
            "deploy_cert": "<repo>/keys/deploy.cert", "deploy_bcert": "<repo>/keys/deploy.bcert"},
-  "firmware": {"potluck": {"git": "<repo>", "rev": "HEAD"}},
+  "firmware": {"potluck": {"git": "<repo>", "rev": "v1.0.0"}},
   "package": {"manifests": ["my-package.json"]}
 }
 ```
 
-(`<repo>` is your Potluck checkout; node ids are hex here; `port` is your adapter's.) From `host/potluck/`:
+(`<repo>` is your Potluck checkout; node ids are hex here; `port` is your adapter's. `"rev"` is the release tag
+you checked out: `apply` builds exactly that commit, never your working tree.) From `host/potluck/`:
 
 ```
 python -m potluck.apply <path>\my-cell.json --plan
@@ -212,7 +230,7 @@ what are the tool's to work out; `python -m potluck.apply my-cell.json inventory
 Now watch both:
 
 ```
-python -m potluck.ctl --port COM6 watch potluck://lab/node-7368/hw/die_temp
+python -m potluck.ctl --port COM6 watch potluck://lab/node-1a2c/hw/die_temp
 python -m potluck.ctl --port COM6 watch potluck://lab/act/ticker/out
 ```
 
@@ -231,9 +249,24 @@ Rename the cluster by changing `system` in both files (say, `home`): the boards 
 
 ## 7. Updating firmware later
 
-Update Potluck (`git pull`) and run `apply` again: boards whose firmware differs from the new build are updated,
-the others are left alone. Each keeps the new image only after it has proved itself -- a board that crashes on
-it, or never rejoins the cluster with it, rolls itself back, and the update stops there.
+When a new release is out, fetch it (`git fetch --tags`, then `git checkout <new tag>`), set the cluster file's
+`"rev"` to the new tag, and run `apply` again: boards whose firmware differs from the new build are updated, the
+others are left alone. Each keeps the new image only after it has proved itself -- a board that crashes on it, or
+never rejoins the cluster with it, rolls itself back, and the update stops there.
+
+## 8. The hub and its dashboard (optional)
+
+The **hub** is a program on your PC that holds the adapter's port, keeps a live model of the whole cell -- every
+board, every resource, every app -- and serves it as a **dashboard** in your browser and as an HTTP API for other
+programs ([host/potluck/HUB-API.md](host/potluck/HUB-API.md)). From `host/potluck/`:
+
+```
+python -m potluck.hub --cluster <path>\my-cell.json
+```
+
+then open http://127.0.0.1:8470/. It takes the port from the cluster file (`--port` overrides it) and runs until you
+stop it (Ctrl+C). While it runs, `potluck.ctl` and `apply` given the same port go through it without being told;
+one hub runs per PC and per cell, and a second is refused. The packaged install's tray icon starts one for you.
 
 ## Reading a board's console
 
@@ -245,7 +278,9 @@ python tools\console_tap.py COM7 60 board.log            # every line for 60 s, 
 python tools\console_send.py COM7 "POT! id"              # send one console command, print the JSON it answers
 ```
 
-ESP-IDF's own `idf.py -p COM7 monitor` works too, but resets the board when it opens the port.
+ESP-IDF's own `idf.py -p COM7 monitor` works too, but resets the board when it opens the port. A console log can
+name your Wi-Fi network if a board holds Wi-Fi credentials: read it before you share it, or use
+`tools\json_capture.py`, which keeps only Potluck's JSON lines.
 
 ## Where next
 
@@ -266,7 +301,7 @@ ESP-IDF's own `idf.py -p COM7 monitor` works too, but resets the board when it o
 | LEDs stay yellow after enrolling | The certificate takes effect at the next boot: press RST. Still yellow: the board's console log shows `peer_refused` for a board from another CA -- enrol it with *your* CA. |
 | `enrol` times out | Another program holds the board's port (a serial monitor): close it. |
 | The build fails at once in `export.ps1` | You ran it from Windows PowerShell 5.1; use `pwsh`. |
-| A board without PSRAM boots into errors | Build with `-Variant nopsram -Extra "CONFIG_SPIRAM=n"` (portable actors are then compiled out). |
+| A board without PSRAM boots into errors | Every board in a cell runs one image, so build the whole cell without PSRAM: add `"extra": ["CONFIG_SPIRAM=n"]` to the cluster file's `"firmware"` (for step 3's first flash: `tools\build_firmware.ps1 -Variant nopsram -Extra "CONFIG_SPIRAM=n" -Flash -Port COM7`). Portable actors are then compiled out, and a board keeps at most 16 actors with 48 config bytes each and takes packages up to 512 bytes. |
 | `apply` says `REFUSED, nothing changed: ...` | It found a problem before touching any board, and the rest of the line names it: a board that does not answer (power it, or take it out of the cluster file), a key file missing, a package that does not compile. |
 | `apply` says `NOT VERIFIED` | It changed the cell and something did not check out; it lists what: a board not confirming the package (its console says why), or an output with no GOOD reading by the deadline (an actor that takes long to start: raise `"verify": {"timeout_s": ...}`). Run it again once fixed. |
 | `apply` waits for a trial to end | A board is still trying out the last package (it keeps one only after it has run cleanly); `apply` waits for it, up to five minutes. |
@@ -276,8 +311,10 @@ ESP-IDF's own `idf.py -p COM7 monitor` works too, but resets the board when it o
 
 Stated so they do not surprise you: up to **20 boards in a radio cell**, all within radio range of each other (a
 board told to relay, `POT! relay 1` on its console, carries one more hop and keeps doing so across reboots -- one relay
-per cell: with two, the lower node id keeps the role);
+per cell: with two, the lower node id keeps the role) -- more boards make a tree of cells under one package, each
+cell's *foreman* board summarising its cell upward (the cluster file's `cells`, [DEVELOPING-APPS.md](DEVELOPING-APPS.md));
 **ESP32-S3** boards, plus PCs as members; **one package per cluster**, which lists everything the cluster runs
-(`apply` composes it from every app's part); up to 16 actors in a package, a portable actor placed among at most
-8 boards (the best 8 of a bigger cell), and 128 named resources per board. Every one of these is a number in the
-source, not a law of nature ([ARCHITECTURE.md](ARCHITECTURE.md), section 13).
+(`apply` composes it from every app's part); up to 64 actors in a package, at most 8 of them running on any one
+board, 16 portable actors in a cell, each placed among at most 8 boards (the best 8 of a bigger cell), and 128
+named resources per board. These are for boards with PSRAM; the full table is in
+[DEVELOPING-APPS.md](DEVELOPING-APPS.md#limits). Every one of them is a number in the source, not a law of nature.

@@ -2,8 +2,8 @@
 
 **Who this is for:** someone with a Potluck cell and its hub running who wants their own program to read what the
 cell knows, follow it as it changes, and switch what the cell allows to be switched -- in a language other than
-Python. This one is in JavaScript for Node.js; it is one file of under 600 lines, uses no packages, and was written from the
-hub's API document ([host/potluck/HUB-API.md](../../../host/potluck/HUB-API.md)) alone.
+Python. This one is in JavaScript for Node.js; it is one file of under 600 lines, uses no packages, and uses nothing beyond
+the hub's API document ([host/potluck/HUB-API.md](../../../host/potluck/HUB-API.md)).
 
 Terms used here:
 
@@ -26,7 +26,9 @@ Terms used here:
 ## What you need
 
 - Node.js 18 or newer (`node --version`). Nothing to install: the program uses only what Node has built in.
-- A hub. Without a cell, use the hub's stand-in, which simulates three boards and speaks the same API:
+- A hub: `python -m potluck.hub --cluster <cluster file>` from `host/potluck/`, or the one the packaged Windows
+  install's tray icon starts at login (HUB-API.md, "Starting a hub"). Without a cell, use the hub's stand-in, which
+  simulates three boards and speaks the same API:
 
 ```
 python tools/hub_mock.py
@@ -68,7 +70,7 @@ Resources (10)
 new event:
 
 ```
-18:23:30  event #5420  6300  peer_dead {"peer":"8160"}
+18:23:30  event #12  6300  board_peer_dead {"peer":"8160","a":0,"b":0,"board_ms":3725120,"board_seq":41}
 18:23:32  board C (8160): alive -> dead since 18:23:30, silent 4.1 s
 18:23:32  node-8160/rf/link: -36.4 dB, GOOD, 3.8 s old -> no value, UNAVAILABLE, 6.0 s old
 ```
@@ -86,7 +88,7 @@ write potluck://lab/act/alarm/level = 1: refused (HTTP 403, {"ok":false,"result"
 `--once` reads the model, writes the first resource that is writable from outside (a true/false one is flipped),
 writes one that is not and shows the `403`, watches until the hub reports the write as an event and a model shows
 the new value (at most 20 s, or `--for S`), then writes the old value back, so the cell is left as it was. On a
-real cell that means the resource really changes for a moment -- on the bench, board B's LED blinks.
+real cell that means the resource really changes for a moment -- a board's LED, say, blinks.
 
 Exit codes: `0` done (or a write applied), `3` a write refused (`403`), `1` anything else that went wrong, `2` a
 mistake on the command line.
@@ -111,7 +113,7 @@ the command line (where other users of the PC could see it):
 set POTLUCK_HUB_USER=<name>            (PowerShell: $env:POTLUCK_HUB_USER = "<name>")
 set POTLUCK_HUB_PASSWORD=<password>
 set NODE_EXTRA_CA_CERTS=C:\path\to\the-hub-cert.pem
-node potluck-watch.mjs --hub https://192.168.0.10:8443 read
+node potluck-watch.mjs --hub https://192.168.1.20:8443 read
 ```
 
 The program logs in (`POST /api/login`), keeps the session cookie it gets (`potluck_session`) for every request
@@ -119,8 +121,8 @@ after, and logs in again if the hub forgets it (a restarted hub does). It prints
 It refuses to send a password over plain `http://` to anything but this PC. `NODE_EXTRA_CA_CERTS` is Node's own
 setting for trusting a certificate it does not know -- the hub's own, made for your house, is one of those.
 
-Every POST carries the header `X-Potluck-Request: 1`, which the hub asks for behind a login (a web page on another
-site cannot add it, so it cannot write through someone's logged-in browser).
+Every POST carries the header `X-Potluck-Request: 1`, which the hub asks for on every POST, on 127.0.0.1 as behind a
+login (a web page on another site cannot add it, so it cannot write through someone's browser).
 
 ## What it does not do
 
