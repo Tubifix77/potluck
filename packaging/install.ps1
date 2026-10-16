@@ -6,7 +6,10 @@ $ErrorActionPreference = "Stop"
 $src = Join-Path (Split-Path -Parent $PSScriptRoot) "dist\Potluck"
 if (-not (Test-Path (Join-Path $src "potluck-tray.exe"))) { throw "build it first: tools\build_package.ps1" }
 $dest = Join-Path $env:LOCALAPPDATA "Programs\Potluck"
-Get-Process potluck-tray -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$dest*" } | Stop-Process
+# the tray and the hub it keeps (potluck.exe): a running hub holds _internal's DLLs, so the copy would fail
+$running = @(Get-Process potluck-tray, potluck, esptool -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$dest*" })
+$running | Stop-Process -Force
+$running | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $dest | Out-Null
 Copy-Item -Recurse -Force (Join-Path $src "*") $dest
 
