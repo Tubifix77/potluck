@@ -61,6 +61,17 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-16 (midday): **the hands-on tests done -- M8.1 ACCEPTED; M10's, M11's and M12's caveats closed** (M0-LOG session 46).
+>
+> 25 of 26 accepted (M20 under way). B warmed: 51.5 -> 47.5 C read through A. The CP2102 pulled: jobs back on boards in
+> 2-3 s. B's cable out mid-receive and mid-trial: old image kept, then rolled back. Every plug out: the first cut left A
+> alone on channel 11 (the PC on the cable counted as a radio peer) -- **fixed in `3b130f5`**; on the fix the cell was whole
+> in ~10 s. **Bench now:** firmware `3b130f5` (counter 55), package 89 from `keys/desk-m14-hub.json`, the hub running.
+> **Open:** A's radio wedged once ~20 s after the first cable pull (`tx_dead` recovered it). **Next, at the owner's word
+> (2026-10-16):** the C wedge (task watchdog to a chip reset), the tray starting the hub at login, then M20's remaining
+> pieces (the large-setup wizard screens, a release image with the installer, GitHub releases for HACS, app panels, the
+> app store); research where HACS takes an update's icon from before calling it HACS's bug.
+>
 > ## HANDOVER, 2026-10-16 (night): **M19 built -- in pot_sim and on the bench with stub cells; not accepted** (M0-LOG session 46).
 >
 > Built and host-tested: groups, the per-board peer budget in `apply --plan`, image version 5 (one package for a tree, each

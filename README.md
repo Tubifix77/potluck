@@ -60,11 +60,11 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 ## What works today
 
 Everything below runs on real ESP32-S3 boards and has passed a test written before it was tried -- each milestone
-has one, and a criterion that would have killed it. 24 of the 26 milestones so far are accepted (the latest: M13, the cell presenting its resources to Home Assistant with
+has one, and a criterion that would have killed it. 25 of the 26 milestones so far are accepted (the latest: M13, the cell presenting its resources to Home Assistant with
 no PC; M13.1, a phone page with no network; M14, the hub; M15, telemetry over the radio; M16, the dashboard; M17,
 Home Assistant first-class; M18, the integration layer), as are M5.1 and M8.2 (their day-long runs waived) and M19, cells of cells past twenty boards (a tree of cells
 under one signed package, a foreman per cell presenting a summary upward, firmware and packages reaching cells the PC's
-cable does not); M8.1 waits for a hand on the hardware, and M20, a friendly way in (a setup wizard, a library of apps, a floor plan, boards added from the dashboard over their own USB cable), is under way; the full ledger,
+cable does not), and M8.1, attached hardware (a fingertip on a board's chip moved its value, read from another board); M20, a friendly way in (a setup wizard, a library of apps, a floor plan, boards added from the dashboard over their own USB cable), is under way; the full ledger,
 with every measurement and caveat, is [STATUS.md](STATUS.md).
 
 - **Boards that find each other and know when one is gone.** Over the radio, a missing board is declared dead

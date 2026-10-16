@@ -5947,3 +5947,32 @@ Recorded: M19 ACCEPTED; M5.1 accepted with its 24-hour run waived (longest run w
 session 30); M8.2 accepted with its 30 minutes of empty room and 24 hours with no PC waived (evidence instead: 3 h of
 empty desk with no false alarm, 0 of 370 readings in the real room, session 34). Next, at the owner's word: the hands-on
 tests -- B warmed (M8.1), the cable pulled (M10), power cut by hand (M11, M12).
+
+**2026-10-16, midday -- the hands-on tests, with the owner at the desk.** Every one passed; one found a fault.
+
+- **M8.1, B warmed** (`captures/m81-warm-b.txt`, the hub's model every 2 s): B's chip runs at ~51 C, warmer than a finger,
+  so the fingertip on its shield moved the value down -- 51.5 -> 47.5 C in a minute, GOOD throughout, then back to 51.5 C.
+  M8.1's last line: **ACCEPTED**.
+- **M10, the cable pulled** (`captures/m10-pull-host.jsonl`, `m10-pull2-abc.jsonl`): the PC joined behind the hub
+  (`potluck.hostnode ... --cluster`; it needs the cluster file for the room sensor's modules) and took the ticker from A
+  and the presenting role from C. The clean pull, 11:49:23: C presented again at 11:49:25 and A ran the ticker at
+  11:49:26; back in 30 s later, the PC held both again within 2-3 s, terms advancing, never two runners. The first pull
+  was muddled -- my cue asked for a plug that was already out -- and **A's radio wedged ~20 s after it** (every send
+  ESP_ERR_ESPNOW_NO_MEM, heap 185 KB free); `tx_dead` restarted A after 60 s, as built. Not seen on the second pull.
+  Open: whether the cable's loss had anything to do with it.
+- **M11, power cut by hand on B** (`captures/m11-hand-apply*.log`, `m11-b-console.txt`): the image was today's fix (below),
+  counter 55. B's cable out 40 s into its receive: `apply` "FAILED: firmware to 0x7368: unreachable -- it keeps the image it
+  runs; stopped before the package", B back on counter 54, confirmed, its peers in seconds. Again 3 s into its trial (commit
+  12:16:20, ON TRIAL 12:16:24, then the cable): B rolled back to counter 54, confirmed, and `apply` stopped ("did not confirm
+  firmware 55"). The third `apply` put counter 55 and package 89 on all three (464 s).
+- **M12, every plug out for 10 s** (`captures/m12-powercut.txt`, `m12-powercut2.txt`): the first cut, on `50973d4`, came back
+  **split** -- A on channel 11 alone with the PC, B and C on 1. A started before the adapter, scanned, caught one of B's
+  boot-time scans on 11 and settled; once the PC was back on the cable it counted as a live peer, so A only swept for its
+  authority (which needs a HELLO inside a 300 ms visit) and never ran CR-1's scan again. `POT! channel 1 quiet` on A healed
+  it. **Fixed in `3b130f5`:** the channel logic counts radio peers only; `a_cabled_board_left_on_a_wrong_channel_scans_although_the_pc_is_alive`
+  fails without it (A stays on 11) and 479 host cases pass with it. The guest resumed from its checkpoint (61,704 -> 61,701).
+  The second cut, on the fix: the cell whole ~10 s after A started, the guest resumed (63,569 -> 63,502, the checkpoint
+  ~45 s old), the ticker from its own.
+
+M10's, M11's and M12's caveats are closed. **Bench now:** firmware `3b130f5` (counter 55) on all three, package 89 from
+`keys/desk-m14-hub.json`, the hub running, no PC node.
