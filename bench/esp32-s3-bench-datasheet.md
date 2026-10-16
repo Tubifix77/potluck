@@ -96,6 +96,7 @@ on these boards is **not established**.
 |---|---|
 | **35, 36, 37** | octal PSRAM on the R8 part. **The silkscreen offers them as ordinary GPIOs. They are not.** |
 | 26–32 | SPI flash / PSRAM |
+| 35, 36, 37 | octal flash/PSRAM on this board -- Espressif: "used for the internal communication between ESP32-S3 and SPI flash/PSRAM memory, thus not available for external use" (DevKitC-1 user guide) |
 | 19, 20 | native USB D−/D+ (the second USB-C socket) |
 | 43, 44 | UART0 console (the CH343) — usable only if you give up the console |
 
@@ -104,7 +105,7 @@ on these boards is **not established**.
 | GPIO | why |
 |---|---|
 | 0, 3, 45, 46 | strapping pins. GPIO0 is the BOOT button — fine as a button input |
-| 47, 48 | on the 1.8 V PSRAM SPI rail, not the normal 3.3 V GPIO supply (why Espressif moved the LED to 38 on v1.1) |
+| 48 | the RGB LED on board v1.0 (GPIO38 on v1.1); Espressif documents the move but not its reason. *Corrected 2026-10-16:* this row said GPIO47/48 sat on a 1.8 V PSRAM rail -- that holds only for the WROOM-2 N32R16V board (the only 1.8 V SPI variant in Espressif's ordering table); these WROOM-1 N16R8 boards are 3.3 V (esptool reports "PSRAM 8MB (AP_3v3)"). A model's summary had been taken for a fact |
 | 38 / 48 | the RGB LED, by board revision |
 
 **Used and working on this bench** (measured): GPIO17/18 as UART1 (921600 baud to the CP2102), GPIO4/5
@@ -228,11 +229,20 @@ any channel other than 1, through a human body (a ~20 dB penalty is cited in the
 | two boards, one flooding at **3,072 frames/s** | zero bit, form or stuff errors over 5 minutes; a high-priority frame left within 335–683 µs every time |
 | ground | the bus ran **without** a module-to-module ground wire, the boards sharing ground through the PC's USB. Add a GND wire whenever the boards are on separate supplies |
 | receive under load | the ISR queue dropped 220 of 881,583 frames at ~3,000 frames/s — drain faster, or filter, for a busy bus |
+| **1 Mbit/s** (measured by another project on these same two boards and modules, 2026-10-16) | zero errors over several minutes at ~20 cm, on one PC's USB and with one board on a separate charger plus a ground wire |
+| a node whose only peer is unpowered (same project) | it does **not** go bus-off: missing acknowledgements alone keep it error-passive, retrying at ~1,200 errors/s, and it recovers at once when the peer returns -- so "my peer died" shows as errors climbing with nothing received, not as bus-off |
 
 ### 4.3 ESP-IDF v6 TWAI driver facts that bite (datasheet: the IDF source)
 
 - `twai_node_transmit()` queues a **pointer** to your frame, not a copy: the frame must stay valid until
   `on_tx_done` names it.
+- **At bus-off the frame being sent is dropped without an `on_tx_done`**: the HAL clears its buffer-occupied
+  flag ("Any TX would have been halted by entering bus off", `esp_hal_twai/twai_hal_v1.c`), and the driver stays
+  bus-off until `twai_node_recover()` is called; on recovery it restarts only from its own queue
+  (`esp_driver_twai/esp_twai_onchip.c`). Code that frees a frame only in `on_tx_done` must also reclaim the
+  in-flight one on bus-off. (Potluck's `pot_can` does not yet: see STATUS.md, M4.)
+- `on_tx_done` runs **before** the driver dequeues its next frame, in the same ISR, so a frame submitted from
+  `on_tx_done` follows with no gap.
 - The driver's transmit queue is **first-in, first-out**: a high-priority frame waits behind everything
   queued before it on the same node. To get priority, hand the driver one frame at a time in your own
   priority order.
@@ -262,7 +272,8 @@ any channel other than 1, through a human body (a ~20 dB penalty is cited in the
 - Which DevKitC-1 revision the boards are (v1.0 or v1.1), and so which GPIO the LED is on.
 - Wi-Fi throughput, outdoor range, long-range mode. (Channels 1, 6, 10 and 11 have been used on the bench, 2026-10-07.)
 - Native USB (the second socket) in use: never exercised, because Potluck disables its PHY.
-- CAN with more than two nodes, longer cables, or rates other than 500 kbit/s.
+- CAN with more than two nodes, longer cables, or rates other than 500 kbit/s and (by another project) 1 Mbit/s.
+- A CAN bus-off and its recovery under Potluck (see 4.3: not handled yet).
 - An external recording (scope or logic analyzer) of any signal on this bench.
 
 Where a figure here matters to a design, re-measure it on the target rather than inheriting it: these
