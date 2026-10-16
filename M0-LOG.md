@@ -5914,8 +5914,10 @@ fail-stop (`tx_dead`) did not fire; the watchdog only prints. A reset brought C 
 stall (only a chip reset clears it); the candidate fix -- the task watchdog resetting the chip -- is not made here,
 because an OTA erase or a long crypto job could trip it falsely; it needs its own test.
 
-**Not shown, honestly:** a deploy and a firmware rollout reaching a cell with no cable (the stubs take the package from a
-file); radio spaces separated on the bench with `POT! deaf` pairs (one real cell; pot_sim shows spaces); foreman handovers
+**A package reaching a cell with no cable** (host test `deploy_tree`): two cells of four, the PC cabled into one, boards 3
+and 4 in both through the upper cell -- the cell with no cable ran the package 131 s after the deploy, by catch-up (two
+hops, each waiting for a periodic announce). **Not shown, honestly:** a firmware rollout reaching a cell with no cable
+(M11 pushes from the PC one hop; nothing carries firmware across a foreman yet); radio spaces separated on the bench with `POT! deaf` pairs (one real cell; pot_sim shows spaces); foreman handovers
 counted over 24 h on the bench (the 24 h is pot_sim's); M20's wizard proposing a tree from a survey of the bench (the
 survey and the route are tested on models; the hub was not running). **Not running:** the hub -- the owner's tray never
 started one (no `logs` folder under its AppData), and this session's hub of the 15th was gone; the owner can start it from

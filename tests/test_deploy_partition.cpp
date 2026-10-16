@@ -780,3 +780,34 @@ TEST(lease_partition, each_side_of_a_split_has_an_arbiter_and_both_pcs_get_the_d
     // Board 0x0104 still holds PC 2's entry in RAM until it expires; nobody asks it, since it is not the lowest.
     CHECK(std::strcmp(c.n[4].leases.holder(kLeaseDeploy, c.now_ms()), "apply on pc-2") == 0);
 }
+
+// ---- M19: a deploy reaching a cell with no cable --------------------------------------------------------------------
+
+TEST(deploy_tree, a_package_reaches_a_cell_with_no_cable_through_the_boards_in_both) {
+    // Review of M19 #8: cell 1 (boards 0-3, the PC cabled to board 0) and cell 2 (boards 4-7), one channel; board 3
+    // and board 4 are also in cell 3, the upper cell (as two foremen are). The package goes into cell 1 through the
+    // cable; cell 2 has no cable and never hears cell 1 -- it gets the package by catch-up, from board 3 to board 4
+    // over the upper cell, then from board 4 to its cell-mates. One package for the whole tree (Review #3).
+    PCell c;
+    c.build(8, {0});
+    for (size_t i = 0; i < 8; ++i) {
+        const uint8_t base = static_cast<uint8_t>(i < 4 ? 1 : 2);
+        c.n[i].node->set_groups(base, (i == 3 || i == 4) ? 3 : 0);
+    }
+    c.run(4000);
+    {
+        // the cells do not hear each other (the boards met for an instant at boot, before their cells were set)
+        const PeerLink* x = c.n[5].node->peers().find_by_node_id(0x100);
+        CHECK(x == nullptr || x->state != PeerState::Alive);
+    }
+    const DeployReply r = c.deploy(8, make_pkg(2, kP), 2);
+    CHECK(r.status == DeployStatus::Ok);
+    CHECK_EQ(static_cast<int>(r.peers_ok), 3);  // board 0 passes it on in its own cell: boards 1, 2, 3
+    const uint32_t t = c.until_settled(2, kP, 600000);
+    CHECK(t != UINT32_MAX);
+    std::printf("    two cells, the cable in one: the cell with no cable on the package %u ms after the deploy\n",
+                static_cast<unsigned>(t));
+    c.run(60000);
+    CHECK(c.settled_on(2, kP));
+    c.report_violations();
+}
