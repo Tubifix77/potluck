@@ -3282,9 +3282,13 @@ bool on_cast(uint16_t from, uint32_t path, const uint8_t* a, uint16_t len, uint3
     if (a == nullptr || len < 5) return true;
     const uint32_t c = static_cast<uint32_t>(a[1]) | static_cast<uint32_t>(a[2]) << 8 |
                        static_cast<uint32_t>(a[3]) << 16 | static_cast<uint32_t>(a[4]) << 24;
+    // The board on the PC's cable is the PC's to update (last, as it carries everyone else's transfer): taking an image
+    // by catch-up mid-rollout restarted it under the PC's push to the next board (found on the bench).
+    const uint32_t heard = g_host_heard_ms.load();
+    const bool pc_cable = heard != 0 && now - heard < 300000u;
     if (a[0] == 1) {
         // A newer confirmed image on a peer: ask for it, unless this board is busy with firmware or a package.
-        if (c > g_running && c > g_floor && g_sink_ok && !busy() && !g_rx.in_progress() &&
+        if (c > g_running && c > g_floor && g_sink_ok && !busy() && !g_rx.in_progress() && !pc_cable &&
             !deploy_rt::g_agent->pushing() && !deploy_rt::g_agent->reboot_scheduled() &&
             (g_asked_ms == 0 || now - g_asked_ms >= kFwAskCooldownMs)) {
             const uint8_t ask[5] = {2, a[1], a[2], a[3], a[4]};

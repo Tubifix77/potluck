@@ -1842,6 +1842,13 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                     try:
                         r = fwm.send_image(b, n, img, counter, trailer)
                     except RequestTimeout as exc:
+                        # M19: it may have taken the image by catch-up from a board already updated (then it restarted
+                        # under the PC's push) -- that is the image, confirmed the same way
+                        got = fwm.wait_confirmed(b, n, counter, 240.0)
+                        if got is not None and got.get("running") == counter and got.get("state") == "confirmed":
+                            reboots_expected.add(n)
+                            log(f"firmware: 0x{n:04x} took {got['version']} by catch-up while the PC was sending it")
+                            continue
                         if partial:
                             # M19: in a tree a board can drop out of the cable's reach mid-transfer (it held its
                             # cell's foreman role, and the holder came back); it takes the image by catch-up.
