@@ -5,6 +5,13 @@ dish — a sensor, some RAM, a radio — and the cluster eats together.
 
 *e(SP)luribus unum — out of many, one machine.*
 
+**Status: release 1.0.0, built and run on real hardware.** Since the first boards arrived on 2026-10-01, every
+feature below has been built and then run on three ESP32-S3 boards: a 24.5-hour unattended soak, a walk through a
+two-storey house, cables pulled and power cut by hand, and signed firmware and packages rolled out over the radio
+again and again (the test cell's counters stood at 58 firmware images and 91 packages at release). 25 of the 26
+milestones are accepted; [How it was tested](#how-it-was-tested) is the short version, [STATUS.md](STATUS.md)
+the full one.
+
 **Start here:** [GETTING-STARTED.md](GETTING-STARTED.md) takes you from bare ESP32-S3 boards -- two of them or
 twenty -- to a working cluster in about an hour; [DEVELOPING-APPS.md](DEVELOPING-APPS.md) then takes you to apps
 of your own.
@@ -98,6 +105,31 @@ Limits in this release: up to 20 boards in one radio cell (more as a tree of cel
 one package per cluster, host tools tested on Windows only -- the getting-started guide's
 [Limits of this edition](GETTING-STARTED.md#limits-of-this-edition) has the full list. Some acceptance runs were shortened or waived by the
 maintainer (a few day-long soaks among them); [STATUS.md](STATUS.md) says which, and what stands in their place.
+
+## How it was tested
+
+Every row was done on the three-board test cell described under [On real hardware](#on-real-hardware); the numbers
+and the caveats behind each are in [STATUS.md](STATUS.md).
+
+| what | done on the real boards | what happened |
+|---|---|---|
+| Boards finding each other | a 24.5-hour unattended run, three boards | 100 % of packets delivered on all six links, round trips 4-6 ms, no board wrongly declared dead |
+| Range | one board walked through a two-storey house, up to about 16 m, through walls and a floor | no cliff; brief dropouts only behind appliances |
+| Reading another board | the PC read a board through another board, then the read board was unplugged | value with its age and quality; `UNAVAILABLE` while gone; recovered by itself |
+| Deploy and detach | a signed package sent through one board; PC unplugged; every board power-cycled; then a deliberately broken package | all three ran it and kept it; each reverted the broken one by itself |
+| Security | an unenrolled board, a recorded command re-sent, unsigned and older packages | all refused |
+| Work that moves | a board held in reset; the cell cut in two | its actor answered from another board in 0.46-0.69 s; after the cut healed, the extra copy stopped within half a second |
+| Firmware over the radio | rollouts through one board to all three; a board's cable pulled mid-transfer and again during its trial | about 1.5-2.5 minutes a board; old image kept, then rolled back by itself |
+| Power cut | every USB plug pulled by hand for 10 s | the cell was whole again in about 10 s and a guest app resumed from its saved state (the first cut found a channel bug, now fixed) |
+| The PC as a member | the USB-serial adapter pulled while the PC ran two jobs | the boards took both back in 2-3 s, and the PC took them again 2-3 s after it was plugged in |
+| Borrowing idle cores | a job split across three boards, no PC; a lender reset mid-job | 3.41x faster, the same answer, nothing lost |
+| Home Assistant with no PC | a board presenting the cell over MQTT; an LED switched from Home Assistant; presenter failover | the switch worked with the PC off; two presenters fail over in 0.68-4.3 s, never both |
+| CAN bus | one board flooding the bus while the other sent a safety message every second | all 301 arrived, each within 335-683 µs |
+| A room that knows it's occupied | the room-presence app, boards placed around a room, a person walking a script | empty read empty; walking, standing and sitting read present |
+| A watchdog for wedged boards | a core hogged on purpose | 3 s: no reset; 8 s: the board reset itself and said why |
+
+**Not tested on hardware:** cells of cells beyond the three boards (tested in simulation: ten cells of ten boards
+for 24 hours), chips other than the ESP32-S3, Linux hosts, and a newcomer setting a cell up from the release alone.
 
 ## Ninety seconds of architecture
 

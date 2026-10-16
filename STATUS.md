@@ -15,7 +15,8 @@ milestone counts as *built* when the code exists, and *accepted* only when its t
 of the test that was run differently from how it was written (a reset standing in for a power cut, say); a *waived*
 part was not run, by the maintainer's decision, and the evidence that stands in its place is given.
 
-Where they stand at **release 1.0.0 (2026-10-16)**: 25 of the 26 accepted; M20 built but not accepted. The first
+Where they stand at **release 1.0.0 (2026-10-16)**: 25 of the 26 accepted; M20 built but not accepted. Every
+"accepted" below was run on real ESP32-S3 boards unless the row says simulation. The first
 published release was v0.2.0, earlier the same day.
 
 **The reference bench.** Every hardware measurement below comes from the maintainer's test cell: three

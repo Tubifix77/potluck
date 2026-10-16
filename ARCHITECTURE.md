@@ -12,6 +12,13 @@
 
 ---
 
+> **As built, release 1.0.0 (2026-10-16).** This document began on 2026-08-01 as the design, before any board
+> existed, and has been amended as each part was built. Since the first boards arrived on 2026-10-01, milestones
+> M0-M19 have been built, run on three ESP32-S3 boards and accepted; M20 is built, its newcomer test owed. Passages in
+> the future tense are the original design; each milestone in section 13 ends with its acceptance record, and "As
+> built" notes mark where the result differs from the plan. What runs, and how it was measured:
+> [STATUS.md](STATUS.md), and the README's [How it was tested](README.md#how-it-was-tested).
+
 ## 0. How to read this document, and what changed
 
 The three vision documents were deliberately written as *open decision spaces* — every hard question was presented as Option A / Option B / OPEN, so the documents could be fed to a model and expanded. That format did its job: the concept space is now well mapped. But it has a structural problem. **A document whose format is "here are the options" produces more options every time you feed it to anything.** The output of that loop is breadth. What this project needs next is depth: one set of decisions, made, with reasons, that two physical boards can be built against.
