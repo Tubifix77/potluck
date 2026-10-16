@@ -1666,7 +1666,7 @@ def cmd_inventory(b, boards: list[int]) -> int:
 
 def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool = False) -> int:
     from . import fw as fwm
-    from .bridge import Bridge
+    from .bridge import Bridge, RequestTimeout
     from .value import Quality
 
     t_start = time.monotonic()
@@ -1839,7 +1839,19 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                               f"firmware to 0x{n:04x}")
                         return 1
                     t1 = time.monotonic()
-                    r = fwm.send_image(b, n, img, counter, trailer)
+                    try:
+                        r = fwm.send_image(b, n, img, counter, trailer)
+                    except RequestTimeout as exc:
+                        if partial:
+                            # M19: in a tree a board can drop out of the cable's reach mid-transfer (it held its
+                            # cell's foreman role, and the holder came back); it takes the image by catch-up.
+                            log(f"firmware: 0x{n:04x} stopped answering mid-transfer ({exc}) -- --partial: it takes "
+                                f"the image by catch-up from a board that has it")
+                            beyond.append(n)
+                            continue
+                        print(f"FAILED: firmware to 0x{n:04x}: no answer mid-transfer ({exc}) -- it keeps the image "
+                              f"it runs; stopped before the package (in a tree, --partial lets it catch up)")
+                        return 1
                     if r["status"] != "ok":
                         print(f"FAILED: firmware to 0x{n:04x}: {r['status']} -- it keeps the image it runs; "
                               f"stopped before the package")
@@ -1854,12 +1866,12 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                 b.hello(timeout=3.0)
                 for n in boards:
                     inv[n] = node_status(b, n, timeout=4.0, tries=4)
-                bad = [n for n in boards if inv[n] is None]
+                bad = [n for n in boards if inv[n] is None and n not in beyond]
                 if bad:
                     print("FAILED: no inventory after the firmware from " + ", ".join(f"0x{n:04x}" for n in bad))
                     return 1
                 # What the package step does is measured from here: the firmware's reboots are reported above.
-                uptime0 = {n: inv[n].uptime_s for n in boards}
+                uptime0 = {n: inv[n].uptime_s for n in boards if inv[n] is not None}
                 t_uptime0 = time.monotonic()
                 reboots_expected.clear()
             else:
@@ -1972,7 +1984,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                 log(f"verify: {p} = {r.format()}")
         times["verify"] = time.monotonic() - t0
         # Rebooted: up for less time than has passed since its uptime was read (a few seconds' slack).
-        rebooted = [n for n in boards if n in done and uptime0[n] is not None and n not in reboots_expected
+        rebooted = [n for n in boards if n in done and uptime0.get(n) is not None and n not in reboots_expected
                     and done[n].uptime_s + 3 < uptime0[n] + (seen_at[n] - t_uptime0)]
         live = [n for n in boards if n in done and inv[n] is not None and done[n].live_applies > inv[n].live_applies]
     total = time.monotonic() - t_start

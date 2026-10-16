@@ -3066,6 +3066,11 @@ struct Push {  // M19: one firmware catch-up being sent, to one peer
     uint32_t started_ms = 0;
 };
 Push g_push;
+// M19: when the last BEGIN or CHUNK of a receive arrived. A transfer cut off half-way -- the sender out of reach, as on
+// the bench when a board dropped out of the cable's cells -- kept the receiver busy until a reboot, and with it every
+// catch-up: dropped after kFwRxStaleMs, as the package agent drops a stale receive.
+constexpr uint32_t kFwRxStaleMs = 15000;
+uint32_t g_rx_last_ms = 0;
 bool busy() { return g_state == FwState::OnTrial || g_committed || g_push.peer != 0; }
 bool receiving() { return g_rx.in_progress(); }
 uint32_t received() { return g_rx.received(); }
@@ -3165,12 +3170,16 @@ size_t on_fw(uint16_t from, uint16_t msg_id, uint8_t op, const uint8_t* p, uint1
         if (load_fw_begin(p, len, b)) {
             g_rx.set_busy(busy() || deploy_rt::g_agent->pushing() || deploy_rt::g_agent->reboot_scheduled());
             s = g_rx.begin(b);
+            g_rx_last_ms = now_ms_();  // M19
             ESP_LOGI(kTag, "fw: begin counter %u, %u B: %s", static_cast<unsigned>(b.counter),
                      static_cast<unsigned>(b.image_len), fw_status_str(s));
         }
     } else if (op == kOpFwChunk) {
         FwChunk c{};
-        if (load_fw_chunk(p, len, c)) s = g_rx.chunk(c);  // here: one flash write and a hash update
+        if (load_fw_chunk(p, len, c)) {
+            s = g_rx.chunk(c);  // here: one flash write and a hash update
+            g_rx_last_ms = now_ms_();  // M19
+        }
     } else if (op == kOpFwCommit) {
         CommitJob j{FwStatus::NotStarted};
         trust_rt::run_heavy(nullptr, &commit_job, &j);  // the signature, then esp_ota_end's image check
@@ -3300,6 +3309,11 @@ bool on_cast(uint16_t from, uint32_t path, const uint8_t* a, uint16_t len, uint3
 }
 
 void catchup_tick(uint32_t now) {
+    if (g_rx.in_progress() && now - g_rx_last_ms > kFwRxStaleMs) {
+        ESP_LOGW(kTag, "fw: a receive of counter %u stopped at %u B - abandoned", static_cast<unsigned>(g_rx.counter()),
+                 static_cast<unsigned>(g_rx.received()));
+        g_rx.abort();
+    }
     if (g_push.peer != 0 && now - g_push.started_ms > kFwPushMaxMs) {
         ESP_LOGW(kTag, "fw: catch-up to 0x%04x abandoned: too slow", g_push.peer);
         g_push = Push{};
