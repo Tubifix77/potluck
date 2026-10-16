@@ -1354,51 +1354,63 @@ def _outputs(m, spec, a, nodes: list[int]) -> list[str]:
     return out
 
 
-def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
-    """(pinned actors per board, portable actors in the cell, output paths to read back)."""
+def actor_reads(m, a, boards: list[int]) -> tuple[str, list[str]]:
+    """One actor's placement ("portable" | "every" | "pinned") and the output paths it publishes -- its own, never
+    another actor's on the same board (the hub's app view used to take every output of the board, so one stale
+    resource marked every app pinned there as not working: found 2026-10-16 on the owner's everyday cell)."""
     from . import deploy as dp
     from . import guest as gs
     from . import modules as mods
     from . import reconcile as rc
 
+    spec = mods.get(a.module)
+    reads: list[str] = []
+    if a.module.startswith("guest:"):
+        for name, _t in gs.parse_outputs(a.config["outputs"], a.name):
+            reads.append(dp.guest_output_path(m.system, a.name, name))
+        return "portable", reads
+    if a.module == "builtin:foreman":  # M19: portable; its summary, every export
+        return "portable", [dp.cell_path(m.system, a.config["cell_name"], name) for name, *_ in dp.foreman_exports(a)]
+    if a.module in ("builtin:ticker", "builtin:present") or (spec is not None and spec.placement == "portable"):
+        return "portable", [rc.output_path(m, a)] + _outputs(m, spec, a, [])
+    if spec is not None and spec.placement == "every":
+        return "every", _outputs(m, spec, a, boards)
+    node = m.placement_of(a)
+    if node is not None:
+        if a.module == "builtin:die_temp":
+            reads.append(dp.die_temp_path(m.system, node))
+        if a.module == "builtin:led_switch":
+            reads.append(dp.led_switch_path(m.system, node))
+        if a.module == "builtin:position":
+            if "x" in a.config:
+                reads += list(dp.position_paths(m.system, node))
+            if a.config.get("room"):
+                reads.append(dp.room_path(m.system, node))
+            if a.config.get("near"):
+                reads.append(dp.near_path(m.system, node))
+    reads += _outputs(m, spec, a, [node] if node is not None else [])
+    return "pinned", reads
+
+
+def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
+    """(pinned actors per board, portable actors in the cell, output paths to read back)."""
     pinned = {n: 0 for n in boards}
     portable = 0
     reads: list[str] = []
     for a in m.actors:
-        spec = mods.get(a.module)
-        if a.module.startswith("guest:"):
+        # Every board's NODE_STATUS counts every portable actor of the package (portable_total), wherever it runs;
+        # the ones a placement host may run are pc_runnable(), for the count of those running on the boards.
+        kind, outs = actor_reads(m, a, boards)
+        if kind == "portable":
             portable += 1
-            for name, _t in gs.parse_outputs(a.config["outputs"], a.name):
-                reads.append(dp.guest_output_path(m.system, a.name, name))
-        elif a.module == "builtin:foreman":  # M19: portable; its summary, every export
-            portable += 1
-            reads += [dp.cell_path(m.system, a.config["cell_name"], name) for name, *_ in dp.foreman_exports(a)]
-        elif a.module in ("builtin:ticker", "builtin:present") or (spec is not None and spec.placement == "portable"):
-            # Every board's NODE_STATUS counts every portable actor of the package (portable_total), wherever it runs;
-            # the ones a placement host may run are pc_runnable(), for the count of those running on the boards.
-            portable += 1
-            reads.append(rc.output_path(m, a))
-            reads += _outputs(m, spec, a, [])
-        elif spec is not None and spec.placement == "every":
+        elif kind == "every":
             for n in boards:
                 pinned[n] += 1
-            reads += _outputs(m, spec, a, boards)
         else:
             node = m.placement_of(a)
             if node in pinned:
                 pinned[node] += 1
-            if a.module == "builtin:die_temp" and node is not None:
-                reads.append(dp.die_temp_path(m.system, node))
-            if a.module == "builtin:led_switch" and node is not None:
-                reads.append(dp.led_switch_path(m.system, node))
-            if a.module == "builtin:position" and node is not None:
-                if "x" in a.config:
-                    reads += list(dp.position_paths(m.system, node))
-                if a.config.get("room"):
-                    reads.append(dp.room_path(m.system, node))
-                if a.config.get("near"):
-                    reads.append(dp.near_path(m.system, node))
-            reads += _outputs(m, spec, a, [node] if node is not None else [])
+        reads += outs
     if m.system != "lab":
         for n in boards:
             pinned[n] += 1  # the cluster-name actor

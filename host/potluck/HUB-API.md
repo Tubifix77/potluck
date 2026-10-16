@@ -181,6 +181,10 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
 - `resource.quality` (never omitted): `GOOD` (fresh), `STALE` (older than its staleness bound, still shown),
   `UNAVAILABLE` (its owner is dead or unreachable: no value), `NO_DATA` (never published yet), `FAULTY` (the owner says
   its sensor is broken: no value). `resource.age_ms` is the value's age at the model's `at`.
+- `resource.settled_quality`: the quality that has held for two reads in a row. Another board's value reaches the hub
+  through the cabled board's copy, which is refreshed at the hub's previous read, so a value published every second can
+  read `STALE` once and `GOOD` the next time. `quality` shows each read as it is; `app.working`, the dashboard's
+  problems and the `quality_changed` event follow `settled_quality`, so one late read is not reported as a fault.
 - `resource.owner`: the board whose resource it is, for a board's own resource (`node-XXXX/...`); `null` for an
   actor's output (`act/...`), which can move between boards. `resource.type`: `bool` | `i32` | `u32` | `f32` | `i64` |
   `u64` | `f64` | `bytes` -- what it holds, `null` until it first has a value. A strict resource (its staleness policy

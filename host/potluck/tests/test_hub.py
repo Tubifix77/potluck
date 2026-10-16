@@ -373,6 +373,33 @@ class SecondHub(unittest.TestCase):
             opened.assert_not_called()
 
 
+class Settled(unittest.TestCase):
+    """One late read of another board's value is shown as read, but neither marks an app nor logs a change: the
+    settled quality moves only when a new quality holds for two reads (found 2026-10-16 on an everyday cell)."""
+
+    def test_a_single_stale_read_does_not_settle_two_in_a_row_do(self):
+        from types import SimpleNamespace as NS
+        from potluck.value import Quality, Reading
+        events = []
+        me = NS(lock=threading.Lock(), resources={}, SETTLE_READS=hb.Model.SETTLE_READS,
+                _event_locked=lambda kind, n, d: events.append(d))
+        path = "potluck://lab/act/alarm/out"
+
+        def read(q):
+            hb.Model._record(me, path, Reading(quality=int(q)))
+            return me.resources[path]["quality"], me.resources[path]["settled"]
+
+        self.assertEqual(read(Quality.GOOD), ("GOOD", "GOOD"))
+        self.assertEqual(read(Quality.STALE), ("STALE", "GOOD"))   # shown as read; not settled
+        self.assertEqual(read(Quality.GOOD), ("GOOD", "GOOD"))
+        self.assertEqual(events, [])                               # nothing logged for the blip
+        read(Quality.STALE)
+        self.assertEqual(read(Quality.STALE), ("STALE", "STALE"))  # two in a row: it is stale
+        self.assertEqual(events, [{"path": path, "from": "GOOD", "to": "STALE"}])
+        self.assertEqual(read(Quality.GOOD), ("GOOD", "STALE"))    # and one good read does not settle it back
+        self.assertEqual(read(Quality.GOOD), ("GOOD", "GOOD"))
+
+
 class Panels(unittest.TestCase):
     """M20's app panels: one per room for a per_room module, only for exposed resources, and a reading that is not
     GOOD is neither on nor off."""

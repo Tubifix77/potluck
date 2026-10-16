@@ -499,17 +499,31 @@ class Model:
                 self.errors.append(time.monotonic())
                 continue
             self.rtts.append(time.monotonic() - t0)
-            with self.lock:
-                old = self.resources.get(path)
-                q = Quality.name_of(r.quality)
-                self.resources[path] = {"reading": r, "quality": q, "at": _hub_ms()}
-                if old is not None and old["quality"] != q:
-                    self._event_locked("quality_changed", None, {"path": path, "from": old["quality"], "to": q})
+            self._record(path, r)
         if self.telemetry_period_ms and time.monotonic() >= self._telemetry_due:
             self._telemetry_due = time.monotonic() + self.telemetry_period_ms / 1000
             self.pull_telemetry()
         with self.lock:
             self.frames_at.append((time.monotonic(), self.hub.stats.rx_frames + self.hub.stats.tx_frames))
+
+    def _record(self, path: str, r) -> None:
+        """One reading of a resource, kept with its settled quality.
+
+        The quality as read is shown as it is. Its *settled* quality changes only when a new quality holds for
+        SETTLE_READS reads in a row: another board's value reaches the hub through the cabled board's copy, refreshed
+        at the hub's previous read (3-4 s ago with ~35 resources), so a value published every second can read STALE
+        once under a 5 s bound and GOOD the next time. App health and the quality_changed event follow the settled
+        quality (found 2026-10-16: an everyday cell's dashboard flapped "not working" on single late reads)."""
+        with self.lock:
+            old = self.resources.get(path)
+            q = Quality.name_of(r.quality)
+            streak = old.get("streak", 1) + 1 if old is not None and old["quality"] == q else 1
+            settled = old.get("settled", old["quality"]) if old is not None else q
+            if streak >= self.SETTLE_READS and settled != q:
+                self._event_locked("quality_changed", None, {"path": path, "from": settled, "to": q})
+                settled = q
+            self.resources[path] = {"reading": r, "quality": q, "at": _hub_ms(), "streak": streak,
+                                    "settled": settled}
 
     def pull_telemetry(self) -> None:
         """M15: every answering board's health, links, actors and new events, over the radio, one pull for every
@@ -741,6 +755,9 @@ class Model:
             out["rssi"] = max(radio) if radio else None
         return out
 
+    #: reads in a row a new quality must hold before it counts as the resource's settled quality
+    SETTLE_READS = 2
+
     def _resource_json(self, path: str, r: dict) -> dict:
         rd = r["reading"]
         name = path.split("/", 3)[3] if path.count("/") >= 3 else path
@@ -753,6 +770,7 @@ class Model:
                 value = round(value, 6)
         unit = unit_suffix(rd.unit)
         return {"path": path, "name": name, "owner": owner, "value": value, "unit": unit, "quality": r["quality"],
+                "settled_quality": r.get("settled", r["quality"]),
                 "age_ms": rd.age_ms + max(0, _hub_ms() - r["at"]), "latency_class": rd.latency_class,
                 "exposed": outside is not None, "outside_writable": outside == "read_write",
                 "safety_relevant": self._safety(path),
@@ -805,8 +823,8 @@ class Model:
         if self.package is None:
             return []
         from . import modules as mods
-        from .apply import expected
-        quality = {r["path"]: r["quality"] for r in resources}
+        from .apply import actor_reads
+        quality = {r["path"]: r.get("settled_quality", r["quality"]) for r in resources}  # one late read is not a fault
         running_here = {b["node"]: set(b.get("actors", [])) for b in boards if b["state"] == "alive"}
         out = []
         m = self.package.manifest
@@ -831,8 +849,7 @@ class Model:
                           if t["key"] == key}
                 if owners == {"00fe"}:
                     running = ["00fe"]
-            outs = [p for p in expected(m, [int(n, 16) for n in nodes])[2] if f"/act/{a.name}/" in p or
-                    (pin is not None and f"/node-{pin:04x}/" in p and not portable)]
+            outs = actor_reads(m, a, [int(n, 16) for n in nodes])[1]  # its own outputs, not its board's
             bad_outs = [p for p in outs if quality.get(p) not in (None, "GOOD")]
             if portable:
                 ok, why = len(running) == 1, ("" if len(running) == 1 else f"running on {len(running)} nodes")

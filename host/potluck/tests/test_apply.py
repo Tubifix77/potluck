@@ -120,6 +120,15 @@ class ClusterFile(unittest.TestCase):
                       struct.pack("<IIIffII4H4B", hx, hy, hr, 1.5, 2.25, 0, hn, 0, 0, 0, 0, 0, 0, 0, 0), img)
         _, _, reads = ap.expected(m, [0x100, 0x200])
         self.assertIn("potluck://home/node-0100/sys/pos/y", reads)
+        # Each actor's own outputs, never its board's other outputs (the hub's app view took the whole board's, so
+        # one stale resource marked every app pinned there as not working -- found 2026-10-16); and the cell's list
+        # is exactly the actors' lists together.
+        pos = next(a for a in m.actors if a.module == "builtin:position" and m.placement_of(a) == 0x0100)
+        kind, own = ap.actor_reads(m, pos, [0x100, 0x200])
+        self.assertEqual(kind, "pinned")
+        self.assertTrue(own and all("/node-0100/sys/" in p for p in own), own)
+        together = [p for a in m.actors for p in ap.actor_reads(m, a, [0x100, 0x200])[1]]
+        self.assertEqual(set(together) | {r.path for n in m.nodes if n.kind != "host" for r in n.owns}, set(reads))
         for bad in ([1], [-1, 0], [0, 1001], ["1", 2], [True, 1]):
             with self.assertRaisesRegex(ap.ApplyError, "position"):
                 self.cluster(boards=[{"node": "0100", "position": bad}])

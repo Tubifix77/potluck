@@ -105,7 +105,8 @@
     var shown = {};
     (m.apps || []).forEach(function (a) {
       var badOut = (a.outputs || []).map(function (p) { return res[p]; })
-        .filter(function (r) { return r && r.quality !== "GOOD" && !shown[r.path]; })
+        // settled: a quality that held for two reads -- one late read of another board's value is not a problem
+        .filter(function (r) { return r && (r.settled_quality || r.quality) !== "GOOD" && !shown[r.path]; })
         .filter(function (r) { return !(bb[r.owner] && bb[r.owner].state === "dead"); });  // the dead board is the headline
       var placed = a.placement === "portable" ? (a.running_on || []).length === 1 :
         (a.nodes || []).every(function (n) { return (a.running_on || []).indexOf(n) >= 0; });
