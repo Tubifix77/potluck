@@ -521,9 +521,12 @@ class Model:
             settled = old.get("settled") if old is not None else None
             first = old.get("first", time.monotonic()) if old is not None else time.monotonic()
             if settled is None:
-                # starting: the first quality that holds (or whatever it reads after STARTUP_S) is where it starts --
-                # not a change, so no event (found 2026-10-16: a hub start lit the dashboard with one-read warnings)
-                if streak >= self.SETTLE_READS or time.monotonic() - first >= self.STARTUP_S:
+                # Starting: GOOD that holds is where it starts; anything else only once it outlasts STARTUP_S. The
+                # cabled board answers the first reads from copies it last refreshed before the hub started, so the
+                # first reads of another board's value are STALE by construction (found 2026-10-16: two STALE reads
+                # settled, the quiet start ended at ~7 s, and the values read GOOD at 12-13 s). Where a resource starts
+                # is not a change, so no event.
+                if (streak >= self.SETTLE_READS and q == "GOOD") or time.monotonic() - first >= self.STARTUP_S:
                     settled = q
             elif streak >= self.SETTLE_READS and settled != q:
                 self._event_locked("quality_changed", None, {"path": path, "from": settled, "to": q})

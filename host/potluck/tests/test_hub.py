@@ -438,7 +438,12 @@ class Settled(unittest.TestCase):
         self.assertEqual(hb.Model._resource_json(NS(cluster=None, _safety=lambda p: False), "p",
                                                  me.resources["p"])["settled_quality"], "STARTING")
         hb.Model._record(me, "p", Reading(quality=int(Quality.STALE)))
-        self.assertEqual((me.resources["p"]["settled"], events), ("STALE", []))  # where it starts is not a change
+        # two STALE reads at start are the cabled board's old copies, not a verdict: still starting
+        self.assertIsNone(me.resources["p"]["settled"])
+        with mock.patch.object(hb.time, "monotonic", return_value=time.monotonic() + hb.Model.STARTUP_S):
+            hb.Model._record(me, "p", Reading(quality=int(Quality.STALE)))
+        self.assertEqual((me.resources["p"]["settled"], events), ("STALE", []))  # it outlasted the start: STALE,
+        # and where it starts is not a change
         # a resource that never holds a quality for two reads still gets a verdict once STARTUP_S has passed
         t = time.monotonic()
         for i, q in enumerate((Quality.GOOD, Quality.STALE, Quality.GOOD)):

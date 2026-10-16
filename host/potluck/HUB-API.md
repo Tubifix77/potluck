@@ -133,7 +133,7 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   `hub.relay`: counts for the PC's other tools that go through the hub, `{clients, requests, replies, unmatched,
   fanned_out, node_frames_out, node_frames_in}`. `hub.telemetry` counts `{pulls, replies, failures, events}`.
 - `hub.starting`: `true` while the hub has not yet seen the whole cell once -- some board has not answered, or some
-  resource has not held one quality for two reads -- and never longer than 30 s after it started. Meanwhile an app not
+  resource is still `STARTING` (below) -- and never longer than 30 s after it started. Meanwhile an app not
   yet seen working has `working: null` (not `false`), a board not heard yet is not a problem, and the dashboard says
   "Starting up" instead of a verdict. After it, a fault shows as usual.
 - `cell.channel`, `cell.other_cell_frames`, `signals.saturation.namespace` and `signals.saturation.airtime` are
@@ -190,8 +190,9 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   through the cabled board's copy, which is refreshed at the hub's previous read, so a value published every second can
   read `STALE` once and `GOOD` the next time. `quality` shows each read as it is; `app.working`, the dashboard's
   problems and the `quality_changed` event follow `settled_quality`, so one late read is not reported as a fault.
-  `STARTING` until a resource has held one quality for two reads since the hub started (or for 30 s): where it starts is
-  not a change, so no `quality_changed` is logged for it.
+  `STARTING` until a resource has read GOOD twice in a row since the hub started, or any quality once 30 s have passed
+  (the first reads of another board's value come from the cabled board's copy as it was before the hub started, so they
+  are STALE whatever the value is doing). Where it starts is not a change, so no `quality_changed` is logged for it.
 - `resource.owner`: the board whose resource it is, for a board's own resource (`node-XXXX/...`); `null` for an
   actor's output (`act/...`), which can move between boards. `resource.type`: `bool` | `i32` | `u32` | `f32` | `i64` |
   `u64` | `f64` | `bytes` -- what it holds, `null` until it first has a value. A strict resource (its staleness policy
