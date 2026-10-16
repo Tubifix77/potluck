@@ -16,7 +16,8 @@
 
   Landmarks (tests/test_dashboard.py checks them; keep them):
     #steps        the step list; each step a <section class="step" data-step="...">
-    #s-name (a PC with no cell yet) #s-count #s-plug #s-install #s-join #s-rooms #s-done
+    #s-name (a PC with no cell yet) #s-count #s-plug #s-install #s-join #s-rooms #s-cells (only when the boards
+    make more than one cell, M19) #s-done
     #boards       the new boards, one card each (.nb[data-port])
 -->
 <header class="top">
@@ -29,7 +30,7 @@
   <p id="w-msg" class="banner" role="alert" hidden></p>
   <ol id="steps" class="steps">
     <li data-for="s-name" id="li-name" hidden>Your cell</li><li data-for="s-count">How many</li><li data-for="s-plug">Plug in</li><li data-for="s-install">Install</li>
-    <li data-for="s-join">Join the cell</li><li data-for="s-rooms">Rooms</li><li data-for="s-done">Done</li>
+    <li data-for="s-join">Join the cell</li><li data-for="s-rooms">Rooms</li><li data-for="s-cells" id="li-cells" hidden>Cells</li><li data-for="s-done">Done</li>
   </ol>
 
   <section id="s-name" class="step" data-step="name" hidden>
@@ -91,6 +92,18 @@
     <div id="rooms" class="nbs"></div>
     <p class="calm">A room is only a name for you; you can change it later.</p>
     <button id="go-done" type="button">Next</button>
+  </section>
+
+  <section id="s-cells" class="step" data-step="cells" hidden>
+    <h2>Your boards make more than one cell</h2>
+    <p>Boards that do not all hear each other, or more than twenty, work as several cells of up to ten. In each, one
+      board -- its <b>foreman</b> -- speaks for it to the others. A foreman should be a board that is always powered.</p>
+    <p>Tick the boards that are on a charger or the mains, not a battery:</p>
+    <div id="chargers" class="checks"></div>
+    <button id="do-propose" type="button">Suggest cells again</button>
+    <div id="proposal" aria-live="polite"></div>
+    <ul id="tree-notes" class="small muted"></ul>
+    <button id="do-tree" type="button" disabled>Use these cells</button>
   </section>
 
   <section id="s-done" class="step" data-step="done" hidden>

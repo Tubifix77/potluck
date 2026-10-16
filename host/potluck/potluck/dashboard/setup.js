@@ -68,15 +68,20 @@
   }
 
   // ---- step 1: how many ---------------------------------------------------------------------------------------
-  function remaining() { return cell.max_boards - cell.boards.length; }
+  // One cell holds max_boards; past that the boards become cells of cells (M19), the wizard's "Cells" step.
+  // MAX_TREE is what M19 was shown with: ten cells of ten (pot_sim's 24-hour run, M0-LOG session 46).
+  var MAX_TREE = 100;
+  function remaining() { return MAX_TREE - cell.boards.length; }
 
   function checkCount() {
-    var n = parseInt($("n-add").value, 10) || 0, left = remaining(), over = $("n-over");
-    over.hidden = n <= left;
-    over.textContent = left <= 0
-      ? "This cell already has " + cell.max_boards + " boards, as many as one cell holds. More than that is a cell of cells, which is coming."
-      : "One cell holds " + cell.max_boards + " boards, so " + left + " more fit here. More than that is a cell of cells, which is coming; add " + left + " now if you like.";
-    $("go-plug").disabled = left <= 0 || n < 1;
+    var n = parseInt($("n-add").value, 10) || 0, left = remaining(), over = $("n-over"), total = cell.boards.length + n;
+    over.hidden = total <= cell.max_boards && n <= left;
+    over.className = n > left ? "note warn" : "note";
+    over.textContent = n > left
+      ? "Potluck has been shown with up to " + MAX_TREE + " boards; " + Math.max(0, left) + " more fit."
+      : "With " + total + " boards the cell becomes several cells of up to ten, each with a foreman. You will choose " +
+        "which boards are always powered; the rest is worked out for you.";
+    $("go-plug").disabled = left <= 0 || n < 1 || n > left;
   }
 
   // ---- step 2: plug in ----------------------------------------------------------------------------------------
@@ -295,7 +300,90 @@
     });
   }
 
-  // ---- step 6: done -------------------------------------------------------------------------------------------
+  // ---- step 6: cells (M19), only when the boards make more than one ------------------------------------------
+  var tree = null;  // the last proposal: {flat, cells, foremen, notes}
+
+  function nameOf(id) {
+    var b = (cell.boards || []).filter(function (x) { return x.node === id; })[0];
+    return b && b.label ? b.label : id;
+  }
+
+  function chargers() {
+    var out = [], boxes = $("chargers").querySelectorAll("input[type=checkbox]");
+    for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) out.push(boxes[i].value);
+    return out;
+  }
+
+  function propose(then) {
+    $("do-tree").disabled = true;
+    return api("POST", "api/setup/tree", { chargers: chargers() }).then(function (r) {
+      if (!r.ok) { say(r.result || "no proposal"); return; }
+      tree = r.proposal;
+      var host = $("proposal");
+      host.textContent = "";
+      Object.keys(tree.cells).forEach(function (name) {
+        var row = el("div", "nb");
+        var head = el("div", "nb-head");
+        head.appendChild(el("b", "", name));
+        var fm = (tree.foremen[name] || []).map(nameOf);
+        head.appendChild(el("span", "muted small", fm.length ? "foreman: " + fm.join(" or ") : "no board on a charger yet"));
+        row.appendChild(head);
+        row.appendChild(el("div", "small", tree.cells[name].map(nameOf).join(", ")));
+        host.appendChild(row);
+      });
+      var notes = $("tree-notes");
+      notes.textContent = "";
+      (tree.notes || []).forEach(function (n) {  // the survey names boards by id; the owner knows their names
+        notes.appendChild(el("li", "", n.replace(/\b[0-9a-f]{4}\b/g, function (id) { return nameOf(id); })));
+      });
+      var everyCellLed = Object.keys(tree.cells).every(function (k) { return (tree.foremen[k] || []).length > 0; });
+      $("do-tree").disabled = tree.flat || !everyCellLed;
+      if (then) then();
+    }, function () { say("The hub does not answer."); });
+  }
+
+  function cellsStep() {
+    // Fresh from the hub: the boards just added are in the cluster file now, with their rooms.
+    api("GET", "api/setup/cell").then(function (c) {
+      cell = c;
+      return propose(function () {
+        if (tree.flat) { doneStep(); return; }
+        $("li-cells").hidden = false;
+        show("s-cells");
+        var host = $("chargers"), byRoom = {};
+        host.textContent = "";
+        (cell.boards || []).forEach(function (b) { (byRoom[b.room || ""] = byRoom[b.room || ""] || []).push(b); });
+        Object.keys(byRoom).sort().forEach(function (room) {
+          host.appendChild(el("h3", "", room || "No room"));
+          var grid = el("div", "grid");
+          byRoom[room].forEach(function (b) {
+            var lab = el("label");
+            var box = el("input");
+            box.type = "checkbox";
+            box.value = b.node;
+            box.onchange = function () { propose(); };
+            lab.appendChild(box);
+            lab.appendChild(document.createTextNode(b.label || b.node));
+            grid.appendChild(lab);
+          });
+          host.appendChild(grid);
+        });
+      });
+    });
+  }
+
+  function writeTree() {
+    $("do-tree").disabled = true;
+    api("POST", "api/setup/tree", { chargers: chargers(), write: true }).then(function (r) {
+      if (!r.ok) { $("do-tree").disabled = false; say(r.result || "not written"); return; }
+      doneStep();
+      say("The cells are in the cell's file; this step sends them out.", "ok");
+    });
+  }
+
+  function doneStep() { show("s-done"); $("pp2-row").hidden = !cell.vault; }
+
+  // ---- step 7: done -------------------------------------------------------------------------------------------
   function applyAll() {
     $("do-apply").disabled = true;
     var out = $("apply-out");
@@ -377,7 +465,9 @@
     $("go-install").onclick = function () { show("s-install"); findBuild(); };
     $("do-install").onclick = install;
     $("do-join").onclick = joinAll;
-    $("go-done").onclick = function () { show("s-done"); $("pp2-row").hidden = !cell.vault; };
+    $("go-done").onclick = cellsStep;
+    $("do-propose").onclick = function () { propose(); };
+    $("do-tree").onclick = writeTree;
     $("do-apply").onclick = applyAll;
     if (!firstRun) show("s-count");
   }

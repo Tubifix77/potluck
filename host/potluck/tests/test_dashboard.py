@@ -353,7 +353,7 @@ class PageTest(unittest.TestCase):
     def test_the_setup_wizard_has_its_steps_and_speaks_only_to_api_setup(self):
         p = _Ids()
         p.feed(self.read("setup.html"))
-        want = {"steps", "s-count", "s-plug", "s-install", "s-join", "s-rooms", "s-done", "boards"}
+        want = {"steps", "s-count", "s-plug", "s-install", "s-join", "s-rooms", "s-cells", "s-done", "boards"}
         self.assertTrue(want <= p.ids, want - p.ids)
         self.assertTrue(all(r and "//" not in r for r in p.refs), p.refs)
         js = self.read("setup.js")
