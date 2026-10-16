@@ -5976,3 +5976,38 @@ tests -- B warmed (M8.1), the cable pulled (M10), power cut by hand (M11, M12).
 
 M10's, M11's and M12's caveats are closed. **Bench now:** firmware `3b130f5` (counter 55) on all three, package 89 from
 `keys/desk-m14-hub.json`, the hub running, no PC node.
+
+**2026-10-16, afternoon -- the owner's "next" list, done in order.**
+
+- **The C wedge:** `CONFIG_ESP_TASK_WDT_PANIC=y` (`27994a5`) -- the task watchdog now resets a chip whose core keeps its
+  idle task from running for 5 s (ESP-IDF v6.0.2's default timeout; ledger), where it printed every 5 s for C's 6 hours.
+  `POT! hog 3000` on C: no reset; `POT! hog 8000`: the watchdog named `pot_hog` after 5 s and C restarted on its
+  confirmed image, "reset: task watchdog". False trips: three firmware rollouts received under the watchdog (B twice,
+  C, A: erase, write, hash, commit, trial), with a guest running and the cell presenting -- no `task_wdt` line on any
+  board (`captures/wdt-rollout-watch.txt`, `wdt-rollout2-watch.txt`). Work on the background workers and in the guest
+  runtime already yields well inside 5 s; a flash erase yields every 20 ms (ledger). The only earlier trip in the
+  captures was M7's experiment build of 2026-10-10, before the guest runtime yielded.
+- **Why a board started, seen from the PC** (`35a7caa`; the hub `d3a4376`): a seventh built-in, `node-<id>/sys/reset`
+  (ESP-IDF's reset reason), read by the hub through the cabled board once a boot (`board.reset`, event
+  `board_restarted`) and shown on the board's card. Needed the same afternoon: C restarted by itself mid-rollout and
+  only its console said so. The radio fail-stop and an update both restart by software, so both read "software".
+- **Found: C's radio wedged twice in rollouts, A's once after the first cable pull** -- every ESP-NOW send refused
+  with ESP_ERR_ESPNOW_NO_MEM, heap plentiful, recovered by `tx_dead` after 60 s each time: C 13:05 in the middle of
+  receiving an image, C 13:33 two minutes after A restarted into its trial, A 11:44 twenty seconds after the PC
+  vanished. Each time a neighbour vanished or the radio carried a transfer. Not fixed; `tx_dead` is the recovery, and
+  `apply` stops cleanly on a board that is restarting (rerun it). Next: whether the wedge follows a peer that stops
+  acknowledging (the queue of sends to it) -- a host test cannot reach the driver, so a bench reproduction first.
+- **The tray** (`HubKeeper`): it started a hub only at its own start; the installed tray (15 Oct) had seen its hub go
+  and never replaced it -- the PC had not rebooted since the 14th, so "at login" was never the fault. It now starts a
+  hub after three unanswered polls, at most once a minute. The installed copy is the old one until the owner reinstalls.
+- **M20:** the wizard's Cells step (shown in the browser against a stand-in hub with 24 boards in three rooms); the
+  release image (`potluck.release --from`, the bench's own `35a7caa-fbd2a5`: both built-ins, 1,215,488 B); GitHub
+  releases (`tools/make_release.py`, nothing published); app panels (passive-sensor's `015bcdc` declares its room card:
+  "Room -- Empty -- Presence" on the first screen); the store (off; on the bench it is not turned on). HACS's update icon:
+  its update entity always asks the brands CDN (`brands.home-assistant.io/_/<domain>/icon.png`), which serves its
+  "icon not available" placeholder for `potluck` -- HACS ignores the integration's own `brand/` folder there; the
+  owner decides whether to raise it with HACS.
+
+**Bench now:** firmware `35a7caa` (counter 58) on all three, package 91 from `keys/desk-m14-hub.json`, now naming
+passive-sensor `015bcdc` (a descriptor change only -- the next `apply` rebuilds the firmware for the new key; the
+version before is `.pre-015bcdc`), the hub on today's code (`captures/hub-11.log`).

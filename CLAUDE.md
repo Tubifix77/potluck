@@ -61,6 +61,19 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > 11.8 KB of the budget sat committed on paper against a figure nobody had. It now survives contact
 > with reality. Evidence: `captures/boardA-first-boot-095f21e.log`.
 
+> ## HANDOVER, 2026-10-16 (afternoon): **the task watchdog resets a wedged board; M20's remaining pieces built** (M0-LOG session 46).
+>
+> **Built and on the bench:** `CONFIG_ESP_TASK_WDT_PANIC=y` (shown with `POT! hog`, no false trip in three rollouts);
+> `node-<id>/sys/reset` and the hub's `board.reset`; the tray keeps a hub running (`HubKeeper`; the installed copy is
+> old until the owner reinstalls); M20: the wizard's Cells step, `potluck.release --from <cluster>` (the release image
+> with both built-ins, carried by the package), `tools/make_release.py` (nothing published), app panels (passive-sensor
+> `015bcdc`: the Room card), the store (off). **Bench now:** firmware `35a7caa` (counter 58), package 91 from
+> `keys/desk-m14-hub.json` -- which now names passive-sensor `015bcdc`, so the next `apply` rebuilds the firmware (same
+> code, new key); hub `captures/hub-11.log`. **Open:** the radio's NO_MEM wedge (C twice in rollouts, A once after a
+> cable pull; `tx_dead` recovers it in 60 s, `apply` stops cleanly -- rerun); the store's curated feed needs a release key
+> and a public repository (the owner's); HACS's update icon is fetched from the brands CDN only (the owner's call whether
+> to raise it with HACS); the first GitHub release is the owner's word.
+>
 > ## HANDOVER, 2026-10-16 (midday): **the hands-on tests done -- M8.1 ACCEPTED; M10's, M11's and M12's caveats closed** (M0-LOG session 46).
 >
 > 25 of 26 accepted (M20 under way). B warmed: 51.5 -> 47.5 C read through A. The CP2102 pulled: jobs back on boards in

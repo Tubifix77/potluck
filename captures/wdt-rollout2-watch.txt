@@ -1,0 +1,18 @@
+13:25:48 COM4 I (1303539) pot.m0: fw: begin counter 58, 1215488 B: ok
+13:28:02 COM4 I (1437456) pot.m0: fw: commit of counter 58: ok (390 ms)
+13:28:03 COM4 rst:0xc (RTC_SW_CPU_RST),boot:0x28 (SPI_FAST_FLASH_BOOT)
+13:28:06 COM4 I (3105) pot.m0: fw: running ota_0 (35a7caa-fbd2a5), counter 58, floor 57, ON TRIAL; spare slot ota_1, 2048 KB; reset: software
+13:28:16 COM4 I (13231) pot.m0: fw: trial passed after 100 heartbeats with 2 radio peer(s) - counter 58 CONFIRMED
+13:28:18 COM5 I (1253420) pot.m0: fw: begin counter 58, 1215488 B: ok
+13:30:32 COM5 I (1387240) pot.m0: fw: commit of counter 58: ok (392 ms)
+13:30:34 COM5 rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+13:30:37 COM5 I (2974) pot.m0: fw: running ota_1 (35a7caa-fbd2a5), counter 58, floor 57, ON TRIAL; spare slot ota_0, 2048 KB; reset: software
+13:30:47 COM5 I (13096) pot.m0: fw: trial passed after 100 heartbeats with 2 radio peer(s) - counter 58 CONFIRMED
+13:30:49 COM3 I (2427367) pot.m0: fw: begin counter 58, 1215488 B: ok
+13:32:58 COM3 I (2556356) pot.m0: fw: commit of counter 58: ok (389 ms)
+13:32:59 COM3 rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+13:33:02 COM3 I (2961) pot.m0: fw: running ota_0 (35a7caa-fbd2a5), counter 58, floor 56, ON TRIAL; spare slot ota_1, 2048 KB; reset: software
+13:33:12 COM3 I (13138) pot.m0: fw: trial passed after 100 heartbeats with 1 radio peer(s) - counter 58 CONFIRMED
+13:33:56 COM5 {"t":"tx_dead","node":33120,"failing_ms":60021,"last_ok_ms":141088,"first_err":"0x3067","last_err":"0x3067","refused":1386,"int_free_at_first":155435,"int_free":183227,"action":"restart"}
+13:33:56 COM5 rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+13:33:59 COM5 I (2953) pot.m0: fw: running ota_1 (35a7caa-fbd2a5), counter 58, floor 58, confirmed; spare slot ota_0, 2048 KB; reset: software

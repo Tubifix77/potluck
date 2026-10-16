@@ -1167,6 +1167,20 @@ PC, per resource hidden / visible / controllable). A firmware rollout through th
 about 150-185 s; once the board on the cable did not keep its own image (not reproduced in isolation; the host can now
 keep a console link's log). Not yet: the packaged installer and tray icon, the store.
 
+*Built 2026-10-16 (M0-LOG session 46):* the large setup -- the wizard's Cells step proposes cells from the boards'
+measured links (potluck.survey), the owner ticks the boards on a charger, and the cells go into the cluster file once
+every cell has a foreman; the release image (review item 8) built by `potluck.release --from <cluster file>` from the
+cell that names both built-ins -- on the bench 1,215,488 B with core + sandbox + present + wifi + pocket + the extender
++ passive-sensor, 63,485 of section 6's 65,536 B of static internal RAM (the kill line does not fire) -- carried by the
+package and flashed by the wizard on a PC with no build of its own; `tools/make_release.py`, the GitHub release HACS
+takes its version from (HACS reads releases, not tags; ledger); app panels (review item 11) -- a module descriptor's
+`panel` from a closed vocabulary (`room`, `value`), its words as text only, shown only for exposed resources, "Not
+known now" for a reading that is not GOOD -- with passive-sensor's room card the first (its `015bcdc`); the store
+(review item 7) -- `potluck-app.json` in an app's repository, no certificate and no paths, the key pinned to the
+repository on the first install and certified under the cell's CA (author numbers from 100), a changed key refused,
+the owner binding each input, off until the owner turns it on, on 127.0.0.1 only. Not yet: the curated feed and its
+release key (an owner's key and a public repository), Content-Security-Policy on the dashboard, the blind test.
+
 ## 14. Risk register
 
 | Risk | Likelihood | Impact | Mitigation |

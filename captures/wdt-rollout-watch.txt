@@ -1,0 +1,9 @@
+13:01:49 COM4 I (983618) pot.m0: fw: begin counter 57, 1215376 B: ok
+13:04:03 COM4 I (1117252) pot.m0: fw: commit of counter 57: ok (389 ms)
+13:04:04 COM4 rst:0xc (RTC_SW_CPU_RST),boot:0x28 (SPI_FAST_FLASH_BOOT)
+13:04:07 COM4 I (3053) pot.m0: fw: running ota_1 (27994a5-06a720), counter 57, floor 56, ON TRIAL; spare slot ota_0, 2048 KB; reset: software
+13:04:17 COM4 I (13178) pot.m0: fw: trial passed after 100 heartbeats with 2 radio peer(s) - counter 57 CONFIRMED
+13:04:19 COM5 I (702534) pot.m0: fw: begin counter 57, 1215376 B: ok
+13:05:21 COM5 W (764242) pot.m0: fw: a receive of counter 57 stopped at 423936 B - abandoned
+13:06:07 COM5 {"t":"tx_dead","node":33120,"failing_ms":60014,"last_ok_ms":749277,"first_err":"0x3067","last_err":"0x3067","refused":1317,"int_free_at_first":155491,"int_free":183455,"action":"restart"}
+13:06:07 COM5 rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)

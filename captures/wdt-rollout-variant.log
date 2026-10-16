@@ -1,0 +1,26 @@
+[    0.1 s] note: potluck: uncommitted changes in D:\Projects\potluck are not built (apply builds the commit)
+[    0.1 s] package: modules from app 'passive-sensor' (pot_passive_sensor)
+[    0.2 s] package: guest 'alarm' by 7, signature verified under the cluster CA
+[    0.2 s] package: 'lab', 12 actor(s) (4 portable), image 1808 B, for 3 board(s)
+[    5.4 s] firmware: building 27994a5-06a720 (1 app component dir(s), extender) -- a few minutes the first time
+[  525.6 s] firmware: built in 520 s
+[  525.6 s] module sandbox: 82,083 B flash, 2,673 B internal RAM, 0 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  525.6 s] module wifi: 3,129 B flash, 139 B internal RAM, 1,472 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  525.6 s] module present: 19,933 B flash, 0 B internal RAM, 25,144 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  525.6 s] module pocket: 3,277 B flash, 105 B internal RAM, 19,008 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  525.6 s] module extender: 2,816 B flash, 90 B internal RAM, 0 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  525.6 s] module app component pot_passive_sensor: 13,044 B flash, 113 B internal RAM, 29,806 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[  525.6 s] Potluck core: 63,489 B of 65,536 B static internal RAM (2,047 B left)
+[  525.6 s] note: AMPDU transmit aggregation is off on every board, because this cell presents (a board presenting over its own station with it on wedges its radio; M0-LOG session 42) -- the extender's hotspot carries less as a result
+[  526.0 s] inventory: 0x6300  fw 27994a5-9bb9fb (counter 56, floor 56, confirmed)  package 90 (floor 90)  cluster 'lab'  up 685 s  live 1  ck writes 22  roles extender-build,sandbox,reconciler,relay,enrolled,cabled  actors rf_link,rf_indicator,svc_client,position,rf_fusion,ticker (2/4 portable here)  modules sandbox:idle (nothing here uses it),extender:idle (no credentials),present:idle (no network),pocket:active,wifi:idle (no credentials)
+[  526.0 s] inventory: 0x7368  fw 27994a5-9bb9fb (counter 56, floor 56, confirmed)  package 90 (floor 90)  cluster 'lab'  up 982 s  live 1  ck writes 32  roles extender-build,extender,sandbox,reconciler,enrolled  actors rf_link,rf_indicator,die_temp,led_switch,position,guest (1/4 portable here)  modules sandbox:active,extender:active,present:idle (standby),pocket:idle (another module is the connection),wifi:idle (another module is the connection)
+[  526.0 s] inventory: 0x8160  fw 27994a5-9bb9fb (counter 56, floor 56, confirmed)  package 90 (floor 90)  cluster 'lab'  up 550 s  live 0  ck writes 18  roles extender-build,sandbox,reconciler,enrolled  actors rf_link,rf_indicator,position,present (1/4 portable here)  modules sandbox:idle (nothing here uses it),extender:idle (no credentials),present:active,pocket:idle (no credentials),wifi:active
+[  526.0 s] plan: firmware 27994a5-06a720 to 0x6300, 0x7368, 0x8160
+[  526.0 s] plan: package 'lab' replaces what runs now (die_temp, guest, led_switch, position, present, rf_fusion, rf_indicator, rf_link, svc_client, ticker) with rf_link (ext:passive_sensor/rf_link), rf_fusion_room (ext:passive_sensor/rf_fusion), rf_indicator (ext:passive_sensor/rf_indicator), die_b (builtin:die_temp), alarm (guest:overheat_alarm), led_b (builtin:led_switch), ticker (builtin:ticker), clock (builtin:svc_client), present (builtin:present), pos_6300 (builtin:position), pos_7368 (builtin:position), pos_8160 (builtin:position)
+[  526.0 s] plan: namespace 0x6300: 45 of 128 entries (7 built-in, 11 the package's, 15 its own, 12 replicas it reads)
+[  526.0 s] plan: namespace 0x7368: 34 of 128 entries (7 built-in, 11 the package's, 15 its own, 1 replicas it reads)
+[  526.0 s] plan: namespace 0x8160: 34 of 128 entries (7 built-in, 11 the package's, 15 its own, 1 replicas it reads)
+[  526.1 s] lease: the cell's deploy lease is ours (board 0x6300 holds it)
+[  526.1 s] firmware: 27994a5-06a720 to 0x7368, 0x8160, 0x6300 at counter 57
+[  676.3 s] firmware: 0x7368 confirmed 27994a5-06a720 in 150 s
+FAILED: firmware to 0x8160: unreachable -- it keeps the image it runs; stopped before the package
