@@ -3,6 +3,11 @@
 Potluck's releases. The full record -- every milestone with its measurements and caveats -- is
 [STATUS.md](STATUS.md); the design and its decisions are [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Unreleased
+
+- The hub's MQTT problem sensors in Home Assistant ("`<app>` problem") no longer switch on for apps the hub has not
+  seen yet while it starts, matching the dashboard and the integration.
+
 ## 1.0.1 -- 2026-10-16
 
 Fixes found running a three-board cell every day, with the dashboard, Home Assistant and the tray.

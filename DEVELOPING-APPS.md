@@ -12,7 +12,7 @@ person in a room from how their body weakens the boards' own radio links, and a 
 shares the radio with Potluck. Both live in repositories of their own, the way an app should (they are not
 public; they ship compiled into the release image).
 
-This manual is for **Potluck 1.0.0**, built with **ESP-IDF v6.0.2** and run with ESP-IDF's **Python 3.14**; the PC
+This manual is for **Potluck 1.0.1**, built with **ESP-IDF v6.0.2** and run with ESP-IDF's **Python 3.14**; the PC
 side is tested on Windows 11 only (Linux is untested). One command takes a cell from a cluster file to running
 and verified: `python -m potluck.apply <cluster.json>` builds the firmware, rolls it out where it differs, signs
 and deploys the package and checks every output -- the counters, the order and the variants are the tool's, not

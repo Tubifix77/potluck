@@ -2,7 +2,7 @@
 
 Potluck is a distributed runtime that makes a cluster of small machines behave like one system: ESP32-S3 boards (and,
 optionally, a PC) share their sensors, compute and radios as one "cell". Think "Kubernetes for CPU, RAM *and* attached
-hardware". Version 1.0.0, the S3 Edition: the tested hardware is the ESP32-S3 with 16 MB flash and 8 MB PSRAM; the host
+hardware". Version 1.0.1, the S3 Edition: the tested hardware is the ESP32-S3 with 16 MB flash and 8 MB PSRAM; the host
 tools are tested on Windows 11. Licence: Apache-2.0 (NOTICE lists third-party code).
 
 ## Where things are

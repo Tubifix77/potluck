@@ -203,7 +203,9 @@ Check too that your broker accepts the boards' connections: the login in step 6,
    `https://github.com/Tubifix77/potluck` as type **Integration**. Close the dialog, type `Potluck` in the HACS page's
    search box, select **Potluck**, then **Download** (bottom right) and **Download** again in the dialog. Restart
    Home Assistant (Settings > System > the three dots > Restart). Just after HACS itself is set up, its list stays
-   empty for a few minutes while it loads; search again after that.
+   empty for a few minutes while it loads; search again after that. HACS offers each new release as an update; an
+   installation made before Potluck had releases shows a 7-character commit as its version instead -- on the
+   integration's HACS page, the three dots > **Update information**, or **Redownload** and pick the newest `v1.x.y`.
 4. **Accept the discovery**: Settings > Devices & services shows **Potluck** under **Discovered**, named after the
    cell (`lab (ef76cc2e)`: its name and its cell id). Select **Add**, then **Submit**. Home Assistant asks the hub to
    be paired and waits up to 5 minutes.
@@ -226,7 +228,9 @@ entities, which write over the broker (step A.3 says who can).
 **Afterwards:** each board device also shows the hub's diagnostics (state, internal RAM free, uptime, signal, worst
 link delivery) and a **Firmware** update entity that shows the board's version against the newest in the cell and
 installs nothing; the cell's device shows apps working and a problem sensor per app ("`<app>` problem"). These come
-from the hub over MQTT, with or without the integration. With the PC off, these and the Potluck hub device go
+from the hub over MQTT, with or without the integration. For up to 30 s after the hub starts (or restarts), while it
+reads the cell for the first time, no app counts as a problem in either: an app not seen working yet is starting, not
+down (HUB-API.md, `hub.starting`). With the PC off, these and the Potluck hub device go
 unavailable, and the boards' own entities stay live through path A. To take Home Assistant's access back: `python -m
 potluck.hubauth revoke "Home Assistant"`.
 

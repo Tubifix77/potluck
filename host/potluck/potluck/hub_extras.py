@@ -155,10 +155,11 @@ class Extras:
                 out.append((f"{base}/{n}/firmware", {"installed_version": installed, "latest_version": latest or installed,
                                                      "title": "Potluck firmware"}))
         apps = snap.get("apps", [])
-        not_working = [a["name"] for a in apps if not a.get("working")]
+        # working null: the hub is starting and has not seen the app working yet (HUB-API.md) -- not a problem
+        not_working = [a["name"] for a in apps if a.get("working") is False]
         out.append((f"{base}/cell/state", {
             "apps_working": sum(1 for a in apps if a.get("working")),
-            "problems": {a["name"].replace("'", ""): not a.get("working") for a in apps},
+            "problems": {a["name"].replace("'", ""): a.get("working") is False for a in apps},
             "attrs": {"apps_total": len(apps), "not_working": not_working,
                       "boards_alive": sum(1 for b in boards if b.get("state") == "alive"), "boards_total": len(boards)}}))
         return out

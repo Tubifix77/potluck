@@ -191,6 +191,15 @@ class Entities(unittest.TestCase):
         cell = st["potluck/ef76cc2e/hub/cell/state"]
         self.assertEqual((cell["apps_working"], cell["problems"]["passive-sensor"]), (1, True))
 
+    def test_an_app_not_yet_seen_while_the_hub_starts_is_no_problem_in_home_assistant(self) -> None:
+        import copy
+        snap = copy.deepcopy(self.SNAP)
+        for a in snap["apps"]:
+            a["working"] = None  # hub.starting: not seen working yet
+        cell = dict(hx.Extras(self.FakeModel()).states(snap))["potluck/ef76cc2e/hub/cell/state"]
+        self.assertFalse(any(cell["problems"].values()))
+        self.assertEqual((cell["apps_working"], cell["attrs"]["not_working"]), (0, []))
+
 class Setup(Pair):
     """M20's setup wizard on the hub: owner actions on the PC's own address only."""
 

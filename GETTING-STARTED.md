@@ -4,7 +4,7 @@ From a handful of ESP32-S3 boards on your desk to a cluster that reads one board
 work on whichever board is alive, and survives you pulling a board's plug -- in about an hour, most of it
 installing tools. Then [DEVELOPING-APPS.md](DEVELOPING-APPS.md) takes you on to your own apps.
 
-This guide is for **Potluck 1.0.0**. Questions and bugs: [the issue tracker](https://github.com/Tubifix77/potluck/issues).
+This guide is for **Potluck 1.0.1**. Questions and bugs: [the issue tracker](https://github.com/Tubifix77/potluck/issues).
 
 ## Why you would use it
 
@@ -80,7 +80,7 @@ reading below.
 ## 1. Get Potluck
 
 ```
-git clone --branch v1.0.0 https://github.com/Tubifix77/potluck.git
+git clone --branch v1.0.1 https://github.com/Tubifix77/potluck.git
 cd potluck
 pwsh tools\run_all_tests.ps1
 ```
@@ -267,6 +267,9 @@ python -m potluck.hub --cluster <path>\my-cell.json
 then open http://127.0.0.1:8470/. It takes the port from the cluster file (`--port` overrides it) and runs until you
 stop it (Ctrl+C). While it runs, `potluck.ctl` and `apply` given the same port go through it without being told;
 one hub runs per PC and per cell, and a second is refused. The packaged install's tray icon starts one for you.
+The dashboard says **Starting up**, in grey, until the hub has heard every board and read each value (at most 30 s);
+a hub started again right after it was ended in Task Manager first waits up to a minute for the cell to release the
+old one, and the page does not load meanwhile.
 
 ## Reading a board's console
 
