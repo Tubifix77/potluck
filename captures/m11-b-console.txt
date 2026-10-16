@@ -1,0 +1,12 @@
+12:14:06 COM4 I (61514) pot.m0: fw: begin counter 55, 1214496 B: ok
+12:16:20 COM4 I (194603) pot.m0: fw: commit of counter 55: ok (392 ms)
+12:16:21 COM4 rst:0xc (RTC_SW_CPU_RST),boot:0x28 (SPI_FAST_FLASH_BOOT)
+12:16:22 COM4 I (1193) cpu_start: Pro cpu start user code
+12:16:24 COM4 I (3021) pot.m0: fw: running ota_1 (3b130f5-d9196c), counter 55, floor 54, ON TRIAL; spare slot ota_0, 2048 KB
+Traceback (most recent call last):
+  File "C:\Users\tuebo\AppData\Local\Temp\claude\D--Projects-potluck\1b44f635-1a76-4eca-8daf-398cd1746001\scratchpad\safe_multi.py", line 23, in <module>
+    st[1] += st[0].read(4096)
+             ~~~~~~~~~~^^^^^^
+  File "C:\Users\tuebo\.espressif\python_env\idf6.0_py3.14_env\Lib\site-packages\serial\serialwin32.py", line 275, in read
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (PermissionError(13, 'Adgang nægtet.', None, 5))
