@@ -1589,6 +1589,49 @@ def tree_expectations(c: Cluster, pkg: Package, boards: list[int], reads: list[s
     return per, here, kept
 
 
+def cabled_reads(c: Cluster, pkg: Package, cabled: int, reads: list[str]) -> list[str]:
+    """M19: the reads the verify can make through the cabled board in a tree -- a board's output when the board shares a
+    cell with it, a cell's summary when it keeps that cell's foreman role (its own cell's; a sibling's when it may hold
+    its own cell's role), anything else as before."""
+    import re
+
+    from . import deploy as dp
+    _, _, count, _, _, _, body_len = struct.unpack_from("<IBBHI8sI", pkg.image)
+    body = pkg.image[dp.IMAGE_HEADER_LEN:dp.IMAGE_HEADER_LEN + body_len]
+    scope = dp.scope_of(body, count)
+    if scope is None:
+        return reads
+    cells_n = dp.board_cells(body, count)
+    decls = dp._decls(body, count)
+    mine = set(cells_n.get(cabled, ()))
+    for (node, _t, cfg), (cell, also) in zip(decls, scope):
+        if node == 0xFFFE and also and cell in mine and cabled in dp._eligible_ids(cfg):
+            mine.add(also)
+    slugs = set()
+    numbers = cell_numbers(c)
+    for (node, typ, cfg), (cell, also) in zip(decls, scope):
+        if typ == dp.ACTOR_FOREMAN and (cell in mine or (also and also in mine)):
+            slugs |= {room_slug(name) for name, num in numbers.items() if num == cell}
+    by_name = {a.name: sc for a, sc in zip(pkg.manifest.actors, scope)}  # one declaration per actor, in order
+    out = []
+    for p in reads:
+        am = re.search(r"/act/([^/]+)/", p)
+        if am and am.group(1) in by_name:
+            cell, also = by_name[am.group(1)]
+            if cell and cell not in mine and not (also and also in mine):
+                continue
+        cm = re.search(r"/cell-([a-z0-9_]+)/", p)
+        nm = re.search(r"/node-([0-9a-f]{4})/", p)
+        if cm and cm.group(1) not in slugs:
+            continue
+        if nm:
+            n = int(nm.group(1), 16)
+            if n in cells_n and n != cabled and not (set(cells_n[n]) & set(cells_n.get(cabled, ()))):
+                continue
+        out.append(p)
+    return out
+
+
 def pc_runnable(m) -> int:
     """How many of the package's portable actors a placement host may hold -- while the PC is in the cell they run
     there, not on a board (M14: the ticker drawn to the PC, the presenting role with present.hub)."""
@@ -1687,6 +1730,12 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
         except ApplyError as exc:
             print(f"REFUSED, nothing changed: {exc}")
             return 2
+        if c.cells and pkg is not None:
+            before = len(reads)
+            reads = cabled_reads(c, pkg, cabled, reads)  # M19: what the board on the cable can resolve
+            if len(reads) < before:
+                log(f"plan: verify reads {len(reads)} paths through 0x{cabled:04x} -- the {before - len(reads)} others "
+                    f"belong to cells it is not in")
         times["inventory"] = time.monotonic() - t0
         if fwb is not None:
             need = [n for n in boards if inv[n] is None or inv[n].elf_sha != fwb.elf_sha[:8]]
