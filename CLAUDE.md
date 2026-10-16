@@ -111,8 +111,8 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > resident (`--listen 0.0.0.0:8443`, log `captures/hub-5.log`) with the 127.0.0.1 hardening (POSTs need X-Potluck-Request, Host must
 > be local), paired with Home Assistant. The homelab: NTP on; a tray app (`D:\Projects\ha-tray`) turns Home Assistant on/off --
 > check it is on before HA work, Mosquitto always runs. **The keys in `keys\` are still plaintext:** the vault is built but not used
-> until the wizard can unlock it -- the owner seals them himself then. Release-day items for the owner: passive-sensor's licence,
-> esptool's GPL beside the Apache hub.
+> until the wizard can unlock it -- the owner seals them himself then. Release-day item: esptool's GPL beside the Apache hub
+> (passive-sensor is Apache-2.0 since 2026-10-16, `850fe05`).
 >
 > ## HANDOVER, 2026-10-14 (evening): **M16-M18 shown in the owner's Home Assistant; the LED has the owner's colours** (M0-LOG session 44, end).
 >
