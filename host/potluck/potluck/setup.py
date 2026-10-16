@@ -19,7 +19,6 @@ a short log that never holds a password or a key.
 
 from __future__ import annotations
 
-import contextlib
 import io
 import json
 import os
@@ -62,18 +61,34 @@ def list_ports(exclude: tuple[str, ...] = (), lister: Callable | None = None) ->
     return sorted(out, key=lambda d: d["port"])
 
 
+def esptool_command() -> list[str]:
+    """esptool as a program of its own, never imported: it is GPLv2+ and the hub Apache-2.0, so they meet only on a
+    command line (the release-day item, 2026-10-16). Packaged, it is esptool/esptool.exe beside potluck.exe with its
+    licence and where its source is; from source, `python -m esptool`; POTLUCK_ESPTOOL names another."""
+    env = os.environ.get("POTLUCK_ESPTOOL")
+    if env:
+        return [env]
+    if getattr(sys, "frozen", False):
+        exe = Path(sys.executable).parent / "esptool" / ("esptool.exe" if os.name == "nt" else "esptool")
+        return [str(exe)]
+    return [sys.executable, "-m", "esptool"]
+
+
+def _no_window() -> int:
+    return getattr(__import__("subprocess"), "CREATE_NO_WINDOW", 0)
+
+
 def _esptool(args: list[str]) -> str:
-    import esptool
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
-        try:
-            esptool.main(args)
-        except SystemExit as exc:  # esptool exits on a failed connection
-            if exc.code not in (0, None):
-                raise SetupError(_last_line(buf.getvalue()) or "esptool failed") from None
-        except Exception as exc:  # noqa: BLE001 -- esptool raises its own FatalError and serial errors
-            raise SetupError(f"{type(exc).__name__}: {exc}") from None
-    return buf.getvalue()
+    import subprocess
+    try:
+        r = subprocess.run(esptool_command() + args, capture_output=True, text=True, errors="replace", timeout=120,
+                           creationflags=_no_window())
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise SetupError(f"esptool did not run: {exc}") from None
+    out = r.stdout + r.stderr
+    if r.returncode != 0:  # esptool exits non-zero on a failed connection
+        raise SetupError(_last_line(out) or "esptool failed")
+    return out
 
 
 def _last_line(text: str) -> str:
@@ -206,14 +221,22 @@ def flash(port: str, parts: list[tuple[str, Path]], on_pct: Callable[[int], None
     if runner is not None:
         runner(args, on_pct)
         return
-    import esptool
+    import subprocess
     stream = _Progress(on_pct)
-    with contextlib.redirect_stdout(stream), contextlib.redirect_stderr(stream):
-        try:
-            esptool.main(args)
-        except SystemExit as exc:
-            if exc.code not in (0, None):
-                raise SetupError(_last_line("".join(stream.text)) or "flashing failed") from None
+    try:
+        proc = subprocess.Popen(esptool_command() + args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                creationflags=_no_window())
+    except OSError as exc:
+        raise SetupError(f"esptool did not run: {exc}") from None
+    assert proc.stdout is not None
+    while True:  # its progress is "(NN %)" rewritten with carriage returns: read what comes, as it comes
+        chunk = proc.stdout.read1(256) if hasattr(proc.stdout, "read1") else proc.stdout.read(256)
+        if not chunk:
+            break
+        stream.write(chunk.decode("utf-8", "replace"))
+    proc.stdout.close()
+    if proc.wait() != 0:
+        raise SetupError(_last_line("".join(stream.text).replace("\r", "\n")) or "flashing failed")
     on_pct(100)
 
 

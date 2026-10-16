@@ -19,6 +19,18 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
     & dist\Potluck\potluck.exe setup ports | Out-Null  # the frozen program starts and finds its modules
     if ($LASTEXITCODE -ne 0) { throw "the built program does not start" }
+    # esptool, GPLv2+, as a program of its own beside Potluck's: its licence and where its source is go with it.
+    $esp = New-Item -ItemType Directory -Force dist\Potluck\esptool
+    Move-Item -Force dist\esptool.exe (Join-Path $esp "esptool.exe")
+    $meta = & $py -c "import importlib.metadata as m; d = m.distribution('esptool'); print(d.version); print(d.locate_file(''))"
+    $ver, $site = $meta[0], $meta[1]
+    Copy-Item (Join-Path $site "esptool-$ver.dist-info\licenses\LICENSE") (Join-Path $esp "LICENSE")
+    Set-Content -Encoding ascii (Join-Path $esp "SOURCE.txt") @(
+        "esptool $ver, Espressif's flasher, GPLv2+ (LICENSE beside this file).",
+        "Source: https://github.com/espressif/esptool/tree/v$ver",
+        "Built unmodified into this one-file program by PyInstaller; Potluck runs it as a separate program.")
+    & (Join-Path $esp "esptool.exe") version | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "esptool.exe does not start" }
     if (-not $NoFirmware) {
         $env:PYTHONPATH = Join-Path $root "host\potluck"
         if ($FromCluster) { & $py -m potluck.release dist\Potluck\firmware --from (Resolve-Path $FromCluster) }

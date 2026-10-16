@@ -92,6 +92,30 @@ class Flashing(unittest.TestCase):
             with self.assertRaises(st.SetupError):
                 st.flash_parts(Path(d) / "nowhere")
 
+    def test_esptool_runs_as_a_program_of_its_own_and_its_progress_and_failures_come_through(self):
+        # GPLv2+ beside the Apache-2.0 hub: never imported, only run (the release-day item, 2026-10-16)
+        import subprocess  # noqa: F401 -- what flash() uses
+        self.assertNotIn("esptool", sys.modules.get("potluck.setup").__dict__)
+        with tempfile.TemporaryDirectory() as d:
+            fake = Path(d) / "fake_esptool.py"
+            fake.write_text("import sys\nsys.stdout.write('Writing (10 %)\\r(55 %)\\r(100 %)\\n')\n"
+                            "sys.exit(0 if 'write-flash' in sys.argv else 2)\n")
+            saved = st.esptool_command
+            st.esptool_command = lambda: [sys.executable, str(fake)]
+            try:
+                seen = []
+                st.flash("COM9", [("0x0", Path(d) / "x.bin")], seen.append)
+                self.assertEqual(seen[:3], [10, 55, 100])
+                with self.assertRaises(st.SetupError):
+                    st._esptool(["flash-id"])  # exits 2: a failure, with esptool's last line
+            finally:
+                st.esptool_command = saved
+        os.environ["POTLUCK_ESPTOOL"] = "C:/tools/esptool.exe"
+        try:
+            self.assertEqual(st.esptool_command(), ["C:/tools/esptool.exe"])
+        finally:
+            del os.environ["POTLUCK_ESPTOOL"]
+
     def test_a_pc_with_no_build_flashes_the_release_the_package_carries(self):
         def build(folder):
             folder.mkdir(parents=True)
