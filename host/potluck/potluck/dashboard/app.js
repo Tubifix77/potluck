@@ -222,7 +222,8 @@
       notw.length ? "not: " + notw.join(", ") : startw.length ? "starting: " + startw.join(", ") : "all working");
     var isub = disc.length ? disc.map(function (i) { return esc(i.name) + " down"; }).join(", ") :
       roles.filter(function (i) { return i.state !== "connected"; }).map(function (i) { return esc(i.name) + " " + esc(i.state); }).join(", ");
-    setTile("sum-integrations", disc.length ? "bad" : "ok", conn + "<small>/" + inUse.length + " connected</small>", isub || "all connected");
+    setTile("sum-integrations", disc.length ? "bad" : hub.starting && !inUse.length ? "" : "ok", conn + "<small>/" + inUse.length + " connected</small>",
+      isub || (hub.starting && !inUse.length ? "not heard yet" : "all connected"));
     if (d) {
       var dcls = ["reverted", "refused", "failed"].indexOf(d.result) >= 0 ? "bad" : d.result === "running" ? "warn" : "ok";
       setTile("sum-deploy", dcls, esc(d.result), esc(d.kind) + " " + esc(d.counter) + ", " + ago(d.at, "", " ago"));

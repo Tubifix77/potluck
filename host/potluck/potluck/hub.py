@@ -398,7 +398,9 @@ class Model:
         self.lock = threading.Lock()
         self.started = time.monotonic()
         self.first_pull: float | None = None  # when the hub first looked at the cell: where a quiet start is counted
-        self.boards: dict[int, dict] = {}
+        # every board the cell file names, from the start: "0 of 3 heard", not "0 of 0", before the first pull
+        self.boards: dict[int, dict] = {n: {"state": "unknown", "since_at": _hub_ms(), "last_ok": None}
+                                        for n, _ in (cluster.boards if cluster is not None else [])}
         self.resources: dict[str, dict] = {}
         self.events: deque[dict] = deque(maxlen=5000)
         self.seq = 0
