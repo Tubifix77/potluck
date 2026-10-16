@@ -251,6 +251,14 @@ actor's eligible list holds at most 8 boards: in a bigger room `apply` keeps the
 with every board alive (stable, from the actor's output path) -- the actor runs only on those, though it may read
 every board in the room.
 
+A module may ask the dashboard for a **panel** -- a card on its first screen -- from a closed vocabulary, its words as
+text only (the dashboard never runs an app's code or markup):
+`"panel": {"kind": "room", "output": "act/{actor}/out", "label": "Presence", "on": "Someone is here", "off": "Empty"}`.
+`"room"` is for a `per_room` module: one card per room, shaded and saying `on` while the output is true or non-zero,
+`off` otherwise, and "Not known now" while the reading is not GOOD. `"value"` shows the output's value under `label`.
+`output` is one of the module's own `act/{actor}/` outputs; `label`, `on` and `off` are at most 40 printable characters.
+A card appears only for a resource the cluster file's `outside` makes visible (Library tab: Visible or Controllable).
+
 An actor that knows where something is declares seven outputs under one prefix, and the dashboard's floor plan
 draws it: `act/<name>/state` (u32: 0 nobody, 1 present but not placed, 2 placed), `x`, `y` (f32, Unit::Metre,
 plan coordinates as above), `a`, `b` (f32, Unit::Metre, the semi-axes of the zone), `theta` (f32, Unit::Radian,

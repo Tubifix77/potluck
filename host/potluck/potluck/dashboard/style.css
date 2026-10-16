@@ -194,6 +194,13 @@ table.rt { width: 100%; border-collapse: collapse; font-size: 0.92em; }
 .banner.ok { background: var(--ok-bg); color: var(--ok); }
 .banner.warn { background: var(--warn-bg); color: var(--warn); }
 .nbs { display: grid; gap: 8px; margin: 10px 0; }
+/* M20's app panels: a room is shaded when its app says so; the words always say it too */
+.panels { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 8px; }
+.panel { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--panel); }
+.panel.on { background: var(--role-bg); border-color: var(--role); }
+.panel-k { font-weight: 600; }
+.panel-v { font-size: 1.15em; margin: 2px 0; }
+.panel-s { font-size: 0.85em; opacity: 0.75; }
 /* the Cells step (M19): which boards are on a charger, a compact tick list grouped by room */
 .checks { margin: 6px 0 12px; }
 .checks h3 { font-size: 0.95em; margin: 10px 0 4px; }

@@ -646,6 +646,7 @@ class Model:
             events_tail = list(self.events)[-1:]
             deploys = [{k: v for k, v in d.items() if not k.startswith("_")} for d in self.deploys]
         apps = self._apps_json(boards, resources)
+        panels = self._panels_json(resources)
         return {
             "api": API_VERSION,
             "at": _hub_ms(),
@@ -661,6 +662,7 @@ class Model:
             "cell": self._cell_json(boards),
             "boards": boards,
             "apps": apps,
+            "panels": panels,
             "resources": resources,
             "integrations": self._integrations_json(boards, resources) + self.reports.snapshot(),
             "deploys": deploys,
@@ -764,6 +766,34 @@ class Model:
         return {"system": self.cluster.system if self.cluster is not None else "lab", "cell_id": self.cell_id,
                 "channel": None, "package": pk, "firmware": fw, "other_cell_frames": None, "presenter": presenter,
                 "plan": getattr(self.cluster, "plan", None) if self.cluster is not None else None}
+
+    def _panels_json(self, resources: list[dict]) -> list[dict]:
+        """M20's app panels: what each app's descriptor asks the dashboard to show (modules.PANEL_KINDS), one entry per
+        actor -- per room for a per_room module -- and only for a resource the package marks exposed (review item 11)."""
+        if self.package is None:
+            return []
+        from . import modules as mods
+        from .apply import room_slug
+        res = {r["path"]: r for r in resources}
+        rooms = sorted(set(getattr(self.cluster, "rooms", {}).values())) if self.cluster is not None else []
+        m = self.package.manifest
+        out = []
+        for a in m.actors:
+            spec = mods.get(a.module)
+            if spec is None or not spec.panel:
+                continue
+            p = dict(spec.panel)
+            path = f"potluck://{m.system}/" + p["output"].replace("{actor}", a.name)
+            r = res.get(path)
+            if r is None or not r.get("exposed"):
+                continue
+            room = next((x for x in rooms if a.name.endswith("_" + room_slug(x))), None) if spec.per_room else None
+            v = r.get("value")
+            on = (bool(v) if isinstance(v, (bool, int, float)) else None) if r.get("quality") == "GOOD" else None
+            out.append({"kind": p["kind"], "app": a.name, "room": room, "resource": path, "label": p.get("label", ""),
+                        "on_text": p.get("on", ""), "off_text": p.get("off", ""), "value": v,
+                        "quality": r.get("quality"), "on": on})
+        return out
 
     def _apps_json(self, boards: list[dict], resources: list[dict]) -> list[dict]:
         if self.package is None:

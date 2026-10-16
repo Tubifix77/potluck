@@ -68,6 +68,25 @@ class Descriptor(unittest.TestCase):
         self.assertIn("pot_app_demo", str(cm.exception))
         self.assertIn("intruder", str(cm.exception))
 
+    def test_a_panel_comes_from_a_closed_vocabulary_and_says_its_words_as_text(self) -> None:
+        def desc(panel, per_room=True):
+            return {"component": "s", "types": [128, 143], "modules": [{
+                "module": "ext:s/fusion", "type": 130, "placement": "portable", "per_room": per_room,
+                "outputs": ["act/{actor}/out", "act/{actor}/confidence"], "panel": panel}]}
+        ok = {"kind": "room", "output": "act/{actor}/out", "label": "Presence", "on": "Someone is here", "off": "Empty"}
+        spec = mods.parse_descriptor(desc(ok))[0]
+        self.assertEqual(dict(spec.panel)["on"], "Someone is here")
+        for bad, per_room in (({**ok, "kind": "chart"}, True),               # not in the vocabulary
+                              (ok, False),                                   # a room panel for a module that is not per room
+                              ({**ok, "output": "act/{actor}/elsewhere"}, True),  # not one of its outputs
+                              ({**ok, "on": "<b>x</b>" + "y" * 40}, True),     # too long
+                              ({**ok, "off": "tab\there"}, True),             # not printable
+                              ({**ok, "script": "x"}, True)):                 # a key the vocabulary does not have
+            with self.assertRaises(mods.ModuleError):
+                mods.parse_descriptor(desc(bad, per_room))
+        self.assertEqual(mods.parse_descriptor({**desc(ok), "modules": [{**desc(ok)["modules"][0]}]})[0].panel,
+                         spec.panel)
+
 
 class Compile(unittest.TestCase):
     def setUp(self) -> None:

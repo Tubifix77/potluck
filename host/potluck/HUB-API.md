@@ -48,6 +48,10 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
      "nodes": ["6300", "7368", "8160"], "running_on": ["8160"], "working": true, "detail": "",
      "outputs": ["potluck://lab/act/rf_fusion/out"]}
   ],
+  "panels": [
+    {"kind": "room", "app": "rf_fusion_kitchen", "room": "Kitchen", "resource": "potluck://lab/act/rf_fusion_kitchen/out",
+     "label": "Presence", "on_text": "Someone is here", "off_text": "Empty", "value": true, "quality": "GOOD", "on": true}
+  ],
   "resources": [
     {"path": "potluck://lab/node-7368/hw/die_temp", "name": "node-7368/hw/die_temp", "owner": "7368",
      "value": 51.5, "unit": "C", "quality": "GOOD", "age_ms": 2685, "latency_class": 4,
@@ -88,6 +92,9 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
   `hub.telemetry` counts `{pulls, replies, failures, events}`.
 - A board is `asleep`, not `dead`, when it stops answering after its telemetry said `long_window`.
 - `module.state`: `active` | `idle` | `failed` (NODE_STATUS version 2), or absent from the list when the image does not carry it.
+- `panels` (M20): the cards apps ask for in their module descriptors (DEVELOPING-APPS.md, "panel"), one per actor -- per
+  room for a per_room module -- and only for exposed resources. `kind`: `room` | `value`; `on`: true, false, or `null`
+  while `quality` is not GOOD. Their words are text: show them as text, never as markup.
 - `app.working`: as `potluck apply` verifies -- running where the package says (portable: exactly once in the cell),
   and every output GOOD. `detail` says why not.
 - `resource.value`: a number, a bool, or `null` when it has none to show (strict and not GOOD, or no value at all).

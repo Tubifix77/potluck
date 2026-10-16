@@ -373,5 +373,33 @@ class SecondHub(unittest.TestCase):
             opened.assert_not_called()
 
 
+class Panels(unittest.TestCase):
+    """M20's app panels: one per room for a per_room module, only for exposed resources, and a reading that is not
+    GOOD is neither on nor off."""
+
+    def test_a_room_panel_per_room_from_exposed_resources_only(self):
+        from types import SimpleNamespace as NS
+        from potluck import modules as mods
+        mods.clear()
+        try:
+            mods.register(mods.parse_descriptor({"component": "s", "types": [128, 143], "modules": [{
+                "module": "ext:s/fusion", "type": 130, "placement": "portable", "per_room": True,
+                "outputs": ["act/{actor}/out"],
+                "panel": {"kind": "room", "output": "act/{actor}/out", "on": "Someone is here", "off": "Empty"}}]}))
+            actors = [NS(name=n, module="ext:s/fusion") for n in ("fusion_kitchen", "fusion_hall", "fusion_garden")]
+            actors.append(NS(name="tick", module="builtin:ticker"))
+            me = NS(package=NS(manifest=NS(system="home", actors=actors)),
+                    cluster=NS(rooms={1: "Kitchen", 2: "Hall", 3: "Garden"}))
+            res = [{"path": "potluck://home/act/fusion_kitchen/out", "value": True, "quality": "GOOD", "exposed": True},
+                   {"path": "potluck://home/act/fusion_hall/out", "value": False, "quality": "STALE", "exposed": True},
+                   {"path": "potluck://home/act/fusion_garden/out", "value": True, "quality": "GOOD", "exposed": False}]
+            p = hb.Model._panels_json(me, res)
+            self.assertEqual([(x["room"], x["on"], x["quality"]) for x in p],
+                             [("Kitchen", True, "GOOD"), ("Hall", None, "STALE")])  # the garden is not exposed
+            self.assertEqual((p[0]["on_text"], p[0]["off_text"]), ("Someone is here", "Empty"))
+        finally:
+            mods.clear()
+
+
 if __name__ == "__main__":
     unittest.main()

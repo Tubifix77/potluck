@@ -148,6 +148,23 @@
     el.querySelector(".tile-v").innerHTML = value;
     el.querySelector(".tile-s").innerHTML = sub;
   }
+  // M20's app panels (HUB-API.md, "panels"): words from the app's descriptor, always as text -- the shading only
+  // repeats what the words say. A reading that is not GOOD says so instead of guessing.
+  function renderPanels(m) {
+    var P = m.panels || [];
+    $("rooms").hidden = !P.length;
+    $("rooms-cards").innerHTML = P.map(function (p) {
+      var title = p.kind === "room" ? (p.room || "The whole cell") : (p.label || p.app);
+      var state, cls = "";
+      if (p.quality !== "GOOD") state = "Not known now (" + p.quality + ")";
+      else if (p.kind === "room") { state = p.on ? (p.on_text || "Yes") : (p.off_text || "No"); cls = p.on ? " on" : ""; }
+      else state = String(p.value);
+      var sub = p.kind === "room" && p.label ? p.label : p.app;
+      return '<div class="panel' + cls + '"><div class="panel-k">' + esc(title) + '</div><div class="panel-v">' +
+        esc(state) + '</div><div class="panel-s">' + esc(sub) + "</div></div>";
+    }).join("");
+  }
+
   function renderStatus(m) {
     var P = problems(m), bad = P.filter(function (p) { return p.sev === "bad"; }).length, warn = P.length - bad;
     var boards = m.boards || [], apps = m.apps || [], ints = m.integrations || [];
@@ -519,7 +536,7 @@
     document.title = "Potluck " + (c.system || "cell");
     var first = !S.rendered;
     S.rendered = true;
-    renderReplay(m); renderStatus(m); renderSignals(m); renderUse(m); renderTab(); tick();
+    renderReplay(m); renderStatus(m); renderPanels(m); renderSignals(m); renderUse(m); renderTab(); tick();
     if (first && S.focus) route(true);  // a link with a focus, opened fresh: scroll to it once the model is here
   }
   function onEvents(obj) {

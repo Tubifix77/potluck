@@ -82,6 +82,10 @@ class ModuleSpec:
     #: M20: "per_room": true -- a portable module `apply` runs once per room of the cluster file, as <actor>_<room>
     #: placed among that room's boards; a cluster file with no rooms keeps the one actor.
     per_room: bool = False
+    #: M20 (review item 11): "panel" -- how the dashboard shows the module, from a closed vocabulary (PANEL_KINDS),
+    #: its words as text only: {"kind": "room", "output": "act/{actor}/out", "label": ..., "on": ..., "off": ...}.
+    #: Kept as sorted (key, value) pairs so the spec stays hashable.
+    panel: tuple[tuple[str, str], ...] = ()
 
 
 _REGISTRY: dict[str, ModuleSpec] = {}
@@ -112,6 +116,28 @@ def is_portable(module: str) -> bool:
         return True  # M7
     s = _REGISTRY.get(module)
     return s is not None and s.placement == "portable"
+
+
+#: The panel kinds the dashboard draws. "room": one per room (a per_room module), the room shaded and its words
+#: shown when the output is true or non-zero; "value": the output's value under the label.
+PANEL_KINDS = ("room", "value")
+PANEL_TEXT_MAX = 40
+
+
+def check_panel(p: Any, outputs: list[str], per_room: bool, where: str) -> tuple[tuple[str, str], ...]:
+    if not isinstance(p, dict) or not set(p) <= {"kind", "output", "label", "on", "off"}:
+        raise ModuleError(f"{where}: 'panel' is {{\"kind\", \"output\", \"label\"?, \"on\"?, \"off\"?}}")
+    if p.get("kind") not in PANEL_KINDS:
+        raise ModuleError(f"{where}: a panel's kind is one of {list(PANEL_KINDS)}")
+    if p["kind"] == "room" and not per_room:
+        raise ModuleError(f"{where}: a \"room\" panel is for a per_room module")
+    if p.get("output") not in [o.lstrip("?") for o in outputs] or "{node}" in str(p.get("output")):
+        raise ModuleError(f"{where}: a panel's output is one of the module's outputs under act/{{actor}}/")
+    for k in ("label", "on", "off"):
+        v = p.get(k, "")
+        if not isinstance(v, str) or len(v) > PANEL_TEXT_MAX or not all(" " <= ch <= "~" for ch in v):
+            raise ModuleError(f"{where}: a panel's {k} is text, at most {PANEL_TEXT_MAX} printable characters")
+    return tuple(sorted((k, str(v)) for k, v in p.items()))
 
 
 def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
@@ -165,8 +191,9 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
         per_room = m.get("per_room", False)
         if not isinstance(per_room, bool) or (per_room and place != "portable"):
             raise ModuleError(f"{w}: 'per_room' is true or false, and only for a portable module")
+        panel = check_panel(m["panel"], outs, per_room, w) if "panel" in m else ()
         out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req), "outputs" in m, k,
-                              per_room))
+                              per_room, panel))
     return out
 
 
