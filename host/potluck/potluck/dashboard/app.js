@@ -352,7 +352,8 @@
         "<dt>Actors</dt><dd>" + ((b.actors || []).map(esc).join(", ") || "none") + "</dd>" +
         "<dt>Heap</dt><dd>" + kb(hp.internal_free) + " free, lowest " + kb(hp.internal_min) + ", largest " + kb(hp.internal_largest) +
         "; PSRAM " + mb(hp.psram_free) + "</dd>" +
-        "<dt>Up</dt><dd>" + dur(b.up_ms) + "</dd><dt>RSSI</dt><dd>" + num(b.rssi, "dBm") + "</dd>" +
+        "<dt>Up</dt><dd>" + dur(b.up_ms) + (b.reset ? " (last start: " + esc(b.reset) + ")" : "") + "</dd>" +
+        "<dt>RSSI</dt><dd>" + num(b.rssi, "dBm") + "</dd>" +
         "<dt>Links</dt><dd>" + ((b.links || []).map(function (l) {
           return blink(m, l.peer) + " " + sbadge(l.state) + " " + (l.delivery == null ? "-" : pct(l.delivery, 2)) + ", " +
             num(l.rtt_p50_ms) + "/" + num(l.rtt_p99_ms, "ms") + (l.lost ? ", " + l.lost + " lost" : "");
