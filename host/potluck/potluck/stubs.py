@@ -88,6 +88,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--sleep", action="append", default=[], help="<hex id>@<seconds>+<seconds>: a stub's radio off")
     ap.add_argument("--hub", nargs="?", const="auto", default=None)
     ap.add_argument("--watch", action="append", default=[], help="<hex stub>:<path>")
+    ap.add_argument("--cluster", default=None, help="the cluster file the package came from: its apps' module "
+                                                   "descriptors, so a package with external actors compiles here")
     ap.add_argument("--refer", action="append", default=[], help="<hex stub>:<hex via>:<path>")
     a = ap.parse_args(argv)
     from .hub import hub_endpoint
@@ -104,7 +106,13 @@ def main(argv: list[str] | None = None) -> int:
     if made:
         print(f"# enrolled {len(made)} stub identit{'y' if len(made) == 1 else 'ies'} under the cell's CA: "
               + ", ".join(f"{n:04x}" for n in made), flush=True)
-    img = dp.compile_image(m, int(doc["rollback_counter"]))
+    guest_root = None
+    if a.cluster:  # as potluck.hostnode: the descriptors and guests apply used
+        from .apply import default_cache, load_cluster, plan_package
+        c = load_cluster(a.cluster)
+        plan_package(c, default_cache(), lambda msg: print(f"# {msg}", flush=True))
+        guest_root = str(c.guests_root)
+    img = dp.compile_image(m, int(doc["rollback_counter"]), guest_root)
     with tempfile.NamedTemporaryFile(prefix="pot_stubs_", suffix=".img", delete=False) as f:
         f.write(img)
         img_path = f.name

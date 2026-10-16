@@ -694,6 +694,7 @@ class Node {
                                    const HelloPayload& h, PeerAuth& out, bool cable = false);
     void refuse(uint16_t claimed_id, HelloAuthError e, CertError ce);
     bool is_trusted_link(const uint8_t mac[kMacLen]) const;
+    bool cable_end(const uint8_t mac[kMacLen]) const;  // M19: the trusted link's own end, not relayed through it
     uint16_t next_msg_id(PeerLink& p);  // 1..cfg_.msg_id_max, per peer
     void heavy(void (*fn)(void*), void* arg);
     bool check_frame_auth(PeerLink& p, const uint8_t* data, const Frame& f);
