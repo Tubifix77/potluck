@@ -69,3 +69,12 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # (esp_ota_mark_app_valid_cancel_rollback; ESP-IDF's OTA guide, "App rollback"). A bootloader
 # setting: it takes effect on a board only when the bootloader itself is flashed by cable.
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# --- The task watchdog resets the chip ------------------------------------------------------------
+# C's Wi-Fi task wedged for 6 hours spinning on core 0 (M0-LOG session 46): the task watchdog saw its idle
+# task starve and only printed, every 5 s, and the radio fail-stop (`tx_dead`) runs on a task that core
+# starved too. With PANIC the watchdog resets the chip after ESP_TASK_WDT_TIMEOUT_S (5 s, ESP-IDF's
+# default; ledger). Everything Potluck runs already keeps the rule this enforces: the background workers
+# and the guest runtime yield every few tens of ms, and a flash erase yields every 20 ms
+# (SPI_FLASH_YIELD_DURING_ERASE, ESP-IDF's default; ledger). `POT! hog <ms>` is the test.
+CONFIG_ESP_TASK_WDT_PANIC=y

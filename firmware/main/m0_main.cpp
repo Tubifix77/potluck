@@ -2752,6 +2752,26 @@ bool handle_test(const char* line, size_t len) {
         std::printf("{\"t\":\"test\",\"cmd\":\"relay\",\"relay\":%u,\"saved\":1}\n", relay_on != 0 ? 1u : 0u);
         return true;
     }
+    unsigned hog_ms = 0;
+    if (std::sscanf(buf, "POT! hog %u", &hog_ms) == 1) {
+        // POT! hog <ms>: spin on core 0 above every task but Wi-Fi's own, never yielding -- what C's wedged
+        // Wi-Fi task did for 6 hours (M0-LOG session 46). Past CONFIG_ESP_TASK_WDT_TIMEOUT_S the task
+        // watchdog resets the chip (CONFIG_ESP_TASK_WDT_PANIC); the next boot's "fw: running" line says so.
+        static uint32_t s_hog_ms;
+        s_hog_ms = hog_ms;
+        std::printf("{\"t\":\"test\",\"cmd\":\"hog\",\"ms\":%u,\"core\":0}\n", hog_ms);
+        std::fflush(stdout);
+        xTaskCreatePinnedToCore(
+            [](void*) {
+                const int64_t end = esp_timer_get_time() + static_cast<int64_t>(s_hog_ms) * 1000;
+                while (esp_timer_get_time() < end) {
+                }
+                std::printf("{\"t\":\"test\",\"cmd\":\"hog\",\"done\":1}\n");
+                vTaskDelete(nullptr);
+            },
+            "pot_hog", 2048, nullptr, 20, nullptr, 0);
+        return true;
+    }
     unsigned deaf_tail = 0;
     if (std::sscanf(buf, "POT! deaf %x", &deaf_tail) == 1) {
         // POT! deaf <last 2 MAC bytes, hex>: stop hearing that board; POT! deaf 0 clears the list.
@@ -3053,6 +3073,22 @@ bool load_image(const char* which, uint32_t want_counter, uint32_t& len, uint8_t
     return ok;
 }
 
+// Why the chip last started: a task watchdog here is a wedge the watchdog cleared (M0-LOG session 46).
+const char* reset_name(esp_reset_reason_t r) {
+    switch (r) {
+        case ESP_RST_POWERON: return "power-on";
+        case ESP_RST_SW: return "software";
+        case ESP_RST_PANIC: return "panic";
+        case ESP_RST_INT_WDT: return "interrupt watchdog";
+        case ESP_RST_TASK_WDT: return "task watchdog";
+        case ESP_RST_WDT: return "other watchdog";
+        case ESP_RST_BROWNOUT: return "brownout";
+        case ESP_RST_USB: return "usb";
+        case ESP_RST_DEEPSLEEP: return "deep sleep";
+        default: return "other";
+    }
+}
+
 const char* state_str(FwState s) {
     return s == FwState::Confirmed ? "confirmed" : s == FwState::OnTrial ? "ON TRIAL" : "factory";
 }
@@ -3106,10 +3142,11 @@ void boot() {
     }
     g_rx.set_floor(g_floor);
     g_rx.set_busy(busy());
-    ESP_LOGI(kTag, "fw: running %s (%s), counter %u, floor %u, %s; spare slot %s, %u KB",
+    ESP_LOGI(kTag, "fw: running %s (%s), counter %u, floor %u, %s; spare slot %s, %u KB; reset: %s",
              part != nullptr ? part->label : "?", esp_app_get_description()->version,
              static_cast<unsigned>(g_running), static_cast<unsigned>(g_floor), state_str(g_state),
-             g_sink_ok ? g_sink.target()->label : "none", static_cast<unsigned>(g_sink.capacity() / 1024));
+             g_sink_ok ? g_sink.target()->label : "none", static_cast<unsigned>(g_sink.capacity() / 1024),
+             reset_name(esp_reset_reason()));
 }
 
 size_t reply_with(FwStatus status, uint16_t node, uint8_t* reply, size_t cap) {
