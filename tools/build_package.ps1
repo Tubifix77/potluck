@@ -4,10 +4,11 @@
 #   py -3.14 -m venv $env:LOCALAPPDATA\potluck\build-env
 #   & $env:LOCALAPPDATA\potluck\build-env\Scripts\python.exe -m pip install pyinstaller cryptography==46.0.7 pyserial==3.5 esptool==5.3.1
 # Then install it for the current user with packaging\install.ps1.
-# It also puts the release firmware in dist\Potluck\firmware (potluck.release: what apply builds for a cell with no apps,
-# with the sandbox), so a PC with no ESP-IDF can set its first boards up; building it needs ESP-IDF here, once.
-# -NoFirmware leaves it out.
-param([switch]$NoFirmware)
+# It also puts the release firmware in dist\Potluck\firmware (potluck.release), so a PC with no ESP-IDF can set its first
+# boards up; building it needs ESP-IDF here, once. -FromCluster <cluster file> builds the release proper -- the image apply
+# builds for that cell, with the built-in apps it names (keys\desk-m14-hub.json on the bench); without it, Potluck and the
+# sandbox only. -NoFirmware leaves the firmware out.
+param([switch]$NoFirmware, [string]$FromCluster = "")
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $py = Join-Path $env:LOCALAPPDATA "potluck\build-env\Scripts\python.exe"
@@ -20,7 +21,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "the built program does not start" }
     if (-not $NoFirmware) {
         $env:PYTHONPATH = Join-Path $root "host\potluck"
-        & $py -m potluck.release dist\Potluck\firmware --repo $root
+        if ($FromCluster) { & $py -m potluck.release dist\Potluck\firmware --from (Resolve-Path $FromCluster) }
+        else { & $py -m potluck.release dist\Potluck\firmware --repo $root }
         if ($LASTEXITCODE -ne 0) { throw "the release firmware was not built" }
     }
     Write-Host "built: $root\dist\Potluck (potluck.exe, potluck-tray.exe$(if (-not $NoFirmware) { ', firmware' }))"
