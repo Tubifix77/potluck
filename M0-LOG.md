@@ -5923,7 +5923,6 @@ A read east's (alive 2, warmest 50.5 C), C read west's as UNAVAILABLE (only a fo
 cable cannot reach -- ran package 82 by catch-up through B. `apply` now names boards beyond the cable and verifies what
 the cabled board can resolve; `--partial` folded the tree back (package 83 from `desk-m14-hub.json`; C caught up by itself).
  foreman handovers
-counted over 24 h on the bench (the 24 h is pot_sim's); M20's wizard proposing a tree from a survey of the bench (the
-survey and the route are tested on models; the hub was not running). **Not running:** the hub -- the owner's tray never
-started one (no `logs` folder under its AppData), and this session's hub of the 15th was gone; the owner can start it from
-the tray. Commits local, not pushed.
+counted over 24 h on the bench (the 24 h is pot_sim's); a survey of the bench that proposes a tree (the hub's `POST /api/setup/tree`
+with chargers B and C proposed one cell -- right, the three hear each other; a tree from a survey is tested on models). **The hub:** the owner's tray had never started one (no `logs` folder under its AppData) and this session's
+hub of the 15th was gone; this session started it again as before (`captures/hub-8.log`, presenting to the broker). Commits local, not pushed.
