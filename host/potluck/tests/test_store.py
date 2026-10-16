@@ -73,6 +73,33 @@ class Fetching(unittest.TestCase):
                 so.parse_app(app_doc(self.sk, **over))
 
 
+class Feed(unittest.TestCase):
+    def test_a_list_signed_by_the_store_key_is_shown_and_any_other_is_not(self):
+        key = os.urandom(32)
+        raw = json.dumps({"type": so.FEED_TYPE, "apps": [{"repo": "Tubifix77/potluck-store", "dir": "apps/overheat_alarm",
+                                                          "name": "overheat_alarm", "description": "an alarm"}],
+                          "removed": ["someone/bad-app"]}).encode()
+        sig = ed.sign(key, so.feed_message(raw)).hex().encode()
+        feed = so.fetch_feed(github({"feed.json": raw, "feed.sig": sig}), ed.public_key(key).hex())
+        self.assertEqual((feed["apps"][0]["dir"], feed["removed"]), ("apps/overheat_alarm", ["someone/bad-app"]))
+        with self.assertRaisesRegex(so.StoreError, "not signed"):  # one byte changed after signing
+            so.fetch_feed(github({"feed.json": raw.replace(b"an alarm", b"an alarM"), "feed.sig": sig}),
+                          ed.public_key(key).hex())
+        with self.assertRaisesRegex(so.StoreError, "not signed"):  # signed by someone else
+            so.fetch_feed(github({"feed.json": raw, "feed.sig": sig}), ed.public_key(os.urandom(32)).hex())
+        self.assertEqual(len(bytes.fromhex(so.FEED_KEY)), 32)  # the store key's public half is built in
+
+    def test_an_app_in_a_folder_is_fetched_from_there_and_a_folder_cannot_climb_out(self):
+        sk = os.urandom(32)
+        f = github({"apps/alarm/potluck-app.json": json.dumps(app_doc(sk)).encode(),
+                    "apps/alarm/build/overheat_alarm.wasm": WASM})
+        app, _ = so.fetch("Tubifix77/potluck-store", "HEAD", f, folder="apps/alarm")
+        self.assertEqual(app.name, "overheat_alarm")
+        with self.assertRaises(so.StoreError):
+            so.fetch("Tubifix77/potluck-store", "HEAD", f, folder="apps/../../x")
+        self.assertEqual(so.source("a/b", "apps/alarm"), "a/b/apps/alarm")
+
+
 class Installing(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()

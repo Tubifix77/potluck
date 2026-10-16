@@ -626,6 +626,10 @@ repository and certifies it for that cell, and the owner binds each input to one
 type; your `unit` is shown to them). If your key ever changes, every cell refuses the update until its owner removes
 the app and installs it again -- keep the key. Publish releases: the owner may name a tag, and an install is pinned to
 the module's hash. `name` is lowercase letters, digits and `_`; at most 8 inputs; `fuel` 1,000..50,000,000.
+`python tools/store_feed.py keygen` makes an author key and `python tools/store_feed.py app` writes a signed
+`potluck-app.json` for a module. An app may sit in a folder of a repository (the owner gives the folder too). The
+store's own list is [Tubifix77/potluck-store](https://github.com/Tubifix77/potluck-store): `feed.json`, signed by the
+store key Potluck carries; a pull request adds an app to it.
 
 ---
 

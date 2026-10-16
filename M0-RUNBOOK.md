@@ -871,7 +871,11 @@ Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on 
   repository's `potluck-app.json` and module (DEVELOPING-APPS.md, "Publishing a guest for any cell"); "Install" pins
   the author's key to the repository, certifies it (role 3, numbers from 100; the passphrase unlocks a sealed cell's
   CA for that one action), writes `store/` beside the cluster file and its fragment into the package; "Apply to the
-  cell" sends it. A guest change reboots the boards into it, as any guest change does. `potluck.store` has no CLI.
+  cell" sends it. A guest change reboots the boards into it, as any guest change does. "Show the store's list" fetches
+  [Tubifix77/potluck-store](https://github.com/Tubifix77/potluck-store)'s `feed.json` and shows it only if `feed.sig`
+  verifies under `potluck.store.FEED_KEY`. **The store key** is `keys/potluck-store.key` (the owner's; back it up --
+  a new one means a Potluck release with its public half): edit `feed.json`, `python tools/store_feed.py sign
+  feed.json --key keys/potluck-store.key`, commit both. The example app's author key is `keys/potluck-examples.key`.
 - **The wizard's Cells step (M19):** after Rooms, the wizard asks the hub for a tree (`POST /api/setup/tree`); twenty
   boards or fewer that all hear each other skip it. Otherwise: tick the boards on a charger, see the proposed cells and
   their foremen, "Use these cells" (once every cell has one), then Done applies.

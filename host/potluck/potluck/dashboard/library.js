@@ -92,6 +92,39 @@
       host.appendChild(row);
     });
     if (!st.on) return;
+    // the curated list: fetched on request, shown only when the store key's signature over it checks
+    var fl = el("div", { "class": "lib-store" });
+    var getFeed = el("button", { type: "button", "class": "small" }, L.feed ? "Refresh the list" : "Show the store's list");
+    getFeed.disabled = running;
+    getFeed.addEventListener("click", function () {
+      getFeed.disabled = true;
+      call("POST", "api/setup/store/feed", {}).then(function (d) {
+        if (d.ok) { L.feed = d; L.msg = ""; } else { L.feed = null; L.msg = d.result || "the list did not load"; }
+        redraw();
+      });
+    });
+    fl.appendChild(getFeed);
+    host.appendChild(fl);
+    if (L.feed) {
+      (L.feed.apps || []).forEach(function (a) {
+        var row = el("div", { "class": "lib-rrow" });
+        row.appendChild(el("code", {}, a.name));
+        row.appendChild(el("span", { "class": "muted small" }, a.description || (a.repo + (a.dir ? "/" + a.dir : ""))));
+        var b = el("button", { type: "button", "class": "small" }, a.installed ? "Installed -- look again" : "Look");
+        b.disabled = running;
+        b.addEventListener("click", function () {
+          call("POST", "api/setup/store/look", { repo: a.repo, dir: a.dir, ref: a.ref }).then(function (d) {
+            if (d.ok) { d.repo = a.repo; d.dir = a.dir; d.ref = a.ref; L.look = d; L.msg = ""; }
+            else { L.look = null; L.msg = d.result || "no app there"; }
+            redraw();
+          });
+        });
+        row.appendChild(b);
+        host.appendChild(row);
+      });
+      if (!(L.feed.apps || []).length) host.appendChild(el("p", { "class": "muted small" }, "The list is empty."));
+    }
+    host.appendChild(el("p", { "class": "muted small" }, "Or any repository:"));
     var form = el("div", { "class": "lib-store" });
     var repo = el("input", { type: "text", placeholder: "owner/repository", "aria-label": "GitHub repository" });
     var ref = el("input", { type: "text", placeholder: "release tag (optional)", "aria-label": "Release tag" });
@@ -140,7 +173,7 @@
       var binds = picks.map(function (s) { return s.value; });
       if (binds.some(function (b) { return !b; })) { L.msg = "Choose a resource for every input."; redraw(); return; }
       inst.disabled = true;
-      var body = { repo: lk.repo, ref: lk.ref, bindings: binds };
+      var body = { repo: lk.repo, dir: lk.dir || "", ref: lk.ref, bindings: binds };
       if (pp.value) body.passphrase = pp.value;
       pp.value = "";
       call("POST", "api/setup/store/install", body).then(function (d) {

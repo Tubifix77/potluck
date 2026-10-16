@@ -1146,11 +1146,18 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                     model.cluster = load_cluster(str(cl.path))
                     self._json(200, dict(store_json(), ok=True))
                     return
-                repo, ref = str(req["repo"]), str(req.get("ref") or "HEAD")
-                app, module = so.fetch(repo, ref)
+                if path == "/api/setup/store/feed":
+                    feed = so.fetch_feed()
+                    have = {a["repo"] for a in so.load_registry(cell)["apps"].values()}
+                    for a in feed["apps"]:
+                        a["installed"] = so.source(a["repo"], a["dir"]) in have
+                    self._json(200, dict(feed, ok=True))
+                    return
+                repo, ref, folder = str(req["repo"]), str(req.get("ref") or "HEAD"), str(req.get("dir") or "")
+                app, module = so.fetch(repo, ref, folder=folder)
                 if path == "/api/setup/store/look":
                     reg = so.load_registry(cell)
-                    pinned = reg["authors"].get(repo)
+                    pinned = reg["authors"].get(so.source(repo, folder))
                     author = ("new" if pinned is None else
                               "pinned" if pinned["key"] == app.author_key.hex() else "changed")
                     self._json(200, {"ok": True, "name": app.name, "description": app.description,
@@ -1176,7 +1183,8 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                         return en.build_cert(read_key(keys[0]), author, key, role=en.ROLE_GUEST)
                     finally:
                         keystore.lock()
-                r = so.install(cl.path, repo, ref, app, module, [str(b) for b in req.get("bindings", [])], certify)
+                r = so.install(cl.path, repo, ref, app, module, [str(b) for b in req.get("bindings", [])], certify,
+                               folder=folder)
                 model.cluster = load_cluster(str(cl.path))
                 self._json(200, dict(store_json(), ok=True, installed=r))
             except (so.StoreError, ApplyError, ValueError, KeyError, OSError) as exc:

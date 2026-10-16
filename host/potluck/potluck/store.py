@@ -16,7 +16,13 @@ binds each input to one of the cell's resources. A repository whose key changes 
 automatically -- refused, naming both keys. The install writes the guest's bundle and a one-actor manifest fragment
 under <cell>/store/, adds the fragment to the cluster file's package, and the next `potluck apply` sends it -- like
 every other screen, a cluster file underneath. Nothing here runs the module: the boards do, in the sandbox, after
-checking the author's signature again.
+checking the author's signature again. An app may live in a folder of a repository ("dir").
+
+THE FEED: the curated list, feed.json in FEED_REPO, signed by the store key whose public half is FEED_KEY (feed.sig:
+Ed25519 over FEED_DOMAIN || SHA-512(feed.json), hex) -- {"type": "potluck-feed-v1", "apps": [{"repo", "dir"?, "ref"?,
+"name", "description"}], "removed": [repo or repo/dir, ...]}. A feed whose signature does not verify is not shown.
+It lists; it vouches for nothing a review did not: every app is still checked, pinned and bound as above.
+tools/store_feed.py makes the keys, signs the feed and writes an app's potluck-app.json.
 """
 
 from __future__ import annotations
@@ -38,7 +44,13 @@ REPO = re.compile(r"^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$")
 REF = re.compile(r"^[A-Za-z0-9_./-]{1,100}$")
 NAME = re.compile(r"^[a-z][a-z0-9_]{0,30}$")
 MODULE_MAX = 256 * 1024
+DIR = re.compile(r"^[A-Za-z0-9_.-]{1,60}(/[A-Za-z0-9_.-]{1,60}){0,3}$")
 REGISTRY = "store.json"
+FEED_REPO = "Tubifix77/potluck-store"
+FEED_TYPE = "potluck-feed-v1"
+FEED_DOMAIN = b"potluck-store-feed-v1\0"
+#: The store key's public half (tools/store_feed.py keygen; the secret is the owner's, keys/potluck-store.key).
+FEED_KEY = "9c9619e55970e9ef9ead35e189bcd32b9d32c0a71bad34d5a407e3028405c6b6"
 FIRST_AUTHOR = 100  # store authors from 100 up; numbers below are the owner's to hand out by hand
 
 
@@ -120,11 +132,20 @@ def github_fetcher(url: str) -> bytes:
         return r.read(MODULE_MAX + 1)
 
 
-def fetch(repo: str, ref: str = "HEAD", fetcher: Callable[[str], bytes] = github_fetcher) -> tuple[App, bytes]:
-    """potluck-app.json and its module from a GitHub repository, checked. The one place the hub reaches outside."""
+def source(repo: str, folder: str = "") -> str:
+    """What an author is pinned to: the repository, and the folder in it when apps share one."""
+    return f"{repo}/{folder}" if folder else repo
+
+
+def fetch(repo: str, ref: str = "HEAD", fetcher: Callable[[str], bytes] = github_fetcher,
+          folder: str = "") -> tuple[App, bytes]:
+    """potluck-app.json and its module from a GitHub repository (or a folder in it), checked. With fetch_feed, the
+    only places the hub reaches outside."""
     if not REPO.match(repo) or not REF.match(ref) or ".." in ref:
         raise StoreError("a repository is owner/name, and a ref a branch, tag or commit")
-    base = f"https://raw.githubusercontent.com/{repo}/{ref}/"
+    if folder and (not DIR.match(folder) or ".." in folder.split("/")):
+        raise StoreError("a folder is a path inside the repository")
+    base = f"https://raw.githubusercontent.com/{repo}/{ref}/" + (f"{folder}/" if folder else "")
     try:
         doc = json.loads(fetcher(base + APP_FILE))
     except (OSError, ValueError) as exc:
@@ -136,6 +157,44 @@ def fetch(repo: str, ref: str = "HEAD", fetcher: Callable[[str], bytes] = github
         raise StoreError(f"{repo}: {app.module_path} could not be fetched ({exc})") from None
     verify_module(app, module)
     return app, module
+
+
+def feed_message(feed: bytes) -> bytes:
+    return FEED_DOMAIN + hashlib.sha512(feed).digest()
+
+
+def parse_feed(doc: object) -> dict:
+    if not isinstance(doc, dict) or doc.get("type") != FEED_TYPE:
+        raise StoreError(f"feed.json: not a Potluck feed (\"type\": \"{FEED_TYPE}\")")
+    apps = []
+    for i, a in enumerate(doc.get("apps", [])):
+        if not (isinstance(a, dict) and isinstance(a.get("repo"), str) and REPO.match(a["repo"])
+                and isinstance(a.get("name"), str) and NAME.match(a["name"])
+                and (not a.get("dir") or (isinstance(a["dir"], str) and DIR.match(a["dir"])))
+                and (not a.get("ref") or (isinstance(a["ref"], str) and REF.match(a["ref"])))):
+            raise StoreError(f"feed.json: apps[{i}] needs a repo (owner/name) and a name, and may name a dir and a ref")
+        d = a.get("description", "")
+        apps.append({"repo": a["repo"], "dir": a.get("dir") or "", "ref": a.get("ref") or "", "name": a["name"],
+                     "description": d[:200] if isinstance(d, str) else ""})
+    removed = [str(r) for r in doc.get("removed", []) if isinstance(r, str)]
+    return {"apps": apps, "removed": removed}
+
+
+def fetch_feed(fetcher: Callable[[str], bytes] = github_fetcher, key_hex: str | None = None) -> dict:
+    """The curated list, its signature checked against the store key before anything in it is shown."""
+    base = f"https://raw.githubusercontent.com/{FEED_REPO}/HEAD/"
+    try:
+        raw = fetcher(base + "feed.json")
+        sig = bytes.fromhex(fetcher(base + "feed.sig").decode("ascii").strip())
+    except (OSError, ValueError, UnicodeDecodeError) as exc:
+        raise StoreError(f"the store's list could not be fetched ({exc})") from None
+    key = bytes.fromhex(key_hex or FEED_KEY)
+    if len(sig) != 64 or not ed.verify(key, feed_message(raw), sig):
+        raise StoreError("the store's list is not signed by the store key -- not shown")
+    try:
+        return parse_feed(json.loads(raw))
+    except ValueError:
+        raise StoreError("feed.json is not JSON") from None
 
 
 # ---- the cell's side ---------------------------------------------------------------------------------------------
@@ -181,7 +240,7 @@ def pin_author(reg: dict, repo: str, key: bytes) -> tuple[int, bool]:
 
 
 def install(cluster_file: str | Path, repo: str, ref: str, app: App, module: bytes, bindings: list[str],
-            certify: Callable[[int, bytes], bytes]) -> dict:
+            certify: Callable[[int, bytes], bytes], folder: str = "") -> dict:
     """Write the app into the cell: its bundle and one-actor fragment under <cell>/store/, the fragment in the cluster
     file's package. `bindings`: one resource path per input, in order. `certify(author_id, author_key)` returns the
     role-3 certificate (the CA's signature -- the vault, unlocked for this one action). Nothing is sent: apply does."""
@@ -193,9 +252,10 @@ def install(cluster_file: str | Path, repo: str, ref: str, app: App, module: byt
     c = ap.load_cluster(str(cf))
     cell = cf.parent
     reg = load_registry(cell)
-    if app.name in reg["apps"] and reg["apps"][app.name]["repo"] != repo:
+    src = source(repo, folder)
+    if app.name in reg["apps"] and reg["apps"][app.name]["repo"] != src:
         raise StoreError(f"{app.name}: another app of that name is installed, from {reg['apps'][app.name]['repo']}")
-    author, _ = pin_author(reg, repo, app.author_key)
+    author, _ = pin_author(reg, src, app.author_key)
     cert = certify(author, app.author_key)
     bundle = gu.Bundle(app.name, module, cert, app.sig)
     store = cell / "store"
@@ -215,7 +275,7 @@ def install(cluster_file: str | Path, repo: str, ref: str, app: App, module: byt
     if not any((m.get("manifest") if isinstance(m, dict) else m) == entry for m in mans):
         mans.append({"manifest": entry, "root": "."})
     _write_cluster(cf, doc)
-    reg["apps"][app.name] = {"repo": repo, "ref": ref, "sha256": app.sha256, "author": author}
+    reg["apps"][app.name] = {"repo": src, "ref": ref, "sha256": app.sha256, "author": author}
     (cell / REGISTRY).write_text(json.dumps(reg, indent=2) + "\n", encoding="utf-8")
     return {"name": app.name, "author": author, "fragment": entry}
 
