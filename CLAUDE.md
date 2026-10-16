@@ -69,7 +69,7 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > with both built-ins, carried by the package), `tools/make_release.py` (nothing published), app panels (passive-sensor
 > `015bcdc`: the Room card), the store (off). **Bench now:** firmware `35a7caa` (counter 58), package 91 from
 > `keys/desk-m14-hub.json` -- which now names passive-sensor `015bcdc`, so the next `apply` rebuilds the firmware (same
-> code, new key); hub `captures/hub-11.log`. **Open:** the radio's NO_MEM wedge (C twice in rollouts, A once after a
+> code, new key); the hub is the installed tray's (`potluck.exe hub`, tray.json from `keys/tray.json`; its log in the owner's %LOCALAPPDATA%\potluck\logs) -- v0.2.0 published, the store live at Tubifix77/potluck-store. **Open:** the radio's NO_MEM wedge (C twice in rollouts, A once after a
 > cable pull; `tx_dead` recovers it in 60 s, `apply` stops cleanly -- rerun); the store's curated feed needs a release key
 > and a public repository (the owner's); HACS's update icon is fetched from the brands CDN only (the owner's call whether
 > to raise it with HACS); the first GitHub release is the owner's word.
