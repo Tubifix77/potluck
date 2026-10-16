@@ -857,7 +857,19 @@ Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on 
   (made once; the script's top says how). The owner installs it with `packaging\install.ps1` -- run it yourself, not
   from a Claude session, whose AppData is redirected -- and removes it with `packaging\uninstall.ps1`. The tray starts
   a hub at login when none runs (the cell in `%LOCALAPPDATA%\potluck\tray.json`'s "cluster", else the one the wizard
-  made, else setup mode). Unpackaged: `python -m potluck.tray`.
+  made, else setup mode), and starts one again whenever the hub stops answering for three polls (9 s), at most once a
+  minute. Unpackaged: `python -m potluck.tray --start-hub`.
+- **The release firmware in the package:** `tools\build_package.ps1` also runs `python -m potluck.release
+  dist\Potluck\firmware` -- what `apply` builds for a cell with no apps (Potluck and the sandbox), its flashed files and
+  `release.json` -- so the wizard on a PC with no ESP-IDF flashes that (`-NoFirmware` leaves it out). Building it needs
+  ESP-IDF on the packaging PC, once.
+- **A release (what HACS updates from):** `python tools/make_release.py X.Y.Z` sets the integration's manifest version,
+  commits and tags `vX.Y.Z` locally and prints the two publishing commands; `--publish` runs them (push, then `gh release
+  create`, attaching `dist\Potluck` as a zip when it is built from this firmware tree). HACS reads the newest *release*;
+  with none it offers every commit on main as an update.
+- **The wizard's Cells step (M19):** after Rooms, the wizard asks the hub for a tree (`POST /api/setup/tree`); twenty
+  boards or fewer that all hear each other skip it. Otherwise: tick the boards on a charger, see the proposed cells and
+  their foremen, "Use these cells" (once every cell has one), then Done applies.
 - **Potluck's mark:** `python -m potluck.brandmark` regenerates every copy of it -- the dashboard's SVGs, Home
   Assistant's `custom_components/potluck/brand/icon*.png` -- from one geometry; the tray draws it at run time.
 
@@ -903,3 +915,12 @@ cells' actors (image version 5).
   before 2026-10-16 (no trailer kept) cannot serve until it takes one over the cell.
 - **Radio spaces on the bench:** `POT! deaf <last two MAC bytes>` on two boards, both ways, keeps them out of each other's
   range (`POT! deaf 0` clears; the list is not kept across a reset).
+
+## 21. The task watchdog resets a wedged board
+
+Since `27994a5` (2026-10-16) a task that keeps a core from its idle task for 5 s resets the chip
+(`CONFIG_ESP_TASK_WDT_PANIC=y`), where it used to print every 5 s -- C's Wi-Fi task once spun for 6 hours. The boot line
+says why a board last started: `fw: running ... ; reset: task watchdog` (or `power-on`, `software`, `panic`, `brownout`,
+`usb`...). `POT! hog <ms>` on a console spins core 0 above every task but Wi-Fi's: 3000 must not reset the board, 8000 must
+(the watchdog names `pot_hog`, then the board restarts on its confirmed image). Work on the background workers and in the
+guest runtime yields every few tens of ms; new long work must too.
