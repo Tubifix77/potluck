@@ -37,7 +37,7 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
                  {"name": "wifi", "state": "idle", "reason": "another module is the connection"}],
      "actors": ["rf_link", "rf_indicator", "die_temp", "led_switch", "present"],
      "heap": {"internal_free": 152831, "internal_min": 141379, "internal_largest": 77824, "psram_free": 8100000},
-     "up_ms": 9540000,
+     "up_ms": 9540000, "reset": "power-on",
      "links": [{"peer": "6300", "state": "alive", "delivery": 0.9952, "rtt_p50_ms": 5, "rtt_p99_ms": 16,
                 "deaths": 0, "rssi": -34}]}
   ],
@@ -69,6 +69,9 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
 
 - `hub.link`: `up` | `down` (the cable to the cell). `hub.tls_fp`: with `--listen`, the SHA-256 of its certificate.
 - `board.state`: `alive` | `dead` | `asleep` (a declared long window, M5.1) | `unknown` (never heard since the hub started).
+- `board.reset` (2026-10-16): why the board last started, from its `sys/reset` -- `power-on`, `software` (an update, a
+  reset command, the radio fail-stop), `task watchdog` (a wedge the watchdog cleared), `panic`, `brownout`, `usb`, ...;
+  `null` from firmware before it or before the first telemetry pull. Read once a boot.
 - `board.room` and `board.position` (M20): the cluster file's room name and `[x, y]` on the floor plan (metres from its
   top-left corner, x right, y down), each `null` when it gives none. `cell.plan`: the floor plan, `{"width", "height",
   "rooms": [{"name", "x", "y", "w", "h"}]}` in the same metres, or `null`.
@@ -121,7 +124,8 @@ seen, or `hub.up_ms` going down, means the hub restarted; start again from what 
 Kinds include every node event the boards keep, pulled by M15's telemetry and prefixed `board_` (`board_peer_dead`,
 `board_peer_rebooted`, `board_actor_started`, `board_channel_changed`, ...; detail `{peer, a, b, board_ms, board_seq}`,
 `at` the hub's clock when pulled), the hub's own (`hub_started`, `board_alive`, `board_dead`, `board_asleep`,
-`board_rebooted`, `relay_client`, `host_node`, `hub_lease_lost`, `telemetry_unsupported`), deploys (`deploy`), and
+`board_rebooted`, `board_restarted` (detail `{reason, epoch}`: a restart seen while the hub watched, with
+`board.reset`'s reason), `relay_client`, `host_node`, `hub_lease_lost`, `telemetry_unsupported`), deploys (`deploy`), and
 outside writes (`outside_write`, detail `{resource, value, result}`; `path` carries the same as `resource`, and a
 write refused by the login's right adds `by`).
 

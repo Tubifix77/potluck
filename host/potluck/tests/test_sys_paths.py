@@ -34,10 +34,10 @@ def test_every_suffix_is_distinct_and_labelled():
         assert s in SYS_LABELS, f"{s} has no human label"
 
 
-def test_a_nodes_builtins_are_six_distinct_hashes():
+def test_a_nodes_builtins_are_seven_distinct_hashes():
     paths = sys_paths_for(0x0101)
-    assert len(paths) == 6
-    assert len({path_hash(p) for p in paths}) == 6
+    assert len(paths) == 7
+    assert len({path_hash(p) for p in paths}) == 7
 
 
 def test_two_nodes_do_not_share_a_resource():
@@ -51,7 +51,7 @@ def test_a_table_built_from_observed_nodes_resolves_their_resources():
     # The host learns node ids from records it is already reading, so a capture becomes
     # self-describing without anyone supplying a manifest.
     t = table_for_nodes([0x0101, 0x0202])
-    assert len(t) == 12
+    assert len(t) == 14
     h = path_hash(sys_path(0x0202, "sys/rssi"))
     assert t.resolve(h) == "potluck://lab/node-0202/sys/rssi"
     # An unknown hash still renders honestly rather than guessing.

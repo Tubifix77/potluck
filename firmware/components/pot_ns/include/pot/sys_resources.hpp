@@ -23,7 +23,7 @@ namespace pot {
 
 // How many built-in resources a node declares. Kept small deliberately: §6 caps the table at 128
 // entries and these must not crowd out the application's.
-constexpr size_t kSysResourceCount = 6;
+constexpr size_t kSysResourceCount = 7;
 
 enum class SysResource : uint8_t {
     HeapFree = 0,      // bytes of free internal DRAM — §6's [MEASURE] item, live
@@ -33,6 +33,9 @@ enum class SysResource : uint8_t {
     BootEpoch = 3,     // which incarnation this is
     PeersAlive = 4,    // how many peers this node currently believes are up
     LinkRssi = 5,      // dBm of the most recently received frame, worst across peers
+    ResetReason = 6,   // why this incarnation started: ESP-IDF's esp_reset_reason_t number (6 is the task
+                       // watchdog) -- so a board that restarted by itself is seen from the PC, not only on its
+                       // console (M0-LOG session 46); 0 where the platform does not say
 };
 
 // The cluster segment of every built-in path: "lab" until a package's cluster actor names another

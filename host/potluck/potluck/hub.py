@@ -531,6 +531,7 @@ class Model:
                 h = tm.health(self.hub, n)
                 if old_epoch is not None and h.boot_epoch != old_epoch:
                     since = 0  # it rebooted: its event log started again at 1 (found by review: counting missed it)
+                reset = self._read_reset(n) if h.boot_epoch != old_epoch else None
                 ls = tm.links(self.hub, n)
                 acts = tm.actors(self.hub, n)
                 evs, nxt = tm.events(self.hub, n, since)
@@ -566,12 +567,29 @@ class Model:
                 b["tel_failures"] = 0
                 b["tel_unsupported"] = False
                 b["tel"] = {"health": h, "links": ls, "actors": acts, "events_next": nxt, "at": _hub_ms()}
+                if reset is not None:
+                    if old_epoch is not None:  # not the hub's first look: the board restarted while it watched
+                        self._event_locked("board_restarted", n, {"reason": reset, "epoch": h.boot_epoch})
+                    b["reset"] = reset
                 for e in evs:
                     if e.kind_name == "peer_dead":
                         self.link_deaths[(n, e.node)] = self.link_deaths.get((n, e.node), 0) + 1
                     self._event_locked("board_" + e.kind_name, n,
                                        {"peer": f"{e.node:04x}", "a": e.a, "b": e.b, "board_ms": e.at_ms,
                                         "board_seq": e.seq})
+
+    def _read_reset(self, n: int) -> str | None:
+        """Why board n last started (its sys/reset), by name; None from firmware before 2026-10-16 or no answer. Read
+        once an incarnation: a board that restarts by itself -- the task watchdog, the radio fail-stop, a brownout --
+        is seen from the PC, not only on its console (M0-LOG session 46)."""
+        from .sys_paths import reset_name, sys_path
+        system = self.cluster.system if self.cluster is not None else "lab"
+        try:
+            r = self.hub.read(sys_path(n, "sys/reset", system), dst=n, timeout=1.0)
+        except BridgeError:
+            return None
+        v = r.value.number() if r.usable() else None
+        return reset_name(int(v)) if isinstance(v, int) and not isinstance(v, bool) else None
 
     def _cabled_sees_dead(self, n: int) -> bool:
         """Under self.lock: the cabled board's last telemetry has a link to n, and it says dead."""
@@ -683,6 +701,7 @@ class Model:
                 "modules": [{"name": m, "state": s, "reason": r} for m, s, r in st.modules],
                 "actors": list(st.actors),
                 "up_ms": st.uptime_s * 1000,
+                "reset": b.get("reset"),
                 "cluster": st.cluster,
                 "heap": None,   # M15 telemetry, below, when the board answers it
                 "links": [],

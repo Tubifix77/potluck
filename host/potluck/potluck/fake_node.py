@@ -63,7 +63,7 @@ class FakeNode:
         self.hellos_seen = 0
         self.heartbeats_seen = 0
 
-        # The six built-ins every node declares, so the paths a real board offers are the paths this
+        # The seven built-ins every node declares, so the paths a real board offers are the paths this
         # answers. Values are (Value, written_at_monotonic, unit, writable).
         self._store: dict[int, tuple[Value, float, int, bool]] = {}
         now = time.monotonic()
@@ -75,6 +75,7 @@ class FakeNode:
             (Value.of_u32(boot_epoch), int(Unit.COUNT), False),  # sys/boot-epoch
             (Value.of_u32(0), int(Unit.COUNT), False),           # sys/peers-alive
             (Value.of_i32(-58), int(Unit.NONE), False),          # sys/rssi
+            (Value.of_u32(1), int(Unit.NONE), False),            # sys/reset: power-on
         ]
         for p, (v, unit, writable) in zip(paths, defaults):
             self._store[path_hash(p)] = (v, now, unit, writable)

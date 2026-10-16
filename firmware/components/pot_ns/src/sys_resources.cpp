@@ -27,6 +27,7 @@ const char* sys_resource_suffix(SysResource r) {
         case SysResource::BootEpoch: return "sys/boot-epoch";
         case SysResource::PeersAlive: return "sys/peers-alive";
         case SysResource::LinkRssi: return "sys/rssi";
+        case SysResource::ResetReason: return "sys/reset";
     }
     return "sys/?";
 }
@@ -85,6 +86,11 @@ NsDecl sys_resource_decl(uint16_t node_id, SysResource r) {
             d.type = ValueType::I32;
             d.unit = Unit::None;  // dBm; there is no SI unit code for it and inventing one would lie
             d.staleness_bound_ms = 5000;
+            break;
+        case SysResource::ResetReason:
+            d.type = ValueType::U32;
+            d.unit = Unit::None;  // a code, not a quantity
+            d.staleness_bound_ms = 0;  // fixed for the incarnation, like the boot epoch
             break;
     }
     return d;

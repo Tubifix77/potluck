@@ -1411,7 +1411,8 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
 #: pot/namespace.hpp's kNamespaceEntries: every board's table, own resources and replicas alike.
 NS_CAP = 128
 #: The six built-ins every board declares (pot_ns sys_resources.cpp) and M5's act/setpoint (m0_main.cpp).
-NS_FIXED = ("sys/heap-free", "sys/heap-largest", "sys/uptime", "sys/boot-epoch", "sys/peers-alive", "sys/rssi")
+NS_FIXED = ("sys/heap-free", "sys/heap-largest", "sys/uptime", "sys/boot-epoch", "sys/peers-alive", "sys/rssi",
+            "sys/reset")
 
 
 def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple[int, ...] = (),

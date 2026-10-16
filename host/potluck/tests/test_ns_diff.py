@@ -66,7 +66,7 @@ class TestNsCorpus(unittest.TestCase):
         counts: dict[str, int] = {}
         for e in self.corpus:
             counts[e["op"]] = counts.get(e["op"], 0) + 1
-        self.assertEqual(counts, {"read": 10, "write": 13, "reply": 66, "call": 5},
+        self.assertEqual(counts, {"read": 11, "write": 13, "reply": 66, "call": 5},
                          f"the corpus changed shape: {counts}")
 
     def test_python_decodes_every_read_the_firmware_encoded(self):
@@ -169,7 +169,7 @@ class TestNsCorpus(unittest.TestCase):
         self.assertGreaterEqual(len(statuses), 5)
 
     def test_the_builtin_path_hashes_agree_with_the_firmwares(self):
-        """The firmware emitted READs for node 0x1a2b's six built-ins; this recomputes them.
+        """The firmware emitted READs for node 0x1a2b's built-ins; this recomputes them.
 
         This is the one place the host's FNV-1a and its path spelling are checked against the
         firmware's at the same time. Either being wrong alone would leave a fleet whose paths the

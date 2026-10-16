@@ -19,6 +19,7 @@ SYS_SUFFIXES: tuple[str, ...] = (
     "sys/boot-epoch",
     "sys/peers-alive",
     "sys/rssi",
+    "sys/reset",
 )
 
 #: Human labels and the unit a reader should expect, for display only.
@@ -29,7 +30,20 @@ SYS_LABELS: dict[str, str] = {
     "sys/boot-epoch": "boot epoch",
     "sys/peers-alive": "peers alive",
     "sys/rssi": "worst peer RSSI",
+    "sys/reset": "why it last started",
 }
+
+#: sys/reset's codes: ESP-IDF's esp_reset_reason_t, in its header's order (components/esp_system/include/esp_system.h,
+#: v6.0.2; ledger). The task watchdog (6) is a wedge the watchdog cleared; the radio fail-stop restarts by software (3).
+RESET_REASONS: tuple[str, ...] = ("unknown", "power-on", "external pin", "software", "panic", "interrupt watchdog",
+                                  "task watchdog", "other watchdog", "deep sleep", "brownout", "sdio", "usb", "jtag",
+                                  "efuse", "power glitch", "cpu lockup")
+
+
+def reset_name(code: int | None) -> str | None:
+    if code is None:
+        return None
+    return RESET_REASONS[code] if 0 <= code < len(RESET_REASONS) else f"code {code}"
 
 
 def sys_path(node_id: int, suffix: str, system: str = "lab") -> str:

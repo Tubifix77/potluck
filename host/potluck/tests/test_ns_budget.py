@@ -49,10 +49,10 @@ class Budget(unittest.TestCase):
         b, silent = ap.ns_budget(m, boards, cabled=0x6300)
         self.assertEqual(silent, [])
         for n in boards:
-            self.assertEqual((b[n]["fixed"], b[n]["package"], b[n]["own"]), (7, 2, 1 + 2))  # count + 2 links
+            self.assertEqual((b[n]["fixed"], b[n]["package"], b[n]["own"]), (8, 2, 1 + 2))  # count + 2 links
         self.assertEqual(b[0x7368]["replicas"], 0)
         self.assertEqual(b[0x6300]["replicas"], 2)  # the other two boards' link/count, read through the cable --
-        self.assertEqual(b[0x6300]["total"], 7 + 2 + 3 + 2)  # not their {peer} outputs, which neither verify nor hub reads
+        self.assertEqual(b[0x6300]["total"], 8 + 2 + 3 + 2)  # not their {peer} outputs, which neither verify nor hub reads
 
     def test_an_output_published_only_sometimes_is_counted_but_never_waited_for(self) -> None:
         # M20: a position's x..conf exist only while someone is placed ("?" in the descriptor)
@@ -92,7 +92,7 @@ class Budget(unittest.TestCase):
             ["{node}/link/count"] + [f"{{node}}/link/{{peer}}/m{i}" for i in range(6)]))
         m = manifest(boards, [{"name": "link", "module": "ext:t/link", "latency_class": 4}])
         b, _ = ap.ns_budget(m, boards)
-        self.assertEqual(b[0x1000]["total"], 7 + 1 + 6 * 19)  # 122: fits, just
+        self.assertEqual(b[0x1000]["total"], 8 + 1 + 6 * 19)  # 123: fits, just
         mods._REGISTRY["ext:t/link"] = mods.ModuleSpec("ext:t/link", 0xF1, "every", (), "t", outputs=tuple(
             ["{node}/link/count"] + [f"{{node}}/link/{{peer}}/m{i}" for i in range(7)]))
         b, _ = ap.ns_budget(m, boards)

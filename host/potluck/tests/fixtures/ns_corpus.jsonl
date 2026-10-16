@@ -13,6 +13,7 @@
 {"op":"read","path_hash":3890153935,"flags":0,"bytes":"cf09dfe700000000"}
 {"op":"read","path_hash":96606056,"flags":0,"bytes":"6817c20500000000"}
 {"op":"read","path_hash":3793993168,"flags":0,"bytes":"d0bd23e200000000"}
+{"op":"read","path_hash":533125922,"flags":0,"bytes":"22dbc61f00000000"}
 {"op":"write","path_hash":3405691582,"value_type":1,"value_len":1,"bytes":"bebafeca010100000100000000000000"}
 {"op":"write","path_hash":3405691582,"value_type":1,"value_len":1,"bytes":"bebafeca010100000000000000000000"}
 {"op":"write","path_hash":3405691582,"value_type":2,"value_len":4,"bytes":"bebafeca020400000000000000000000"}

@@ -293,7 +293,7 @@ class TestThreaded(unittest.TestCase):
 
             # read_many keeps a failure beside the path that produced it.
             out = bridge.read_many(list(sys_paths_for(NODE_ID)) + ["potluck://lab/nope"], timeout=3.0)
-            self.assertEqual(len(out), 7)
+            self.assertEqual(len(out), len(sys_paths_for(NODE_ID)) + 1)
             self.assertFalse(out["potluck://lab/nope"].usable())
 
             # The host heartbeats, so the node counts it as a live peer.

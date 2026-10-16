@@ -2044,6 +2044,8 @@ void refresh_sys_resources() {
     g_node->publish(sys_resource_hash(me, SysResource::PeersAlive), Value::of_u32(alive));
     g_node->publish(sys_resource_hash(me, SysResource::LinkRssi),
                     Value::of_i32(static_cast<int32_t>(worst_rssi)));
+    g_node->publish(sys_resource_hash(me, SysResource::ResetReason),
+                    Value::of_u32(static_cast<uint32_t>(esp_reset_reason())));
 }
 
 // One line per namespace entry, so a capture shows what this node offers and what it currently
