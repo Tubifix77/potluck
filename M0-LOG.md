@@ -5916,8 +5916,15 @@ because an OTA erase or a long crypto job could trip it falsely; it needs its ow
 
 **A package reaching a cell with no cable** (host test `deploy_tree`): two cells of four, the PC cabled into one, boards 3
 and 4 in both through the upper cell -- the cell with no cable ran the package 131 s after the deploy, by catch-up (two
-hops, each waiting for a periodic announce). **Not shown, honestly:** a firmware rollout reaching a cell with no cable
-(M11 pushes from the PC one hop; nothing carries firmware across a foreman yet); **Radio spaces on the bench** (`keys/desk-m19-spaces.json`, package 82): A alone is cell "west", B and C "east", both
+hops, each waiting for a periodic announce). **Firmware reaching a cell with no cable** (built late in the session, `d274f37`): a board keeps each
+image's length and signed trailer; a confirmed board announces its counter on `potluck:sys/firmware/v1`, a peer with an
+older one asks, the holder sends its running image out of its partition. Bench, two-cell layout (`desk-m19-spaces-fw2.json`,
+one harmless Kconfig difference for a new build): `apply` reached A alone (counter 51, 146 s); B and C heard A's announce
+at 04:16:56 and asked; A sent B the 1,214,192 B in 32 s (commit 415 ms), B restarted and confirmed after 100 heartbeats;
+C, which had taken east's role while B restarted, asked again after its 3-minute cooldown and confirmed at 04:20:44
+(`captures/m19-fw-catchup-bc.txt`). It found two faults, fixed: A had refused the package -- "a guest no actor runs":
+the image carries every cell's guests and A keeps west's actors only (`DeployImage::scoped`); and apply computed the next
+firmware counter from boards it had not asked. **Not shown, honestly:** **Radio spaces on the bench** (`keys/desk-m19-spaces.json`, package 82): A alone is cell "west", B and C "east", both
 under "upper"; `POT! deaf` both ways keeps A and C out of range. B (east's foreman) read west's summary from A (alive 1),
 A read east's (alive 2, warmest 50.5 C), C read west's as UNAVAILABLE (only a foreman reads a sibling), and C -- which the
 cable cannot reach -- ran package 82 by catch-up through B. `apply` now names boards beyond the cable and verifies what

@@ -71,8 +71,8 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > `keys/desk-m19-tree.json` (package 79): summaries and referrals both ways, B held in reset -> C's summary GOOD at a stub in
 > ~5 s, a stub foreman asleep -> B reads the standby's in 5 s; two real cells in separate radio spaces (`keys/desk-m19-spaces.json`). **Bench now:** firmware `4fd5ceb` (counter 49), package 83
 > from `keys/desk-m14-hub.json` (the owner's normal); A's relay ON (`POT! relay 1`, saved -- it was on for the stubs).
-> **Open:** the 24 h `pot_sim --scenario tree2` run (`captures/m19-tree2-24h.txt`, ends ~06:00 -- read it and record);
-> a firmware rollout reaching a cell with no cable;
+> Firmware now reaches a cell the cable does not (firmware catch-up, shown on the bench). **Open:** the 24 h `pot_sim
+> --scenario tree2` run (`captures/m19-tree2-24h.txt`, ends ~06:00 -- read it and record);
 > **C wedged for 6 h before this session** (Wi-Fi lower MAC looping in tx-retry, task watchdog only printing, `tx_dead`
 > did not fire -- reset by this session; fix not made). The hub runs again (started by this session, `captures/hub-8.log`); the owner's tray had never started one.
 > Commits local, not pushed. Build `pot_stubs` with `tools\run_host_tests.ps1 -Release -BuildDir build/release -Target
