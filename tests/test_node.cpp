@@ -52,6 +52,14 @@ struct TestCell {
         }
         return false;
     }
+    // A cable between two nodes (the PC's frame link): heard whatever channel either is on.
+    std::vector<std::pair<size_t, size_t>> cabled;
+    bool cabled_pair(size_t a, size_t b) const {
+        for (const auto& d : cabled) {
+            if ((d.first == a && d.second == b) || (d.first == b && d.second == a)) return true;
+        }
+        return false;
+    }
     // Added to every send completion's timestamp. Negative models the radio's callback stamping a
     // completion before the node task submitted the probe it is then credited to.
     int32_t done_skew_us = 0;
@@ -145,8 +153,9 @@ struct TestCell {
         for (size_t i = 0; i < c->nodes.size(); ++i) {
             if (i == from->index) continue;
             const int dch = static_cast<int>(c->nodes[i].chan) - static_cast<int>(from->chan);
-            if (dch != 0 && !(c->leak_adjacent && (dch == 1 || dch == -1))) continue;
-            if (c->deaf_pair(from->index, i)) continue;
+            const bool cable = c->cabled_pair(from->index, i);
+            if (!cable && dch != 0 && !(c->leak_adjacent && (dch == 1 || dch == -1))) continue;
+            if (!cable && c->deaf_pair(from->index, i)) continue;
             if (bcast || std::memcmp(c->nodes[i].mac, mac, kMacLen) == 0) {
                 c->nodes[i].node->on_rx(from->mac, data, len, c->now_us, -50);
             }
@@ -695,6 +704,44 @@ TEST(node, when_the_station_moves_with_its_router_the_whole_cell_follows_it) {
     }
     CHECK_EQ(static_cast<int>(c.nodes[0].chan), 9);  // the station itself never hopped
     CHECK_EQ(c.nodes[0].node->channel_counters().scan_hops, 0u);
+}
+
+TEST(node, a_cabled_board_left_on_a_wrong_channel_scans_although_the_pc_is_alive) {
+    // Found by the owner's hand power cut (M0-LOG session 46): board A came up before the PC's adapter,
+    // followed a boot scan to channel 11 and stayed there alone once the PC -- heard over the cable on
+    // every channel -- was back, because the PC counted as a live peer and CR-1's scan never started.
+    TestCell c;
+    c.build(3, BeaconMode::BroadcastBeacon);
+    make_fixed(c, 0);  // the station: the cell's channel is its router's
+    {  // the PC: no radio, so no channel of its own to declare or change
+        TestNode& pc = c.nodes[2];
+        delete pc.node;
+        pc.hal.set_channel = nullptr;
+        pc.node = new Node(pc.cfg, pc.hal);
+    }
+    TestNode& a = c.nodes[1];
+    delete a.node;
+    a.cfg.has_trusted_mac = true;
+    std::memcpy(a.cfg.trusted_mac, c.nodes[2].mac, kMacLen);
+    a.node = new Node(a.cfg, a.hal);
+    c.cabled.push_back({1, 2});
+    c.deaf.push_back({0, 2});  // the PC hears the cell only through A
+    c.start_all();
+    c.advance_ms(2000);
+    CHECK_EQ(alive_peers(*a.node), static_cast<size_t>(2));
+    // A power cut: A restarts on channel 11 (where it had followed a boot scan) with no memory of the
+    // cell, and the PC is back on the cable at once. Nobody is on 11 but the PC.
+    a.cfg.channel = 11;
+    a.chan = 11;
+    c.reboot(1);
+    c.advance_ms(1000);
+    CHECK_EQ(alive_peers(*a.node), static_cast<size_t>(1));  // the PC only
+    // 3 s with no radio peer, one scan of 11 channels at 300 ms, a HELLO round.
+    c.advance_ms(3000 + 11 * 300 + 1500);
+    CHECK_EQ(static_cast<int>(a.chan), 1);
+    CHECK_EQ(alive_peers(*a.node), static_cast<size_t>(2));
+    CHECK_EQ(a.node->channel_counters().found_by_scan, 1u);
+    CHECK(!a.node->scanning());
 }
 
 TEST(node, with_two_stations_the_cell_follows_the_lowest_node_id_and_the_other_knows_it_is_outranked) {

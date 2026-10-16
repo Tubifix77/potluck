@@ -414,7 +414,15 @@ void Node::tick_channel(uint32_t now) {
         }
     }
     if (cfg_.channel_fixed || hal_.set_channel == nullptr || departed_) return;
-    const size_t alive = peers_.count_in_state(PeerState::Alive);
+    // Radio peers only: the node at the other end of the cable is heard on every channel, so it says
+    // nothing about this one. Counted, it kept a cabled board alone on a wrong channel for good -- found
+    // by the owner's hand power cut (M0-LOG session 46): A came up before the PC's adapter, followed B's
+    // boot scan to channel 11, and once the PC was back never scanned again.
+    size_t alive = 0;
+    for (size_t i = 0; i < kMaxPeers; ++i) {
+        const PeerLink& q = peers_.slot(i);
+        if (q.state == PeerState::Alive && !(is_trusted_link(q.mac) && !relayed_[i])) ++alive;
+    }
 
     // M6.1: a sweep for the channel authority (see node.hpp). It ends when the authority is heard
     // again -- on whatever channel the sweep, or its HELLO's declared channel, brought us to -- or after
