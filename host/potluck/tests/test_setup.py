@@ -92,6 +92,34 @@ class Flashing(unittest.TestCase):
             with self.assertRaises(st.SetupError):
                 st.flash_parts(Path(d) / "nowhere")
 
+    def test_a_pc_with_no_build_flashes_the_release_the_package_carries(self):
+        def build(folder):
+            folder.mkdir(parents=True)
+            for f in ("bootloader.bin", "potluck_m0.bin"):
+                (folder / f).write_bytes(b"x")
+            (folder / "flasher_args.json").write_text(json.dumps({"flash_files": {
+                "0x0": "bootloader.bin", "0x10000": "potluck_m0.bin"}}))
+        with tempfile.TemporaryDirectory() as d:
+            cache, rel = Path(d) / "cache", Path(d) / "firmware"
+            (cache / "fw").mkdir(parents=True)
+            saved = os.environ.get("POTLUCK_FIRMWARE_DIR")
+            os.environ["POTLUCK_FIRMWARE_DIR"] = str(rel)
+            try:
+                with self.assertRaises(st.SetupError):
+                    st.newest_build(cache)  # nothing built, nothing shipped
+                build(rel / "27994a5-0a1b2c")
+                self.assertEqual(st.newest_build(cache), rel / "27994a5-0a1b2c")
+                self.assertEqual(st.cell_build("27994a5-0a1b2c", cache), rel / "27994a5-0a1b2c")
+                with self.assertRaises(st.SetupError):
+                    st.cell_build("1111111-ffffff", cache)  # the cell runs firmware this PC has neither built nor carries
+                build(cache / "fw" / "9bb9fb19365b" / "build-apply")
+                self.assertEqual(st.newest_build(cache), cache / "fw" / "9bb9fb19365b" / "build-apply")  # a build wins
+            finally:
+                if saved is None:
+                    os.environ.pop("POTLUCK_FIRMWARE_DIR", None)
+                else:
+                    os.environ["POTLUCK_FIRMWARE_DIR"] = saved
+
     def test_one_job_at_a_time_per_port_and_a_failure_is_reported(self):
         jobs = st.Jobs()
         jid = jobs.start("flash", "COM5", lambda pct: time.sleep(0.2))

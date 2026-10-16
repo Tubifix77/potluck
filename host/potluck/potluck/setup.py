@@ -22,6 +22,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import re
 import sys
 import threading
@@ -133,17 +134,35 @@ def flash_parts(build_dir: str | Path) -> list[tuple[str, Path]]:
     return parts
 
 
+def packaged_firmware() -> Path | None:
+    """The release images a packaged Potluck carries (potluck.release; dist/Potluck/firmware/<version>/), or the
+    folder POTLUCK_FIRMWARE_DIR names. None when running from source with neither."""
+    env = os.environ.get("POTLUCK_FIRMWARE_DIR")
+    if env:
+        return Path(env)
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent / "firmware"
+    return None
+
+
+def _complete(b: Path) -> bool:
+    return (b / "flasher_args.json").exists() and (b / "potluck_m0.bin").exists()
+
+
 def newest_build(cache: Path | None = None) -> Path:
-    """M20's first run, when no board reports a firmware yet: the newest complete build on this PC (a packaged release
-    carries its own image instead)."""
+    """M20's first run, when no board reports a firmware yet: the newest complete build on this PC, else the release
+    image the package carries -- a PC with no ESP-IDF sets its first boards up from that."""
     if cache is None:
         from .apply import default_cache
         cache = default_cache()
-    builds = [b for b in (cache / "fw").glob("*/build-*")
-              if (b / "flasher_args.json").exists() and (b / "potluck_m0.bin").exists()]
-    if not builds:
-        raise SetupError("no Potluck firmware is built on this PC yet -- `potluck apply --plan` builds it")
-    return max(builds, key=lambda b: (b / "potluck_m0.bin").stat().st_mtime)
+    builds = [b for b in (cache / "fw").glob("*/build-*") if _complete(b)]
+    if builds:
+        return max(builds, key=lambda b: (b / "potluck_m0.bin").stat().st_mtime)
+    rel = packaged_firmware()
+    shipped = [b for b in rel.iterdir() if b.is_dir() and _complete(b)] if rel is not None and rel.is_dir() else []
+    if shipped:
+        return max(shipped, key=lambda b: b.name)
+    raise SetupError("no Potluck firmware is built on this PC yet -- `potluck apply --plan` builds it")
 
 
 def cell_build(version: str, cache: Path | None = None) -> Path:
@@ -155,8 +174,11 @@ def cell_build(version: str, cache: Path | None = None) -> Path:
     key6 = version.rsplit("-", 1)[-1]
     for d in sorted((cache / "fw").glob(f"{key6}*")):
         for b in d.glob("build-*"):
-            if (b / "flasher_args.json").exists() and (b / "potluck_m0.bin").exists():
+            if _complete(b):
                 return b
+    rel = packaged_firmware()
+    if rel is not None and _complete(rel / version):
+        return rel / version  # the cell runs the release this package carries
     raise SetupError(f"no build of firmware {version} on this PC -- `potluck apply` builds it")
 
 
