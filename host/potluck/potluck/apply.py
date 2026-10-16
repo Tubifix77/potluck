@@ -1818,8 +1818,11 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
         if fwb is not None:
             need = [n for n in boards if (inv[n] is None or inv[n].elf_sha != fwb.elf_sha[:8]) and n not in beyond]
             if need:
-                floors = [x for n in boards for x in ((inv[n].fw_floor, inv[n].fw_running) if inv[n] else
-                                                      (fws[n]["floor"], fws[n]["running"]))]
+                # M19: the boards that answered -- one beyond the cable is not asked (one there with a higher floor
+                # refuses the image when it is offered by catch-up, and keeps what it runs)
+                floors = [x for n in boards if inv[n] or fws[n]
+                          for x in ((inv[n].fw_floor, inv[n].fw_running) if inv[n] else
+                                    (fws[n]["floor"], fws[n]["running"]))]
                 counter = max(floors) + 1
                 order = rollout_order(c, need, cabled, inv)
                 log(f"firmware: {fwb.version} to {', '.join(f'0x{n:04x}' for n in order)} at counter {counter}")

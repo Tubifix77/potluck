@@ -329,6 +329,9 @@ TEST(guest, the_library_wants_each_guest_run_by_exactly_one_actor_and_room_for_a
     CHECK(parse_image(img.data(), img.size(), di, &why));
     CHECK(!guest_library().load(di, pool, sizeof(pool), &why));  // guest 1 runs nowhere
     CHECK_EQ(guest_library().count(), 0u);
+    di.scoped = true;  // M19: ... unless this board kept only its cells' part: then guest 1 is another cell's
+    CHECK(guest_library().load(di, pool, sizeof(pool), &why));
+    guest_library().clear();
     img = make_image({guest_decl(kOut, 100, {0x100}, 0), guest_decl(kAlarm, 100, {0x100}, 0)}, {blob});
     CHECK(parse_image(img.data(), img.size(), di, &why));
     CHECK(!guest_library().load(di, pool, sizeof(pool), &why));  // guest 0 twice

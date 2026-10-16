@@ -145,7 +145,10 @@ bool GuestLibrary::load(const DeployImage& img, uint8_t* pool, size_t pool_len, 
     }
     size_t total = 0;
     for (uint8_t g = 0; g < img.guest_count; ++g) {
-        if (refs[g] != 1) {
+        // M19: zero, in an image this board kept only its cells' part of, is a guest of another cell -- a tree's
+        // package carries every cell's guests (found on the bench: a board of the other cell ran its package's
+        // built-in behaviour instead). Otherwise a guest no actor runs, or one two run, is a fault.
+        if (refs[g] > 1 || (refs[g] == 0 && !img.scoped)) {
             return fail_with(why, refs[g] == 0 ? "a guest no actor runs" : "a guest two actors run (one actor each)");
         }
         total += img.guests[g].len;

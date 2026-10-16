@@ -248,6 +248,7 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
     out.outside = nullptr;
     out.broker_ca = nullptr;
     out.broker_ca_len = 0;
+    out.scoped = false;
     out.rollback_counter = rd32(data + 8);
     std::memcpy(out.package_digest, data + 12, sizeof(out.package_digest));
     const uint8_t* scope = nullptr;  // M19: version 5's scope section
@@ -455,7 +456,10 @@ bool parse_image(const uint8_t* data, size_t len, DeployImage& out, const char**
             const uint8_t cell = scope[2 * i], also = scope[2 * i + 1];
             keep = a.node_id == keep_for || cell == 0 || in_mine(cell) || (also != 0 && in_mine(also));
         }
-        if (!keep) continue;
+        if (!keep) {
+            if (keep_for != kKeepNone) out.scoped = true;
+            continue;
+        }
         if (out.actor_count >= kMaxActors) {
             w = "more actors for this node than kMaxActors";
             return false;

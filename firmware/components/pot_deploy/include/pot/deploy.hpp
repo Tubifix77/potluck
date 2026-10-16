@@ -150,6 +150,8 @@ struct DeployImage {
     uint8_t outside_count = 0;
     const uint8_t* outside = nullptr;
     // M13: the broker's CA (version 4), DER, pointing into the image buffer; null and 0 without one.
+    // M19: parse_image skipped declarations of other cells for this node (a version-5 image's scope).
+    bool scoped = false;
     const uint8_t* broker_ca = nullptr;
     uint16_t broker_ca_len = 0;
 };
