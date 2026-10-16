@@ -273,7 +273,7 @@ class FaultTest(unittest.TestCase):
             self.assertFalse(rf["working"])
             self.assertNotIn("8160", rf["running_on"])
             kinds = [(e["kind"], e["detail"].get("peer")) for e in mock.get_json("/api/events")["events"]]
-            self.assertIn(("peer_dead", "8160"), kinds)
+            self.assertIn(("board_peer_dead", "8160"), kinds)
             code, _ = mock.post_json("/api/write", {"path": LED, "value": True})
             self.assertEqual(code, 200)  # B is alive: its LED still answers
         finally:
@@ -296,8 +296,8 @@ class FaultTest(unittest.TestCase):
         self.assertEqual(fusion()["running_on"], ["6300"])
         self.assertTrue(fusion()["working"])
         kinds = [e["kind"] for e in cell.events_since(None)["events"]]
-        self.assertEqual(kinds.count("peer_dead"), 2)
-        self.assertIn("actor_owner", kinds)
+        self.assertEqual(kinds.count("board_peer_dead"), 2)
+        self.assertIn("board_actor_owner", kinds)
         cell.revive("8160")
         self.assertEqual(board()["state"], "alive")
 

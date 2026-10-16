@@ -39,8 +39,8 @@ def build_parser() -> argparse.ArgumentParser:
     src.add_argument("--stdin", action="store_true", help="read lines from stdin")
     src.add_argument("--list-ports", action="store_true", help="list serial ports and exit")
 
-    p.add_argument("--baud", type=int, default=921600,
-                   help="serial baud rate (default 921600, matching sdkconfig.defaults)")
+    p.add_argument("--baud", type=int, default=115200,
+                   help="serial baud rate (default 115200, the board console's)")
     p.add_argument("--capture", help="write a section 7.6 capture file here")
     p.add_argument("--compress", action="store_true", help="gzip the capture file")
     p.add_argument("--rotate-mb", type=int, default=64, help="rotate the capture at this size")

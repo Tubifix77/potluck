@@ -1,6 +1,6 @@
 # M6.1 (CR-6): the extender build. Read on top of sdkconfig.defaults and sdkconfig.defaults.esp32s3.
 #
-#   tools\build_firmware.ps1 -Variant extender -PmeHotspot D:\Projects\poor-mans-extender\firmware\components
+#   tools\build_firmware.ps1 -Variant extender -PmeHotspot <the extender app>\firmware\components
 #
 # One chip that is a Potluck member, a station on the house router and a hotspot for phones. The
 # Wi-Fi and lwIP settings below are copied from poor-mans-extender's own firmware (its

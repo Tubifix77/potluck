@@ -38,7 +38,7 @@ constexpr uint8_t kMagic = 0xD9;
 constexpr uint8_t kVersion = 1;
 
 constexpr size_t kHeaderSize = 16;
-constexpr size_t kAuthTagSize = 8;  // truncated HMAC-SHA256, §5.4
+constexpr size_t kAuthTagSize = 8;  // HMAC-SHA-512 truncated to 8 bytes (pot_trust/src/frame_auth.cpp), §5.4
 
 // ver_flags, byte 1. Bits [7:4] are the version; bits [3:0] are these flags.
 constexpr uint8_t kFlagFrag = 1u << 3;      // this is a fragment

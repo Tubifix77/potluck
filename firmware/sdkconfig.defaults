@@ -47,11 +47,14 @@ CONFIG_ESP_WIFI_AMPDU_RX_ENABLED=n
 CONFIG_ESP_WIFI_NVS_ENABLED=n
 
 # --- Console -------------------------------------------------------------------------------------
-# The statistics stream is one JSON line per record. At 115200 baud a ~700-byte line takes ~61 ms,
-# and with two peers plus a node line that is enough to matter; 921600 makes it ~8 ms. The stats
-# task runs below the link task so a slow console delays statistics rather than heartbeats, but
-# there is no reason to make it slow. dmu-capture defaults to this rate.
-CONFIG_ESP_CONSOLE_UART_BAUDRATE=921600
+# 115200 baud, ESP-IDF's default, is what every image runs: sdkconfig.defaults.esp32s3 selects
+# CONFIG_ESP_CONSOLE_UART_DEFAULT, which keeps the default rate, so the 921600 this file asked for
+# from 2026-08 never took effect (found 2026-10-16: the built config says 115200, and every console
+# tool on the bench reads at 115200). The statistics stream is one JSON line per record; at 115200
+# a ~700-byte line takes ~61 ms, and the stats task runs below the link task, so a slow console
+# delays statistics, never heartbeats. potluck-capture defaults to this rate. The PC's frame link,
+# a separate UART on GPIO17/18, runs at 921600.
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
 
 # Keep the log level at INFO: membership transitions are logged there and they are the human-
 # readable half of the M0 acceptance evidence.

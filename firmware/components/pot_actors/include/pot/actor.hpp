@@ -42,8 +42,10 @@ struct CheckpointStore {
 struct BoardServices {
     void* ctx = nullptr;
     // Show an application state on the status LED (a colour, steady or blinking with this full
-    // period; 0 = steady). It shows only while every link is healthy -- blue (no peer), yellow and red
-    // (a failing or dead link) always win, so no application can hide a dead link -- and it lapses
+    // period; 0 = steady). It shows only while the board is healthy -- its own colours, purple
+    // (updating), yellow (searching) and red (a problem), always win, so no application can hide a
+    // fault -- and an app's colour is drawn blue unless it is blue or cyan (a colour with its red
+    // channel lit, or plain green, would look like the board's own: m0_main.cpp). It lapses
     // 5 s after the last call, so call it at least every few seconds while it should stay on; an actor
     // that stops or moves away leaves nothing behind. `on` false clears it at once. Last caller wins.
     void (*led_app)(void* ctx, bool on, uint8_t r, uint8_t g, uint8_t b, uint16_t blink_period_ms) = nullptr;

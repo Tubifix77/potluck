@@ -343,7 +343,7 @@ def broker_test(broker: str, tls_ca: str | bytes | None = None, user: str | None
     from .mqtt_link import connect_packet, take_packet
     host, _, port_s = broker.rpartition(":")
     if not host or not port_s.isdigit():
-        raise SetupError(f"{broker!r}: give the broker as host:port, e.g. 192.168.0.77:1883")
+        raise SetupError(f"{broker!r}: give the broker as host:port, e.g. 192.168.1.50:1883")
     where = f"the broker at {broker}"
     try:
         sock = socket.create_connection((host, int(port_s)), timeout=timeout)

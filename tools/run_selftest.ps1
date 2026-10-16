@@ -23,8 +23,8 @@
 [CmdletBinding()]
 param(
     [int]$Seconds = 30,
-    [string]$IdfPath = "D:\esp\esp-idf",
-    [string]$MirrorDir = "D:\esp\potluck-fw-qemu"
+    [string]$IdfPath = "",    # run_qemu.ps1's rule: this, else $env:IDF_PATH, else D:\esp\esp-idf
+    [string]$MirrorDir = ""
 )
 
 $ErrorActionPreference = "Stop"

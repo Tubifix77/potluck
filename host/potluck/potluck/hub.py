@@ -1212,7 +1212,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                         self._json(409, {"ok": False, "result": "this hub already runs a cell"})
                         return
                     system = str(req.get("system", ""))
-                    folder = default_cache().parent / "cells" / system
+                    folder = default_cache().parent / "cells" / system  # where the tray looks (tray.cell_file)
                     cluster = st.new_cell(folder, system, str(req.get("passphrase", "")))
                     model.cluster = load_cluster(str(cluster))
                     self._json(200, {"ok": True, "cluster": str(cluster)})
@@ -1642,7 +1642,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="potluck-hub", description=__doc__.splitlines()[0])
     ap.add_argument("--port", help="the serial port of the PC's adapter (e.g. COM6)")
     ap.add_argument("--tcp", help="or a TCP endpoint carrying the frame link (an emulator)")
-    ap.add_argument("--baud", type=int, default=921600)
+    ap.add_argument("--baud", type=int, default=None,
+                    help="the link's rate: default the cluster file's \"baud\" for its own port, else 921600")
     ap.add_argument("--cluster", help="the cluster file: boards, labels, the package, what the outside may see")
     ap.add_argument("--api", default=DEFAULT_API)
     ap.add_argument("--relay", default=DEFAULT_RELAY)
@@ -1706,7 +1707,13 @@ def main(argv: list[str] | None = None) -> int:
         except ApplyError as exc:
             print(f"hub: {exc}")
             return 2
-        a.port = a.port or cluster.port
+        if not a.port and cluster.port:
+            a.port = cluster.port
+            # the cluster file's rate goes with its port: 115200 for a board's own USB cable (the setup wizard
+            # writes that), 921600 for an adapter on GPIO17/18 -- found 2026-10-16, a tray-started hub on a
+            # wizard-made cell opened its port at 921600
+            a.baud = a.baud or cluster.baud
+    a.baud = a.baud or 921600
     # One resident hub per cell (M14). On this PC: the state file names a running one, found by its relay answering.
     if hub_endpoint(None) is not None:
         try:

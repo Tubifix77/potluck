@@ -168,7 +168,7 @@ class NodeExampleTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("watching %s/api/stream" % m.url, out)
         self.assertRegex(out, r"board C \(8160\): alive -> dead since ")
-        self.assertRegex(out, r"event #\d+\s+(6300|7368)\s+peer_dead \{\"peer\":\"8160\"\}")
+        self.assertRegex(out, r"event #\d+\s+(6300|7368)\s+board_peer_dead \{\"peer\":\"8160\"")
         self.assertRegex(out, r"node-8160/rf/link: [-\d.]+ dB, GOOD, .* -> no value, UNAVAILABLE, ")
         self.assertIn("actor_owner", out)  # rf_fusion failed over
 

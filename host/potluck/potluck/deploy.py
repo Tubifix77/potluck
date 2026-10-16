@@ -347,11 +347,11 @@ def _present_config(m: Manifest, a, where: str) -> bytes:
     parts = host.split(".")
     try:
         ip = [int(p) for p in parts]
-        port_n = int(port or 1883)
+        port_n = int(port or (8883 if a.config.get("tls_ca") else 1883))  # TLS's port when TLS, as the hub does
     except ValueError:
         ip, port_n = [], 0
     if len(ip) != 4 or any(not 0 <= v <= 255 for v in ip) or not ip[0] or not 1 <= port_n <= 65535:
-        raise DeployError(f"{where}: broker must be an IPv4 address and an optional port, \"192.168.0.77:1883\" "
+        raise DeployError(f"{where}: broker must be an IPv4 address and an optional port, \"192.168.1.50:1883\" "
                           f"(a name needs DNS on the board, which the presenter does not do yet)")
     keepalive = int(a.config.get("keepalive_s", 10))
     if not 5 <= keepalive <= 120:

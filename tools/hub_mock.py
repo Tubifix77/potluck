@@ -118,8 +118,16 @@ class SimCell:
 
     # ---- events ---------------------------------------------------------------------------------------------------
 
+    # A board's own events reach a real hub through its telemetry as "board_" + kind, with the board's detail
+    # {peer, a, b, board_ms, board_seq} (HUB-API.md); the mock sends them the same way.
+    BOARD_KINDS = {"peer_dead", "peer_alive", "peer_rebooted", "actor_started", "actor_stopped", "actor_owner"}
+
     def _emit(self, at: int, board: str, kind: str, detail: dict) -> None:
         with self.lock:
+            if kind in self.BOARD_KINDS:
+                detail = {"peer": str(detail.get("peer", detail.get("to", board))), "a": 0, "b": 0,
+                          "board_ms": max(0, at - self.boot_at.get(board, at)), "board_seq": self.seq}
+                kind = "board_" + kind
             self.events.append({"seq": self.seq, "at": at, "board": board, "kind": kind, "detail": detail})
             self.seq += 1
             self.cond.notify_all()

@@ -28,11 +28,19 @@ param(
     #   tools\run_qemu.ps1 -Extra "CONFIG_POT_SERIAL_LINK=n"
     [string[]]$Extra = @(),
     [switch]$Clean,
-    [string]$IdfPath = "D:\esp\esp-idf",
-    [string]$MirrorDir = "D:\esp\potluck-fw-qemu"
+    [string]$IdfPath = "",
+    [string]$MirrorDir = ""
 )
 
 $ErrorActionPreference = "Stop"
+# ESP-IDF: -IdfPath, else $env:IDF_PATH, else D:\esp\esp-idf; the mirror on the system drive's root (an ASCII path).
+if (-not $IdfPath) {
+    $IdfPath = if ($env:IDF_PATH -and (Test-Path (Join-Path $env:IDF_PATH "export.ps1"))) { $env:IDF_PATH } else { "D:\esp\esp-idf" }
+}
+if (-not (Test-Path (Join-Path $IdfPath "export.ps1"))) {
+    throw "ESP-IDF not found at $IdfPath. Install ESP-IDF v6.0.2 and set IDF_PATH, or pass -IdfPath."
+}
+if (-not $MirrorDir) { $MirrorDir = Join-Path "$env:SystemDrive\" "potluck-fw-qemu" }
 $repo = Split-Path -Parent $PSScriptRoot
 $src = Join-Path $repo "firmware"
 

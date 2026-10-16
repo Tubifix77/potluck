@@ -43,7 +43,8 @@ param(
     [switch]$Flash,
     [switch]$Monitor,
     [string]$Port = "",
-    [string]$IdfPath = "D:\esp\esp-idf",
+    # ESP-IDF v6.0.2: this, else $env:IDF_PATH (ESP-IDF's installer sets it), else D:\esp\esp-idf.
+    [string]$IdfPath = "",
     [string]$MirrorDir = "",
     # Build through the ASCII mirror even when the repository path does not need it.
     [switch]$ForceMirror,
@@ -54,7 +55,7 @@ param(
     [string[]]$Extra = @(),
     # M6.1: poor-mans-extender's components directory, for -Variant extender. Read in place through
     # POT_PME_HOTSPOT_DIR (firmware/CMakeLists.txt); nothing is copied out of that repository.
-    #   tools\build_firmware.ps1 -Variant extender -PmeHotspot D:\Projects\poor-mans-extender\firmware\components
+    #   tools\build_firmware.ps1 -Variant extender -PmeHotspot <the extender app>\firmware\components
     [string]$PmeHotspot = "",
     # M8.2 (PS-1): external components directories, each holding an application's actor component
     # (one with a potluck-modules.json). Read in place through POT_APP_COMPONENT_DIRS; nothing is copied.
@@ -81,11 +82,15 @@ $AppComponents = @($AppComponents | ForEach-Object { $_ -split ',' } | Where-Obj
 $repo = Split-Path -Parent $PSScriptRoot
 $src = Join-Path $repo "firmware"
 
-# One mirror per target, so switching targets does not force a full rebuild each time.
-if (-not $MirrorDir) { $MirrorDir = "D:\esp\potluck-fw-$Target" }
+# One mirror per target, so switching targets does not force a full rebuild each time. On the system drive's root:
+# an ASCII path whatever the user's name is.
+if (-not $MirrorDir) { $MirrorDir = Join-Path "$env:SystemDrive\" "potluck-fw-$Target" }
 
+if (-not $IdfPath) {
+    $IdfPath = if ($env:IDF_PATH -and (Test-Path (Join-Path $env:IDF_PATH "export.ps1"))) { $env:IDF_PATH } else { "D:\esp\esp-idf" }
+}
 if (-not (Test-Path (Join-Path $IdfPath "export.ps1"))) {
-    throw "ESP-IDF not found at $IdfPath. Pass -IdfPath, or see M0-RUNBOOK.md for the install."
+    throw "ESP-IDF not found at $IdfPath. Install ESP-IDF v6.0.2 and set IDF_PATH, or pass -IdfPath (GETTING-STARTED.md)."
 }
 
 # --- mirror, only if the path forces it ------------------------------------------------------

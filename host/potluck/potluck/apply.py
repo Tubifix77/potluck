@@ -626,9 +626,11 @@ def load_cluster(path: str) -> Cluster:
 # ---- sources: git archive into a cache, never a live tree ---------------------------------------------
 
 def default_cache() -> Path:
+    """<potluck folder>/cache: %LOCALAPPDATA%/potluck on Windows, else ~/.cache/potluck (XDG_CACHE_HOME's) -- its
+    parent is the folder the setup wizard's cells and the tray's settings live in, on every system."""
     if os.name == "nt" and os.environ.get("LOCALAPPDATA"):
         return Path(os.environ["LOCALAPPDATA"]) / "potluck" / "cache"
-    return Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "potluck"
+    return Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "potluck" / "cache"
 
 
 def _git(args: list[str], cwd: str | None = None, *, binary: bool = False):

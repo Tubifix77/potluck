@@ -64,7 +64,9 @@ def fetch_model(timeout: float = 1.5) -> dict | None:
 # ---- starting a hub ----------------------------------------------------------------------------------------------
 
 def potluck_dir() -> Path:
-    return Path(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.cache")) / "potluck"
+    """The same folder as apply.default_cache()'s parent: the wizard's cells, tray.json, the hub's logs."""
+    from .apply import default_cache
+    return default_cache().parent
 
 
 def tray_config() -> dict:
