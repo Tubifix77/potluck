@@ -69,7 +69,7 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > **Amended (ARCHITECTURE section 13, "M19 as built"):** the standby joins the upper cell only on taking the role (one seat
 > a child: ten cells of ten fit 19 peers); a full peer table reclaims a dead peer's slot. Shown on the bench with
 > `keys/desk-m19-tree.json` (package 79): summaries and referrals both ways, B held in reset -> C's summary GOOD at a stub in
-> ~5 s, a stub foreman asleep -> B reads the standby's in 5 s; two real cells in separate radio spaces (`keys/desk-m19-spaces.json`). **Bench now:** firmware `4fd5ceb` (counter 49), package 83
+> ~5 s, a stub foreman asleep -> B reads the standby's in 5 s; two real cells in separate radio spaces (`keys/desk-m19-spaces.json`). **Bench now:** firmware `50973d4` (counter 54), package 88
 > from `keys/desk-m14-hub.json` (the owner's normal); A's relay ON (`POT! relay 1`, saved -- it was on for the stubs).
 > Firmware now reaches a cell the cable does not (firmware catch-up, shown on the bench). **Open:** the 24 h `pot_sim
 > --scenario tree2` run (`captures/m19-tree2-24h.txt`, ends ~06:00 -- read it and record);

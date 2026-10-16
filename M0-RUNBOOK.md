@@ -891,3 +891,15 @@ cells' actors (image version 5).
   each reads), `watch`, `event`.
 - **The wizard's tree:** `POST /api/setup/tree {"chargers": ["0100", ...]}` on the hub proposes cells from the boards'
   link reports (potluck.survey); `"write": true` puts them into the cluster file, then Apply.
+- **Beyond the cable:** in a tree the cable reaches the cabled board's cells only. `apply` names the boards of other cells
+  ("is in a cell the cable does not reach") and verifies what the cabled board can resolve; those boards take the
+  package and the firmware by catch-up. `apply --partial` lets boards that do not answer catch up (folding a tree back
+  into one cell: `keys/desk-m19-spaces.json` -> `keys/desk-m14-hub.json`).
+- **Firmware catch-up:** a confirmed board announces its firmware counter every minute (first 45 s after boot); a peer
+  with an older one asks and takes the holder's own image (1.2 MB in about 33 s, one peer at a time, the asker waits
+  three minutes before asking again). The board on the PC's cable leaves its firmware to the PC (it carries the PC's
+  rollout to the others); a receive cut off half-way is dropped after 15 s. Its log lines are `fw: ... asked for it`,
+  `fw: catch-up to 0x....`, then the receiver's usual `begin`, `commit`, `trial passed`. A board that took its firmware
+  before 2026-10-16 (no trailer kept) cannot serve until it takes one over the cell.
+- **Radio spaces on the bench:** `POT! deaf <last two MAC bytes>` on two boards, both ways, keeps them out of each other's
+  range (`POT! deaf 0` clears; the list is not kept across a reset).

@@ -5924,7 +5924,13 @@ at 04:16:56 and asked; A sent B the 1,214,192 B in 32 s (commit 415 ms), B resta
 C, which had taken east's role while B restarted, asked again after its 3-minute cooldown and confirmed at 04:20:44
 (`captures/m19-fw-catchup-bc.txt`). It found two faults, fixed: A had refused the package -- "a guest no actor runs":
 the image carries every cell's guests and A keeps west's actors only (`DeployImage::scoped`); and apply computed the next
-firmware counter from boards it had not asked. **Not shown, honestly:** **Radio spaces on the bench** (`keys/desk-m19-spaces.json`, package 82): A alone is cell "west", B and C "east", both
+firmware counter from boards it had not asked. Folding the bench back found two races with the PC's own rollout, both
+fixed: C dropped out of the cable's reach mid-push when B took east's role back, and its receiver stayed busy until a
+reset (it then asked at once and took the image from A in 33 s) -- a receive is now dropped after 15 s; and A, the
+cabled board, took the new image by catch-up from B and restarted under the PC's push to C -- the board on the PC's
+cable now leaves its firmware to the PC, and `apply` counts a board that caught up before or during its push as done.
+**Bench at the end:** firmware `50973d4` (counter 54) on all three, package 88 from `keys/desk-m14-hub.json`, the hub
+running. **Not shown, honestly:** **Radio spaces on the bench** (`keys/desk-m19-spaces.json`, package 82): A alone is cell "west", B and C "east", both
 under "upper"; `POT! deaf` both ways keeps A and C out of range. B (east's foreman) read west's summary from A (alive 1),
 A read east's (alive 2, warmest 50.5 C), C read west's as UNAVAILABLE (only a foreman reads a sibling), and C -- which the
 cable cannot reach -- ran package 82 by catch-up through B. `apply` now names boards beyond the cable and verifies what

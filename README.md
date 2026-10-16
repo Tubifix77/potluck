@@ -63,7 +63,8 @@ Everything below runs on real ESP32-S3 boards and has passed a test written befo
 has one, and a criterion that would have killed it. 21 of the 26 milestones so far are accepted (the latest: M13, the cell presenting its resources to Home Assistant with
 no PC; M13.1, a phone page with no network; M14, the hub; M15, telemetry over the radio; M16, the dashboard; M17,
 Home Assistant first-class; M18, the integration layer), and the remaining three (M5.1, M8.1, M8.2) are built and
-wait only for long runs or a hand on the hardware; M19, cells of cells past twenty boards, is planned, and M20, a friendly way in (a setup wizard, a library of apps, a floor plan, boards added from the dashboard over their own USB cable), is under way; the full ledger,
+wait only for long runs or a hand on the hardware; M19, cells of cells past twenty boards, is built (a tree of cells under one signed package, a foreman per cell
+presenting a summary upward, firmware and packages reaching cells the PC's cable does not) and awaits acceptance, and M20, a friendly way in (a setup wizard, a library of apps, a floor plan, boards added from the dashboard over their own USB cable), is under way; the full ledger,
 with every measurement and caveat, is [STATUS.md](STATUS.md).
 
 - **Boards that find each other and know when one is gone.** Over the radio, a missing board is declared dead
