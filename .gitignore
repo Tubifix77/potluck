@@ -36,7 +36,7 @@
 !/captures/trio-C-0x8160.log
 
 # Local Claude Code session settings stay local; the zero-assumption ledger IS
-# tracked, because CLAUDE.md rule 3 makes it part of the project's method rather
+# tracked, because citing every factual claim there is part of the project's method rather
 # than part of anyone's setup.
 /.claude/*
 !/.claude/zero-assumption/
@@ -84,3 +84,6 @@ firmware/build-*/
 !/captures/m13-c-txstall-*.jsonl
 !/captures/m13-a-sees-c-dead.jsonl
 !/captures/m13-*.jsonl.gz
+
+# The maintainer's own notes for Claude Code sessions (auto-loaded, never published)
+CLAUDE.local.md
