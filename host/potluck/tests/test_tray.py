@@ -53,6 +53,9 @@ class CellFile(unittest.TestCase):
                 self.assertEqual(tray.cell_file(), Path(d) / "cells" / "home" / "home.json")
                 (Path(d) / "tray.json").write_text(json.dumps({"cluster": "D:/x/bench.json"}))
                 self.assertEqual(tray.cell_file(), Path("D:/x/bench.json"))
+                # as Windows PowerShell's Set-Content -Encoding UTF8 writes it: with a BOM (read as no cell, 2026-10-16)
+                (Path(d) / "tray.json").write_bytes(b"\xef\xbb\xbf" + json.dumps({"cluster": "D:/x/home.json"}).encode())
+                self.assertEqual(tray.cell_file(), Path("D:/x/home.json"))
                 self.assertEqual(tray.hub_command(Path("c.json"))[-2:], ["--cluster", "c.json"])
             finally:
                 tray.potluck_dir = saved

@@ -73,10 +73,25 @@ def tray_config() -> dict:
     """%LOCALAPPDATA%/potluck/tray.json: {"cluster": <file>, "hub_args": [...]} -- both optional. hub_args are added to
     the hub's command line (say --listen with its TLS files, for the dashboard on the house network)."""
     try:
-        cfg = json.loads((potluck_dir() / "tray.json").read_text(encoding="utf-8"))
+        cfg = json.loads((potluck_dir() / "tray.json").read_text(encoding="utf-8-sig"))  # Windows PowerShell writes a BOM
         return cfg if isinstance(cfg, dict) else {}
-    except (OSError, ValueError):
+    except FileNotFoundError:
         return {}
+    except (OSError, ValueError) as exc:
+        # Said, not swallowed: a tray.json that does not parse used to start the hub with no cell and no word why.
+        note(f"tray.json unreadable, so no cell from it: {exc}")
+        return {}
+
+
+def note(line: str) -> None:
+    """One line in <potluck folder>/logs/tray.log -- the tray has no console to print to."""
+    try:
+        logs = potluck_dir() / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        with open(logs / "tray.log", "a", encoding="utf-8") as f:
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + line + "\n")
+    except OSError:
+        pass
 
 
 def cell_file() -> Path | None:

@@ -385,7 +385,7 @@ def check_plan(plan: Any) -> dict[str, Any] | None:
 def load_cluster(path: str) -> Cluster:
     p = Path(path).resolve()
     try:
-        doc = json.loads(p.read_text(encoding="utf-8"))
+        doc = json.loads(p.read_text(encoding="utf-8-sig"))  # a BOM from Windows PowerShell or an editor is no error
     except (OSError, ValueError) as exc:
         raise ApplyError(f"{path}: {exc}") from None
     base = p.parent
