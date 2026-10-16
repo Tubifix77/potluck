@@ -122,6 +122,9 @@ class FwReceiver {
     bool in_progress() const { return active_; }
     uint32_t received() const { return received_; }
     uint32_t counter() const { return counter_; }  // of the image in progress, or the one committed last
+    // M19: of the image in progress or committed last -- kept with it so the board can pass it on (firmware catch-up)
+    uint32_t image_len() const { return image_len_; }
+    const uint8_t* trailer() const { return trailer_; }
 
   private:
     FwSink& sink_;

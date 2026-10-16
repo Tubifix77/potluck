@@ -948,6 +948,8 @@ size_t on_fw(uint16_t from, uint16_t msg_id, uint8_t op, const uint8_t* p, uint1
 void on_result(uint16_t peer, uint16_t msg, uint8_t op, bool timed_out, const uint8_t* p, uint16_t len);
 bool busy();
 void tick(uint32_t now);
+void catchup_tick(uint32_t now);  // M19: the firmware catch-up's announces and a push in progress
+bool on_cast(uint16_t from, uint32_t path, const uint8_t* args, uint16_t len, uint32_t now);  // M19
 bool receiving();    // an image arriving (the status LED's "updating")
 uint32_t received();  // its bytes so far
 bool on_trial();
@@ -1959,6 +1961,7 @@ void link_task(void*) {
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         deploy_rt::tick(nt);
         fw_rt::tick(nt);
+        fw_rt::catchup_tick(nt);  // M19
         xSemaphoreGive(g_mutex);
 
         // Nothing above could have blocked, so yield explicitly. One tick minimum even when a
@@ -3011,11 +3014,59 @@ void nvs_put(uint32_t floor, uint32_t run, uint32_t pend) {
     nvs_close(h);
 }
 
+// M19: firmware catch-up. A board keeps, with each image it takes, that image's length and the owner's signed trailer
+// ("p..." while on trial, "r..." once confirmed), so it can pass the image on: a board of a cell the PC's cable does
+// not reach gets the firmware the way it gets the package -- a confirmed board announces its counter to its peers, a
+// peer with an older one asks, and the holder sends its own running image (FW_BEGIN / CHUNK / COMMIT, read back from
+// its partition). The receiver checks the owner's signature and its anti-downgrade floor exactly as for an image from
+// the PC, and runs the same trial. Every board runs one image (M12), so any confirmed board's image is the cell's.
+uint8_t g_run_trailer[kFwTrailerLen] = {};
+uint32_t g_run_len = 0;
+bool g_run_have = false;  // the running image's trailer and length are known (it came over the cell since M19)
+
+void save_image(const char* which, uint32_t counter, uint32_t len, const uint8_t* trailer) {
+    nvs_handle_t h;
+    if (nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) return;
+    char k[8];
+    std::snprintf(k, sizeof k, "%sctr", which);
+    nvs_set_u32(h, k, counter);
+    std::snprintf(k, sizeof k, "%slen", which);
+    nvs_set_u32(h, k, len);
+    std::snprintf(k, sizeof k, "%str", which);
+    nvs_set_blob(h, k, trailer, kFwTrailerLen);
+    nvs_commit(h);
+    nvs_close(h);
+}
+bool load_image(const char* which, uint32_t want_counter, uint32_t& len, uint8_t* trailer) {
+    nvs_handle_t h;
+    if (nvs_open(kNs, NVS_READONLY, &h) != ESP_OK) return false;
+    char k[8];
+    uint32_t ctr = 0;
+    size_t n = kFwTrailerLen;
+    std::snprintf(k, sizeof k, "%sctr", which);
+    bool ok = nvs_get_u32(h, k, &ctr) == ESP_OK && ctr == want_counter;
+    std::snprintf(k, sizeof k, "%slen", which);
+    ok = ok && nvs_get_u32(h, k, &len) == ESP_OK;
+    std::snprintf(k, sizeof k, "%str", which);
+    ok = ok && nvs_get_blob(h, k, trailer, &n) == ESP_OK && n == kFwTrailerLen;
+    nvs_close(h);
+    return ok;
+}
+
 const char* state_str(FwState s) {
     return s == FwState::Confirmed ? "confirmed" : s == FwState::OnTrial ? "ON TRIAL" : "factory";
 }
 
-bool busy() { return g_state == FwState::OnTrial || g_committed; }
+struct Push {  // M19: one firmware catch-up being sent, to one peer
+    uint16_t peer = 0;      // 0 = none
+    uint16_t awaiting = 0;  // the request's msg_id
+    uint8_t step = 0;       // 1 BEGIN, 2 CHUNK, 3 COMMIT
+    uint8_t tries = 0;
+    uint32_t offset = 0;
+    uint32_t started_ms = 0;
+};
+Push g_push;
+bool busy() { return g_state == FwState::OnTrial || g_committed || g_push.peer != 0; }
 bool receiving() { return g_rx.in_progress(); }
 uint32_t received() { return g_rx.received(); }
 bool on_trial() { return g_state == FwState::OnTrial; }
@@ -3045,6 +3096,9 @@ void boot() {
         nvs_put(g_floor, g_running, 0);
     }
     g_sink_ok = g_sink.init();
+    if (g_state == FwState::Confirmed && g_running != 0) {
+        g_run_have = load_image("r", g_running, g_run_len, g_run_trailer);  // M19
+    }
     g_rx.set_floor(g_floor);
     g_rx.set_busy(busy());
     ESP_LOGI(kTag, "fw: running %s (%s), counter %u, floor %u, %s; spare slot %s, %u KB",
@@ -3075,6 +3129,7 @@ void commit_job(void* a) {
     if (j.status == FwStatus::Ok) {
         g_pending = g_rx.counter();
         nvs_put(g_floor, g_running, g_pending);
+        save_image("p", g_pending, g_rx.image_len(), g_rx.trailer());  // M19: to pass it on once it is confirmed
     }
     ESP_LOGI(kTag, "fw: commit of counter %u: %s (%u ms)", static_cast<unsigned>(g_rx.counter()),
              fw_status_str(j.status), static_cast<unsigned>(now_ms_() - t0));
@@ -3128,7 +3183,146 @@ size_t on_fw(uint16_t from, uint16_t msg_id, uint8_t op, const uint8_t* p, uint1
     return reply_with(s, self, reply, cap);
 }
 
+// ---- M19: the catch-up's push --------------------------------------------------------------------
+constexpr uint32_t kFwPath = path_hash("potluck:sys/firmware/v1");  // announce: 1, counter u32; ask: 2, counter u32
+constexpr uint32_t kFwFirstAnnounceMs = 45000;
+constexpr uint32_t kFwAnnounceMs = 60000;
+constexpr uint32_t kFwAskCooldownMs = 180000;  // a transfer and a trial take two or three minutes
+constexpr uint32_t kFwPushMaxMs = 600000;
+uint32_t g_next_announce_ms = kFwFirstAnnounceMs;
+uint32_t g_asked_ms = 0;
+uint32_t g_pushes = 0, g_asks = 0;
+
+void push_send() {
+    EXT_RAM_BSS_ATTR static uint8_t buf[kFwBeginLen + kFwChunkMax + 16];  // the link task's: PSRAM, off its stack
+    size_t n = 0;
+    uint8_t op = 0;
+    if (g_push.step == 1) {
+        FwBegin b{g_push.peer, g_run_len, g_running, g_run_trailer};
+        n = store_fw_begin(b, buf, sizeof buf);
+        op = kOpFwBegin;
+    } else if (g_push.step == 2) {
+        EXT_RAM_BSS_ATTR static uint8_t data[kFwChunkMax];
+        const uint32_t left = g_run_len - g_push.offset;
+        const uint16_t len = static_cast<uint16_t>(left < kFwChunkMax ? left : kFwChunkMax);
+        const esp_partition_t* part = esp_ota_get_running_partition();
+        if (part == nullptr || esp_partition_read(part, g_push.offset, data, len) != ESP_OK) {
+            ESP_LOGW(kTag, "fw: catch-up to 0x%04x abandoned: cannot read the running image", g_push.peer);
+            g_push = Push{};
+            return;
+        }
+        FwChunk c{g_push.peer, g_push.offset, len, data};
+        n = store_fw_chunk(c, buf, sizeof buf);
+        op = kOpFwChunk;
+    } else {
+        n = store_fw_target(g_push.peer, buf, sizeof buf);
+        op = kOpFwCommit;
+    }
+    g_push.awaiting = n != 0 ? g_node->send_deploy(g_push.peer, op, buf, static_cast<uint16_t>(n)) : 0;
+    if (g_push.awaiting == 0) {
+        ESP_LOGW(kTag, "fw: catch-up to 0x%04x abandoned: the peer is not reachable", g_push.peer);
+        g_push = Push{};
+    }
+}
+
+void push_result(bool timed_out, const uint8_t* p, uint16_t len) {
+    FwReply r{};
+    const bool answered = !timed_out && p != nullptr && load_fw_reply(p, len, r);
+    if (!answered) {
+        if (g_push.step == 3) {
+            // The commit's checks (the signature, then the image's own) outlast a node's request timeout: the peer
+            // is very likely restarting into the image now. Its trial and its next announce tell the rest.
+            ESP_LOGI(kTag, "fw: catch-up to 0x%04x sent; its commit outlasted the request timeout", g_push.peer);
+            g_push = Push{};
+            return;
+        }
+        if (++g_push.tries > 3) {
+            ESP_LOGW(kTag, "fw: catch-up to 0x%04x abandoned at %u B: no answer", g_push.peer,
+                     static_cast<unsigned>(g_push.offset));
+            g_push = Push{};
+            return;
+        }
+        push_send();  // the same step again
+        return;
+    }
+    if (r.status != FwStatus::Ok) {
+        ESP_LOGW(kTag, "fw: catch-up to 0x%04x refused at step %u: %s", g_push.peer, static_cast<unsigned>(g_push.step),
+                 fw_status_str(r.status));
+        g_push = Push{};
+        return;
+    }
+    g_push.tries = 0;
+    if (g_push.step == 1) {
+        g_push.step = 2;
+    } else if (g_push.step == 2) {
+        const uint32_t left = g_run_len - g_push.offset;
+        g_push.offset += left < kFwChunkMax ? left : kFwChunkMax;
+        if (g_push.offset >= g_run_len) g_push.step = 3;
+    } else {
+        ESP_LOGI(kTag, "fw: catch-up to 0x%04x committed: %u B, counter %u, in %u ms", g_push.peer,
+                 static_cast<unsigned>(g_run_len), static_cast<unsigned>(g_running),
+                 static_cast<unsigned>(now_ms_() - g_push.started_ms));
+        g_push = Push{};
+        return;
+    }
+    push_send();
+}
+
+bool on_cast(uint16_t from, uint32_t path, const uint8_t* a, uint16_t len, uint32_t now) {
+    if (path != kFwPath) return false;
+    if (a == nullptr || len < 5) return true;
+    const uint32_t c = static_cast<uint32_t>(a[1]) | static_cast<uint32_t>(a[2]) << 8 |
+                       static_cast<uint32_t>(a[3]) << 16 | static_cast<uint32_t>(a[4]) << 24;
+    if (a[0] == 1) {
+        // A newer confirmed image on a peer: ask for it, unless this board is busy with firmware or a package.
+        if (c > g_running && c > g_floor && g_sink_ok && !busy() && !g_rx.in_progress() &&
+            !deploy_rt::g_agent->pushing() && !deploy_rt::g_agent->reboot_scheduled() &&
+            (g_asked_ms == 0 || now - g_asked_ms >= kFwAskCooldownMs)) {
+            const uint8_t ask[5] = {2, a[1], a[2], a[3], a[4]};
+            if (g_node->cast(from, kFwPath, ask, sizeof ask)) {
+                g_asked_ms = now == 0 ? 1 : now;
+                ++g_asks;
+                ESP_LOGI(kTag, "fw: 0x%04x runs counter %u, this board %u: asked for it", from, static_cast<unsigned>(c),
+                         static_cast<unsigned>(g_running));
+            }
+        }
+    } else if (a[0] == 2) {
+        if (c == g_running && g_run_have && g_state == FwState::Confirmed && g_push.peer == 0 && !g_committed &&
+            !deploy_rt::g_agent->pushing()) {
+            g_push = Push{from, 0, 1, 0, 0, now};
+            ++g_pushes;
+            ESP_LOGI(kTag, "fw: catch-up to 0x%04x: counter %u, %u B", from, static_cast<unsigned>(g_running),
+                     static_cast<unsigned>(g_run_len));
+            push_send();
+        }
+    }
+    return true;
+}
+
+void catchup_tick(uint32_t now) {
+    if (g_push.peer != 0 && now - g_push.started_ms > kFwPushMaxMs) {
+        ESP_LOGW(kTag, "fw: catch-up to 0x%04x abandoned: too slow", g_push.peer);
+        g_push = Push{};
+    }
+    if (static_cast<int32_t>(now - g_next_announce_ms) < 0) return;
+    g_next_announce_ms = now + kFwAnnounceMs;
+    if (!g_run_have || g_state != FwState::Confirmed || g_committed) return;
+    const uint8_t ann[5] = {1, static_cast<uint8_t>(g_running), static_cast<uint8_t>(g_running >> 8),
+                            static_cast<uint8_t>(g_running >> 16), static_cast<uint8_t>(g_running >> 24)};
+    const NodeConfig& cfg = g_node->config();
+    for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+        const PeerLink& q = g_node->peers().slot(i);
+        if (q.state != PeerState::Alive) continue;
+        if (cfg.has_trusted_mac && std::memcmp(q.mac, cfg.trusted_mac, cfg.trusted_mac_len) == 0) continue;  // the PC
+        g_node->cast(q.node_id, kFwPath, ann, sizeof ann);
+    }
+}
+
 void on_result(uint16_t peer, uint16_t msg, uint8_t, bool timed_out, const uint8_t* p, uint16_t len) {
+    if (g_push.peer != 0 && msg == g_push.awaiting && peer == g_push.peer) {
+        push_result(timed_out, p, len);  // M19
+        return;
+    }
     if (g_proxy.awaiting == 0 || msg != g_proxy.awaiting || peer != g_proxy.target) return;
     const Proxy q = g_proxy;
     g_proxy = Proxy{};
@@ -3162,6 +3356,9 @@ void tick(uint32_t now) {
         if (g_running > g_floor) g_floor = g_running;
         g_pending = 0;
         nvs_put(g_floor, g_running, 0);
+        // M19: the image just confirmed is now the one this board can pass on
+        g_run_have = load_image("p", g_running, g_run_len, g_run_trailer);
+        if (g_run_have) save_image("r", g_running, g_run_len, g_run_trailer);
         g_state = FwState::Confirmed;
         g_rx.set_floor(g_floor);
         g_rx.set_busy(false);
@@ -3765,6 +3962,7 @@ extern "C" void app_main(void) {
             if (g_rec != nullptr && g_rec->on_cast(from, path, args, len)) return true;
 #endif
             if (deploy_rt::g_agent->on_cast(from, path, args, len, now_ms_())) return true;  // M12: catch-up
+            if (fw_rt::on_cast(from, path, args, len, now_ms_())) return true;  // M19: firmware catch-up
             return g_actors.on_call(from, msg_id, path, args, len) == Actor::kCallAccepted;
         },
         nullptr);
