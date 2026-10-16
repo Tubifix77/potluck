@@ -13,6 +13,16 @@ Measured ESP-NOW link figures cited in ARCHITECTURE.md come from:
   "ESP-NOW Performance in Outdoor Environments", IEEE/IFIP WONS 2025.
 
 Third-party code included in the firmware:
+  ESP-IDF v6.0.2 by Espressif Systems, under the Apache License 2.0, and the components of it every image links:
+    lwIP (TCP/IP stack), under its 3-clause BSD licence: Copyright (c) 2001, 2002 Swedish Institute of Computer
+      Science. All rights reserved.
+    FreeRTOS kernel, under the MIT licence: Copyright (C) 2021 Amazon.com, Inc. or its affiliates.
+    Mbed TLS, under the Apache License 2.0 (it is dual-licensed Apache-2.0 OR GPL-2.0-or-later; Potluck takes Apache-2.0).
+    Espressif's Wi-Fi, ESP-NOW and PHY libraries (binary), under the Apache License 2.0.
+  espressif/mqtt 1.1.0 (the ESP-MQTT client, a managed component), under the Apache License 2.0.
+  The release image also carries two apps by Tue Wincentz Boas, under the Apache License 2.0:
+    passive-sensor (room presence from radio signals), Copyright 2026 Tue Wincentz Boas;
+    poor-mans-extender (a Wi-Fi extender), Copyright 2026 Tue Wincentz Boas.
   Monocypher 4.0.3 (firmware/components/monocypher), used under its 2-clause BSD licence:
     Copyright (c) 2017-2023, Loup Vaillant
     Copyright (c) 2017-2019, Michael Savage
@@ -22,3 +32,15 @@ Third-party code included in the firmware:
   used under the MIT licence -- compiled only when CONFIG_POT_WASM is set (M7's experiment):
     Copyright (c) 2019 Steven Massey, Volodymyr Shymanskyy
   The full licence text is firmware/components/pot_wasm/wasm3/LICENSE.
+
+Third-party code included in the packaged Windows program (dist/Potluck, built by tools/build_package.ps1), whose
+licence texts travel in its licenses/ folder:
+  Python 3.14 (python314.dll and its standard library), under the Python Software Foundation License Version 2,
+    with the third-party libraries Python itself bundles listed in Python's LICENSE.txt -- among them OpenSSL 3.0,
+    under the Apache License 2.0.
+  pyserial 3.5 by Chris Liechti, under the 3-clause BSD licence.
+  cryptography 46.0.7, under the Apache License 2.0 (dual-licensed Apache-2.0 OR BSD-3-Clause), with OpenSSL 3.5.6.
+  cffi 2.1.1 (MIT-0) and pycparser 3.11 (BSD-3-Clause).
+  PyInstaller's bootloader, under the GPL with its bootloader exception (the exception lets it start any program).
+  esptool 5.3.1 by Espressif Systems, under the GNU General Public License version 2 or later, as a separate program
+    (esptool/esptool.exe, with its LICENSE and SOURCE.txt beside it); Potluck runs it, never links it.
