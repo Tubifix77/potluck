@@ -5940,3 +5940,10 @@ the cabled board can resolve; `--partial` folded the tree back (package 83 from 
 counted over 24 h on the bench (the 24 h is pot_sim's); a survey of the bench that proposes a tree (the hub's `POST /api/setup/tree`
 with chargers B and C proposed one cell -- right, the three hear each other; a tree from a survey is tested on models). **The hub:** the owner's tray had never started one (no `logs` folder under its AppData) and this session's
 hub of the 15th was gone; this session started it again as before (`captures/hub-8.log`, presenting to the broker). Commits local, not pushed.
+
+**2026-10-16, morning -- the owner:** "i accept m19". And: the 24-hour soaks will never be run in this house, so they
+come off as gates; 30 minutes of empty room is "nearly impossible" in a household of five with two cats and three kids.
+Recorded: M19 ACCEPTED; M5.1 accepted with its 24-hour run waived (longest run with the hotspot carrying traffic: 1.96 h,
+session 30); M8.2 accepted with its 30 minutes of empty room and 24 hours with no PC waived (evidence instead: 3 h of
+empty desk with no false alarm, 0 of 370 readings in the real room, session 34). Next, at the owner's word: the hands-on
+tests -- B warmed (M8.1), the cable pulled (M10), power cut by hand (M11, M12).
