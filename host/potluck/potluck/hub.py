@@ -397,6 +397,7 @@ class Model:
         self.link_deaths: dict[tuple[int, int], int] = {}  # (board, peer) -> peer_dead events pulled since the hub started
         self.lock = threading.Lock()
         self.started = time.monotonic()
+        self.first_pull: float | None = None  # when the hub first looked at the cell: where a quiet start is counted
         self.boards: dict[int, dict] = {}
         self.resources: dict[str, dict] = {}
         self.events: deque[dict] = deque(maxlen=5000)
@@ -443,6 +444,8 @@ class Model:
     # one pull: every board's NODE_STATUS, every resource's READ
     def pull(self) -> None:
         from .apply import node_status
+        if self.first_pull is None:
+            self.first_pull = time.monotonic()
         if time.monotonic() < self.hub._quiet_until:
             return  # a host node just went: any frame from 0x00fe would keep it alive on the cabled board
         cabled = self.hub.peer_node_id
@@ -786,8 +789,13 @@ class Model:
 
     def starting(self) -> bool:
         """The hub has not yet seen the whole cell once: some board has not answered yet, or some resource has not held
-        one quality for SETTLE_READS reads. Never longer than STARTUP_S -- a fault is never hidden past that."""
-        if time.monotonic() - self.started >= self.STARTUP_S:
+        one quality for SETTLE_READS reads. Never longer than STARTUP_S after the hub first looked at the cell -- a fault
+        is never hidden past that. Counted from the first pull, not the start: a hub restarted after a kill waits up to
+        a minute for its old lease to lapse before it serves anything (found 2026-10-16: the window had run out during
+        that wait, and the first model the dashboard saw showed every app not working)."""
+        if self.first_pull is None:
+            return True
+        if time.monotonic() - self.first_pull >= self.STARTUP_S:
             return False
         with self.lock:
             if any(b.get("status") is None for b in self.boards.values()):

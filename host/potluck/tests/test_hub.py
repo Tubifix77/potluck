@@ -400,6 +400,20 @@ class SecondHub(unittest.TestCase):
             opened.assert_not_called()
 
 
+class Starting(HubFixture):
+    """hub.starting counts from the hub's first look at the cell, not from when it was made."""
+
+    def test_a_hub_that_waited_before_its_first_pull_is_still_starting(self):
+        from unittest import mock
+        self.model.started -= 2 * hb.Model.STARTUP_S  # it waited out a killed hub's lease before serving
+        self.assertTrue(self.model.snapshot()["hub"]["starting"])  # nothing looked at yet: no verdict
+        with mock.patch.object(self.model, "board_ids", return_value=[0x1001]):
+            self.model.pull()
+        self.assertTrue(self.model.starting())  # its values have not settled yet
+        self.model.first_pull -= hb.Model.STARTUP_S
+        self.assertFalse(self.model.starting())  # and never longer than STARTUP_S after the first look
+
+
 class Settled(unittest.TestCase):
     """One late read of another board's value is shown as read, but neither marks an app nor logs a change: the
     settled quality moves only when a new quality holds for two reads (found 2026-10-16 on an everyday cell)."""

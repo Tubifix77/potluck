@@ -133,7 +133,8 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   `hub.relay`: counts for the PC's other tools that go through the hub, `{clients, requests, replies, unmatched,
   fanned_out, node_frames_out, node_frames_in}`. `hub.telemetry` counts `{pulls, replies, failures, events}`.
 - `hub.starting`: `true` while the hub has not yet seen the whole cell once -- some board has not answered, or some
-  resource is still `STARTING` (below) -- and never longer than 30 s after it started. Meanwhile an app not
+  resource is still `STARTING` (below) -- and never longer than 30 s after its first look at the cell (a hub restarted
+  after being killed first waits out its old lease, up to a minute, serving nothing). Meanwhile an app not
   yet seen working has `working: null` (not `false`), a board not heard yet is not a problem, and the dashboard says
   "Starting up" instead of a verdict. After it, a fault shows as usual.
 - `cell.channel`, `cell.other_cell_frames`, `signals.saturation.namespace` and `signals.saturation.airtime` are
