@@ -58,5 +58,26 @@ class CellFile(unittest.TestCase):
                 tray.potluck_dir = saved
 
 
+class Keeper(unittest.TestCase):
+    def test_a_hub_that_stops_answering_is_replaced_once_a_minute_at_most(self):
+        now = [0.0]
+        started = []
+        k = tray.HubKeeper(start=lambda: started.append(now[0]), clock=lambda: now[0])
+        for _ in range(10):  # a hub that answers is never touched
+            self.assertFalse(k.seen(GOOD))
+        self.assertFalse(k.seen(None))
+        self.assertFalse(k.seen(GOOD))  # a missed poll, then an answer: the count starts again
+        self.assertFalse(k.seen(None))
+        self.assertFalse(k.seen(None))
+        self.assertTrue(k.seen(None))  # three polls in a row with no answer
+        self.assertEqual(started, [0.0])
+        for _ in range(19):  # 57 s of no answer: one that cannot start is not restarted in a loop
+            now[0] += 3
+            self.assertFalse(k.seen(None))
+        now[0] += 3
+        self.assertTrue(k.seen(None))
+        self.assertEqual(started, [0.0, 60.0])
+
+
 if __name__ == "__main__":
     unittest.main()

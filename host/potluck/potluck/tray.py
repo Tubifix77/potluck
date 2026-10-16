@@ -22,6 +22,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.request
 from ctypes import wintypes
 from pathlib import Path
@@ -105,6 +106,44 @@ def start_hub() -> subprocess.Popen | None:
                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
+class HubKeeper:
+    """A tray started at login keeps a hub running for as long as it runs. Found 2026-10-16 (M0-LOG session 46): the
+    tray started a hub only when it started itself, and only if none answered -- so when the hub that was running then
+    stopped, the dashboard and Home Assistant lost the cell until someone noticed. A hub that answers is never touched;
+    one that stops answering for MISSES polls is replaced, and never more often than once in BACKOFF_S, so a hub that
+    cannot start (no cable, a broken cell file) is not restarted in a loop."""
+
+    MISSES = 3  # polls with no answer (POLL_MS apart) before a hub is started
+    BACKOFF_S = 60.0
+
+    def __init__(self, start=None, clock=time.monotonic) -> None:
+        self._start = start or start_hub
+        self._clock = clock
+        self.child: subprocess.Popen | None = None
+        self.misses = 0
+        self.last_start: float | None = None
+        self.starts = 0
+
+    def start(self) -> None:
+        self.child = self._start()
+        self.last_start = self._clock()
+        self.starts += 1
+        self.misses = 0
+
+    def seen(self, model: dict | None) -> bool:
+        """One poll's answer; True when it started a hub."""
+        if model is not None:
+            self.misses = 0
+            return False
+        self.misses += 1
+        if self.misses < self.MISSES:
+            return False
+        if self.last_start is not None and self._clock() - self.last_start < self.BACKOFF_S:
+            return False  # ours may still be coming up, or cannot start: once a minute at most
+        self.start()
+        return True
+
+
 # ---- Win32 ------------------------------------------------------------------------------------------------------
 
 if sys.platform == "win32":
@@ -149,10 +188,11 @@ CMD_OPEN, CMD_SETUP, CMD_START, CMD_QUIT = 1, 2, 3, 9
 
 
 class Tray:
-    def __init__(self) -> None:
+    def __init__(self, keeper: HubKeeper | None = None) -> None:
         self.state, self.tip = "none", "Potluck"
         self.icons: dict[str, int] = {}
         self.child: subprocess.Popen | None = None
+        self.keeper = keeper
         self.model: dict | None = None
         self._lock = threading.Lock()
         folder = Path(tempfile.gettempdir()) / "potluck-tray"
@@ -181,6 +221,8 @@ class Tray:
             with self._lock:
                 self.model = m
                 self.state, self.tip = judge(m)
+                if self.keeper is not None:
+                    self.keeper.seen(m)
         threading.Thread(target=run, daemon=True).start()
 
     def _show(self) -> None:
@@ -220,6 +262,9 @@ class Tray:
                 os.startfile(API + "/")
             elif cmd == CMD_SETUP:
                 os.startfile(API + "/setup.html")
+            elif cmd == CMD_START and self.keeper is not None:
+                with self._lock:
+                    self.keeper.start()
             elif cmd == CMD_START and self.child is None:
                 self.child = start_hub()
             elif cmd == CMD_QUIT:
@@ -241,12 +286,13 @@ class Tray:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    if "--start-hub" in argv and fetch_model() is None:
-        start_hub()  # at login: a hub if none runs, then the icon
+    keeper = HubKeeper() if "--start-hub" in argv else None
+    if keeper is not None and fetch_model() is None:
+        keeper.start()  # at login: a hub if none runs, then the icon -- and again whenever it stops answering
     if sys.platform != "win32":
         print("potluck-tray: the tray icon is Windows-only for now; the hub and dashboard work without it")
         return 2
-    return Tray().run()
+    return Tray(keeper).run()
 
 
 if __name__ == "__main__":
