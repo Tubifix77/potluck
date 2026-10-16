@@ -860,3 +860,34 @@ Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on 
   made, else setup mode). Unpackaged: `python -m potluck.tray`.
 - **Potluck's mark:** `python -m potluck.brandmark` regenerates every copy of it -- the dashboard's SVGs, Home
   Assistant's `custom_components/potluck/brand/icon*.png` -- from one geometry; the tray draws it at run time.
+
+## 20. M19: cells of cells
+
+A tree is a cluster file with `cells` (DEVELOPING-APPS.md's table: each cell's `parent`, `window_ms`, `export`,
+`period_ms`; a board's `cells` and `"foreman": true`). `apply --plan` prints every board's peers against 19 and
+refuses a tree that does not fit, naming the board; one package carries the whole tree, and each board keeps only its
+cells' actors (image version 5).
+
+- **The foreman:** `builtin:foreman`, one per cell with a parent. Its stats line `{"t":"foreman",...}` (cell, parent,
+  alive, exports, groups) shows on whichever board holds it; that board's `groups` names both cells. The standby -- the
+  board ranked second -- stays in its own cell and joins the parent when it takes the role.
+- **Reading across cells:** on a board, `POT! read <path hash>` shows what it holds for a path (owner, quality, the
+  value as u32 and f32, unit, age) and asks the owner again; `POT! refer <via hex> <path hash>` asks for a path that
+  lives in another cell as a referral through that cell's foreman, then `POT! read` shows it. Path hashes:
+  `python -c "from potluck.paths import path_hash; print(path_hash('potluck://lab/cell-bench/warmest'))"`.
+- **pot_sim:** `build/tests/pot_sim.exe --scenario tree2 --cells 10 --minutes 10` -- ten cells of ten in their own
+  radio spaces under one upper cell, real reconcilers and foremen; `--kill-at <s>` puts cell 0's foreman to sleep for
+  two minutes. It reports deaths, handovers, cell-seconds with no foreman or two, each radio space's airtime (and how
+  much of it the reconciler's CASTs), and the sibling summaries read. A day takes about five hours.
+- **Stub cells on the bench** (the owner buys no more boards): the cluster file names stub boards (`"stub": true`,
+  ids f000..fdff, e.g. `keys/desk-m19-tree.json`), which `apply` composes into the tree and never contacts. Build the
+  host program optimised -- `tools\run_host_tests.ps1 -Release -BuildDir build/release -Target pot_stubs` (a Debug
+  build fell behind its own heartbeats with nine stubs checking signatures) -- make sure the cabled board relays
+  (`POT! relay 1`, kept across reboots), then from `host/potluck/`:
+  `python -m potluck.stubs --port COM6 --package <the tree's signed package> [--watch f301:cell-bench/warmest]
+  [--refer f101:8160:node-7368/hw/die_temp] [--sleep f102@120+90] [--out <file.jsonl>]`. The package is the one
+  `apply` kept (`%LOCALAPPDATA%\potluck\cache\packages\<system>-<counter>.pkg.json`); each stub's identity is made
+  under the cell's CA the first time (`keys/stubs/`). Its stderr lines: `stub` (groups, peers, roles and the summary
+  each reads), `watch`, `event`.
+- **The wizard's tree:** `POST /api/setup/tree {"chargers": ["0100", ...]}` on the hub proposes cells from the boards'
+  link reports (potluck.survey); `"write": true` puts them into the cluster file, then Apply.

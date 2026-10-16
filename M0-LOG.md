@@ -5853,3 +5853,70 @@ in 150 s (7.8 KiB/s), trial passed with 2 radio peers. The first attempt differe
 and carried the cell's work (A and B ran no package on the new firmware). **Cause open.** The host now keeps a console
 link's log text (`POTLUCK_CONSOLE_TEXT`, and `_SAFE=1` keeps only update and crash lines, so it may point at a board with
 Wi-Fi credentials); the next console rollout runs with it.
+
+## Session 46 -- 2026-10-15/16 (night): M19 built -- groups, one package for a tree, the foreman, summaries and referrals, the tree-wide channel; pot_sim's two levels; stub cells on the bench
+
+The owner set the goal "finish M19". Everything in this session follows ARCHITECTURE section 13's M19 and its fourteen-item
+review; what the building changed is recorded there under "M19 as built", with its evidence. Here: the order, the numbers,
+and what is wrong or open.
+
+**Built, host-tested, in this order.** Groups in HELLO, admission by cell, one window per membership (sessions 45/46);
+`apply --plan`'s per-board peer budget (Review #6); image version 5 -- one package for the tree, scoped per cell, 64
+declarations a board keeps and 16 portable actors (Review #3); `builtin:foreman` with its summary exports and
+Node::request_referral (Reviews #4, #5); the cluster file's `cells.<name>.parent/export/period_ms`, `"foreman": true`, an
+app's `cell`, `present.cell`; the locality checker's cross-cell rule (L4); the tree-wide channel -- a board in two cells
+carries a move to the other (Review #7); a tree's rollout order and namespace counts; `potluck.survey` and
+`POST /api/setup/tree`; pot_sim's radio spaces and `--scenario tree2`; `pot_stubs` and `potluck.stubs`.
+
+**Two design amendments, both forced by numbers.** (1) The standby joins the upper cell when it takes the role, not
+before: with it upstairs a foreman of a cell of ten under ten siblings holds 9 + 2 x 9 = 27 peers, so the accept's ten
+cells of ten could not exist; with one seat a child, 9 + 9 (+ the PC on the cabled cell = 19). The handover costs an
+admission: host test 0.85 s -> 1.1 s; pot_sim 4 s; the bench about 5 s; the bound is 15 s. (2) A full peer table gives a
+dead peer's slot to a newcomer -- the table had no forget, and in a tree foremen come and go.
+
+**Limits raised on the way** (each found by a number, not a guess): kMaxActors 16 -> 64 (a cell of twenty placed boards
+needed 21), kMaxPortable 8 -> 16 (an eligible board keeps its cell's role and nine siblings'), kMaxActorCfg 48 -> 160 (a
+foreman's config), a board with PSRAM receives images up to 32 KB. With 64 declarations the parsed-image copies left the
+ESP32-S3 build **3 bytes** of its 64 KB core RAM; they live in PSRAM now (2.3 KB headroom, the apply build 2,268 B).
+
+**pot_sim, ten cells of ten in their own radio spaces under one upper cell** (real reconcilers and foremen, 10 minutes):
+0 deaths, 0 handovers, never a cell without a foreman or with two, 90 of 90 sibling summaries read from the holder;
+worst base space 12.7 % airtime (2.3 % of it the reconciler's CASTs), the upper space -- 20 radios, both eligible boards of
+each cell -- 28.0 % with 4.8 % CASTs, against 26.0 % for a 20-board cell that sends none (23.2 % without them). Killing
+cell 0's foreman: the upper cell read its summary GOOD again after 4 s. The kill line (session 45): a 30-board tree in one
+space +0.7 % against three independent cells (limit +25 %). **The 24-hour run** (`captures/m19-tree2-24h.txt`) ends about
+06:00 -- read it next.
+
+**The bench: three boards, one real cell, stub cells through the cable.** Firmware `bbce7bf` rolled out (counter 48;
+B, C, A at 146, 146, 145 s), package 79 from `keys/desk-m19-tree.json` (A, B, C in "bench", B and C eligible; stub cells s1,
+s2 and a level above). Verified through A: `cell-bench/alive` 3, `cell-bench/warmest` 51.5 C. B took the bench role (the
+plan expected C; the ranking chose B). `potluck.stubs` with A relaying:
+- a stub in the upper cell (f301) read the real cell's summary from B: alive 3 GOOD, warmest 51.5 C, unit and age;
+- **B held in reset for 30 s:** the stub saw C as the owner after ~3 s and read GOOD (alive 2) after ~5 s; B took the
+  role back when it returned (the ranking's rank 0);
+- B read the stub cell's summary: `cell-s1/alive` 3 GOOD, `cell-s1/warmest` 36.0 C;
+- referrals both ways: B asked s1's foreman for `node-f102/hw/die_temp` (30.0 C, Celsius, its age the source's plus the
+  transit, STALE at 6-7 s); a stub asked B for `node-8160/sys/uptime` (1,506 s);
+- **s1's foreman f101 put to sleep:** B saw f102 as the owner after 3 s and read GOOD (alive 2) after 5 s.
+
+**Faults found by the stubs, fixed.** (1) A tick passed a time read before that pass's frames saw `now < last_rx`:
+four billion ms of silence, a live peer dead at 255 misses, a foreman role flapping every 100 ms. The boards read the
+clock after their frames, so they never hit it, but `elapsed_periods` no longer depends on it (regression test). (2) The
+cable's exemption from group admission covered members relayed down the cable too: a stub admitted boards of other
+cells, and they died and came back for ever (3,111 deaths in 8 minutes; 19 after). A dry-run harness of mine also blocked
+the stubs by not draining their pipes -- twice -- which looked like a protocol fault until it was not.
+
+**Found on the bench, not fixed: C wedged for hours.** At the start of the bench work C answered nothing: up 22,455 s
+on `000e187`, its Wi-Fi task spinning on CPU 0 and the task watchdog printing every 5 s; decoded against the cached build
+of that version, the lower MAC looping in transmit-retry handling (`lmacProcessTxComplete` -> `lmacProcessTxError` ->
+`lmacProcessCollision` -> `lmacProcessShortRetryFail` -> `rcReachRetryLimit`), inside Espressif's blob. The radio
+fail-stop (`tx_dead`) did not fire; the watchdog only prints. A reset brought C back. The same family as M13's presenting
+stall (only a chip reset clears it); the candidate fix -- the task watchdog resetting the chip -- is not made here,
+because an OTA erase or a long crypto job could trip it falsely; it needs its own test.
+
+**Not shown, honestly:** a deploy and a firmware rollout reaching a cell with no cable (the stubs take the package from a
+file); radio spaces separated on the bench with `POT! deaf` pairs (one real cell; pot_sim shows spaces); foreman handovers
+counted over 24 h on the bench (the 24 h is pot_sim's); M20's wizard proposing a tree from a survey of the bench (the
+survey and the route are tested on models; the hub was not running). **Not running:** the hub -- the owner's tray never
+started one (no `logs` folder under its AppData), and this session's hub of the 15th was gone; the owner can start it from
+the tray. Commits local, not pushed.
