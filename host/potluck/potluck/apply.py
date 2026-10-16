@@ -1859,6 +1859,13 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                         print(f"FAILED: firmware to 0x{n:04x}: no answer mid-transfer ({exc}) -- it keeps the image "
                               f"it runs; stopped before the package (in a tree, --partial lets it catch up)")
                         return 1
+                    if r["status"] == "downgrade":
+                        # M19: it may have taken this very image by catch-up before the PC came to it
+                        got = fwm.wait_confirmed(b, n, counter, 240.0)
+                        if got is not None and got.get("running") == counter and got.get("state") == "confirmed":
+                            reboots_expected.add(n)
+                            log(f"firmware: 0x{n:04x} already took {got['version']} by catch-up")
+                            continue
                     if r["status"] != "ok":
                         print(f"FAILED: firmware to 0x{n:04x}: {r['status']} -- it keeps the image it runs; "
                               f"stopped before the package")
