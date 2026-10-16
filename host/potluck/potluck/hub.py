@@ -892,6 +892,11 @@ def _cell_id(cluster) -> str | None:
 
 
 def _version() -> str:
+    if getattr(sys, "frozen", False):  # the package: tools/build_package.ps1 writes the commit it was built from
+        try:
+            return (Path(sys.executable).parent / "version.txt").read_text(encoding="ascii").strip() or "unknown"
+        except OSError:
+            return "unknown"
     try:
         import subprocess
         return subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], cwd=Path(__file__).parent,

@@ -17,6 +17,10 @@ Push-Location $root
 try {
     & $py -m PyInstaller packaging\potluck.spec --distpath dist --workpath build\pyinstaller --noconfirm
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
+    # the commit it is built from, which the hub reports as its version (a package has no git to ask)
+    $rev = (git -C $root rev-parse --short=7 HEAD).Trim()
+    if (git -C $root status --porcelain --untracked-files=no) { $rev = "$rev-dirty" }
+    Set-Content -Encoding ascii -NoNewline dist\Potluck\version.txt $rev
     & dist\Potluck\potluck.exe setup ports | Out-Null  # the frozen program starts and finds its modules
     if ($LASTEXITCODE -ne 0) { throw "the built program does not start" }
     # esptool, GPLv2+, as a program of its own beside Potluck's: its licence and where its source is go with it.
