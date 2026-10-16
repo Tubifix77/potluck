@@ -526,12 +526,14 @@ class Model:
                 old = b.get("tel") or {}
                 since = old.get("events_next", 1) - 1
                 old_epoch = old["health"].boot_epoch if old.get("health") is not None else None
+                have_reset = b.get("reset") is not None and b.get("reset_epoch") == old_epoch
             self.telemetry_counts["pulls"] += 1
             try:
                 h = tm.health(self.hub, n)
                 if old_epoch is not None and h.boot_epoch != old_epoch:
                     since = 0  # it rebooted: its event log started again at 1 (found by review: counting missed it)
-                reset = self._read_reset(n) if h.boot_epoch != old_epoch else None
+                # once a boot -- and again on the next pull while a read over the radio went unanswered
+                reset = self._read_reset(n) if (h.boot_epoch != old_epoch or not have_reset) else None
                 ls = tm.links(self.hub, n)
                 acts = tm.actors(self.hub, n)
                 evs, nxt = tm.events(self.hub, n, since)
@@ -568,9 +570,11 @@ class Model:
                 b["tel_unsupported"] = False
                 b["tel"] = {"health": h, "links": ls, "actors": acts, "events_next": nxt, "at": _hub_ms()}
                 if reset is not None:
-                    if old_epoch is not None:  # not the hub's first look: the board restarted while it watched
+                    if old_epoch is not None and h.boot_epoch != old_epoch:  # it restarted while the hub watched
                         self._event_locked("board_restarted", n, {"reason": reset, "epoch": h.boot_epoch})
-                    b["reset"] = reset
+                    b["reset"], b["reset_epoch"] = reset, h.boot_epoch
+                elif h.boot_epoch != old_epoch:
+                    b["reset"] = None  # a new boot whose reason is not known yet: never the last boot's
                 for e in evs:
                     if e.kind_name == "peer_dead":
                         self.link_deaths[(n, e.node)] = self.link_deaths.get((n, e.node), 0) + 1
@@ -585,7 +589,9 @@ class Model:
         from .sys_paths import reset_name, sys_path
         system = self.cluster.system if self.cluster is not None else "lab"
         try:
-            r = self.hub.read(sys_path(n, "sys/reset", system), dst=n, timeout=1.0)
+            # through the cabled board, as every READ the hub makes: it adopts another board's entry on demand, so the
+            # first answer may be NO_DATA -- the next pull reads it (addressed to the board itself, it never answered)
+            r = self.hub.read(sys_path(n, "sys/reset", system), timeout=1.0)
         except BridgeError:
             return None
         v = r.value.number() if r.usable() else None
