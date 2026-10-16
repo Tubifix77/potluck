@@ -607,6 +607,26 @@ published to `act/<actor>/<name>`), and sets its fuel per tick and its memory (0
 
 Full steps: [M0-RUNBOOK.md](M0-RUNBOOK.md), section 12.
 
+### Publishing a guest for any cell (the store, M20)
+
+A guest can be installed by owners you have never met, from your GitHub repository, through their dashboard's
+Library ("Apps from GitHub", off until the owner turns it on). Put `potluck-app.json` at the repository's root:
+
+```json
+{"type": "potluck-app-v1", "name": "overheat_alarm", "description": "warns when a temperature runs high",
+ "author_key": "<your Ed25519 public key, hex>", "module": "build/overheat_alarm.wasm",
+ "sha256": "<the module's SHA-256>", "sig": "<your Ed25519 signature over the module, hex>",
+ "inputs": [{"name": "temperature", "type": "f32", "unit": "celsius"}],
+ "outputs": "out:f32 alarm:i32 count:i32", "fuel": 100000, "period_ms": 1000}
+```
+
+`sig` is what `potluck.guest sign` puts in a bundle: Ed25519 over `potluck-guest-v1\0` followed by the module's
+SHA-512. There is no certificate and there are no paths: on the first install the owner's cell pins your key to your
+repository and certifies it for that cell, and the owner binds each input to one of their resources (of the same
+type; your `unit` is shown to them). If your key ever changes, every cell refuses the update until its owner removes
+the app and installs it again -- keep the key. Publish releases: the owner may name a tag, and an install is pinned to
+the module's hash. `name` is lowercase letters, digits and `_`; at most 8 inputs; `fuel` 1,000..50,000,000.
+
 ---
 
 ## 10. Lessons from the first two apps

@@ -46,6 +46,114 @@
     draw(host, false);
   }
 
+  // M20's store: apps from GitHub, run in the boards' sandbox. Off until the owner turns it on; every install is the
+  // owner's, here. Looking at an app is the one request the hub makes outside; installing certifies its author for this
+  // cell and writes the cluster file -- "Apply to the cell" sends it.
+  function drawStore(host, running, redraw) {
+    host.appendChild(el("h3", {}, "Apps from GitHub"));
+    if (!L.store) {
+      if (!L.storeAsked) {
+        L.storeAsked = true;
+        call("GET", "api/setup/store").then(function (d) { if (d._status === 200) { L.store = d; redraw(); } });
+      }
+      host.appendChild(el("p", { "class": "muted small" }, "Loading..."));
+      return;
+    }
+    var st = L.store;
+    var onRow = el("label", { "class": "lib-row" });
+    var on = el("input", { type: "checkbox" });
+    on.checked = !!st.on;
+    on.disabled = running;
+    on.addEventListener("change", function () {
+      call("POST", "api/setup/store", { on: on.checked }).then(function (d) {
+        if (d.ok) { L.store = d; L.look = null; } else L.msg = d.result || "not saved";
+        redraw();
+      });
+    });
+    onRow.appendChild(on);
+    onRow.appendChild(el("span", {}, " Allow apps from GitHub"));
+    host.appendChild(onRow);
+    host.appendChild(el("p", { "class": "muted small" }, "An app from GitHub runs in the boards' sandbox: it reads only " +
+      "the inputs you give it and writes only its own outputs. Installing one trusts its author's key for this cell; " +
+      "if that key ever changes, Potluck refuses the update."));
+    (st.apps || []).forEach(function (a) {
+      var row = el("div", { "class": "lib-rrow" });
+      row.appendChild(el("code", {}, a.name));
+      row.appendChild(el("span", { "class": "muted small" }, " from " + a.repo + " (" + a.ref + ")"));
+      var rm = el("button", { type: "button", "class": "small" }, "Remove");
+      rm.disabled = running;
+      rm.addEventListener("click", function () {
+        call("POST", "api/setup/store/remove", { name: a.name }).then(function (d) {
+          if (d.ok) { L.store = d; L.changed = true; L.msg = ""; } else L.msg = d.result || "not removed";
+          redraw();
+        });
+      });
+      row.appendChild(rm);
+      host.appendChild(row);
+    });
+    if (!st.on) return;
+    var form = el("div", { "class": "lib-store" });
+    var repo = el("input", { type: "text", placeholder: "owner/repository", "aria-label": "GitHub repository" });
+    var ref = el("input", { type: "text", placeholder: "release tag (optional)", "aria-label": "Release tag" });
+    if (L.look) { repo.value = L.look.repo; ref.value = L.look.ref || ""; }
+    var look = el("button", { type: "button", "class": "small" }, "Look");
+    look.disabled = running;
+    look.addEventListener("click", function () {
+      look.disabled = true;
+      call("POST", "api/setup/store/look", { repo: repo.value.trim(), ref: ref.value.trim() }).then(function (d) {
+        if (d.ok) { d.repo = repo.value.trim(); d.ref = ref.value.trim(); L.look = d; L.msg = ""; }
+        else { L.look = null; L.msg = d.result || "no app there"; }
+        redraw();
+      });
+    });
+    form.appendChild(repo);
+    form.appendChild(ref);
+    form.appendChild(look);
+    host.appendChild(form);
+    var lk = L.look;
+    if (!lk) return;
+    var card = el("div", { "class": "lib-list lib-card" });
+    card.appendChild(el("b", {}, lk.name));
+    if (lk.description) card.appendChild(el("p", {}, lk.description));
+    var who = { "new": "A new author for this cell: installing trusts this key.", "pinned": "The author you trusted before.",
+      "changed": "This repository's key CHANGED since you installed from it: refused." }[lk.author];
+    card.appendChild(el("p", { "class": "note " + (lk.author === "changed" ? "warn" : "") },
+      who + " Key " + lk.author_key.slice(0, 16) + "..."));
+    var picks = [];
+    (lk.inputs || []).forEach(function (inp, i) {
+      var lab = el("label", {}, "Input " + inp.name + " (" + inp.type + (inp.unit ? ", " + inp.unit : "") + ") ");
+      var sel = el("select", { "aria-label": "Input " + inp.name });
+      sel.appendChild(el("option", { value: "" }, "-- choose --"));
+      (lk.candidates[i] || []).forEach(function (p) { sel.appendChild(el("option", { value: p }, p.split("/").slice(3).join("/"))); });
+      picks.push(sel);
+      lab.appendChild(sel);
+      card.appendChild(lab);
+    });
+    if (!(lk.inputs || []).length) card.appendChild(el("p", { "class": "muted small" }, "It reads nothing from the cell."));
+    var pp = el("input", { type: "password", autocomplete: "current-password", "aria-label": "Your passphrase" });
+    var ppl = el("label", {}, "Your passphrase (if the cell's keys are sealed) ");
+    ppl.appendChild(pp);
+    card.appendChild(ppl);
+    var inst = el("button", { type: "button" }, "Install");
+    inst.disabled = running || lk.author === "changed";
+    inst.addEventListener("click", function () {
+      var binds = picks.map(function (s) { return s.value; });
+      if (binds.some(function (b) { return !b; })) { L.msg = "Choose a resource for every input."; redraw(); return; }
+      inst.disabled = true;
+      var body = { repo: lk.repo, ref: lk.ref, bindings: binds };
+      if (pp.value) body.passphrase = pp.value;
+      pp.value = "";
+      call("POST", "api/setup/store/install", body).then(function (d) {
+        if (d.ok) { L.store = d; L.look = null; L.changed = true; L.msg = "Installed " + d.installed.name +
+          ": apply to send it to the boards."; }
+        else L.msg = d.result || "not installed";
+        redraw();
+      });
+    });
+    card.appendChild(inst);
+    host.appendChild(card);
+  }
+
   function draw(host, running) {
     host.innerHTML = "";
     var lib = L.lib;
@@ -131,6 +239,8 @@
       table.appendChild(row);
     });
     host.appendChild(table);
+
+    drawStore(host, running, redraw);
 
     // apply
     var bar = el("div", { "class": "lib-apply" });

@@ -297,6 +297,49 @@ class LibraryRoutes(Pair):
         finally:
             self.model.cluster = saved
 
+    def test_the_store_is_off_until_turned_on_and_an_install_certifies_and_writes_the_cell(self) -> None:
+        import hashlib
+        import os
+        from unittest import mock
+        from potluck import ed25519_ref as ed, guest as gu, signing as sg, store as so
+        from potluck.apply import load_cluster
+        d = Path(self.tmp.name) / "storecell"
+        d.mkdir()
+        ca = sg.generate("ca", "test")
+        (d / "ca.pub").write_text(json.dumps(ca.public_dict()))
+        (d / "ca.key").write_text(json.dumps(ca.private_dict()))
+        p = d / "home.json"
+        p.write_text(json.dumps({"schema": "potluck-cluster/1", "system": "home", "firmware": None,
+                                 "boards": [{"node": "6300", "label": "A"}], "keys": {"ca": "ca.pub"}}), encoding="utf-8")
+        wasm = (Path(__file__).resolve().parents[3] / "guests" / "build" / "overheat_alarm.wasm").read_bytes()
+        sk = os.urandom(32)
+        app = so.parse_app({"type": so.APP_TYPE, "name": "overheat_alarm", "author_key": ed.public_key(sk).hex(),
+                            "module": "a.wasm", "sha256": hashlib.sha256(wasm).hexdigest(),
+                            "sig": ed.sign(sk, gu.signed_message(wasm)).hex(),
+                            "inputs": [{"name": "t", "type": "f32"}], "outputs": "out:f32"})
+        saved = self.model.cluster
+        self.model.cluster = load_cluster(str(p))
+        try:
+            with mock.patch.object(so, "fetch", return_value=(app, wasm)):
+                self.assertEqual(self.req(self.local_addr, "GET", "/api/setup/store")[1]["on"], False)
+                code, r = self.req(self.local_addr, "POST", "/api/setup/store/look", {"repo": "acme/alarm"})
+                self.assertEqual((code, r["ok"]), (409, False))  # off: nothing is fetched
+                self.assertEqual(self.req(self.local_addr, "POST", "/api/setup/store", {"on": True})[1]["on"], True)
+                code, r = self.req(self.local_addr, "POST", "/api/setup/store/look", {"repo": "acme/alarm"})
+                self.assertEqual((code, r["author"], r["inputs"][0]["name"]), (200, "new", "t"))
+                code, r = self.req(self.local_addr, "POST", "/api/setup/store/install",
+                                   {"repo": "acme/alarm", "bindings": ["potluck://home/node-6300/x"]})
+                self.assertEqual((code, r["installed"]["author"], [a["name"] for a in r["apps"]]),
+                                 (200, so.FIRST_AUTHOR, ["overheat_alarm"]))
+                self.assertEqual(gu.verify_bundle(gu.load_bundle(str(d / "store" / "overheat_alarm.guest.json")),
+                                                  ca.public), so.FIRST_AUTHOR)
+                self.assertIn(self.req(self.lan_addr, "POST", "/api/setup/store/install",
+                                       {"repo": "acme/alarm", "bindings": []})[0], (401, 403, 404))
+                code, r = self.req(self.local_addr, "POST", "/api/setup/store/remove", {"name": "overheat_alarm"})
+                self.assertEqual((code, r["apps"]), (200, []))
+        finally:
+            self.model.cluster = saved
+
 
 class FirstRun(unittest.TestCase):
     """M20: a PC with no cell yet -- the hub makes one, then attaches to the first board's own USB port."""

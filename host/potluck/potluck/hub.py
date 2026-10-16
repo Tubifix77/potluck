@@ -911,6 +911,15 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             setup_state["jobs"] = st.Jobs()
         return setup_state["jobs"]
 
+    def store_json() -> dict:
+        """M20's store as the Library shows it: on or off, and the apps installed from it."""
+        from . import store as so
+        cl = getattr(model, "cluster", None)
+        if cl is None:
+            return {"on": False, "apps": []}
+        reg = so.load_registry(Path(cl.path).parent)
+        return {"on": bool(reg["on"]), "apps": [dict(v, name=k) for k, v in sorted(reg["apps"].items())]}
+
     def library_json() -> dict:
         """M20's library as the page shows it: each app on or off, Home Assistant (the cell's presenting role) with its
         broker, and per resource the package names whether the outside may see it ("read") or also control it
@@ -1105,6 +1114,68 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 return
             self._json(200, dict(library_json(), ok=True))
 
+        def _setup_store(self, path: str) -> None:
+            """M20's store, the owner's on 127.0.0.1 only: switch it on, look at an app in a GitHub repository (the one
+            request the hub makes outside), install it -- the author pinned to the repository and certified under the
+            cell's CA, the vault unlocked for that one action -- or remove it. Install and remove write the cluster file;
+            the Library's Apply sends them."""
+            from . import store as so
+            from .apply import ApplyError, load_cluster
+            cl = getattr(model, "cluster", None)
+            if cl is None:
+                self._json(409, {"ok": False, "result": "make the cell first"})
+                return
+            cell = Path(cl.path).parent
+            try:
+                req = self._body()
+                if path == "/api/setup/store":
+                    so.set_on(cell, bool(req.get("on")))
+                    self._json(200, dict(store_json(), ok=True))
+                    return
+                if not so.load_registry(cell)["on"]:
+                    self._json(409, {"ok": False, "result": "the store is off: turn it on in the Library first"})
+                    return
+                if path == "/api/setup/store/remove":
+                    so.remove(cl.path, str(req["name"]))
+                    model.cluster = load_cluster(str(cl.path))
+                    self._json(200, dict(store_json(), ok=True))
+                    return
+                repo, ref = str(req["repo"]), str(req.get("ref") or "HEAD")
+                app, module = so.fetch(repo, ref)
+                if path == "/api/setup/store/look":
+                    reg = so.load_registry(cell)
+                    pinned = reg["authors"].get(repo)
+                    author = ("new" if pinned is None else
+                              "pinned" if pinned["key"] == app.author_key.hex() else "changed")
+                    self._json(200, {"ok": True, "name": app.name, "description": app.description,
+                                     "author_key": app.author_key.hex(), "author": author, "sha256": app.sha256,
+                                     "inputs": list(app.inputs), "outputs": app.outputs,
+                                     "candidates": so.candidates(app, model.snapshot()["resources"])})
+                    return
+                if path != "/api/setup/store/install":
+                    self._json(404, {"error": "not found"})
+                    return
+                keys = cell_keys()
+                if keys is None:
+                    raise so.StoreError("the cell has no CA key to certify the author with")
+                phrase = req.get("passphrase")
+
+                def certify(author: int, key: bytes) -> bytes:
+                    from . import enrol as en, keystore
+                    from .signing import read_key
+                    vault = Path(keys[0]).parent / "vault.json"
+                    try:
+                        if phrase and vault.exists():  # the owner's keys, unlocked for this one action
+                            keystore.unlock(vault, str(phrase))
+                        return en.build_cert(read_key(keys[0]), author, key, role=en.ROLE_GUEST)
+                    finally:
+                        keystore.lock()
+                r = so.install(cl.path, repo, ref, app, module, [str(b) for b in req.get("bindings", [])], certify)
+                model.cluster = load_cluster(str(cl.path))
+                self._json(200, dict(store_json(), ok=True, installed=r))
+            except (so.StoreError, ApplyError, ValueError, KeyError, OSError) as exc:
+                self._json(409, {"ok": False, "result": str(exc)})
+
         def _setup_first(self, path: str) -> None:
             """M20's first run: make the cell (keys sealed under the owner's passphrase, an empty cluster file), then
             attach the hub to the first board's own USB port once that board is flashed and enrolled."""
@@ -1153,6 +1224,9 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 return
             if path in ("/api/setup/library", "/api/setup/broker"):
                 self._setup_library(path)
+                return
+            if path.startswith("/api/setup/store"):
+                self._setup_store(path)
                 return
             if path in ("/api/setup/newcell", "/api/setup/attach"):
                 self._setup_first(path)
@@ -1282,6 +1356,8 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                                      "vault": bool(keys) and (Path(keys[0]).parent / "vault.json").exists()})
                 elif path == "/api/setup/library":
                     self._json(200, library_json())
+                elif path == "/api/setup/store":
+                    self._json(200, store_json())
                 elif path == "/api/setup/jobs":
                     self._json(200, {"jobs": setup_jobs().all()})
                 elif path.startswith("/api/setup/jobs/"):

@@ -867,6 +867,11 @@ Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on 
   commits and tags `vX.Y.Z` locally and prints the two publishing commands; `--publish` runs them (push, then `gh release
   create`, attaching `dist\Potluck` as a zip when it is built from this firmware tree). HACS reads the newest *release*;
   with none it offers every commit on main as an update.
+- **The store (M20):** Library tab, "Apps from GitHub" -- off until ticked (the cell's `store.json`). "Look" fetches a
+  repository's `potluck-app.json` and module (DEVELOPING-APPS.md, "Publishing a guest for any cell"); "Install" pins
+  the author's key to the repository, certifies it (role 3, numbers from 100; the passphrase unlocks a sealed cell's
+  CA for that one action), writes `store/` beside the cluster file and its fragment into the package; "Apply to the
+  cell" sends it. A guest change reboots the boards into it, as any guest change does. `potluck.store` has no CLI.
 - **The wizard's Cells step (M19):** after Rooms, the wizard asks the hub for a tree (`POST /api/setup/tree`); twenty
   boards or fewer that all hear each other skip it. Otherwise: tick the boards on a charger, see the proposed cells and
   their foremen, "Use these cells" (once every cell has one), then Done applies.

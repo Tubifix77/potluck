@@ -250,4 +250,10 @@ svg.plan ellipse.zone { fill: var(--warn); fill-opacity: 0.28; stroke: var(--war
 .seg button:last-child { border-radius: 0 4px 4px 0; }
 .seg button.on { background: var(--role); color: var(--panel); }
 .lib-apply { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 10px 0; }
+/* M20's store: a repository to look at, then the app with a choice per input */
+.lib-store { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.lib-store input { min-width: 12em; }
+.lib-card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; max-width: 40em; }
+.lib-card label { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lib-card select { max-width: 100%; }
 #tab-library .out { max-height: 260px; overflow: auto; font-size: 0.8em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
