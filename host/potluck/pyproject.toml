@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "potluck"
-version = "1.0.0"
+version = "1.0.1"
 description = "Potluck's host tools: build and deploy a cell (apply), read and write its resources (potctl), run the hub, its dashboard and the setup wizard"
 readme = "README.md"
 license = "Apache-2.0"

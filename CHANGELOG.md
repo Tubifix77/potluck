@@ -3,6 +3,23 @@
 Potluck's releases. The full record -- every milestone with its measurements and caveats -- is
 [STATUS.md](STATUS.md); the design and its decisions are [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## 1.0.1 -- 2026-10-16
+
+Fixes found running a three-board cell every day, with the dashboard, Home Assistant and the tray.
+
+- **A hub start is quiet.** Until the hub has heard every board and each value has read GOOD twice (never longer than
+  30 s after its first look at the cell), the dashboard says "Starting up" in grey and no app, board or value is a
+  problem; `hub.starting`, `resource.settled_quality` (`STARTING`) and `app.working: null` in the hub's API. The Home
+  Assistant integration's problems follow the same rules.
+- **A board's kept history is history.** The events a board logged before the hub was watching arrive marked
+  `"earlier": true`, stamped with when they happened; the dashboard dims them and sorts events by time.
+- **One late read is not a fault.** Another board's value reaches the hub through the cabled board's copy, so it can
+  read STALE once; app health and the problems follow a quality that held for two reads.
+- **An app's health counts its own outputs**, not every value on its board.
+- Fixes: `install.ps1` stops the running hub before copying (a running hub held its files); a `tray.json` saved with a
+  byte-order mark no longer starts the hub with no cell.
+- Recorded: on ESP-IDF 6.0.2 a CAN bus-off stops Potluck's CAN transmit until a reboot (STATUS.md, M4).
+
 ## 1.0.0 -- 2026-10-16
 
 The S3 Edition: ESP32-S3 boards (16 MB flash, 8 MB PSRAM) working as one cell, with a PC as an optional member.
