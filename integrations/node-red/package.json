@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-potluck",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Node-RED nodes for a Potluck cell: read its boards' resources with their quality, write what the cell allows, through the Potluck hub's API",
   "keywords": [
     "node-red",

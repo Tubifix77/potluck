@@ -3,28 +3,35 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "potluck-capture"
-version = "0.1.0"
-description = "M0 host tooling for Potluck: read a node's serial stream, record frames, report PDR and delay"
+name = "potluck"
+version = "1.0.0"
+description = "Potluck's host tools: build and deploy a cell (apply), read and write its resources (potctl), run the hub, its dashboard and the setup wizard"
+readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.10"
-# No required dependencies. The frame decoder, record parser, capture writer and
-# summary are standard library only, so the tool runs on any Python -- including
-# one on a bench machine with no package index reachable. pyserial is needed only
-# to read an actual port, and is imported lazily so --file and --replay work
-# without it.
-dependencies = []
+# The frame decoder, the capture tool and the tests are standard library only, so the capture tool runs on any
+# Python. pyserial reads a real port; cryptography opens the cell's sealed keys (the owner's vault); esptool is the
+# setup wizard's flasher and runs as a program of its own (python -m esptool), never imported.
+dependencies = ["pyserial>=3.5", "cryptography>=42"]
 
 [project.optional-dependencies]
-serial = ["pyserial>=3.5"]
+setup = ["esptool>=5.3"]
+
+[project.urls]
+Homepage = "https://github.com/Tubifix77/potluck"
+Issues = "https://github.com/Tubifix77/potluck/issues"
 
 [project.scripts]
-potluck-capture = "potluck.__main__:main"
-# M2. potctl drives a Bridge in-process rather than opening a port itself, which is what keeps
-# §7.1's rule ("nothing above the bridge owns the serial port") true by construction.
+# potluck <apply | hub | tray | setup | keystore | ctl | enrol | fw | hubauth> ... -- as `python -m potluck.<module>`
+potluck = "potluck.app:main"
 potctl = "potluck.ctl:main"
+potluck-capture = "potluck.__main__:main"
 
 [tool.setuptools]
 packages = ["potluck"]
+
+[tool.setuptools.package-data]
+potluck = ["dashboard/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
