@@ -5917,7 +5917,12 @@ because an OTA erase or a long crypto job could trip it falsely; it needs its ow
 **A package reaching a cell with no cable** (host test `deploy_tree`): two cells of four, the PC cabled into one, boards 3
 and 4 in both through the upper cell -- the cell with no cable ran the package 131 s after the deploy, by catch-up (two
 hops, each waiting for a periodic announce). **Not shown, honestly:** a firmware rollout reaching a cell with no cable
-(M11 pushes from the PC one hop; nothing carries firmware across a foreman yet); radio spaces separated on the bench with `POT! deaf` pairs (one real cell; pot_sim shows spaces); foreman handovers
+(M11 pushes from the PC one hop; nothing carries firmware across a foreman yet); **Radio spaces on the bench** (`keys/desk-m19-spaces.json`, package 82): A alone is cell "west", B and C "east", both
+under "upper"; `POT! deaf` both ways keeps A and C out of range. B (east's foreman) read west's summary from A (alive 1),
+A read east's (alive 2, warmest 50.5 C), C read west's as UNAVAILABLE (only a foreman reads a sibling), and C -- which the
+cable cannot reach -- ran package 82 by catch-up through B. `apply` now names boards beyond the cable and verifies what
+the cabled board can resolve; `--partial` folded the tree back (package 83 from `desk-m14-hub.json`; C caught up by itself).
+ foreman handovers
 counted over 24 h on the bench (the 24 h is pot_sim's); M20's wizard proposing a tree from a survey of the bench (the
 survey and the route are tested on models; the hub was not running). **Not running:** the hub -- the owner's tray never
 started one (no `logs` folder under its AppData), and this session's hub of the 15th was gone; the owner can start it from

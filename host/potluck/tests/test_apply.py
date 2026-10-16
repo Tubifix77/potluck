@@ -307,6 +307,11 @@ class ClusterFile(unittest.TestCase):
         with self.assertRaisesRegex(ap.ApplyError, "stub"):
             self.cluster(boards=[{"node": "0100", "stub": True}])
 
+    def test_boards_of_cells_the_cable_does_not_reach_are_not_required_to_answer_through_it(self):
+        c = self.tree([3, 3])
+        self.assertEqual(ap.beyond_cable(c, [n for n, _ in c.boards], 0x100), [0x103, 0x104, 0x105])
+        self.assertEqual(ap.beyond_cable(self.cluster(), [0x100, 0x200], 0x100), [])  # one cell: everyone
+
     def test_a_foreman_is_a_board_of_one_federating_cell(self):
         with self.assertRaisesRegex(ap.ApplyError, "exactly one cell"):  # two memberships at most, the role adds one
             self.cluster(boards=[{"node": "0100", "cells": ["a", "b"], "foreman": True}], cells={"a": {"parent": "t"}})

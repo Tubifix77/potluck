@@ -1589,6 +1589,15 @@ def tree_expectations(c: Cluster, pkg: Package, boards: list[int], reads: list[s
     return per, here, kept
 
 
+def beyond_cable(c: Cluster, boards: list[int], cabled: int) -> list[int]:
+    """M19: the boards of a tree that share no cell with the cabled board -- the cable cannot reach them (the cabled
+    board relays its own cells only, and nothing forwards across a foreman)."""
+    if not c.cells or cabled not in c.cells:
+        return []
+    mine = set(c.cells[cabled])
+    return [n for n in boards if n != cabled and c.cells.get(n) and not (set(c.cells[n]) & mine)]
+
+
 def cabled_reads(c: Cluster, pkg: Package, cabled: int, reads: list[str]) -> list[str]:
     """M19: the reads the verify can make through the cabled board in a tree -- a board's output when the board shares a
     cell with it, a cell's summary when it keeps that cell's foreman role (its own cell's; a sibling's when it may hold
@@ -1655,7 +1664,7 @@ def cmd_inventory(b, boards: list[int]) -> int:
     return 0
 
 
-def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
+def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool = False) -> int:
     from . import fw as fwm
     from .bridge import Bridge
     from .value import Quality
@@ -1716,7 +1725,20 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
             log(f"inventory: {st.line()}" if st else
                 f"inventory: 0x{n:04x} " + (f"fw {fws[n]['version']} counter {fws[n]['running']} (before M12)"
                                             if fws[n] else "UNREACHABLE"))
-        missing = [n for n in boards if inv[n] is None and fws[n] is None]
+        # M19: in a tree the cable reaches the cabled board's cells; a board of another cell takes the package (and its
+        # firmware stays as it is) by way of its cell -- not refused for not answering here.
+        beyond = beyond_cable(c, boards, cabled)
+        for n in beyond:
+            log(f"plan: 0x{n:04x} is in a cell the cable does not reach (cells {', '.join(c.cells.get(n, ()))}): it takes "
+                f"the package by catch-up through its cell's foreman, and is not verified from here")
+        missing = [n for n in boards if inv[n] is None and fws[n] is None and n not in beyond]
+        if missing and partial and cabled not in missing:
+            # M19: --partial -- the owner knows these do not answer (a board in a cell the cable does not reach today,
+            # e.g. a tree being folded back into one cell): they take the package by catch-up, unverified.
+            for n in missing:
+                log(f"plan: 0x{n:04x} does not answer: --partial -- it takes the package by catch-up, not verified")
+            beyond = beyond + missing
+            missing = []
         if missing:
             print("REFUSED, nothing changed: unreachable: " + ", ".join(f"0x{n:04x}" for n in missing) +
                   " -- power them, or take them out of the cluster file")
@@ -1738,7 +1760,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                     f"belong to cells it is not in")
         times["inventory"] = time.monotonic() - t0
         if fwb is not None:
-            need = [n for n in boards if inv[n] is None or inv[n].elf_sha != fwb.elf_sha[:8]]
+            need = [n for n in boards if (inv[n] is None or inv[n].elf_sha != fwb.elf_sha[:8]) and n not in beyond]
             log("plan: firmware " + (f"{fwb.version} to " + ", ".join(f"0x{n:04x}" for n in need) if need
                                      else "unchanged on every board"))
         if pkg is not None:
@@ -1794,7 +1816,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
 
         # 2. firmware, where it differs.
         if fwb is not None:
-            need = [n for n in boards if inv[n] is None or inv[n].elf_sha != fwb.elf_sha[:8]]
+            need = [n for n in boards if (inv[n] is None or inv[n].elf_sha != fwb.elf_sha[:8]) and n not in beyond]
             if need:
                 floors = [x for n in boards for x in ((inv[n].fw_floor, inv[n].fw_running) if inv[n] else
                                                       (fws[n]["floor"], fws[n]["running"]))]
@@ -1895,7 +1917,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
         end = time.monotonic() + c.verify_timeout_s
         done: dict[int, NodeStatus] = {}
         seen_at: dict[int, float] = {}
-        while time.monotonic() < end and len(done) < len(boards):
+        while time.monotonic() < end and len(done) < len(boards) - len([n for n in beyond if n not in done]):
             time.sleep(4)
             for n in boards:
                 if n in done:
@@ -1911,7 +1933,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
                     log(f"verify: 0x{n:04x} confirmed package {counter}: {','.join(st.actors) or '-'}")
         problems = []
         for n in boards:
-            if n not in done:
+            if n not in done and n not in beyond:
                 st = node_status(b, n)
                 problems.append(f"0x{n:04x} did not confirm package {counter}: " + (st.line() if st else "no answer"))
         # On the boards: every portable actor, less those the PC holds while it is in the cell (M14; found on the bench,
@@ -1960,7 +1982,8 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path) -> int:
     if problems:
         print("NOT VERIFIED:\n  " + "\n  ".join(problems))
         return 1
-    print(f"VERIFIED: cluster '{c.system}' runs package {counter} on {len(boards)} board(s)")
+    far = f" (and {len(beyond)} beyond the cable, by catch-up, not verified from here)" if beyond else ""
+    print(f"VERIFIED: cluster '{c.system}' runs package {counter} on {len(boards) - len(beyond)} board(s){far}")
     return 0
 
 
@@ -1970,6 +1993,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("what", nargs="?", default="apply", choices=("apply", "inventory"))
     ap.add_argument("--port", default=None, help="the serial port of the board on the cable (else the file's)")
     ap.add_argument("--plan", action="store_true", help="plan, build and read the inventory; change nothing")
+    ap.add_argument("--partial", action="store_true",
+                    help="M19: boards that do not answer through the cable take the package by catch-up, unverified "
+                         "(a tree whose other cells the cable does not reach, or one being folded back into one cell)")
     ap.add_argument("--cache", default=None, help=f"where exports and builds are kept (default {default_cache()})")
     ap.add_argument("--passphrase-stdin", action="store_true",
                     help="M20: read the passphrase of the keys' vault from the first line of stdin (the hub's way)")
@@ -2004,7 +2030,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"no board answers on {port}")
                 return 1
             return cmd_inventory(b, [n for n, _ in c.boards] or [b.peer_node_id])
-    return apply(c, port, plan_only=a.plan, cache=Path(a.cache) if a.cache else default_cache())
+    return apply(c, port, plan_only=a.plan, cache=Path(a.cache) if a.cache else default_cache(), partial=a.partial)
 
 
 if __name__ == "__main__":
