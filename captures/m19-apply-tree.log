@@ -1,0 +1,87 @@
+[    0.1 s] note: potluck: uncommitted changes in D:\Projects\potluck are not built (apply builds the commit)
+[    0.1 s] package: modules from app 'passive-sensor' (pot_passive_sensor)
+[    0.2 s] package: guest 'alarm' by 7, signature verified under the cluster CA
+[    0.2 s] package: 'lab', 25 actor(s) (8 portable), image 2447 B, for 3 board(s)
+[    0.5 s] firmware: reusing the build of these sources (bbce7bf-ebfa1f, C:\Users\tuebo\AppData\Local\potluck\cache\fw\ebfa1f5f80ba)
+[    0.5 s] module sandbox: 82,079 B flash, 2,673 B internal RAM, 0 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[    0.5 s] module wifi: 3,129 B flash, 139 B internal RAM, 1,472 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[    0.5 s] module present: 19,933 B flash, 0 B internal RAM, 25,144 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[    0.5 s] module pocket: 3,277 B flash, 105 B internal RAM, 19,008 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[    0.5 s] module extender: 2,816 B flash, 90 B internal RAM, 0 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[    0.5 s] module app component pot_passive_sensor: 13,044 B flash, 113 B internal RAM, 29,806 B PSRAM (static; its own archives -- what it pulls in from ESP-IDF is not counted here)
+[    0.5 s] Potluck core: 63,268 B of 65,536 B static internal RAM (2,268 B left)
+[    0.5 s] note: AMPDU transmit aggregation is off on every board, because this cell presents (a board presenting over its own station with it on wedges its radio; M0-LOG session 42) -- the extender's hotspot carries less as a result
+[    1.5 s] inventory: 0x6300  fw 000e187-7d5ed7 (counter 46, floor 46, confirmed)  package 78 (floor 78)  cluster 'lab'  up 22799 s  live 1  ck writes 758  roles extender-build,sandbox,reconciler,enrolled,cabled  actors rf_link,rf_indicator,svc_client,position,rf_fusion,ticker (2/4 portable here)  modules sandbox:idle (nothing here uses it),extender:idle (no credentials),present:idle (no network),pocket:active,wifi:idle (no credentials)
+[    1.5 s] inventory: 0x7368  fw 000e187-7d5ed7 (counter 44, floor 44, confirmed)  package 78 (floor 78)  cluster 'lab'  up 998 s  live 0  ck writes 32  roles extender-build,extender,sandbox,reconciler,relay,enrolled  actors rf_link,rf_indicator,die_temp,led_switch,position,guest (1/4 portable here)  modules sandbox:active,extender:active,present:idle (standby),pocket:idle (another module is the connection),wifi:idle (another module is the connection)
+[    1.5 s] inventory: 0x8160  fw 000e187-7d5ed7 (counter 47, floor 47, confirmed)  package 78 (floor 78)  cluster 'lab'  up 49 s  live 0  ck writes 0  roles extender-build,sandbox,reconciler,enrolled  actors rf_link,rf_indicator,position,present (1/4 portable here)  modules sandbox:idle (nothing here uses it),extender:idle (no credentials),present:active,pocket:idle (no credentials),wifi:active
+[    1.5 s] plan: peers A (0x6300): 3 of 19 (bench 2, the PC 1)
+[    1.5 s] plan: peers B (0x7368): 7 of 19 (bench 2, upper 4, the PC 1)
+[    1.5 s] plan: peers C (0x8160): 7 of 19 (bench 2, upper 4, the PC 1)
+[    1.5 s] plan: peers s1-1 (0xf101): 6 of 19 (s1 2, upper 4)
+[    1.5 s] plan: peers s1-2 (0xf102): 6 of 19 (s1 2, upper 4)
+[    1.5 s] plan: peers s1-3 (0xf103): 2 of 19 (s1 2)
+[    1.5 s] plan: peers s2-1 (0xf201): 6 of 19 (s2 2, upper 4)
+[    1.5 s] plan: peers s2-2 (0xf202): 6 of 19 (s2 2, upper 4)
+[    1.5 s] plan: peers s2-3 (0xf203): 2 of 19 (s2 2)
+[    1.5 s] plan: peers up-1 (0xf301): 5 of 19 (upper 4, top 1)
+[    1.5 s] plan: peers up-2 (0xf302): 5 of 19 (upper 4, top 1)
+[    1.5 s] plan: peers top-1 (0xf401): 1 of 19 (top 1)
+[    1.5 s] plan: one channel for the whole tree (Review of M19 #7): a board in two cells carries every move to the other, so every Wi-Fi exit in the tree must reach a router on the same channel
+[    1.5 s] plan: firmware bbce7bf-ebfa1f to 0x6300, 0x7368, 0x8160
+[    1.5 s] plan: package 'lab' replaces what runs now (die_temp, guest, led_switch, position, present, rf_fusion, rf_indicator, rf_link, svc_client, ticker) with rf_link (ext:passive_sensor/rf_link), rf_fusion_room (ext:passive_sensor/rf_fusion), rf_indicator (ext:passive_sensor/rf_indicator), die_b (builtin:die_temp), alarm (guest:overheat_alarm), led_b (builtin:led_switch), ticker (builtin:ticker), clock (builtin:svc_client), present (builtin:present), pos_6300 (builtin:position), pos_7368 (builtin:position), pos_8160 (builtin:position), pos_f101 (builtin:position), pos_f102 (builtin:position), pos_f103 (builtin:position), pos_f201 (builtin:position), pos_f202 (builtin:position), pos_f203 (builtin:position), pos_f301 (builtin:position), pos_f302 (builtin:position), pos_f401 (builtin:position), foreman_bench (builtin:foreman), foreman_s1 (builtin:foreman), foreman_s2 (builtin:foreman), foreman_upper (builtin:foreman)
+[    1.5 s] plan: namespace 0x6300: 47 of 128 entries (7 built-in, 13 the package's, 15 its own, 12 replicas it reads)
+[    1.5 s] plan: namespace 0x7368: 40 of 128 entries (7 built-in, 17 the package's, 15 its own, 1 replicas it reads)
+[    1.5 s] plan: namespace 0x8160: 40 of 128 entries (7 built-in, 17 the package's, 15 its own, 1 replicas it reads)
+[    1.6 s] lease: the cell's deploy lease is ours (board 0x6300 holds it)
+[    1.6 s] firmware: bbce7bf-ebfa1f to 0x7368, 0x8160, 0x6300 at counter 48
+[  147.7 s] firmware: 0x7368 confirmed bbce7bf-ebfa1f in 146 s
+[  294.1 s] firmware: 0x8160 confirmed bbce7bf-ebfa1f in 146 s
+[  438.7 s] firmware: 0x6300 confirmed bbce7bf-ebfa1f in 145 s
+[  439.0 s] package: signed at counter 79, kept as C:\Users\tuebo\AppData\Local\potluck\cache\packages\lab-79.pkg.json
+[  440.4 s] package: counter 79 committed on 0x6300, passed on to 2 board(s)
+[  454.7 s] verify: 0x7368 confirmed package 79: rf_link,rf_indicator,die_temp,led_switch,position,guest,foreman
+[  454.9 s] verify: 0x8160 confirmed package 79: rf_link,rf_indicator,position,present
+[  458.9 s] verify: 0x6300 confirmed package 79: rf_link,rf_indicator,svc_client,position,rf_fusion,ticker
+[  459.0 s] verify: potluck://lab/node-6300/rf/channel = 1  [GOOD, age 129 ms, ts 15723, class L4]
+[  461.1 s] verify: potluck://lab/node-7368/rf/channel = 1  [GOOD, age 2502 ms, ts 15786, class L4]
+[  463.3 s] verify: potluck://lab/node-8160/rf/channel = 1  [GOOD, age 2508 ms, ts 17733, class L4]
+[  463.4 s] verify: potluck://lab/node-6300/rf/evidence = 0x0000000000000000  [GOOD, age 500 ms, ts 19725, class L4]
+[  463.4 s] verify: potluck://lab/node-7368/rf/evidence = 0x0000000000000000  [GOOD, age 2817 ms, ts 17788, class L4]
+[  463.5 s] verify: potluck://lab/node-8160/rf/evidence = 0x0000000000000000  [GOOD, age 2737 ms, ts 17733, class L4]
+[  463.6 s] verify: potluck://lab/node-6300/rf/peers = 0x6081687300000000  [GOOD, age 716 ms, ts 19725, class L4]
+[  465.7 s] verify: potluck://lab/node-7368/rf/peers = 0x6081006300000000  [GOOD, age 3098 ms, ts 19787, class L4]
+[  467.8 s] verify: potluck://lab/node-8160/rf/peers = 0x0063687300000000  [GOOD, age 3080 ms, ts 21741, class L4]
+[  511.5 s] verify: potluck://lab/act/rf_fusion_room/out = false  [GOOD, age 416 ms, ts 67914, class L4]
+[  511.5 s] verify: potluck://lab/act/rf_fusion_room/confidence = 0  [GOOD, age 481 ms, ts 67914, class L4]
+[  511.6 s] verify: potluck://lab/act/rf_fusion_room/motion = 0  [GOOD, age 545 ms, ts 67914, class L4]
+[  511.7 s] verify: potluck://lab/act/rf_fusion_room/state = 0  [GOOD, age 640 ms, ts 67917, class L4]
+[  511.8 s] verify: potluck://lab/node-7368/hw/die_temp = 51.5 C  [GOOD, age 926 ms, ts 68050, class L4]
+[  513.9 s] verify: potluck://lab/act/alarm/out = 51.3289  [GOOD, age 2140 ms, ts 68945, class L3]
+[  516.1 s] verify: potluck://lab/act/alarm/alarm = 1  [GOOD, age 2320 ms, ts 70942, class L3]
+[  518.2 s] verify: potluck://lab/act/alarm/count = 27200  [GOOD, age 2484 ms, ts 72929, class L3]
+[  518.3 s] verify: potluck://lab/node-7368/led/on = false  [GOOD, age 73687 ms, ts 1783, class L3]
+[  518.4 s] verify: potluck://lab/act/ticker/out = 1660944685  [GOOD, age 93 ms, ts 75134, class L3]
+[  520.5 s] verify: potluck://lab/act/present/out = 4  [GOOD, age 3938 ms, ts 73569, class L4]
+[  520.6 s] verify: potluck://lab/node-6300/sys/pos/x = 78.9 m  [GOOD, age 5597 ms, ts 71917, class L4]
+[  520.8 s] verify: potluck://lab/node-6300/sys/pos/y = 17.4 m  [GOOD, age 5699 ms, ts 71917, class L4]
+[  520.9 s] verify: potluck://lab/node-6300/sys/room = 1  [GOOD, age 5806 ms, ts 71917, class L4]
+[  521.0 s] verify: potluck://lab/node-6300/sys/near = 0x6081687300000000  [GOOD, age 5907 ms, ts 71917, class L4]
+[  521.0 s] verify: potluck://lab/node-7368/sys/pos/x = 76 m  [GOOD, age 26269 ms, ts 51940, class L4]
+[  521.1 s] verify: potluck://lab/node-7368/sys/pos/y = 18 m  [GOOD, age 26331 ms, ts 51940, class L4]
+[  523.2 s] verify: potluck://lab/node-7368/sys/room = 1  [GOOD, age 8481 ms, ts 71946, class L4]
+[  525.4 s] verify: potluck://lab/node-7368/sys/near = 0x6081006300000000  [GOOD, age 10589 ms, ts 71946, class L4]
+[  525.4 s] verify: potluck://lab/node-8160/sys/pos/x = 77.5 m  [GOOD, age 20503 ms, ts 61924, class L4]
+[  525.5 s] verify: potluck://lab/node-8160/sys/pos/y = 16.1 m  [GOOD, age 20602 ms, ts 61924, class L4]
+[  527.7 s] verify: potluck://lab/node-8160/sys/room = 1  [GOOD, age 2780 ms, ts 81925, class L4]
+[  529.9 s] verify: potluck://lab/node-8160/sys/near = 0x0063687300000000  [GOOD, age 4920 ms, ts 81925, class L4]
+[  532.0 s] verify: potluck://lab/cell-bench/alive = 3  [GOOD, age 3264 ms, ts 85942, class L4]
+[  534.2 s] verify: potluck://lab/cell-bench/warmest = 51.5 C  [GOOD, age 4297 ms, ts 87048, class L4]
+
+  plan (package, firmware build)       0.5 s
+  inventory                            0.2 s
+  firmware                           437.1 s
+  package                              1.4 s
+  verify                              93.8 s
+  command to verified                534.3 s
+  package 79: live on 0 board(s); rebooted for it: 0x6300, 0x7368, 0x8160
+VERIFIED: cluster 'lab' runs package 79 on 3 board(s)

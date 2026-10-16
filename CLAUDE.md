@@ -44,7 +44,7 @@ whole-cell power cycle was a reset of every chip, not a hand power cut. Every mi
 14 of 17 accepted; what is left there is the list above, all the owner's to run. **NEXT: M13-M18 (planned 2026-10-11,
 ARCHITECTURE section 13, from BEYOND-M12.md and its picture beyond-m12-overview.html)** -- the cell presenting its
 resources to other systems: M13 the cell presents itself (presenting role, no PC; ACCEPTED 2026-10-14, M0-LOG session 42, with caveats), M13.1 a phone reaches the nearest board with no network (ACCEPTED 2026-10-14), M14 the hub (ACCEPTED 2026-10-14), M15 telemetry (ACCEPTED 2026-10-14), M16 the dashboard,
-M17 Home Assistant first-class, M18 the integration layer (all three ACCEPTED 2026-10-14 evening, M0-LOG session 44, one caveat each). **M19, cells of cells, and M20, Potluck for everyone (both planned 2026-10-15, researched and externally reviewed, M0-LOG session 45); M19 BUILT 2026-10-16, not accepted (M0-LOG session 46).** M20 is the owner's hybrid: one engine, an optional friendly layer, the bundle a release artifact. The owner is the idea-giver; the evidence for what to show and
+M17 Home Assistant first-class, M18 the integration layer (all three ACCEPTED 2026-10-14 evening, M0-LOG session 44, one caveat each). **M19, cells of cells, and M20, Potluck for everyone (both planned 2026-10-15, researched and externally reviewed, M0-LOG session 45); M19 BUILT 2026-10-16, every acceptance line shown, awaiting the owner's acceptance (M0-LOG session 46).** M20 is the owner's hybrid: one engine, an optional friendly layer, the bundle a release artifact. The owner is the idea-giver; the evidence for what to show and
 which integrations came from primary sources (ledger).
 
 **THE HARDWARE HAS ARRIVED — 2026-10-01, and all three boards are up.** Ordered 2026-09-21 as a shared
@@ -71,11 +71,11 @@ register and the bring-up findings are in [WHEN-THE-BOARDS-ARRIVE.md](WHEN-THE-B
 > `keys/desk-m19-tree.json` (package 79): summaries and referrals both ways, B held in reset -> C's summary GOOD at a stub in
 > ~5 s, a stub foreman asleep -> B reads the standby's in 5 s; two real cells in separate radio spaces (`keys/desk-m19-spaces.json`). **Bench now:** firmware `50973d4` (counter 54), package 88
 > from `keys/desk-m14-hub.json` (the owner's normal); A's relay ON (`POT! relay 1`, saved -- it was on for the stubs).
-> Firmware now reaches a cell the cable does not (firmware catch-up, shown on the bench). **Open:** the 24 h `pot_sim
-> --scenario tree2` run (`captures/m19-tree2-24h.txt`, ends ~06:00 -- read it and record);
+> Firmware now reaches a cell the cable does not (firmware catch-up, shown on the bench). The 24 h `pot_sim --scenario
+> tree2` run passed (0 deaths, 0 handovers); every acceptance line is shown -- M19 awaits the owner's acceptance. **Open:**
 > **C wedged for 6 h before this session** (Wi-Fi lower MAC looping in tx-retry, task watchdog only printing, `tx_dead`
 > did not fire -- reset by this session; fix not made). The hub runs again (started by this session, `captures/hub-8.log`); the owner's tray had never started one.
-> Commits local, not pushed. Build `pot_stubs` with `tools\run_host_tests.ps1 -Release -BuildDir build/release -Target
+> Pushed to GitHub at the owner's word. Build `pot_stubs` with `tools\run_host_tests.ps1 -Release -BuildDir build/release -Target
 > pot_stubs` (a Debug build falls behind with nine stubs).
 >
 > ## HANDOVER, 2026-10-15 (evening): **M20 step 2 mostly built; M20's kill line did not fire; the floor plan with passive-sensor** (M0-LOG session 45).

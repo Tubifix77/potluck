@@ -5884,8 +5884,9 @@ ESP32-S3 build **3 bytes** of its 64 KB core RAM; they live in PSRAM now (2.3 KB
 worst base space 12.7 % airtime (2.3 % of it the reconciler's CASTs), the upper space -- 20 radios, both eligible boards of
 each cell -- 28.0 % with 4.8 % CASTs, against 26.0 % for a 20-board cell that sends none (23.2 % without them). Killing
 cell 0's foreman: the upper cell read its summary GOOD again after 4 s. The kill line (session 45): a 30-board tree in one
-space +0.7 % against three independent cells (limit +25 %). **The 24-hour run** (`captures/m19-tree2-24h.txt`) ends about
-06:00 -- read it next.
+space +0.7 % against three independent cells (limit +25 %). **The 24-hour run** (`captures/m19-tree2-24h.txt`, 01:02-05:59
+real time): 0 deaths, 0 foreman handovers, no cell-second without a foreman or with two, 90 of 90 sibling summaries read;
+worst base space 12.7 %, the upper space 28.2 % (4.8 % claims), 185.6 million frames, none lost to saturation.
 
 **The bench: three boards, one real cell, stub cells through the cable.** Firmware `bbce7bf` rolled out (counter 48;
 B, C, A at 146, 146, 145 s), package 79 from `keys/desk-m19-tree.json` (A, B, C in "bench", B and C eligible; stub cells s1,

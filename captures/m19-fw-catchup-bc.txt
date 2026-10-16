@@ -1,0 +1,17 @@
+04:16:56 COM4 I (1875326) pot.m0: fw: 0x6300 runs counter 51, this board 50: asked for it
+04:16:56 COM5 I (1724407) pot.m0: fw: 0x6300 runs counter 51, this board 50: asked for it
+04:16:56 COM4 I (1875361) pot.m0: fw: begin counter 51, 1214192 B: ok
+04:17:28 COM4 I (1907554) pot.m0: fw: commit of counter 51: ok (415 ms)
+04:17:30 COM4 ESP-ROM:esp32s3-20210327
+04:17:30 COM4 rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+04:17:31 COM4 I (1190) cpu_start: Pro cpu start user code
+04:17:33 COM4 I (3011) pot.m0: fw: running ota_1 (d274f37-0f91ae), counter 51, floor 50, ON TRIAL; spare slot ota_0, 2048 KB
+04:17:43 COM4 I (13134) pot.m0: fw: trial passed after 100 heartbeats with 2 radio peer(s) - counter 51 CONFIRMED
+04:19:56 COM5 I (1904423) pot.m0: fw: 0x6300 runs counter 51, this board 50: asked for it
+04:19:56 COM5 I (1904462) pot.m0: fw: begin counter 51, 1214192 B: ok
+04:20:29 COM5 I (1937204) pot.m0: fw: commit of counter 51: ok (390 ms)
+04:20:30 COM5 ESP-ROM:esp32s3-20210327
+04:20:30 COM5 rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+04:20:32 COM5 I (1197) cpu_start: Pro cpu start user code
+04:20:33 COM5 I (2969) pot.m0: fw: running ota_0 (d274f37-0f91ae), counter 51, floor 50, ON TRIAL; spare slot ota_1, 2048 KB
+04:20:44 COM5 I (13089) pot.m0: fw: trial passed after 100 heartbeats with 2 radio peer(s) - counter 51 CONFIRMED
