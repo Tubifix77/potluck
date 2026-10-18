@@ -75,6 +75,10 @@ void prefer(uint8_t channel) {
     if (g_kind == Kind::Wifi && channel != 0) wifi::prefer_channel(channel);
 }
 
+uint16_t seen_channels() { return g_kind == Kind::Wifi ? wifi::seen_channels() : 0; }
+
+bool join_channel(uint8_t channel) { return g_kind == Kind::Wifi && wifi::join_channel(channel); }
+
 bool defer_to(uint8_t channel) {
     if (g_kind != Kind::Wifi || channel == 0) return false;
     wifi::prefer_channel(channel);

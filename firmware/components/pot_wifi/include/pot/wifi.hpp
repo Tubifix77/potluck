@@ -47,6 +47,15 @@ void prefer_channel(uint8_t channel);
 // channel authority (a lower node id) is on another channel. At most once per 30 s; false if refused for that.
 bool repick();
 
+// The channels this network was heard on in the station's scans since boot (bit c for channel c): a house mesh serves
+// one network on several (pot/split_probe.hpp).
+uint16_t seen_channels();
+
+// Drop the association and join an access point on `channel`, whatever the margin -- a split station probing for the
+// rest of its cell (pot/split_probe.hpp), or going back. Not rate-limited: the probe paces itself. False if the
+// station is not up.
+bool join_channel(uint8_t channel);
+
 struct Status {
     bool active = false, associated = false, has_ip = false;
     uint8_t channel = 0;

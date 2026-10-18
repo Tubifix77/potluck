@@ -45,6 +45,7 @@ add_executable(pot_tests
   test_namespace.cpp
   test_remote_read.cpp
   test_sys_resources.cpp
+  test_split_probe.cpp
   test_serial_framing.cpp
   test_ns_wire.cpp
   test_work_units.cpp

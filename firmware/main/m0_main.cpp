@@ -56,6 +56,7 @@
 #include "pot/actor.hpp"
 #include "pot/serial_port.hpp"
 #include "pot/stats_json.hpp"
+#include "pot/split_probe.hpp"
 #include "pot/sys_resources.hpp"
 #include "pot/trust.hpp"
 #include "pot/trust_store.hpp"
@@ -1015,7 +1016,25 @@ size_t g_outside_n = 0;
 EXT_RAM_BSS_ATTR uint8_t g_broker_ca[kMaxBrokerCa];
 size_t g_broker_ca_len = 0;
 
+// The cell's other boards, as the running package names them: every board an actor is pinned to. A split station
+// probes for one of these gone missing (pot/split_probe.hpp); a package of portable actors only names none.
+uint16_t g_members[kMaxPeers];
+size_t g_members_n = 0;
+SplitProbe g_split;  // the link loop's; the stats task only reads its counters
+
+void keep_members(const DeployImage& img) {
+    g_members_n = 0;
+    for (uint8_t i = 0; i < img.actor_count; ++i) {
+        const uint16_t n = img.actors[i].node_id;
+        if (n == 0 || n == g_node_id || n >= kPortableNode || (n >= kStubFirst && n <= kStubLast)) continue;
+        bool have = false;
+        for (size_t k = 0; k < g_members_n; ++k) have = have || g_members[k] == n;
+        if (!have && g_members_n < kMaxPeers) g_members[g_members_n++] = n;
+    }
+}
+
 void keep_outside(const DeployImage& img) {
+    keep_members(img);
     g_outside_n = 0;
     for (size_t i = 0; i < img.outside_count && i < kMaxOutside; ++i) {
         OutsideName& o = g_outside[g_outside_n++];
@@ -1662,6 +1681,7 @@ void link_task(void*) {
     uint32_t next_led_ms = now_ms_() + status_led::kRenderMs;
 #if CONFIG_POT_EXTENDER || CONFIG_POT_WIFI
     uint32_t next_hunt_poll_ms = now_ms_();
+    uint32_t next_split_ms = now_ms_();
     bool was_associated = false;  // matches the window app_main chose: hunting unless already associated
     bool ip_seen = false;         // M13: the connected bit's hysteresis
     uint32_t ip_since_ms = now_ms_();
@@ -1836,6 +1856,31 @@ void link_task(void*) {
             // The channel the station prefers at its next pick: the authority's if one outranks it, else the cell's
             // (found by review: it was set only at boot, so after a move every reconnect preferred a stale channel).
             uplink::prefer(auth != 0 ? auth : cell_ch);
+            // Split by a mesh's channels from boards the package names (2026-10-18): probe the network's other
+            // channels for them, at most one probe in flight, paced by the probe itself.
+            if (static_cast<int32_t>(nt - next_split_ms) >= 0) {
+                next_split_ms = nt + 1000;
+                uint8_t missing = 0, alive = 0;
+                xSemaphoreTake(g_mutex, portMAX_DELAY);
+                for (size_t k = 0; k < deploy_rt::g_members_n; ++k) {
+                    const PeerLink* q = g_node->peers().find_by_node_id(deploy_rt::g_members[k]);
+                    if (q == nullptr || q->state != PeerState::Alive) ++missing;
+                }
+                for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+                    const PeerLink& q = g_node->peers().slot(i);
+                    if (q.state == PeerState::Alive && std::memcmp(q.mac, kHostMac, kMacLen) != 0) ++alive;
+                }
+                const bool outranked = auth != 0 && auth == radio_ch;
+                xSemaphoreGive(g_mutex);
+                const SplitProbe::Act act = deploy_rt::g_split.tick(SplitProbe::Inputs{
+                    nt, assoc, radio_ch, uplink::seen_channels(), missing, alive, outranked});
+                if (act != SplitProbe::Act::None && uplink::join_channel(deploy_rt::g_split.target())) {
+                    std::printf("{\"t\":\"split\",\"act\":\"%s\",\"from\":%u,\"to\":%u,\"missing\":%u,\"alive\":%u}\n",
+                                act == SplitProbe::Act::Probe ? "probe" : "return", static_cast<unsigned>(radio_ch),
+                                static_cast<unsigned>(deploy_rt::g_split.target()), static_cast<unsigned>(missing),
+                                static_cast<unsigned>(alive));
+                }
+            }
             if (assoc && auth != 0 && auth != radio_ch && uplink::defer_to(auth)) {
                 ESP_LOGI(kTag, "%s: the cell's channel authority is on channel %u, this station on %u; picking again",
                          uplink::name(), static_cast<unsigned>(auth), static_cast<unsigned>(radio_ch));
@@ -2123,6 +2168,13 @@ void stats_task(void*) {
                     static_cast<unsigned>(now_ms_()));
         extender::print_status();  // M6.1: the baseline's {"t":"hs"} line, on an extender build only
         wifi::print_status();      // M13: {"t":"wifi"}, when Potluck's own station is up
+        if (uplink::active()) {    // 2026-10-18: a split station's probes for the rest of its cell
+            const SplitProbe::Counters& sc = deploy_rt::g_split.counters();
+            std::printf("{\"t\":\"split_probe\",\"members\":%u,\"seen\":%u,\"probes\":%lu,\"stayed\":%lu,\"returned\":%lu,\"probing\":%d}\n",
+                        static_cast<unsigned>(deploy_rt::g_members_n), static_cast<unsigned>(uplink::seen_channels()),
+                        static_cast<unsigned long>(sc.probes), static_cast<unsigned long>(sc.stayed),
+                        static_cast<unsigned long>(sc.returned), deploy_rt::g_split.probing() ? 1 : 0);
+        }
 #if CONFIG_POT_PRESENT
         present::print_status();   // M13: {"t":"present"}, the presenting module's figures
 #endif

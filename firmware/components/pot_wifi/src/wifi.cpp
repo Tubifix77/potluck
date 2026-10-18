@@ -44,6 +44,8 @@ std::atomic<bool> g_ip{false};
 std::atomic<uint8_t> g_channel{0};       // the current association's, 0 if none
 std::atomic<uint8_t> g_take{0};          // the latest association's, until taken
 std::atomic<uint8_t> g_prefer{0};
+std::atomic<uint8_t> g_force{0};         // join_channel's: the next pick takes this channel whatever the margin
+std::atomic<uint16_t> g_seen{0};         // channels the network was heard on (bit c), from every scan
 std::atomic<int8_t> g_rssi{0};
 std::atomic<uint32_t> g_associations{0};
 std::atomic<uint32_t> g_scans{0};
@@ -103,17 +105,20 @@ bool pick(wifi_ap_record_t& out) {
     EXT_RAM_BSS_ATTR static wifi_ap_record_t recs[kMaxRecords];  // only the event task: PSRAM where there is any
     uint16_t n = kMaxRecords;
     if (esp_wifi_scan_get_ap_records(&n, recs) != ESP_OK || n == 0) return false;
-    const uint8_t prefer = g_prefer.load();
+    const uint8_t force = g_force.exchange(0);
+    const uint8_t prefer = force != 0 ? force : g_prefer.load();
     int best = -1, best_pref = -1;
     for (uint16_t i = 0; i < n; ++i) {
         if (std::strncmp(reinterpret_cast<const char*>(recs[i].ssid), g_ssid, kSsidMax) != 0) continue;
+        if (recs[i].primary >= 1 && recs[i].primary <= 14) g_seen.fetch_or(static_cast<uint16_t>(1u << recs[i].primary));
         if (best < 0 || recs[i].rssi > recs[best].rssi) best = i;
         if (prefer != 0 && recs[i].primary == prefer && (best_pref < 0 || recs[i].rssi > recs[best_pref].rssi)) {
             best_pref = i;
         }
     }
     if (best < 0) return false;
-    const bool take_pref = best_pref >= 0 && recs[best_pref].rssi >= recs[best].rssi - CONFIG_POT_WIFI_PREFER_MARGIN_DB;
+    const bool take_pref = best_pref >= 0 && (force != 0 ||
+                                              recs[best_pref].rssi >= recs[best].rssi - CONFIG_POT_WIFI_PREFER_MARGIN_DB);
     out = recs[take_pref ? best_pref : best];
     ESP_LOGI(kTag, "joining an access point on channel %u (%d dBm)%s", static_cast<unsigned>(out.primary),
              static_cast<int>(out.rssi), take_pref ? ", the cell's" : (prefer != 0 ? "; none within the margin on the cell's" : ""));
@@ -245,6 +250,22 @@ bool has_ip() { return g_active && g_ip.load(); }
 uint8_t take_channel() { return g_take.exchange(0); }
 void prefer_channel(uint8_t channel) { g_prefer.store(channel); }
 
+uint16_t seen_channels() { return g_seen.load(); }
+
+bool join_channel(uint8_t channel) {
+    if (!g_active || channel < 1 || channel > 14) return false;
+    g_force.store(channel);
+    ESP_LOGI(kTag, "joining the network on channel %u", static_cast<unsigned>(channel));
+    if (g_assoc.load()) {
+        g_repick.store(true);
+        esp_wifi_disconnect();  // the disconnect event scans at once
+    } else {
+        esp_timer_stop(g_retry_timer);
+        scan_now();
+    }
+    return true;
+}
+
 bool repick() {
     if (!g_active) return false;
     const int64_t now = esp_timer_get_time();
@@ -346,6 +367,8 @@ bool has_ip() { return false; }
 uint8_t take_channel() { return 0; }
 void prefer_channel(uint8_t) {}
 bool repick() { return false; }
+uint16_t seen_channels() { return 0; }
+bool join_channel(uint8_t) { return false; }
 Status status() { return Status{}; }
 void print_status() {}
 bool handle_console(const char*, size_t) { return false; }
