@@ -6011,3 +6011,43 @@ M10's, M11's and M12's caveats are closed. **Bench now:** firmware `3b130f5` (co
 **Bench now:** firmware `35a7caa` (counter 58) on all three, package 91 from `keys/desk-m14-hub.json`, now naming
 passive-sensor `015bcdc` (a descriptor change only -- the next `apply` rebuilds the firmware for the new key; the
 version before is `.pre-015bcdc`), the hub on today's code (`captures/hub-11.log`).
+
+
+## Session 47 -- 2026-10-16/19: the owner's everyday cell, the Potluck Desk, and a cell split by a mesh's channels
+
+The boards came back from Powersuit to the owner's desk "for everyday fun" with the dashboard, Home Assistant and the
+tray (`keys/home.json`). What that use found, and what was fixed (all host-tested; the firmware rolled out to the cell):
+
+- **Flapping warnings.** The hub's app health counted every value on an app's board, not the app's own outputs
+  (`apply.actor_reads`); one late read of another board's value -- it comes from the cabled board's copy, refreshed at
+  the hub's previous read -- read STALE once (`settled_quality`: a quality holds for two reads). The bench ticker and
+  clock (M14) left the everyday package. `ef3b0bc`.
+- **A noisy hub start.** A board's kept event log arrived as news at every hub start (now `"earlier": true`, at its own
+  time); the dashboard judged values from one read. `hub.starting`: up to 30 s after the first look at the cell, no
+  verdict -- only GOOD settles in that time (the first reads are the cabled board's pre-start copies), and the window is
+  counted from the first pull, since a killed hub waits ~36 s for its old lease first (a 100 ms recording across a
+  restart showed the earlier window running out during that wait). `d7aa9c0`, `d4455dd`, `85139e0`, `0fb10b2`;
+  released as 1.0.1 for Home Assistant's integration (HACS had tracked a commit until "Update information").
+- **The Potluck Desk** (a private client of the hub's API) asked for on-demand reads (`POST /api/interest`, its
+  `14f9040`, reviewed and kept) and found: an unread request body before a refusal (fixed, `e61477f`), Node-RED's mDNS
+  on one adapter of six (fixed), the setup wizard probing a returning port (fixed, `814622d`), and that
+  `POST /api/write` to any board but the cabled one never answered -- B dropped the PC's WRITE; the 10-14 LED writes were
+  Home Assistant's, over MQTT. Now the cabled board passes an outside write to its owner and returns the answer
+  (`Node::proxy_write`, `e734989`; 62-72 ms on the bench).
+- **The extender's router figures** became `node-<id>/sys/ext/{router-rssi,clients,reconnects}` (`4530d1e`; adopted by
+  other boards for the PC in `bd24c98`).
+- **A rollout split the cell for ~50 minutes.** It restarted B, whose station joined the house mesh's access point on
+  channel 11 while C's own station stayed on 1; ESP-NOW needs one channel and M13's channel authority only works between
+  stations that hear each other. `apply` misreported it as "received 0". Manual moves could not move C's station.
+  Fix: `pot/split_probe.hpp` -- a station missing a board its package names for 60 s (an extender 180 s) joins the
+  network's other channel for 30 s, stays if it finds more of the cell or a lower-id station, else returns with a
+  2->10 min backoff; the extender through poor-mans-extender's CR-8 (built at our request). Shown live: on `39767fb` C
+  healed the split by itself; on `bd24c98`, with A pinned alone on 1 and C held in reset, B probed at 179 s, heard A at
+  193 s and stayed. README's failure contract states it.
+- **The status LED** alternated blue and green with B's LED switched on: the switch and passive-sensor's presence light
+  shared one app state. `pot/led_slots.hpp` and `BoardServices::led_claim`; the switch uses slot 1 (`639e1f6`).
+- **Logins** last 30 days across hub restarts; the hub offers its certificate (`/hub-certificate.crt`) so a phone can
+  trust it -- Chrome saves no password on a page with a certificate error (`234c1bf`).
+
+Static internal RAM: 63,629 B of 65,536 on `e734989` (the split probe +92 B, write forwarding +48 B). Open: the owner's
+final install of the tray package, and his hand tests (the list in CLAUDE.local.md's handover).
