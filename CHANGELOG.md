@@ -11,6 +11,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
   64 in all (HUB-API.md). Asked for by the Potluck Desk, whose per-link view of passive-sensor stayed empty.
 - The hub's MQTT problem sensors in Home Assistant ("`<app>` problem") no longer switch on for apps the hub has not
   seen yet while it starts, matching the dashboard and the integration.
+- The hub reads a request's body before refusing it (an unknown path, too large, not logged in): unread, it was taken
+  for the next request on a kept-alive connection, and on Windows the client was often reset instead of answered.
+- The Node-RED nodes look for hubs on every network adapter: on a PC with a VPN, Tailscale or Hyper-V, the one query
+  they sent left by the default adapter and never reached the house network.
 
 ## 1.0.1 -- 2026-10-16
 

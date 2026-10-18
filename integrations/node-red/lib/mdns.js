@@ -8,6 +8,7 @@
  */
 
 const dgram = require('node:dgram');
+const os = require('node:os');
 
 const SERVICE = '_potluck._tcp.local';
 const T = { A: 1, PTR: 12, TXT: 16, AAAA: 28, SRV: 33 };
@@ -125,7 +126,24 @@ function hubsFromRecords(records) {
   return hubs;
 }
 
-/** Ask the network for hubs for timeoutMs; resolves the list (empty when none answered). */
+/** This computer's IPv4 addresses, loopback left out: one per network adapter. */
+function ipv4Addresses() {
+  const out = [];
+  for (const list of Object.values(os.networkInterfaces())) {
+    for (const a of list || []) {
+      if ((a.family === 'IPv4' || a.family === 4) && !a.internal) out.push(a.address);
+    }
+  }
+  return out;
+}
+
+/**
+ * Ask the network for hubs for timeoutMs; resolves the list (empty when none answered).
+ *
+ * The query goes out on every IPv4 adapter, one after another: a multicast query leaves by one adapter only (the
+ * default one), and on a PC with a VPN, Tailscale or Hyper-V that is often not the house network's -- found
+ * 2026-10-18 on the maintainer's PC (six adapters), where the default one never reached the hub on 192.168.0.7.
+ */
 function discover({ timeoutMs = 3000 } = {}) {
   return new Promise((resolve) => {
     const sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
@@ -145,11 +163,24 @@ function discover({ timeoutMs = 3000 } = {}) {
     sock.on('error', finish);
     sock.bind(0, () => {
       const q = encodeQuery(SERVICE, T.PTR, Math.floor(Math.random() * 0xffff));
-      sock.send(q, 5353, '224.0.0.251', () => {});
-      setTimeout(() => sock.send(q, 5353, '224.0.0.251', () => {}), 1000);
+      // one adapter at a time: the interface is the socket's, so the next is chosen only once a send has gone
+      const sendAll = (addrs) => {
+        if (done || !addrs.length) return;
+        try {
+          sock.setMulticastInterface(addrs[0]);
+        } catch (e) { /* an adapter that went away: the default one is used */ }
+        sock.send(q, 5353, '224.0.0.251', () => sendAll(addrs.slice(1)));
+      };
+      const all = () => {
+        const addrs = ipv4Addresses();
+        if (addrs.length) sendAll(addrs);
+        else if (!done) sock.send(q, 5353, '224.0.0.251', () => {});
+      };
+      all();
+      setTimeout(all, 1000);
     });
     setTimeout(finish, timeoutMs);
   });
 }
 
-module.exports = { discover, decodeRecords, hubsFromRecords, encodeQuery, encodeName, SERVICE, T };
+module.exports = { discover, decodeRecords, hubsFromRecords, encodeQuery, encodeName, ipv4Addresses, SERVICE, T };

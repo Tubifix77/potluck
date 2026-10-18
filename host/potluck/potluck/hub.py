@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import socket
@@ -1135,6 +1136,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             super().end_headers()
 
         def _json(self, code: int, obj: Any, cookie: str | None = None) -> None:
+            self._drain()
             body = json.dumps(obj).encode()
             self.send_response(code)
             self.send_header("Content-Type", "application/json")
@@ -1594,9 +1596,27 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             n = int(self.headers.get("Content-Length", "0"))
             if n > 4096:
                 raise ValueError("too large")
+            self._body_read = True
             return json.loads(self.rfile.read(n) or b"{}")
 
+        def _drain(self) -> None:
+            """A reply sent before the request's body was read reads the body first. Unread, it is taken for the next
+            request on a kept-alive connection, and on Windows the client is often reset (WinError 10053) instead of
+            getting the reply -- found by the Potluck Desk 2026-10-18 on an unknown path's 404."""
+            if getattr(self, "_body_read", True):
+                return
+            self._body_read = True
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                return
+            if 0 < n <= 65536:
+                self.rfile.read(n)
+            elif n > 65536:
+                self.close_connection = True  # too much to read for a refusal: end the connection after the reply
+
         def do_POST(self) -> None:
+            self._body_read = False  # per request: a kept-alive connection carries several
             if not self._local_host_ok():
                 return
             if self.headers.get("X-Potluck-Request") != "1":
@@ -1708,7 +1728,8 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 try:
                     req = self._body()
                     paths, ttl = req["paths"], req.get("ttl_s", 30)
-                    if not isinstance(paths, list) or not isinstance(ttl, (int, float)) or isinstance(ttl, bool):
+                    if not isinstance(paths, list) or not isinstance(ttl, (int, float)) or isinstance(ttl, bool) \
+                            or not math.isfinite(ttl):
                         raise ValueError
                 except (ValueError, KeyError, AttributeError):
                     self._json(400, {"ok": False, "result": "expected {\"paths\": [...], \"ttl_s\": seconds}"})

@@ -577,6 +577,30 @@ class Interest(HubFixture):
         self.assertEqual(code, 400)
         code, rep = self.post("/api/interest", {"paths": [], "ttl_s": 9999})
         self.assertEqual((code, rep["ttl_s"]), (200, 120.0))  # clamped
+        req = urllib.request.Request(f"http://{self.api_addr}/api/interest", data=b'{"paths": [], "ttl_s": NaN}',
+                                     method="POST", headers={"X-Potluck-Request": "1"})
+        with self.assertRaises(urllib.error.HTTPError) as cm:
+            urllib.request.urlopen(req, timeout=5)
+        cm.exception.close()
+        self.assertEqual(cm.exception.code, 400)  # never a NaN back in the reply (not JSON)
+
+    def test_a_refusal_before_the_body_is_read_still_answers_and_keeps_the_connection_usable(self) -> None:
+        # Found by the Potluck Desk 2026-10-18: an unknown POST path got its 404 without the body being read; on
+        # Windows the client was often reset instead, and on a kept-alive connection the body is the next "request".
+        import http.client
+        host, _, port = self.api_addr.rpartition(":")
+        c = http.client.HTTPConnection(host, int(port), timeout=5)
+        try:
+            for _ in range(3):
+                c.request("POST", "/api/no-such-thing", body=b"x" * 60000, headers={"X-Potluck-Request": "1"})
+                r = c.getresponse()
+                r.read()
+                self.assertEqual(r.status, 404)
+            c.request("GET", "/api/hello")  # the same connection, still in step
+            r = c.getresponse()
+            self.assertEqual((r.status, json.loads(r.read())["api"]), (200, hb.API_VERSION))
+        finally:
+            c.close()
 
 
 if __name__ == "__main__":
