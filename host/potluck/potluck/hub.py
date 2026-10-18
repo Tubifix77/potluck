@@ -66,6 +66,11 @@ API_VERSION = 1
 DEFAULT_API = "127.0.0.1:8470"
 DEFAULT_RELAY = "127.0.0.1:8471"
 DASHBOARD_DIR = Path(__file__).resolve().parent / "dashboard"
+# M20 (review item 11): the dashboard's Content-Security-Policy. Its own files only: no inline script, nothing from
+# another site, not framed by another site; inline style attributes are allowed for the resource bars' widths (a style
+# cannot run code). Checked in the browser against hub_mock on 2026-10-19: no violation on the dashboard or the wizard.
+DASHBOARD_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; "
+                 "connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
 
 #: Requests a tool sends that the cell answers with a REPLY correlated by msg_id: the hub re-numbers these.
 _REQUEST_OPS = frozenset({fr.Op.READ, fr.Op.WRITE, fr.Op.CALL, fr.Op.DEPLOY_BEGIN, fr.Op.DEPLOY_CHUNK,
@@ -1604,6 +1609,8 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-cache")  # revalidate: an upgraded hub's page must not run old files
+            self.send_header("Content-Security-Policy", DASHBOARD_CSP)
+            self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
             self.wfile.write(body)
 

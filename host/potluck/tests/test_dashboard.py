@@ -11,6 +11,7 @@ import http.client
 import importlib.util
 import json
 import os
+import sys
 import re
 import threading
 import unittest
@@ -242,6 +243,23 @@ class ContractTest(unittest.TestCase):
             self.assertTrue(headers["Content-Type"].startswith(ctype), name)
         with self.assertRaises(urllib.error.HTTPError):
             self.mock.get("/../tools/hub_mock.py")
+
+    def test_the_page_carries_the_hubs_content_security_policy(self):
+        # M20 review item 11. The mock sends the hub's policy word for word, so a page change that breaks it shows here
+        # (and in a browser's console) before the hub serves it; inline scripts are refused, inline styles are not.
+        sys.path.insert(0, os.path.join(HERE, ".."))
+        from potluck import hub as hb
+        self.assertEqual(hub_mock.DASHBOARD_CSP, hb.DASHBOARD_CSP)
+        self.assertIn("script-src 'self';", hb.DASHBOARD_CSP)
+        self.assertIn("frame-ancestors 'none'", hb.DASHBOARD_CSP)
+        _, headers, body = self.mock.get("/")
+        self.assertEqual(headers["Content-Security-Policy"], hb.DASHBOARD_CSP)
+        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+        for page in ("index.html", "setup.html"):  # no inline script a strict script-src would refuse
+            with open(os.path.join(DASHBOARD, page), encoding="utf-8") as f:
+                html = f.read()
+            self.assertNotRegex(html, r"<script(?![^>]*\bsrc=)[^>]*>", page)
+            self.assertNotRegex(html, r"\son[a-z]+=\"", page)
 
     def test_fault_by_query(self):
         self.mock.get_json("/mock/fault?stale=1&other_cell=1")

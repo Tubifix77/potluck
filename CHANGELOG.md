@@ -27,6 +27,8 @@ Potluck's releases. The full record -- every milestone with its measurements and
   outside write for another board's resource to its owner and returns the owner's answer; the owner still checks the
   package. Before, every write to another board timed out (504) -- found by the Potluck Desk on B's LED. Needs the
   firmware and the hub of this change.
+- **The dashboard sends a Content-Security-Policy** (its own scripts only, nothing from another site, not framed by one)
+  and `X-Content-Type-Options: nosniff`; the mock sends the same policy, checked in a browser.
 - **The tray's menu opens the Potluck Desk** ("Open Potluck Desk", and its Add boards behind "Add boards") when
   `tray.json` names it -- `packaging\install.ps1 -Desk <its folder>` writes that, keeping the cell's settings.
 - **Logins last 30 days and survive a restart of the hub**, so a reinstall or a PC restart no longer logs a phone out

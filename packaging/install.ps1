@@ -43,10 +43,15 @@ if ($Desk) {
         $old = [IO.File]::ReadAllText($cfgFile).TrimStart([char]0xFEFF) | ConvertFrom-Json
         foreach ($p in $old.PSObject.Properties) { $cfg[$p.Name] = $p.Value }
     }
-    $cfg["desk"] = [ordered]@{ python = $pyw; cwd = $Desk }
+    if ($cfg["desk"] -and $cfg["desk"].exe) {
+        # the Desk's own installer wrote its exe: an installed desk wins over a checkout (2026-10-19)
+        Write-Host "kept the installed Potluck Desk in tray.json ($($cfg["desk"].exe)); -Desk changed nothing"
+    } else {
+        $cfg["desk"] = [ordered]@{ python = $pyw; cwd = $Desk }
+        Write-Host "the tray's menu opens the Potluck Desk in $Desk (with $pyw)"
+    }
     # no BOM (the tray reads one, but nothing else needs it)
     [IO.File]::WriteAllText($cfgFile, ($cfg | ConvertTo-Json -Depth 5), (New-Object Text.UTF8Encoding $false))
-    Write-Host "the tray's menu opens the Potluck Desk in $Desk (with $pyw)"
 }
 Start-Process (Join-Path $dest "potluck-tray.exe") -WorkingDirectory $dest
 Write-Host "Potluck installed in $dest; the tray icon starts now and at every login."

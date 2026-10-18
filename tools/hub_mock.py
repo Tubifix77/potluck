@@ -39,6 +39,9 @@ from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 DASHBOARD = ROOT / "host" / "potluck" / "potluck" / "dashboard"
+# potluck.hub.DASHBOARD_CSP, word for word, so a page that breaks it breaks here too (test_dashboard compares)
+DASHBOARD_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; "
+                 "connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
 
 SYSTEM = "lab"
 CELL_ID = "ef76cc2e"
@@ -581,6 +584,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", ctype + "; charset=utf-8" if ctype.startswith("text/") else ctype)
         self.send_header("Cache-Control", "no-cache")
+        self.send_header("Content-Security-Policy", DASHBOARD_CSP)  # the hub's own (test_dashboard checks they agree)
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
