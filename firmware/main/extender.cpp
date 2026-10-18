@@ -121,6 +121,17 @@ bool has_ip() {
     return pme_hotspot_get_status(&st) == ESP_OK && st.sta_connected && st.sta_has_ip;
 }
 
+bool figures(bool* associated, int8_t* rssi, uint8_t* clients, uint32_t* reconnects) {
+    if (!g_active) return false;
+    pme_hotspot_status_t st{};
+    if (pme_hotspot_get_status(&st) != ESP_OK) return false;
+    *associated = st.sta_connected;
+    *rssi = st.rssi;
+    *clients = st.clients;
+    *reconnects = st.reconnects;
+    return true;
+}
+
 void print_status() {
     pme_hotspot_status_t st{};
     if (g_active) pme_hotspot_get_status(&st);
@@ -176,6 +187,7 @@ bool active() { return false; }
 uint8_t take_channel() { return 0; }
 bool associated() { return false; }
 bool has_ip() { return false; }
+bool figures(bool*, int8_t*, uint8_t*, uint32_t*) { return false; }
 void print_status() {}
 bool handle_console(const char*, size_t) { return false; }
 

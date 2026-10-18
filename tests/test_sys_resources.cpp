@@ -35,6 +35,28 @@ TEST(sysres, every_resource_has_a_distinct_path_and_hash) {
           sys_resource_hash(0x0002, SysResource::HeapFree));
 }
 
+TEST(sysres, an_extenders_figures_are_its_own_read_only_and_spelled_as_the_host_spells_them) {
+    // host/potluck/tests/test_sys_paths.py expects exactly these strings.
+    CHECK_EQ(extender_resource_hash(0x1a2b, ExtenderResource::RouterRssi),
+             path_hash("potluck://lab/node-1a2b/sys/ext/router-rssi"));
+    CHECK_EQ(extender_resource_hash(0x1a2b, ExtenderResource::Clients),
+             path_hash("potluck://lab/node-1a2b/sys/ext/clients"));
+    CHECK_EQ(extender_resource_hash(0x1a2b, ExtenderResource::Reconnects),
+             path_hash("potluck://lab/node-1a2b/sys/ext/reconnects"));
+    Namespace ns;
+    CHECK_EQ(declare_sys_resources(ns, 0x0101), static_cast<size_t>(kSysResourceCount));
+    CHECK_EQ(declare_extender_resources(ns, 0x0101), static_cast<size_t>(kExtenderResourceCount));
+    CHECK_EQ(ns.count(), static_cast<size_t>(kSysResourceCount + kExtenderResourceCount));
+    for (uint8_t i = 0; i < kExtenderResourceCount; ++i) {
+        const NsDecl d = extender_resource_decl(0x0101, static_cast<ExtenderResource>(i));
+        CHECK(std::strstr(extender_resource_suffix(static_cast<ExtenderResource>(i)), "?") == nullptr);
+        CHECK_EQ(static_cast<int>(d.access), static_cast<int>(Access::Read));
+        CHECK_EQ(d.latency_class, kClassL4);
+        CHECK_EQ(d.owner_node, static_cast<uint16_t>(0x0101));
+        CHECK_EQ(d.staleness_bound_ms, 30000u);  // three 10 s statistics intervals
+    }
+}
+
 TEST(sysres, they_declare_cleanly_and_leave_room_for_the_application) {
     Namespace ns;
     CHECK_EQ(declare_sys_resources(ns, 0x0101), static_cast<size_t>(kSysResourceCount));

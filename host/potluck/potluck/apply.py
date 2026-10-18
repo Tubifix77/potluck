@@ -1430,7 +1430,7 @@ NS_FIXED = ("sys/heap-free", "sys/heap-largest", "sys/uptime", "sys/boot-epoch",
 
 
 def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple[int, ...] = (),
-              outside: tuple[str, ...] = ()) -> tuple[dict[int, dict], list[str]]:
+              outside: tuple[str, ...] = (), extenders: tuple[int, ...] = ()) -> tuple[dict[int, dict], list[str]]:
     """Section 15 question 2 (2026-10-15): how many namespace entries each board's table will hold, against NS_CAP.
 
     A table holds (from the firmware): its built-ins; every pinned actor's outputs in the package, declared on every
@@ -1552,6 +1552,9 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
     result: dict[int, dict] = {}
     for n in boards:
         fixed = {f"potluck://{m.system}/node-{n:04x}/{s}" for s in NS_FIXED} | {"act/setpoint"}
+        if n in extenders:  # an extender board declares its router figures too (sys_paths.EXT_SUFFIXES)
+            from .sys_paths import EXT_SUFFIXES
+            fixed |= {f"potluck://{m.system}/node-{n:04x}/{s}" for s in EXT_SUFFIXES}
         package = {p for a, ps in by_actor if keeps(n, a) for p in ps}
         held = fixed | package | own[n]
         extra: set[str] = set()
@@ -1785,7 +1788,9 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
             # Section 15 question 2: every board's namespace table, counted before anything is sent.
             presenters = tuple(n for n in boards if c.present and inv[n] is not None and
                                any(mm == "present" and "no network" not in (r or "") for mm, _s, r in inv[n].modules))
-            budget, silent = ns_budget(pkg.manifest, boards, cabled, presenters, tuple(c.outside))
+            extenders = tuple(n for n in boards if inv[n] is not None and
+                              any(mm == "extender" and s == "active" for mm, s, _r in inv[n].modules))
+            budget, silent = ns_budget(pkg.manifest, boards, cabled, presenters, tuple(c.outside), extenders)
             for n in boards:
                 u = budget[n]
                 log(f"plan: namespace 0x{n:04x}: {u['total']} of {NS_CAP} entries ({u['fixed']} built-in, "

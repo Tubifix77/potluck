@@ -106,4 +106,56 @@ size_t declare_sys_resources(Namespace& ns, uint16_t node_id) {
     return n;
 }
 
+const char* extender_resource_suffix(ExtenderResource r) {
+    switch (r) {
+        case ExtenderResource::RouterRssi: return "sys/ext/router-rssi";
+        case ExtenderResource::Clients: return "sys/ext/clients";
+        case ExtenderResource::Reconnects: return "sys/ext/reconnects";
+    }
+    return "sys/ext/?";
+}
+
+uint32_t extender_resource_hash(uint16_t node_id, ExtenderResource r) {
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "potluck://%s/node-%04x/%s", g_system, static_cast<unsigned>(node_id),
+                  extender_resource_suffix(r));
+    return path_hash(buf);
+}
+
+NsDecl extender_resource_decl(uint16_t node_id, ExtenderResource r) {
+    NsDecl d;
+    d.path_hash = extender_resource_hash(node_id, r);
+    d.owner_node = node_id;
+    d.kind = ResourceKind::Sampled;
+    d.access = Access::Read;
+    d.latency_class = kClassL4;
+    d.staleness_policy = StalenessPolicy::Informative;
+    // Refreshed with the built-ins, once a statistics interval (10 s by default): three intervals before a reading is
+    // a guess, as for the heap and the uptime.
+    d.staleness_bound_ms = 30000;
+    switch (r) {
+        case ExtenderResource::RouterRssi:
+            d.type = ValueType::I32;
+            d.unit = Unit::None;  // dBm, as sys/rssi: no unit code for it
+            break;
+        case ExtenderResource::Clients:
+            d.type = ValueType::U32;
+            d.unit = Unit::Count;
+            break;
+        case ExtenderResource::Reconnects:
+            d.type = ValueType::U32;
+            d.unit = Unit::Count;
+            break;
+    }
+    return d;
+}
+
+size_t declare_extender_resources(Namespace& ns, uint16_t node_id) {
+    size_t n = 0;
+    for (uint8_t i = 0; i < kExtenderResourceCount; ++i) {
+        if (ns.declare(extender_resource_decl(node_id, static_cast<ExtenderResource>(i))) == NsError::Ok) ++n;
+    }
+    return n;
+}
+
 }  // namespace pot

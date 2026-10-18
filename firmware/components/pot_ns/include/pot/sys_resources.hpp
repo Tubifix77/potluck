@@ -66,4 +66,21 @@ NsDecl sys_resource_decl(uint16_t node_id, SysResource r);
 // Declare all of them into `ns` for this node. Returns the number successfully declared.
 size_t declare_sys_resources(Namespace& ns, uint16_t node_id);
 
+// What an extender board (M6.1) reports about its router and its hotspot, declared only on a board whose extender
+// started, so every other board's 128-entry table is untouched. Until 2026-10-18 these reached only the console's
+// {"t":"hs"} line; asked for by the Potluck Desk, which shows them. Under sys/ like the built-ins above (a board's own,
+// readable on demand through the hub's POST /api/interest without any package naming them).
+constexpr size_t kExtenderResourceCount = 3;
+
+enum class ExtenderResource : uint8_t {
+    RouterRssi = 0,  // dBm of the station's link to the house router; not published while it is not associated
+    Clients = 1,     // phones and other stations on the hotspot now
+    Reconnects = 2,  // the station's reassociations since boot
+};
+
+const char* extender_resource_suffix(ExtenderResource r);
+uint32_t extender_resource_hash(uint16_t node_id, ExtenderResource r);
+NsDecl extender_resource_decl(uint16_t node_id, ExtenderResource r);
+size_t declare_extender_resources(Namespace& ns, uint16_t node_id);
+
 }  // namespace pot

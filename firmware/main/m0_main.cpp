@@ -2046,6 +2046,19 @@ void refresh_sys_resources() {
                     Value::of_i32(static_cast<int32_t>(worst_rssi)));
     g_node->publish(sys_resource_hash(me, SysResource::ResetReason),
                     Value::of_u32(static_cast<uint32_t>(esp_reset_reason())));
+    // An extender board: its router and hotspot figures (declared at boot only where the extender started).
+    bool assoc = false;
+    int8_t router_rssi = 0;
+    uint8_t clients = 0;
+    uint32_t reconnects = 0;
+    if (extender::figures(&assoc, &router_rssi, &clients, &reconnects)) {
+        if (assoc) {  // no association, no measurement: the last reading ages into STALE rather than lie
+            g_node->publish(extender_resource_hash(me, ExtenderResource::RouterRssi),
+                            Value::of_i32(static_cast<int32_t>(router_rssi)));
+        }
+        g_node->publish(extender_resource_hash(me, ExtenderResource::Clients), Value::of_u32(clients));
+        g_node->publish(extender_resource_hash(me, ExtenderResource::Reconnects), Value::of_u32(reconnects));
+    }
 }
 
 // One line per namespace entry, so a capture shows what this node offers and what it currently
@@ -3960,6 +3973,7 @@ extern "C" void app_main(void) {
     // §7.2: declare what this node owns. Six built-ins every board has, so a fresh fleet has
     // something real to read across a link on the day it is switched on.
     const size_t declared = declare_sys_resources(g_node->ns(), cfg.node_id);
+    if (extender::active()) declare_extender_resources(g_node->ns(), cfg.node_id);  // sys/ext/*: this board's own
     {
         // M5's stand-in actuator: a writable setpoint. Nothing physical moves; every applied value is
         // reported on the {"t":"act"} line, which is what the replay demonstration watches.

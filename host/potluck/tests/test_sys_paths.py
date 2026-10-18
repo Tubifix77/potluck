@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from potluck.paths import path_hash  # noqa: E402
 from potluck.sys_paths import (  # noqa: E402
+    EXT_SUFFIXES,
     SYS_LABELS,
     SYS_SUFFIXES,
     describe,
@@ -32,6 +33,17 @@ def test_every_suffix_is_distinct_and_labelled():
     assert len(set(SYS_SUFFIXES)) == len(SYS_SUFFIXES)
     for s in SYS_SUFFIXES:
         assert s in SYS_LABELS, f"{s} has no human label"
+
+
+def test_an_extenders_figures_are_spelled_as_the_firmware_spells_them():
+    # tests/test_sys_resources.cpp hashes exactly these strings for node 0x1a2b.
+    assert [sys_path(0x1A2B, s) for s in EXT_SUFFIXES] == [
+        "potluck://lab/node-1a2b/sys/ext/router-rssi",
+        "potluck://lab/node-1a2b/sys/ext/clients",
+        "potluck://lab/node-1a2b/sys/ext/reconnects",
+    ]
+    for s in EXT_SUFFIXES:
+        assert s in SYS_LABELS and s not in SYS_SUFFIXES  # labelled, and never counted as every board's
 
 
 def test_a_nodes_builtins_are_seven_distinct_hashes():

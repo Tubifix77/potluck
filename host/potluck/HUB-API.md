@@ -298,7 +298,9 @@ new request; asking again renews it. The value then arrives in the model and the
 
 - **What may be asked for:** an output some module of the package declares -- `{node}` and `{peer}` any board,
   `{actor}` that actor, a `?` output too -- or a board's built-in `sys/` resource. Anything else is refused with
-  `not an output of this cell's package or a board's sys/`.
+  `not an output of this cell's package or a board's sys/`. A board running the Wi-Fi extender also has
+  `sys/ext/router-rssi` (its signal to the router, dBm; not published while it is not associated), `sys/ext/clients`
+  (stations on its hotspot) and `sys/ext/reconnects` (since boot); other boards have none of them.
 - **How much:** at most 32 paths per program and 64 in all (`hub.interest` in the model says how many are asked for and
   by how many programs). Each costs one READ per pull while asked for, so ask only for what is on the screen.
 - **Who:** a look right is enough; it reads, it changes nothing in the cell. Like every POST it needs

@@ -34,13 +34,20 @@ size_t rename_cluster(Node& node, const char* name) {
     }
     // Remove under the old name. A peer's entries were declared on demand; they are declared again the same
     // way, under the new name, the next time something reads them.
+    const uint16_t me = node.config().node_id;
+    const bool extender = node.ns().find(extender_resource_hash(me, ExtenderResource::Clients)) != nullptr;
     for (size_t k = 0; k < n; ++k) {
         for (size_t r = 0; r < kSysResourceCount; ++r) {
             node.ns().remove(sys_resource_hash(ids[k], static_cast<SysResource>(r)));
         }
+        for (size_t r = 0; r < kExtenderResourceCount; ++r) {  // an extender's sys/ext/*, its own or a replica
+            node.ns().remove(extender_resource_hash(ids[k], static_cast<ExtenderResource>(r)));
+        }
     }
     set_sys_system(name);
-    return declare_sys_resources(node.ns(), node.config().node_id);
+    size_t declared = declare_sys_resources(node.ns(), me);
+    if (extender) declared += declare_extender_resources(node.ns(), me);  // declared at boot only where it started
+    return declared;
 }
 
 namespace {

@@ -31,7 +31,19 @@ SYS_LABELS: dict[str, str] = {
     "sys/peers-alive": "peers alive",
     "sys/rssi": "worst peer RSSI",
     "sys/reset": "why it last started",
+    "sys/ext/router-rssi": "extender: signal to the router (dBm)",
+    "sys/ext/clients": "extender: stations on its hotspot",
+    "sys/ext/reconnects": "extender: router reconnects since boot",
 }
+
+#: An extender board's own (pot/sys_resources.hpp ExtenderResource, 2026-10-18): declared only on a board whose
+#: extender started -- B on the bench. Router signal in dBm (not published while the station is not associated),
+#: stations on the hotspot, reconnects since boot.
+EXT_SUFFIXES: tuple[str, ...] = (
+    "sys/ext/router-rssi",
+    "sys/ext/clients",
+    "sys/ext/reconnects",
+)
 
 #: sys/reset's codes: ESP-IDF's esp_reset_reason_t, in its header's order (components/esp_system/include/esp_system.h,
 #: v6.0.2; ledger). The task watchdog (6) is a wedge the watchdog cleared; the radio fail-stop restarts by software (3).

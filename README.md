@@ -258,7 +258,8 @@ These are the seven resources every board owns, and every line is the full read 
 will differ). `L4` is the loosest of the five latency classes (L0 is pinned-to-hardware, L4 is
 best-effort), and the zeros are honest ones: *peers alive* and *RSSI* (radio signal strength) read
 zero because QEMU emulates no radio. *Why it last started* is ESP-IDF's reset-reason code -- 1 is
-power-on, 3 a software restart, 6 the task watchdog -- which the hub and its dashboard show by name. `watch sys/peers-alive` shows
+power-on, 3 a software restart, 6 the task watchdog -- which the hub and its dashboard show by name. A board running
+the Wi-Fi extender adds three of its own: `sys/ext/router-rssi`, `sys/ext/clients` and `sys/ext/reconnects`. `watch sys/peers-alive` shows
 `0 → 1` as your own host registers as a live peer — the membership state machine running over a
 wire, with the firmware unaware the peer is a laptop. Add `--capture session.jsonl` and the session
 prints the digest command that verifies its own capture. One `potctl` per emulated run: QEMU's

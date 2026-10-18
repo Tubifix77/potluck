@@ -38,6 +38,10 @@ bool associated();
 // M13: associated and holding an address (the presenter connects out over it).
 bool has_ip();
 
+// The router and hotspot figures the node publishes (sys/ext/*, pot/sys_resources.hpp). False on a build that is not
+// an extender or whose hotspot did not start; `associated` false means `rssi` is not a measurement.
+bool figures(bool* associated, int8_t* rssi, uint8_t* clients, uint32_t* reconnects);
+
 // The baseline's status line, field for field (poor-mans-extender's `{"t":"hs"}`), so step 2's figures
 // sit next to step 0's without translation. Prints nothing on a non-extender build.
 void print_status();

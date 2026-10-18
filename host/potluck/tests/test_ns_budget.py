@@ -53,6 +53,9 @@ class Budget(unittest.TestCase):
         self.assertEqual(b[0x7368]["replicas"], 0)
         self.assertEqual(b[0x6300]["replicas"], 2)  # the other two boards' link/count, read through the cable --
         self.assertEqual(b[0x6300]["total"], 8 + 2 + 3 + 2)  # not their {peer} outputs, which neither verify nor hub reads
+        # an extender board declares its three router figures besides (sys/ext/*, 2026-10-18); the others do not
+        b, _ = ap.ns_budget(m, boards, cabled=0x6300, extenders=(0x7368,))
+        self.assertEqual((b[0x7368]["fixed"], b[0x8160]["fixed"]), (8 + 3, 8))
 
     def test_an_output_published_only_sometimes_is_counted_but_never_waited_for(self) -> None:
         # M20: a position's x..conf exist only while someone is placed ("?" in the descriptor)

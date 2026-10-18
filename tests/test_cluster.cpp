@@ -63,6 +63,19 @@ TEST(cluster, names_are_checked) {
     CHECK(why != nullptr);
 }
 
+TEST(cluster, a_rename_carries_an_extenders_figures_and_declares_none_on_another_board) {
+    Rig r;
+    declare_extender_resources(r.node->ns(), 0x100);  // as m0_main does where the extender started
+    CHECK_EQ(rename_cluster(*r.node, "home"), kSysResourceCount + kExtenderResourceCount);
+    CHECK(r.node->ns().find(path_hash("potluck://home/node-0100/sys/ext/clients")) != nullptr);
+    CHECK(r.node->ns().find(path_hash("potluck://lab/node-0100/sys/ext/clients")) == nullptr);
+    rename_cluster(*r.node, "lab");
+    Rig plain;  // no extender: a rename declares the built-ins only
+    CHECK_EQ(rename_cluster(*plain.node, "home"), kSysResourceCount);
+    CHECK(plain.node->ns().find(path_hash("potluck://home/node-0100/sys/ext/clients")) == nullptr);
+    rename_cluster(*plain.node, "lab");
+}
+
 TEST(cluster, the_actor_renames_the_built_in_resources_and_its_end_restores_lab) {
     Rig r;
     const uint32_t lab_uptime = path_hash("potluck://lab/node-0100/sys/uptime");
