@@ -456,6 +456,15 @@ runtime states them. Here they are:
   sides lasts, each side presents. Home Assistant sees one device per board -- the ids are the cell's,
   not the presenter's -- but its values may come from either side until the heal, and an entity whose
   board is across the split reads as unavailable from one side only.
+- **A house mesh that serves one network on several channels can split a cell, for minutes.** The boards
+  talk on one radio channel, and a board with its own Wi-Fi connection (the extender, or the board that
+  presents) is held on its access point's channel. Two such boards on different access points cannot hear
+  each other, so after a restart -- a firmware update restarts every board -- the cell can come up in two
+  halves, both alive. A board with its own connection that misses a board its package names for a minute
+  tries the network's other channels, 30 s each, and stays where it finds the rest of the cell; it tries
+  again after 2 minutes, then doubling to 10 (an extender waits 3 minutes first, since the cell follows its
+  router). Boards without a connection of their own sweep the channels for a lost peer. On the bench
+  (2026-10-18) a rollout's split was whole again about 1.5 minutes after the last board restarted.
 - **A package deployed during a partition reaches only the side it was sent into**: the board on
   the cable passes it to the boards it can hear, and `potluck.apply` reports the others as not confirmed. They keep
   the package they had; nothing rolls back. When the cell heals, the boards that missed it fetch it from a peer

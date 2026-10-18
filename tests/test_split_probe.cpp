@@ -68,6 +68,15 @@ TEST(split_probe, a_network_on_one_channel_or_no_association_or_nobody_missing_n
     CHECK_EQ(p.counters().probes + q.counters().probes, 0u);
 }
 
+TEST(split_probe, an_extender_waits_three_times_as_long) {
+    SplitProbe p;
+    p.set_split_ms(3 * SplitProbe::kSplitMs);
+    p.tick(at(1, 11, 2, 0));
+    CHECK(p.tick(at(1 + SplitProbe::kSplitMs, 11, 2, 0)) == SplitProbe::Act::None);
+    CHECK(p.tick(at(1 + 3 * SplitProbe::kSplitMs, 11, 2, 0)) == SplitProbe::Act::Probe);
+    CHECK_EQ(p.target(), static_cast<uint8_t>(1));
+}
+
 TEST(split_probe, three_channels_are_tried_in_turn) {
     SplitProbe p;
     const uint16_t seen = (1u << 1) | (1u << 6) | (1u << 11);

@@ -75,9 +75,23 @@ void prefer(uint8_t channel) {
     if (g_kind == Kind::Wifi && channel != 0) wifi::prefer_channel(channel);
 }
 
-uint16_t seen_channels() { return g_kind == Kind::Wifi ? wifi::seen_channels() : 0; }
+uint16_t seen_channels() {
+    switch (g_kind) {
+        case Kind::Extender: return extender::seen_channels();
+        case Kind::Wifi: return wifi::seen_channels();
+        case Kind::None: break;
+    }
+    return 0;
+}
 
-bool join_channel(uint8_t channel) { return g_kind == Kind::Wifi && wifi::join_channel(channel); }
+bool join_channel(uint8_t channel) {
+    switch (g_kind) {
+        case Kind::Extender: return extender::join_channel(channel);
+        case Kind::Wifi: return wifi::join_channel(channel);
+        case Kind::None: break;
+    }
+    return false;
+}
 
 bool defer_to(uint8_t channel) {
     if (g_kind != Kind::Wifi || channel == 0) return false;

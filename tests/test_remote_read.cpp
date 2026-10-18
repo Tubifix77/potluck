@@ -502,6 +502,32 @@ TEST(m1, a_host_on_one_board_reads_another_boards_builtin_resource) {
     CHECK_EQ(static_cast<int>(c.replies_to_0.back().quality), static_cast<int>(Quality::Unavailable));
 }
 
+TEST(m1, a_host_reads_an_extender_boards_router_figures_through_another_board) {
+    // 2026-10-18: B's sys/ext/* read UNAVAILABLE through A -- A adopted only the seven built-ins every board has.
+    Cell2 c;
+    c.build(3);
+    c.cut.push_back({0, 2});  // host <-> B: never connected
+    c.start();
+    c.advance_ms(300);
+    Node& host = *c.slots[0].node;
+    Node& a = *c.slots[1].node;
+    Node& b = *c.slots[2].node;
+    const uint16_t b_id = b.config().node_id;
+    const uint32_t clients = extender_resource_hash(b_id, ExtenderResource::Clients);
+    CHECK_EQ(declare_extender_resources(b.ns(), b_id), kExtenderResourceCount);  // B is the extender
+    CHECK_EQ(static_cast<int>(b.publish(clients, Value::of_u32(2))), static_cast<int>(NsError::Ok));
+    CHECK(host.request_read(a.config().node_id, clients) != 0);  // adopted, NO_DATA, fetched from B
+    c.advance_ms(50);
+    CHECK(a.ns().find(clients) != nullptr);
+    CHECK(host.request_read(a.config().node_id, clients) != 0);
+    c.advance_ms(50);
+    const ReplyPayload got = c.replies_to_0.back();
+    CHECK_EQ(static_cast<int>(got.quality), static_cast<int>(Quality::Good));
+    uint32_t n = 0;
+    CHECK(value_from_wire(got.value_type, got.value_len, got.value_raw).as_u32(n));
+    CHECK_EQ(n, 2u);
+}
+
 TEST(m1, a_read_for_a_path_no_peer_owns_is_not_adopted) {
     // On-demand adoption must only ever adopt a real peer's built-in path, never invent an entry.
     Cell2 c;

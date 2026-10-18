@@ -36,8 +36,7 @@ bool defer_to(uint8_t channel);
 void prefer(uint8_t channel);
 
 // A split station probing for the rest of its cell (pot/split_probe.hpp): the channels its network was heard on, and
-// joining one. Potluck's station only: the extender's app has no way to pick again at run time yet, so for it these
-// are 0 / false and the rest of the cell comes to it (its channel is the router's, which the cell follows).
+// joining one -- Potluck's station, or the extender's app since its CR-8 (pme_hotspot_join_channel).
 uint16_t seen_channels();
 bool join_channel(uint8_t channel);
 

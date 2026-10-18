@@ -38,6 +38,10 @@ class SplitProbe {
         bool outranked_here;     // a lower-id station is alive on this channel (Node::outranking_channel() == channel)
     };
 
+    // How long a member must be missing before a probe; kSplitMs unless set. An extender waits longer: its channel is
+    // the router's, which the cell follows, so the others normally come to it first.
+    void set_split_ms(uint32_t ms) { split_ms_ = ms; }
+
     // One look, a few times a second or once a second. Probe/Return: join an access point on target() now.
     Act tick(const Inputs& in);
     uint8_t target() const { return target_; }
@@ -55,6 +59,7 @@ class SplitProbe {
     static uint8_t next_channel(uint16_t seen, uint8_t from, uint8_t current);
 
     State state_ = State::Idle;
+    uint32_t split_ms_ = kSplitMs;
     uint32_t split_since_ = 0;   // 0: not split
     uint32_t next_allowed_ = 0;  // no probe before this
     uint32_t backoff_ms_ = kFirstBackoffMs;
@@ -105,7 +110,7 @@ inline SplitProbe::Act SplitProbe::tick(const Inputs& in) {
         return Act::None;
     }
     if (split_since_ == 0) split_since_ = in.now_ms == 0 ? 1 : in.now_ms;
-    if (in.now_ms - split_since_ < kSplitMs) return Act::None;
+    if (in.now_ms - split_since_ < split_ms_) return Act::None;
     if (next_allowed_ != 0 && static_cast<int32_t>(in.now_ms - next_allowed_) < 0) return Act::None;
     const uint8_t to = next_channel(in.seen, last_probe_ != 0 ? last_probe_ : in.channel, in.channel);
     if (to == 0) return Act::None;  // the network is on this channel only: the split is not the mesh's doing

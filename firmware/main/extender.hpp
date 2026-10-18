@@ -38,6 +38,12 @@ bool associated();
 // M13: associated and holding an address (the presenter connects out over it).
 bool has_ip();
 
+// The channels the router's network was heard on (bit c), and joining an access point on one whatever the margin --
+// for the split probe (pot/split_probe.hpp). pme_hotspot's CR-8 (poor-mans-extender 2f9c610). 0 / false on a build
+// that is not an extender or whose hotspot did not start.
+uint16_t seen_channels();
+bool join_channel(uint8_t channel);
+
 // The router and hotspot figures the node publishes (sys/ext/*, pot/sys_resources.hpp). False on a build that is not
 // an extender or whose hotspot did not start; `associated` false means `rssi` is not a measurement.
 bool figures(bool* associated, int8_t* rssi, uint8_t* clients, uint32_t* reconnects);

@@ -3888,6 +3888,10 @@ extern "C" void app_main(void) {
     // Potluck's own station, when it has. Their credentials live in NVS, so NVS comes up first.
     nvs_init_once();
     ecfg.attach = uplink::start(saved_channel);
+    // The split probe (pot/split_probe.hpp): an extender's channel is its router's, which the cell follows, so it waits
+    // three times as long before probing as Potluck's own station does.
+    deploy_rt::g_split.set_split_ms(uplink::kind() == uplink::Kind::Extender ? 3 * SplitProbe::kSplitMs
+                                                                              : SplitProbe::kSplitMs);
 #endif
     const EspNowInitReport rep = espnow_start(ecfg);
 #endif

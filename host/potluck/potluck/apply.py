@@ -1891,6 +1891,13 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                               f"stopped before the package")
                         return 1
                     done = fwm.wait_confirmed(b, n, counter, 240.0)
+                    if done is not None and done.get("status") == "unreachable":
+                        # Found 2026-10-18: B took the image, restarted into it and came up on another channel of the
+                        # house mesh; "received 0, running 59" in the unreachable reply was read as nothing sent.
+                        print(f"FAILED: 0x{n:04x} took firmware {counter} and restarted, but has not answered for "
+                              f"240 s -- it confirms the image itself once it has a radio peer, or rolls back; "
+                              f"stopped before the other boards")
+                        return 1
                     if done is None or done["running"] != counter or done["state"] != "confirmed":
                         print(f"FAILED: 0x{n:04x} did not confirm firmware {counter}: {done} -- stopped")
                         return 1

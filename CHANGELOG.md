@@ -15,6 +15,14 @@ Potluck's releases. The full record -- every milestone with its measurements and
   station is not associated), `sys/ext/clients` (stations on its hotspot) and `sys/ext/reconnects` (since boot),
   until now only on its console. Declared only on a board whose extender started; readable through the hub's
   `POST /api/interest`. Asked for by the Potluck Desk. A firmware change.
+- **A cell split by a house mesh's channels finds itself again.** A board with its own Wi-Fi connection that
+  misses a board its package names for a minute probes the network's other channels (30 s each, backing off from 2
+  to 10 minutes); an extender waits 3 minutes, and needs an extender app that can choose its access point at run time. Found 2026-10-18,
+  when a firmware rollout restarted the extender onto the mesh's other channel and the cell stayed in two halves.
+- `potluck apply` says a board that took a firmware image and restarted but has not answered since "took firmware N
+  and restarted", instead of quoting the board's last reply as if nothing had been sent.
+- A board reads an extender board's `sys/ext/*` for the PC as it reads the built-ins (they read UNAVAILABLE
+  through the cabled board before).
 - The hub reads a request's body before refusing it (an unknown path, too large, not logged in): unread, it was taken
   for the next request on a kept-alive connection, and on Windows the client was often reset instead of answered.
 - The Node-RED nodes look for hubs on every network adapter: on a PC with a VPN, Tailscale or Hyper-V, the one query

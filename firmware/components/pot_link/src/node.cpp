@@ -1638,6 +1638,16 @@ bool Node::adopt_peer_sys_resource(uint32_t path_hash) {
                 return true;
             }
         }
+        // An extender board's own sys/ext/* (2026-10-18): a peer that is no extender never publishes them, so its
+        // replica stays NO_DATA -- which is what a reader asking for one learns.
+        for (size_t k = 0; k < kExtenderResourceCount; ++k) {
+            const ExtenderResource which = static_cast<ExtenderResource>(k);
+            if (extender_resource_hash(q.node_id, which) == path_hash) {
+                if (ns_.declare(extender_resource_decl(q.node_id, which)) != NsError::Ok) return false;
+                ns_.mark_adopted(path_hash, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
+                return true;
+            }
+        }
     }
     return false;
 }
