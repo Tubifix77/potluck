@@ -27,6 +27,8 @@ Potluck's releases. The full record -- every milestone with its measurements and
   outside write for another board's resource to its owner and returns the owner's answer; the owner still checks the
   package. Before, every write to another board timed out (504) -- found by the Potluck Desk on B's LED. Needs the
   firmware and the hub of this change.
+- **The tray's menu opens the Potluck Desk** ("Open Potluck Desk", and its Add boards behind "Add boards") when
+  `tray.json` names it -- `packaging\install.ps1 -Desk <its folder>` writes that, keeping the cell's settings.
 - **Logins last 30 days and survive a restart of the hub**, so a reinstall or a PC restart no longer logs a phone out
   (the session's hash is kept beside the logins). The hub offers its own certificate at `/hub-certificate.crt`, linked
   from the login page: a phone that trusts it once lets its browser save the password, which Chrome refuses on a page

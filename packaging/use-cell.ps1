@@ -26,6 +26,11 @@ if ($CopyFrom) {
 }
 
 $cfg = [ordered]@{ cluster = $Cluster }
+$cfgFile = Join-Path $dst "tray.json"
+if (Test-Path $cfgFile) {  # keep the Potluck Desk's entry (install.ps1 -Desk) when the cell changes
+    $old = [IO.File]::ReadAllText($cfgFile).TrimStart([char]0xFEFF) | ConvertFrom-Json
+    if ($old.desk) { $cfg.desk = $old.desk }
+}
 if ($Listen) {
     $tls = Join-Path $dst "hub-tls"
     foreach ($f in @("cert.pem", "key.pem")) {

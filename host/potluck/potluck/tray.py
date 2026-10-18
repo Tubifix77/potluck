@@ -70,8 +70,9 @@ def potluck_dir() -> Path:
 
 
 def tray_config() -> dict:
-    """%LOCALAPPDATA%/potluck/tray.json: {"cluster": <file>, "hub_args": [...]} -- both optional. hub_args are added to
-    the hub's command line (say --listen with its TLS files, for the dashboard on the house network)."""
+    """%LOCALAPPDATA%/potluck/tray.json: {"cluster": <file>, "hub_args": [...], "desk": {...}} -- all optional. hub_args
+    are added to the hub's command line (say --listen with its TLS files, for the dashboard on the house network); desk
+    is where the Potluck Desk is (desk_command)."""
     try:
         cfg = json.loads((potluck_dir() / "tray.json").read_text(encoding="utf-8-sig"))  # Windows PowerShell writes a BOM
         return cfg if isinstance(cfg, dict) else {}
@@ -101,6 +102,40 @@ def cell_file() -> Path | None:
     cells = sorted((potluck_dir() / "cells").glob("*/*.json"))
     cells = [p for p in cells if p.stem == p.parent.name]  # <name>/<name>.json, as setup.new_cell makes it
     return cells[0] if len(cells) == 1 else None
+
+
+def desk_command(open_window: str | None = None, cfg: dict | None = None) -> tuple[list[str], str | None] | None:
+    """The Potluck Desk's command line and folder, from tray.json's "desk" -- {"exe": <potluck-desk.exe>} once it ships
+    one, or {"python": <pythonw.exe>, "cwd": <its checkout>} while it runs from source -- or None when there is none.
+    `open_window`: a window to open on top (the desk's --open: addboards, library, homeassistant, boards). Asked for by
+    the owner (2026-10-19): the desk in the tray's menu, beside the dashboard."""
+    desk = (tray_config() if cfg is None else cfg).get("desk")
+    if not isinstance(desk, dict):
+        return None
+    extra = ["--open", open_window] if open_window else []
+    if desk.get("exe"):
+        exe = Path(str(desk["exe"]))
+        return ([str(exe)] + extra, str(exe.parent)) if exe.is_file() else None
+    if desk.get("python") and desk.get("cwd"):
+        py, cwd = Path(str(desk["python"])), Path(str(desk["cwd"]))
+        if py.is_file() and (cwd / "potluck_desk").is_dir():
+            return [str(py), "-m", "potluck_desk"] + extra, str(cwd)
+    return None
+
+
+def start_desk(open_window: str | None = None) -> bool:
+    """Start the Potluck Desk, detached; False (and a line in tray.log) when tray.json names none that is there."""
+    cmd = desk_command(open_window)
+    if cmd is None:
+        note("no Potluck Desk in tray.json (\"desk\": {\"python\", \"cwd\"} or {\"exe\"}), or not where it says")
+        return False
+    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        subprocess.Popen(cmd[0], cwd=cmd[1], creationflags=flags, close_fds=True)
+        return True
+    except OSError as exc:
+        note(f"the Potluck Desk did not start: {exc}")
+        return False
 
 
 def hub_command(cluster: Path | None, extra: list[str] | None = None) -> list[str]:
@@ -201,7 +236,7 @@ WM_LBUTTONUP, WM_RBUTTONUP = 0x0202, 0x0205
 NIM_ADD, NIM_MODIFY, NIM_DELETE = 0, 1, 2
 NIF_MESSAGE, NIF_ICON, NIF_TIP = 1, 2, 4
 MF_STRING, MF_GRAYED, MF_SEPARATOR = 0, 1, 0x800
-CMD_OPEN, CMD_SETUP, CMD_START, CMD_QUIT = 1, 2, 3, 9
+CMD_OPEN, CMD_SETUP, CMD_START, CMD_DESK, CMD_QUIT = 1, 2, 3, 4, 9
 
 
 class Tray:
@@ -253,6 +288,8 @@ class Tray:
         menu = user32.CreatePopupMenu()
         with self._lock:
             have_hub = self.model is not None
+        if desk_command() is not None:  # the Potluck Desk first, when tray.json says where it is (2026-10-19)
+            user32.AppendMenuW(menu, MF_STRING, CMD_DESK, "Open Potluck Desk")
         user32.AppendMenuW(menu, MF_STRING | (0 if have_hub else MF_GRAYED), CMD_OPEN, "Open the dashboard")
         user32.AppendMenuW(menu, MF_STRING | (0 if have_hub else MF_GRAYED), CMD_SETUP, "Add boards")
         user32.AppendMenuW(menu, MF_SEPARATOR, 0, None)
@@ -277,8 +314,11 @@ class Tray:
             cmd = wparam & 0xFFFF
             if cmd == CMD_OPEN:
                 os.startfile(API + "/")
+            elif cmd == CMD_DESK:
+                start_desk()
             elif cmd == CMD_SETUP:
-                os.startfile(API + "/setup.html")
+                if desk_command() is None or not start_desk("addboards"):  # the desk's Add boards where there is one
+                    os.startfile(API + "/setup.html")
             elif cmd == CMD_START and self.keeper is not None:
                 with self._lock:
                     self.keeper.start()

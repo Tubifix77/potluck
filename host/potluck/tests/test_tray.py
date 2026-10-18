@@ -61,6 +61,27 @@ class CellFile(unittest.TestCase):
                 tray.potluck_dir = saved
 
 
+class Desk(unittest.TestCase):
+    """The owner's request (2026-10-19): the Potluck Desk in the tray's menu, found through tray.json's "desk"."""
+
+    def test_the_desk_from_source_or_an_exe_and_none_when_it_is_not_there(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            py = root / "pythonw.exe"
+            py.write_text("")
+            checkout = root / "potluck-desk"
+            (checkout / "potluck_desk").mkdir(parents=True)
+            cfg = {"desk": {"python": str(py), "cwd": str(checkout)}}
+            self.assertEqual(tray.desk_command(cfg=cfg), ([str(py), "-m", "potluck_desk"], str(checkout)))
+            self.assertEqual(tray.desk_command("addboards", cfg)[0][-2:], ["--open", "addboards"])
+            self.assertIsNone(tray.desk_command(cfg={}))  # none named: no menu item
+            self.assertIsNone(tray.desk_command(cfg={"desk": {"python": str(py), "cwd": str(root)}}))  # not a checkout
+            exe = root / "potluck-desk.exe"
+            self.assertIsNone(tray.desk_command(cfg={"desk": {"exe": str(exe)}}))  # named, but not installed there
+            exe.write_text("")
+            self.assertEqual(tray.desk_command(cfg={"desk": {"exe": str(exe)}}), ([str(exe)], str(root)))
+
+
 class Keeper(unittest.TestCase):
     def test_a_hub_that_stops_answering_is_replaced_once_a_minute_at_most(self):
         now = [0.0]
