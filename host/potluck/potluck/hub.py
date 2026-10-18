@@ -25,8 +25,10 @@ THE MODEL AND ITS API (`--api`, default 127.0.0.1:8470; host/potluck/HUB-API.md)
 board for its NODE_STATUS and reads the package's resources, and keeps one model: boards, apps, resources,
 integrations, deploys, events, the four golden signals. Every viewer -- the dashboard (M16), Home Assistant's
 integration (M17), the owner's programs (M18) -- reads that one model, so ten viewers cost the cell no more radio
-than one. Look is every GET; write is POST /api/write, only what the package lets the outside write, passed to the
-owning board marked from outside, which checks again; deploy is never here.
+than one. Look is every GET, and POST /api/interest (a program asks the hub to read, while it keeps asking, what the
+package's reads leave out: per-link, sometimes-published and sys/ resources); write is POST /api/write, only what the
+package lets the outside write, passed to the owning board marked from outside, which checks again; deploy is never
+here.
 
 Local only by default (127.0.0.1), with no login: the PC's own user. The house network and phones are `--listen`,
 over TLS and behind a login only (M16, potluck.hubauth). `--record` keeps the model for `--replay` (potluck.hubreplay).
@@ -37,6 +39,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import socket
 import socketserver
 import struct
@@ -402,6 +405,7 @@ class Model:
         self.boards: dict[int, dict] = {n: {"state": "unknown", "since_at": _hub_ms(), "last_ok": None}
                                         for n, _ in (cluster.boards if cluster is not None else [])}
         self.resources: dict[str, dict] = {}
+        self.interest: dict[str, dict[str, float]] = {}  # on-demand reads: path -> {client: until (monotonic)}
         self.events: deque[dict] = deque(maxlen=5000)
         self.seq = 0
         self.rtts: deque[float] = deque(maxlen=200)
@@ -442,6 +446,82 @@ class Model:
         from .apply import expected
         _, _, reads = expected(self.package.manifest, self.board_ids())
         return reads
+
+    # On-demand reads (POST /api/interest): paths a client asks the hub to read besides the package's, for as long as
+    # it keeps asking. The package's own reads leave out what a board keeps per link ({peer} outputs), what an actor
+    # publishes only sometimes (? outputs) and a board's built-in sys/ resources -- reading all of them all the time
+    # would cost a READ each per pull for every viewer's sake (a 20-board cell with a per-link app: hundreds), and ~70
+    # reads a second already stretches the heartbeat's round trip (DEVELOPING-APPS.md). So they are read only while
+    # someone looks. Asked for by the Potluck Desk, found on the owner's cell 2026-10-18.
+    INTEREST_PER_CLIENT = 32
+    INTEREST_MAX = 64
+    INTEREST_TTL_S = (5, 120)
+
+    def _system(self) -> str:
+        if self.package is not None:
+            return self.package.manifest.system
+        return getattr(self.cluster, "system", None) or "lab"
+
+    def _interest_patterns(self) -> list[re.Pattern]:
+        """What a client may ask for: an output some module of the package declares -- {node} and {peer} any board,
+        {actor} that actor, a ? output too -- or a board's built-in sys/ resource. Nothing else: an on-demand read is
+        a look at what the cell already publishes, never a probe of arbitrary paths."""
+        from . import modules as mods
+        node = "node-[0-9a-f]{4}"
+        prefix = re.escape(f"potluck://{self._system()}/")
+        pats = [re.compile(prefix + node + r"/sys/[a-z0-9/_-]+")]
+        for a in (self.package.manifest.actors if self.package is not None else []):
+            spec = mods.get(a.module)
+            for o in (getattr(spec, "outputs", None) or []):
+                t = re.escape(o.lstrip("?"))
+                t = t.replace(re.escape("{actor}"), re.escape(a.name)).replace(re.escape("{node}"), node)
+                t = t.replace(re.escape("{peer}"), node)
+                pats.append(re.compile(prefix + t))
+        return pats
+
+    def want(self, client: str, paths: list, ttl_s: float) -> tuple[list[str], list[dict]]:
+        """A client's on-demand reads, renewed for ttl_s seconds (clamped to INTEREST_TTL_S). Returns (accepted,
+        refused, each with why). Asking again renews; a path nobody renews is dropped at its expiry, its value too."""
+        lo, hi = self.INTEREST_TTL_S
+        until = time.monotonic() + min(max(float(ttl_s), lo), hi)
+        pats = self._interest_patterns()
+        accepted, refused = [], []
+        with self.lock:
+            mine = {p for p, who in self.interest.items() if client in who}
+            for p in paths:
+                if not isinstance(p, str) or not any(pt.fullmatch(p) for pt in pats):
+                    refused.append({"path": p, "result": "not an output of this cell's package or a board's sys/"})
+                elif p not in mine and len(mine) >= self.INTEREST_PER_CLIENT:
+                    refused.append({"path": p, "result": f"at most {self.INTEREST_PER_CLIENT} per program"})
+                elif p not in self.interest and len(self.interest) >= self.INTEREST_MAX:
+                    refused.append({"path": p, "result": f"at most {self.INTEREST_MAX} in all"})
+                else:
+                    self.interest.setdefault(p, {})[client] = until
+                    mine.add(p)
+                    accepted.append(p)
+        return accepted, refused
+
+    def interest_paths(self) -> list[str]:
+        """The on-demand paths still wanted, beyond the package's own; an expired one is dropped, and so is its value
+        unless the package reads it anyway."""
+        now = time.monotonic()
+        package = set(self.resource_paths())
+        with self.lock:
+            for p in list(self.interest):
+                who = {c: t for c, t in self.interest[p].items() if t > now}
+                if who:
+                    self.interest[p] = who
+                else:
+                    del self.interest[p]
+                    if p not in package:
+                        self.resources.pop(p, None)
+            return [p for p in self.interest if p not in package]
+
+    def _interest_json(self) -> dict:
+        with self.lock:
+            clients = {c for who in self.interest.values() for c in who}
+            return {"paths": len(self.interest), "clients": len(clients), "max": self.INTEREST_MAX,
+                    "per_client": self.INTEREST_PER_CLIENT}
 
     # one pull: every board's NODE_STATUS, every resource's READ
     def pull(self) -> None:
@@ -496,7 +576,7 @@ class Model:
                     b["cabled"] = n == cabled
                 if prev != b["state"]:
                     self._event_locked("board_" + b["state"], n, {"was": prev})
-        for path in self.resource_paths():
+        for path in self.resource_paths() + self.interest_paths():  # the package's, then what a viewer asked for
             t0 = time.monotonic()
             try:
                 r = self.hub.read(path, timeout=1.5)
@@ -707,7 +787,8 @@ class Model:
                     "telemetry_period_ms": self.telemetry_period_ms, "telemetry": dict(self.telemetry_counts),
                     "relay": dict(self.hub.relay_counts), "retention": self._retention_json(),
                     "pairing": self.pairing.pending() if self.pairing is not None else [],
-                    "clients": self.fair.snapshot(), "tls_fp": self.tls_fp, "starting": starting},
+                    "clients": self.fair.snapshot(), "tls_fp": self.tls_fp, "starting": starting,
+                    "interest": self._interest_json()},
             "cell": self._cell_json(boards),
             "boards": boards,
             "apps": apps,
@@ -822,7 +903,10 @@ class Model:
                 "exposed": outside is not None, "outside_writable": outside == "read_write",
                 "safety_relevant": self._safety(path),
                 # M18: what a write must be (a reader cannot tell 20 from 20.0 in JSON); null until it first has a value
-                "type": _TYPE_NAMES.get(rd.value.type)}
+                "type": _TYPE_NAMES.get(rd.value.type),
+                # read because a viewer asked (POST /api/interest); under self.lock, as snapshot() calls this. getattr:
+                # a replay (potluck.hubreplay) and the tests' stand-ins have no interest of their own
+                "on_demand": path in getattr(self, "interest", {})}
 
     def _safety(self, path: str) -> bool:
         if self.package is None:
@@ -1614,6 +1698,25 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                     self._json(400, {"ok": False, "result": "expected {seek_at, speed, paused}"})
                     return
                 self._json(200, {"ok": True, "replay": model.snapshot()["hub"]["replay"]})
+                return
+            if self.path == "/api/interest" and hasattr(model, "want"):
+                # On-demand reads (Model.want): a look right is enough -- it reads what the cell already publishes and
+                # changes nothing in it. The values arrive in the model like any other resource, "on_demand": true.
+                if self._who() is None:
+                    self._json(401, {"error": "login", "result": "log in first"})
+                    return
+                try:
+                    req = self._body()
+                    paths, ttl = req["paths"], req.get("ttl_s", 30)
+                    if not isinstance(paths, list) or not isinstance(ttl, (int, float)) or isinstance(ttl, bool):
+                        raise ValueError
+                except (ValueError, KeyError, AttributeError):
+                    self._json(400, {"ok": False, "result": "expected {\"paths\": [...], \"ttl_s\": seconds}"})
+                    return
+                accepted, refused = model.want(self._client(), paths, ttl)
+                lo, hi = model.INTEREST_TTL_S
+                self._json(200, {"ok": True, "accepted": accepted, "refused": refused,
+                                 "ttl_s": min(max(float(ttl), lo), hi)})
                 return
             if self.path != "/api/write":
                 self._json(404, {"error": "not found"})

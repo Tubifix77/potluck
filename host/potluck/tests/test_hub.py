@@ -494,5 +494,90 @@ class Panels(unittest.TestCase):
             mods.clear()
 
 
+class Interest(HubFixture):
+    """On-demand reads (POST /api/interest): a viewer asks for paths the package's reads leave out -- a board's sys/,
+    a module's {peer} and ? outputs -- the hub reads them each pull while asked, and drops them when nobody renews."""
+
+    def post(self, path: str, body: dict, header: bool = True):
+        req = urllib.request.Request(f"http://{self.api_addr}{path}", data=json.dumps(body).encode(), method="POST",
+                                     headers={"Content-Type": "application/json", "X-Potluck-Client": "desk",
+                                              **({"X-Potluck-Request": "1"} if header else {})})
+        try:
+            with urllib.request.urlopen(req, timeout=5) as r:
+                return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            with e:
+                return e.code, json.loads(e.read())
+
+    def model_json(self) -> dict:
+        with urllib.request.urlopen(f"http://{self.api_addr}/api/model", timeout=5) as r:
+            return json.loads(r.read())
+
+    def test_a_board_sys_resource_is_read_while_asked_and_shown_on_demand(self) -> None:
+        heap = sys_paths_for(0x1001)[0]  # sys/heap-free
+        code, rep = self.post("/api/interest", {"paths": [heap], "ttl_s": 30})
+        self.assertEqual((code, rep["accepted"], rep["refused"]), (200, [heap], []))
+        self.model.pull()
+        r = {x["path"]: x for x in self.model_json()["resources"]}[heap]
+        self.assertEqual((r["value"], r["unit"], r["quality"], r["on_demand"]), (213400, "B", "GOOD", True))
+        self.assertEqual(self.model_json()["hub"]["interest"]["paths"], 1)
+
+    def test_an_expired_interest_stops_the_reads_and_drops_the_value(self) -> None:
+        heap = sys_paths_for(0x1001)[0]
+        self.model.want("desk", [heap], 30)
+        self.model.pull()
+        self.assertIn(heap, self.model.resources)
+        self.model.interest[heap]["desk"] = 0.0  # nobody renewed it
+        served = self.node.reads_served
+        self.model.pull()
+        self.assertNotIn(heap, self.model.resources)
+        self.assertEqual(self.node.reads_served, served)  # and it was not read again
+
+    def test_paths_outside_what_the_cell_publishes_are_refused(self) -> None:
+        acc, ref = self.model.want("desk", ["potluck://lab/node-1001/hw/anything", "potluck://other/node-1001/sys/uptime",
+                                            42], 30)
+        self.assertEqual(acc, [])
+        self.assertEqual(len(ref), 3)
+
+    def test_each_program_and_the_hub_have_a_ceiling(self) -> None:
+        paths = [f"potluck://lab/node-1001/sys/x{i}" for i in range(self.model.INTEREST_PER_CLIENT + 1)]
+        acc, ref = self.model.want("a", paths, 30)
+        self.assertEqual((len(acc), len(ref)), (self.model.INTEREST_PER_CLIENT, 1))
+        self.assertIn("per program", ref[0]["result"])
+        self.model.want("b", [f"potluck://lab/node-1001/sys/y{i}" for i in range(32)], 30)
+        acc, ref = self.model.want("c", ["potluck://lab/node-1001/sys/z"], 30)
+        self.assertEqual(acc, [])
+        self.assertIn("in all", ref[0]["result"])
+        acc, ref = self.model.want("a", paths[:3], 30)  # renewing what it has is never refused
+        self.assertEqual((len(acc), ref), (3, []))
+
+    def test_a_module_peer_and_sometimes_output_may_be_asked_for(self) -> None:
+        from types import SimpleNamespace as NS
+        from potluck import modules as mods
+        mods.clear()
+        try:
+            mods.register(mods.parse_descriptor({"component": "s", "types": [128, 143], "modules": [
+                {"module": "ext:s/link", "type": 128, "placement": "every", "outputs": ["{node}/rf/link/{peer}/mean"]},
+                {"module": "ext:s/fusion", "type": 129, "placement": "portable", "outputs": ["act/{actor}/out", "?act/{actor}/x"]}]}))
+            m = hb.Model(self.hub, package=NS(manifest=NS(system="lab", actors=[
+                NS(name="rf_link", module="ext:s/link"), NS(name="fusion_room", module="ext:s/fusion")])))
+            acc, ref = m.want("desk", ["potluck://lab/node-7368/rf/link/node-8160/mean",
+                                       "potluck://lab/act/fusion_room/x",
+                                       "potluck://lab/act/fusion_other/x",  # no such actor
+                                       "potluck://lab/node-7368/rf/link/node-8160/var"], 30)  # not declared
+            self.assertEqual(acc, ["potluck://lab/node-7368/rf/link/node-8160/mean", "potluck://lab/act/fusion_room/x"])
+            self.assertEqual(len(ref), 2)
+        finally:
+            mods.clear()
+
+    def test_the_api_needs_the_request_header_and_a_list(self) -> None:
+        code, _ = self.post("/api/interest", {"paths": [sys_paths_for(0x1001)[0]]}, header=False)
+        self.assertEqual(code, 403)
+        code, rep = self.post("/api/interest", {"paths": "not a list"})
+        self.assertEqual(code, 400)
+        code, rep = self.post("/api/interest", {"paths": [], "ttl_s": 9999})
+        self.assertEqual((code, rep["ttl_s"]), (200, 120.0))  # clamped
+
+
 if __name__ == "__main__":
     unittest.main()

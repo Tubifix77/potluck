@@ -132,6 +132,7 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   (the cable to the cell). `hub.tls_fp`: with `--listen`, the SHA-256 of its certificate; `null` without.
   `hub.relay`: counts for the PC's other tools that go through the hub, `{clients, requests, replies, unmatched,
   fanned_out, node_frames_out, node_frames_in}`. `hub.telemetry` counts `{pulls, replies, failures, events}`.
+  `hub.interest`: the on-demand reads programs ask for (POST /api/interest), `{paths, clients, max, per_client}`.
 - `hub.starting`: `true` while the hub has not yet seen the whole cell once -- some board has not answered, or some
   resource is still `STARTING` (below) -- and never longer than 30 s after its first look at the cell (a hub restarted
   after being killed first waits out its old lease, up to a minute, serving nothing). Meanwhile an app not
@@ -198,7 +199,8 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   actor's output (`act/...`), which can move between boards. `resource.type`: `bool` | `i32` | `u32` | `f32` | `i64` |
   `u64` | `f64` | `bytes` -- what it holds, `null` until it first has a value. A strict resource (its staleness policy
   says an old value must not be shown) that is not `GOOD` arrives with `value: null` -- the hub has already withheld
-  the number; a client never needs to know which are strict.
+  the number; a client never needs to know which are strict. `resource.on_demand`: `true` for a resource the
+  model holds only because a program asked for it (POST /api/interest), `false` for the package's own.
 - `integrations`: one entry per board whose image carries the `present` module, `kind: "board"`, with `state`
   `connected` (the module is active) or the module's own `idle` | `failed`, and its reason in `detail`; then each
   program's own report (below), `kind: "program"`, with `state` `connected` | `disconnected` | `error` | `idle`.
@@ -282,6 +284,27 @@ from outside, which checks the package again. Every answer is `{"ok", "result"}`
 | 403 | the board's refusal, lowercased (`type_mismatch`, `not_outside_writable`, ...) | the owning board checked and refused |
 | 429 | `slow down: ...` | over this program's share of writes (below) |
 | 504 | `the owning board did not answer` | no answer in 2 s |
+
+## POST /api/interest
+
+`{"paths": ["potluck://lab/node-7368/rf/link/node-8160/mean", "potluck://lab/node-7368/sys/uptime"], "ttl_s": 30}` ->
+`{"ok": true, "accepted": [...], "refused": [{"path", "result"}], "ttl_s": 30}`. Asks the hub to read paths its
+model leaves out, for as long as the program keeps asking. The model holds only the package's own outputs, read every
+pull; it leaves out what reading all the time would cost too much: a board's per-link outputs (`{peer}` in a module's
+descriptor), outputs an actor publishes only sometimes (`?`), and a board's built-in `sys/` resources. A program that
+shows one of them asks for it here, and the hub reads it each pull until `ttl_s` passes (clamped to 5..120 s) with no
+new request; asking again renews it. The value then arrives in the model and the stream like any other resource, with
+`"on_demand": true` (every other resource has `false`), and goes from the model once nobody renews it.
+
+- **What may be asked for:** an output some module of the package declares -- `{node}` and `{peer}` any board,
+  `{actor}` that actor, a `?` output too -- or a board's built-in `sys/` resource. Anything else is refused with
+  `not an output of this cell's package or a board's sys/`.
+- **How much:** at most 32 paths per program and 64 in all (`hub.interest` in the model says how many are asked for and
+  by how many programs). Each costs one READ per pull while asked for, so ask only for what is on the screen.
+- **Who:** a look right is enough; it reads, it changes nothing in the cell. Like every POST it needs
+  `X-Potluck-Request: 1`, and it counts against the program's share of reads.
+- **Reading another board's value:** the first reads of a path come from the cabled board's copy, which it fetches
+  on demand, so a newly asked-for value reads `NO_DATA` or `STALE` for a pull or two before it reads `GOOD`.
 
 ## Logins: POST /api/login, POST /api/logout, GET /api/whoami
 

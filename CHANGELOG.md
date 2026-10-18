@@ -5,6 +5,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **On-demand reads in the hub's API.** `POST /api/interest` asks the hub to read, for as long as a program keeps
+  asking, what its model leaves out: a board's per-link outputs (`{peer}`), outputs published only sometimes (`?`) and
+  a board's built-in `sys/` resources. They arrive in the model marked `"on_demand": true`; at most 32 per program and
+  64 in all (HUB-API.md). Asked for by the Potluck Desk, whose per-link view of passive-sensor stayed empty.
 - The hub's MQTT problem sensors in Home Assistant ("`<app>` problem") no longer switch on for apps the hub has not
   seen yet while it starts, matching the dashboard and the integration.
 
