@@ -53,14 +53,25 @@ void LedSwitchActor::tick(uint32_t now) {
     const bool changed = v != on_;
     on_ = v;
     // PS-5's light lapses 5 s after the last call: refresh every 2 s while on, and at once on a change.
-    if (board_ == nullptr || board_->led_app == nullptr) return;
+    if (board_ == nullptr || (board_->led_app == nullptr && board_->led_claim == nullptr)) return;
     if (!changed && static_cast<int32_t>(now - next_ms_) < 0) return;
     next_ms_ = now + 2000;
-    board_->led_app(board_->ctx, on_, cfg_.r, cfg_.g, cfg_.b, static_cast<uint16_t>(cfg_.blink_ds * 100u));
+    show(on_);
+}
+
+void LedSwitchActor::show(bool on) {
+    const uint16_t blink = static_cast<uint16_t>(cfg_.blink_ds * 100u);
+    // Its own slot where the board has them (2026-10-19): another app's "off" -- passive-sensor's presence indicator on
+    // B -- then no longer puts the switched-on LED out every few seconds.
+    if (board_->led_claim != nullptr) {
+        board_->led_claim(board_->ctx, kLedSwitchSlot, on, cfg_.r, cfg_.g, cfg_.b, blink);
+    } else if (board_->led_app != nullptr) {
+        board_->led_app(board_->ctx, on, cfg_.r, cfg_.g, cfg_.b, blink);
+    }
 }
 
 LedSwitchActor::~LedSwitchActor() {
-    if (board_ != nullptr && board_->led_app != nullptr) board_->led_app(board_->ctx, false, 0, 0, 0, 0);
+    if (board_ != nullptr) show(false);
 }
 
 size_t LedSwitchActor::stats_json(char* buf, size_t cap, uint32_t) {

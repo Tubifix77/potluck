@@ -56,6 +56,7 @@
 #include "pot/actor.hpp"
 #include "pot/serial_port.hpp"
 #include "pot/stats_json.hpp"
+#include "pot/led_slots.hpp"
 #include "pot/split_probe.hpp"
 #include "pot/sys_resources.hpp"
 #include "pot/trust.hpp"
@@ -730,15 +731,9 @@ constexpr uint32_t kRenderMs = 100;   // how often it is drawn, so a deployed bl
 // recolour it, and A's blinking purple then read as "updating", so its colour is kept but no longer
 // shown. Only an application's state (below) may replace green, and purple, yellow and red always win.
 LedConfig g_healthy{0, 255, 0, 0, 1000};
-// M8.2 (PS-5): an application's state, shown in place of the healthy colour only (see BoardServices).
-struct AppOverlay {
-    bool on;
-    uint8_t r, g, b;
-    uint16_t period_ms;
-    uint32_t until_ms;
-};
-AppOverlay g_app{};
-constexpr uint32_t kAppLapseMs = 5000;
+// M8.2 (PS-5): applications' states, shown in place of the healthy colour only (see BoardServices); one slot per
+// app since 2026-10-19 (pot/led_slots.hpp: led_app is slot 0, led_claim names one).
+LedSlots g_apps;
 const char* g_last_shown = "yellow";  // what render() drew last, for the stats line
 bool g_last_app = false;
 void set_healthy(const LedConfig& c) { g_healthy = c; }
@@ -918,19 +913,21 @@ void render(Colour c, uint32_t now_ms) {
             g_last_shown = "purple";
             g_last_app = false;
             break;
-        case Colour::Green:
+        case Colour::Green: {
             g_last_shown = "green";
-            g_last_app = g_app.on && static_cast<int32_t>(g_app.until_ms - now_ms) > 0;
+            const LedSlots::State* app = g_apps.current(now_ms);
+            g_last_app = app != nullptr;
             if (g_last_app) {
-                if (g_app.period_ms != 0 && (now_ms % g_app.period_ms) >= g_app.period_ms / 2u) {
+                if (app->period_ms != 0 && (now_ms % app->period_ms) >= app->period_ms / 2u) {
                     show(0, 0, 0);
                 } else {
-                    show(scaled(g_app.r), scaled(g_app.g), scaled(g_app.b));
+                    show(scaled(app->r), scaled(app->g), scaled(app->b));
                 }
             } else {
                 show(0, kBrightness, 0);
             }
             break;
+        }
         case Colour::Yellow: show(kBrightness, kBrightness, 0); g_last_shown = "yellow"; g_last_app = false; break;
         case Colour::Red: show(kBrightness, 0, 0); g_last_shown = "red"; g_last_app = false; break;
     }
@@ -3532,18 +3529,17 @@ bool reserved_hue(uint8_t r, uint8_t g, uint8_t b) {
     return R || (G && !B);
 }
 
-void led_app(void*, bool on, uint8_t r, uint8_t g, uint8_t b, uint16_t period_ms) {
+void led_claim(void*, uint8_t slot, bool on, uint8_t r, uint8_t g, uint8_t b, uint16_t period_ms) {
     if (reserved_hue(r, g, b)) {
         r = 0;
         g = 0;
         b = 255;
     }
-    status_led::g_app.on = on;
-    status_led::g_app.r = r;
-    status_led::g_app.g = g;
-    status_led::g_app.b = b;
-    status_led::g_app.period_ms = period_ms;
-    status_led::g_app.until_ms = now_ms_() + status_led::kAppLapseMs;
+    status_led::g_apps.set(slot, on, r, g, b, period_ms, now_ms_());
+}
+
+void led_app(void* ctx, bool on, uint8_t r, uint8_t g, uint8_t b, uint16_t period_ms) {
+    led_claim(ctx, 0, on, r, g, b, period_ms);  // slot 0: every app before led_claim
 }
 
 // M9: the background workers -- one task per core at priority 1, above idle (0) and below every task
@@ -3696,7 +3692,7 @@ uint64_t unix_ms(void*) {
 }
 
 const BoardServices g_board_services{nullptr,     &led_app, &bg::submit,  &bg::yield, bg::kWorkers,
-                                     &outside_at, &cell_id, &system_name, &unix_ms, &broker_ca};
+                                     &outside_at, &cell_id, &system_name, &unix_ms, &broker_ca, &led_claim};
 
 // M12: the inventory record (pot/node_status.hpp). With g_mutex held (on_deploy).
 size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {

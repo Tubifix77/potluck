@@ -47,7 +47,9 @@ struct BoardServices {
     // fault -- and an app's colour is drawn blue unless it is blue or cyan (a colour with its red
     // channel lit, or plain green, would look like the board's own: m0_main.cpp). It lapses
     // 5 s after the last call, so call it at least every few seconds while it should stay on; an actor
-    // that stops or moves away leaves nothing behind. `on` false clears it at once. Last caller wins.
+    // that stops or moves away leaves nothing behind. `on` false clears it at once. led_app is slot 0 of the
+    // board's app states (pot/led_slots.hpp): an app sharing a board with another that uses the LED claims its own
+    // slot with led_claim (below), or the two take turns in slot 0.
     void (*led_app)(void* ctx, bool on, uint8_t r, uint8_t g, uint8_t b, uint16_t blink_period_ms) = nullptr;
 
     // M9: background work -- a computation that must not run on the link task. Runs work(arg) on one of
@@ -71,6 +73,10 @@ struct BoardServices {
     // The running package's broker CA (DER), for a presenter with TLS: false when the package carries none. The bytes
     // stay valid until the next package is applied, so a presenter copies them when it starts.
     bool (*broker_ca)(void* ctx, const uint8_t** der, size_t* len) = nullptr;
+    // led_app in a slot of its own (1..3; 0 is led_app's): `on` false clears only this slot, and the LED shows the
+    // most recent "on" among the slots that have not lapsed. Null on a host and on firmware before 2026-10-19.
+    void (*led_claim)(void* ctx, uint8_t slot, bool on, uint8_t r, uint8_t g, uint8_t b,
+                      uint16_t blink_period_ms) = nullptr;
 };
 
 // What the runtime gives an actor.

@@ -27,6 +27,9 @@ Potluck's releases. The full record -- every milestone with its measurements and
   outside write for another board's resource to its owner and returns the owner's answer; the owner still checks the
   package. Before, every write to another board timed out (504) -- found by the Potluck Desk on B's LED. Needs the
   firmware and the hub of this change.
+- **Two apps on one board's LED no longer take turns.** The board keeps one app state per app (`led_claim`, a new board
+  service; `led_app` is slot 0): on the owner's cell, B's switched-on LED went blue and green every few seconds
+  because passive-sensor's presence light said "off" in between. The LED switch uses its own slot.
 - The setup wizard no longer checks a new board again when its port drops out of one look and comes back -- a check
   restarts the board (found by the Potluck Desk, which follows the wizard's page).
 - The hub reads a request's body before refusing it (an unknown path, too large, not logged in): unread, it was taken

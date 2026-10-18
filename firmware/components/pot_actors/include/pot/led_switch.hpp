@@ -24,6 +24,9 @@
 
 namespace pot {
 
+// The LED switch's slot among the board's app states (BoardServices::led_claim; pot/led_slots.hpp).
+constexpr uint8_t kLedSwitchSlot = 1;
+
 constexpr uint8_t kLedSwitchCfgLen = 8;
 
 struct LedSwitchConfig {
@@ -46,6 +49,7 @@ class LedSwitchActor : public Actor {
     uint32_t changes() const { return changes_; }
 
   private:
+    void show(bool on);  // in its own slot where the board has them (led_claim), else led_app
     Node& node_;
     LedSwitchConfig cfg_;
     const BoardServices* board_;

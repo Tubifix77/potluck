@@ -314,7 +314,11 @@ checkpoint you do not recognise.
 only while the board is green (purple, yellow and red always win, so no app can hide a dead link or an update);
 pick blue or cyan -- any other colour (anything with red in it, white included, or plain green) is shown blue, so no
 app can look like the board's own status, and it
-lapses 5 s after the last call; `bg_submit(work, arg)` runs a computation on a background worker below
+lapses 5 s after the last call. `led_app` is slot 0 of the board's app states: two apps on one board that both use it
+take turns, the last caller winning (on the owner's cell an LED switch and a presence light made the LED alternate).
+`led_claim(slot, on, r, g, b, blink_ms)` (slots 1-3; null on firmware before 2026-10-19 -- fall back to `led_app`)
+gives an app a slot of its own: its `off` clears only that slot, and the LED shows the most recent `on` that has not
+lapsed. The built-in LED switch uses slot 1. `bg_submit(work, arg)` runs a computation on a background worker below
 everything the node does, refused when all workers are busy; `bg_yield` must be called every ~50 ms inside
 it (the task watchdog watches the idle task: a core kept from it for 5 s resets the chip).
 
