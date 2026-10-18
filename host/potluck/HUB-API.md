@@ -271,8 +271,9 @@ boards cannot be written from outside). `value` is a JSON bool or number -- an i
 number with a fraction as a 32-bit float -- unless the hub knows the resource's `type`, when a number is written as
 that (20 to an `f32` resource is 20.0, 20.0 to an `i32` one is 20), so a client never has to tell them apart; the
 owning board refuses a type that is not the resource's. Until the hub has read a value of the resource (`type: null`),
-a whole number goes as a 32-bit integer, which a float resource refuses. The write reaches the owning board marked as
-from outside, which checks the package again. Every answer is `{"ok", "result"}`:
+a whole number goes as a 32-bit integer, which a float resource refuses. The write goes to the board on the cable, which
+passes it to the owning board marked as from outside (firmware from 2026-10-18 on; before, a write to any other board
+timed out); the owner checks the package again and its answer comes back. Every answer is `{"ok", "result"}`:
 
 | status | result | why |
 |---|---|---|
@@ -282,6 +283,7 @@ from outside, which checks the package again. Every answer is `{"ok", "result"}`
 | 403 | `not writable by this program` | the cluster file names other programs as its writers (below) |
 | 403 | `this login may look, not write` | the login's or token's right is `look` |
 | 403 | the board's refusal, lowercased (`type_mismatch`, `not_outside_writable`, ...) | the owning board checked and refused |
+| 403 | `the board on the cable could not pass it to its owner (owner not alive, or firmware too old)` | the owner is dead as the cabled board sees it, or that board's firmware cannot pass a write on |
 | 429 | `slow down: ...` | over this program's share of writes (below) |
 | 504 | `the owning board did not answer` | no answer in 2 s |
 

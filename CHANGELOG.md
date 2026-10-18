@@ -23,6 +23,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
   and restarted", instead of quoting the board's last reply as if nothing had been sent.
 - A board reads an extender board's `sys/ext/*` for the PC as it reads the built-ins (they read UNAVAILABLE
   through the cabled board before).
+- **The hub's `POST /api/write` reaches every board, not only the one on the cable.** The board on the cable passes an
+  outside write for another board's resource to its owner and returns the owner's answer; the owner still checks the
+  package. Before, every write to another board timed out (504) -- found by the Potluck Desk on B's LED. Needs the
+  firmware and the hub of this change.
 - The hub reads a request's body before refusing it (an unknown path, too large, not logged in): unread, it was taken
   for the next request on a kept-alive connection, and on Windows the client was often reset instead of answered.
 - The Node-RED nodes look for hubs on every network adapter: on a PC with a VPN, Tailscale or Hyper-V, the one query

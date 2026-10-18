@@ -625,6 +625,10 @@ class Node {
     AdoptFn adopt_ = nullptr;
     void* adopt_ctx_ = nullptr;
     void handle_write(PeerLink* p, const Frame& f);
+    // 2026-10-18: an outside write for a resource another board owns, passed to that board for the requester -- the
+    // PC on the cable reaches only its own board, and the owner applies it by its own rules (handle_write).
+    bool proxy_write(const PeerLink& requester, uint16_t requester_msg, uint16_t owner, uint32_t path_hash,
+                     const Value& v);
     void handle_reply(PeerLink* p, const Frame& f);
     void handle_call(PeerLink* p, const Frame& f, bool wants_reply);
     void abandon_calls_to(uint16_t peer_node_id);
@@ -659,6 +663,18 @@ class Node {
         uint32_t sent_ms;
         uint8_t op;           // kOpRead or kOpWrite
     };
+    // Outside writes passed on to their owner (proxy_write), kept apart from pending_ so its section-6 size holds: rare,
+    // so four, the oldest reused. requester 0 = free.
+    struct ProxiedWrite {
+        uint16_t msg_id;      // our WRITE to the owner
+        uint16_t owner;
+        uint16_t requester;   // who asked us
+        uint16_t requester_msg;
+    };
+    static constexpr size_t kMaxProxiedWrites = 4;
+    ProxiedWrite proxied_[kMaxProxiedWrites]{};
+    size_t proxied_next_ = 0;
+    ProxiedWrite proxy_arm_{};  // set by proxy_write for the next request_write, recorded before the frame leaves
     PendingNs pending_[kMaxPendingNs]{};
     PendingNs* pending_find(uint16_t msg_id, uint16_t peer_node);
     PendingNs* pending_claim();

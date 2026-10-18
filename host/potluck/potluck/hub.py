@@ -1811,14 +1811,20 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
         return 400, {"ok": False, "result": "only a board's own resource can be written from outside"}
     h = path_hash(path)
     try:
+        # To the cabled board, which passes a write for another board's resource to its owner and returns the owner's
+        # answer (Node::proxy_write). Addressed to the owner itself it was never answered: the PC on the cable is no
+        # peer of the other boards (found 2026-10-18 by the Potluck Desk: every write to B's LED timed out).
         raw = model.hub._request(fr.Op.WRITE, Write(path_hash=h, value=v, from_outside=True).encode(), h,
-                                 timeout=2.0, dst=owner if owner != model.hub.peer_node_id else None)
+                                 timeout=2.0, dst=None)
     except RequestTimeout:
         model.record("outside_write", owner, {"resource": path, "path": path, "value": value, "result": "no answer"})
         return 504, {"ok": False, "result": "the owning board did not answer"}
     from .value import NsError
     ok = raw.status == NsError.OK
     result = "applied" if ok else NsError.name_of(raw.status).lower()
+    if not ok and result == "wrong_owner" and owner != model.hub.peer_node_id:
+        # The cabled board did not pass it on: firmware before it could (2026-10-18), or the owner is not alive there.
+        result = "the board on the cable could not pass it to its owner (owner not alive, or firmware too old)"
     model.record("outside_write", owner, {"resource": path, "path": path, "value": value, "result": result})
     del cur
     return (200 if ok else 403), {"ok": ok, "result": result}

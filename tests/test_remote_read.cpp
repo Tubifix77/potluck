@@ -633,6 +633,52 @@ TEST(m13, an_outside_write_aimed_at_a_replica_is_refused) {
     CHECK_EQ(holder.ns_counters().writes_served, 0u);
 }
 
+TEST(m18, a_write_from_the_pc_reaches_another_board_through_the_one_on_the_cable) {
+    // Found 2026-10-18 by the Potluck Desk: the hub's POST /api/write to B's LED timed out every time -- the PC on A's
+    // cable cannot reach B, and A refused a write for B's resource. A now passes it on and returns B's answer.
+    Cell2 c;
+    c.build(3);
+    c.cut.push_back({0, 2});  // the PC <-> B: never connected
+    c.start();
+    c.advance_ms(300);
+    Node& pc = *c.slots[0].node;
+    Node& a = *c.slots[1].node;
+    Node& b = *c.slots[2].node;
+    declare_both(c, b.config().node_id, /*bound_ms=*/5000);  // B owns it; A and the PC hold replicas
+    const uint32_t h[] = {kAdc0};
+    const uint8_t writable[] = {kOutsideExposed | kOutsideWritable};
+    for (Slot& s : c.slots) CHECK(s.node->ns().set_outside(h, writable, 1));
+
+    CHECK(pc.request_write(a.config().node_id, kAdc0, Value::of_f32(7.0f), /*from_outside=*/true) != 0);
+    c.advance_ms(100);
+    CHECK_EQ(b.ns_counters().writes_outside, 1u);   // B applied it, by its own rules
+    CHECK_EQ(a.ns_counters().writes_outside, 0u);   // A only passed it on
+    CHECK_EQ(pc.ns_counters().replies_matched, 1u);  // and B's answer came back to the PC
+    Reading r;
+    b.read(kAdc0, r);
+    float v = 0;
+    Quality q = Quality::NoData;
+    CHECK(r.get_f32(v, q));
+    CHECK(v > 6.99f && v < 7.01f);
+
+    // B's own refusal comes back too: safety-relevant on B, whatever A's copy of the package says.
+    const uint8_t safety[] = {kOutsideExposed | kOutsideSafety};
+    CHECK(b.ns().set_outside(h, safety, 1));
+    CHECK(pc.request_write(a.config().node_id, kAdc0, Value::of_f32(8.0f), true) != 0);
+    c.advance_ms(100);
+    CHECK_EQ(b.ns_counters().writes_outside_refused, 1u);
+    CHECK_EQ(pc.ns_counters().replies_matched, 2u);
+
+    // B gone: A refuses at once (no owner alive to pass it to), and still answers.
+    c.cut.push_back({1, 2});
+    c.advance_ms(2000);
+    CHECK(a.peers().count_in_state(PeerState::Dead) >= 1u);
+    CHECK(pc.request_write(a.config().node_id, kAdc0, Value::of_f32(9.0f), true) != 0);
+    c.advance_ms(100);
+    CHECK_EQ(pc.ns_counters().replies_matched, 3u);
+    CHECK_EQ(a.ns_counters().writes_outside_refused, 1u);
+}
+
 TEST(m14, a_node_without_the_actor_type_learns_the_declaration_from_one_with_it) {
     // The PC's node presenting an app's output: it has no actor type for it, so it asks a board to describe the
     // entry, and declares the replica from the answer -- type, unit, bound, policy, owner -- exactly as the owner has it.

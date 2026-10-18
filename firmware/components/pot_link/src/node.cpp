@@ -1537,11 +1537,31 @@ uint16_t Node::request_write(uint16_t peer_node_id, uint32_t path_hash, const Va
     w.path_hash = path_hash;
     w.flags = from_outside ? kWriteFromOutside : 0;
     value_to_wire(v, w.value_type, w.value_len, w.value_raw);
+    // A proxied write (proxy_write) is recorded before the frame leaves: the owner's answer can arrive before
+    // send_frame returns (on the host test bench it does).
+    ProxiedWrite* armed = nullptr;
+    if (proxy_arm_.requester != 0) {
+        armed = &proxied_[proxied_next_];
+        *armed = ProxiedWrite{msg_id, peer_node_id, proxy_arm_.requester, proxy_arm_.requester_msg};
+        proxied_next_ = (proxied_next_ + 1) % kMaxProxiedWrites;
+        proxy_arm_ = ProxiedWrite{};
+    }
     if (!send_frame(p, p->mac, kOpWrite, &w, sizeof(w), true, msg_id, p->node_id, false)) {
         q->msg_id = 0;
+        if (armed != nullptr) *armed = ProxiedWrite{};
         return 0;
     }
     return msg_id;
+}
+
+bool Node::proxy_write(const PeerLink& requester, uint16_t requester_msg, uint16_t owner, uint32_t path_hash,
+                       const Value& v) {
+    const PeerLink* o = peers_.find_by_node_id(owner);
+    if (o == nullptr || o->state != PeerState::Alive || requester.node_id == 0) return false;
+    proxy_arm_ = ProxiedWrite{0, owner, requester.node_id, requester_msg};
+    const uint16_t msg = request_write(owner, path_hash, v, /*from_outside=*/true);
+    proxy_arm_ = ProxiedWrite{};  // used by request_write, or nothing was sent
+    return msg != 0;
 }
 
 uint8_t Node::outranking_channel() {
@@ -1673,6 +1693,12 @@ void Node::handle_write(PeerLink* p, const Frame& f) {
         // outside rules -- a replica is not the resource, and the presenter's own check is not the last word.
         const NsEntry* e = ns_.find(req.path_hash);
         if (e != nullptr && !e->is_local(cfg_.node_id)) {
+            // 2026-10-18: pass it to the owner, which answers through us -- the PC on the cable reaches only its own
+            // board (the hub's POST /api/write timed out for every other board). Never back to the owner itself,
+            // and never to an owner that is not alive: those are refused here, as before.
+            if (e->owner_node != p->node_id && proxy_write(*p, f.hdr.msg_id, e->owner_node, req.path_hash, v)) {
+                return;  // the owner's reply goes back to the requester (handle_reply)
+            }
             st = NsError::WrongOwner;
         } else {
             st = ns_.write_outside(req.path_hash, v, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
@@ -1735,6 +1761,16 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
     const uint16_t worker = q->peer_node;
     q->msg_id = 0;
     ++ns_counters_.replies_matched;
+    if (op == kOpWrite) {
+        // An outside write we passed on: the owner's answer, word for word, to the one who asked.
+        for (ProxiedWrite& w : proxied_) {
+            if (w.requester == 0 || w.msg_id != f.hdr.msg_id || w.owner != p->node_id) continue;
+            PeerLink* r = peers_.find_by_node_id(w.requester);
+            if (r != nullptr) send_frame(r, r->mac, kOpReply, &rep, sizeof(rep), false, w.requester_msg, r->node_id, false);
+            w = ProxiedWrite{};
+            break;
+        }
+    }
 
     if (op == kReplyDescribe || op == kReplyReferral) {
         // M14: a declaration (ns_payloads.hpp). A board before M14 answers a reading instead: dropped.
