@@ -16,7 +16,8 @@ itself needs a session from a login in this file. Three rights, kept apart (ARCH
 
 Passwords are stored as scrypt (RFC 7914) at OWASP's first recommended setting, N=2^17, r=8, p=1, with a 16-byte
 random salt each (the ledger, 2026-10-14). Sessions are random 256-bit tokens in an HttpOnly, Secure, SameSite=Strict
-cookie, held in the hub's memory for 12 hours: a restarted hub asks everyone to log in again. Five failed logins from
+cookie, valid 30 days and kept across a restart of the hub in hub-sessions.json beside the logins -- the tokens'
+SHA-256 only, never a token (2026-10-19: every reinstall and PC restart logged the owner's phone out). Five failed logins from
 one address in five minutes refuse that address for a minute.
 """
 
@@ -37,7 +38,7 @@ from pathlib import Path
 RIGHTS = ("look", "write")
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2 ** 17, 8, 1
 SCRYPT_MAXMEM = 256 * 1024 * 1024  # N=2^17, r=8 needs 128 MiB; OpenSSL's default cap is 32 MiB
-SESSION_S = 12 * 3600
+SESSION_S = 30 * 24 * 3600
 FAIL_WINDOW_S, FAIL_LIMIT, LOCKOUT_S = 300, 5, 60
 COOKIE = "potluck_session"
 
@@ -47,6 +48,11 @@ def users_file() -> Path:
         return Path(os.environ["POTLUCK_HUB_USERS"])
     base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.cache")
     return Path(base) / "potluck" / "hub-users.json"
+
+
+def sessions_file() -> Path:
+    """Where the hub keeps its sessions across a restart: beside the logins (users_file)."""
+    return users_file().with_name("hub-sessions.json")
 
 
 def hash_password(password: str, salt: bytes | None = None, n: int = SCRYPT_N) -> dict:
@@ -132,11 +138,38 @@ _DUMMY = {"scrypt": {"n": 2 ** 4, "r": SCRYPT_R, "p": 1}, "salt": "00" * 16, "ha
 class Sessions:
     """The hub's sessions and its failed-login counts, in memory."""
 
-    def __init__(self, users: Users) -> None:
+    def __init__(self, users: Users, path: Path | None = None) -> None:
         self.users = users
         self.lock = threading.Lock()
-        self.sessions: dict[str, tuple[str, str, float]] = {}  # token -> (name, right, expires)
+        # SHA-256 of the token -> (name, right, expires as wall-clock seconds); kept in `path` when given
+        self.sessions: dict[str, tuple[str, str, float]] = {}
         self.fails: dict[str, list[float]] = {}
+        self.path = path
+        if path is not None:
+            try:
+                doc = json.loads(path.read_text(encoding="utf-8"))
+                now = time.time()
+                for h, s in (doc.get("sessions") or {}).items():
+                    if isinstance(s, list) and len(s) == 3 and float(s[2]) > now and s[1] in RIGHTS:
+                        self.sessions[str(h)] = (str(s[0]), str(s[1]), float(s[2]))
+            except (OSError, ValueError, TypeError, AttributeError):
+                pass  # none yet, or unreadable: everyone logs in again, nothing worse
+
+    @staticmethod
+    def _key(token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    def _save_locked(self) -> None:
+        if self.path is None:
+            return
+        now = time.time()
+        live = {h: list(s) for h, s in self.sessions.items() if s[2] > now}
+        try:
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps({"sessions": live}), encoding="utf-8")
+            os.replace(tmp, self.path)
+        except OSError:
+            pass  # kept in memory regardless: only a restart would forget it
 
     def login(self, name: str, password: str, addr: str) -> tuple[str | None, str]:
         now = time.monotonic()
@@ -152,24 +185,32 @@ class Sessions:
                 return None, "wrong name or password"
             self.fails.pop(addr, None)
             token = secrets.token_urlsafe(32)
-            self.sessions[token] = (name, right, now + SESSION_S)
+            self.sessions[self._key(token)] = (name, right, time.time() + SESSION_S)
+            self._save_locked()
             return token, right
 
     def get(self, token: str | None) -> tuple[str, str] | None:
         if not token:
             return None
+        key = self._key(token)
         with self.lock:
-            s = self.sessions.get(token)
+            s = self.sessions.get(key)
             if s is None:
                 return None
-            if time.monotonic() > s[2]:
-                del self.sessions[token]
+            if time.time() > s[2]:
+                del self.sessions[key]
+                self._save_locked()
+                return None
+            if self.users.users.get(s[0]) is None:  # a login removed since: its sessions go with it
+                del self.sessions[key]
+                self._save_locked()
                 return None
             return s[0], s[1]
 
     def logout(self, token: str | None) -> None:
         with self.lock:
-            self.sessions.pop(token or "", None)
+            self.sessions.pop(self._key(token or ""), None)
+            self._save_locked()
 
 
 class Pairing:

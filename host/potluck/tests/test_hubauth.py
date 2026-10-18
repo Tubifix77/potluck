@@ -70,6 +70,36 @@ class Passwords(unittest.TestCase):
             self.assertIsNone(s.get(tok))
 
 
+class KeptSessions(unittest.TestCase):
+    """2026-10-19: every reinstall and PC restart logged the owner's phone out -- sessions lived in memory for 12 h."""
+
+    def test_a_session_outlives_a_restart_and_only_its_hash_is_on_disk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            u = users(tmp)
+            path = Path(tmp) / "hub-sessions.json"
+            token, right = ha.Sessions(u, path).login("owner", "write-also-password", "10.0.0.2")
+            self.assertEqual(right, "write")
+            self.assertNotIn(token, path.read_text(encoding="utf-8"))  # never the token itself
+            again = ha.Sessions(u, path)                                 # the hub restarted
+            self.assertEqual(again.get(token), ("owner", "write"))
+            again.logout(token)
+            self.assertIsNone(ha.Sessions(u, path).get(token))           # a logout outlives the restart too
+
+    def test_an_expired_or_removed_login_is_gone_and_the_session_lasts_thirty_days(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            u = users(tmp)
+            path = Path(tmp) / "hub-sessions.json"
+            s = ha.Sessions(u, path)
+            token, _ = s.login("viewer", "look-only-password", "10.0.0.2")
+            self.assertEqual(ha.SESSION_S, 30 * 24 * 3600)
+            from unittest import mock
+            with mock.patch.object(ha.time, "time", return_value=ha.time.time() + ha.SESSION_S + 1):
+                self.assertIsNone(s.get(token))
+            token, _ = s.login("viewer", "look-only-password", "10.0.0.2")
+            u.users.pop("viewer")  # removed with `potluck hubauth remove`
+            self.assertIsNone(s.get(token))
+
+
 class LoginApi(HubFixture):
     def setUp(self) -> None:
         super().setUp()
@@ -137,6 +167,13 @@ class LoginApi(HubFixture):
                                            {"name": "viewer", "password": "look-only-password"})[2])
         self.req("POST", "/api/logout", {}, cookie=cookie)
         self.assertEqual(self.req("GET", "/api/model", cookie=cookie)[0], 401)
+
+    def test_the_hubs_certificate_is_offered_without_a_login(self) -> None:
+        code, body, _ = self.req("GET", "/hub-certificate.crt")
+        self.assertEqual(code, 404)  # a hub without --listen has none
+        self.model.tls_der = b"0\x82\x01\x00der-bytes"
+        code, body, _ = self.req("GET", "/hub-certificate.crt")
+        self.assertEqual((code, body), (200, b"0\x82\x01\x00der-bytes"))
 
     def test_there_is_no_deploy_endpoint(self) -> None:
         _, _, cookie = self.login("owner", "write-also-password")

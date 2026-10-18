@@ -27,6 +27,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
   outside write for another board's resource to its owner and returns the owner's answer; the owner still checks the
   package. Before, every write to another board timed out (504) -- found by the Potluck Desk on B's LED. Needs the
   firmware and the hub of this change.
+- **Logins last 30 days and survive a restart of the hub**, so a reinstall or a PC restart no longer logs a phone out
+  (the session's hash is kept beside the logins). The hub offers its own certificate at `/hub-certificate.crt`, linked
+  from the login page: a phone that trusts it once lets its browser save the password, which Chrome refuses on a page
+  with a certificate error.
 - **Two apps on one board's LED no longer take turns.** The board keeps one app state per app (`led_claim`, a new board
   service; `led_app` is slot 0): on the owner's cell, B's switched-on LED went blue and green every few seconds
   because passive-sensor's presence light said "off" in between. The LED switch uses its own slot.

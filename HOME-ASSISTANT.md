@@ -161,14 +161,18 @@ Check too that your broker accepts the boards' connections: the login in step 6,
 
    ```
    MSYS_NO_PATHCONV=1 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
-     -keyout hub-key.pem -out hub-cert.pem -days 825 -subj "/CN=potluck-hub" -addext "subjectAltName=IP:192.168.1.20"
+     -keyout hub-key.pem -out hub-cert.pem -days 825 -subj "/CN=potluck-hub" -addext "subjectAltName=IP:192.168.1.20" \
+     -addext "basicConstraints=critical,CA:TRUE"
    ```
 
    (`MSYS_NO_PATHCONV=1` stops Git Bash from turning `/CN=...` into a file path.) Keep `hub-key.pem` to yourself. The
    certificate names the address. If your router gives the PC another one, Home Assistant follows the hub's
    announcement by itself, but a phone's browser warns until you make a certificate for the new address -- and a new
    certificate makes Home Assistant ask you to confirm it and allow it again. Better: give the PC a fixed address in
-   the router.
+   the router. A phone's browser saves your password for the dashboard only once it trusts this certificate (Chrome saves
+   none on a page with a certificate error): open `https://<PC address>:8443/hub-certificate.crt` on the phone, or the
+   link on the login page, and install the file as a trusted CA certificate in the phone's security settings -- after
+   checking its SHA-256 fingerprint against the one the dashboard's Cell tab shows on the PC.
 2. **Start the hub** on the house network, from `host\potluck\`:
 
    ```

@@ -313,9 +313,12 @@ new request; asking again renews it. The value then arrives in the model and the
 ## Logins: POST /api/login, POST /api/logout, GET /api/whoami
 
 Only on `--listen`. `POST /api/login {"name", "password"}` -> `{"ok": true, "name", "right"}` and a session cookie
-(`potluck_session`, HttpOnly, Secure, SameSite=Strict, 12 hours, in the hub's memory: a restarted hub asks again), or
+(`potluck_session`, HttpOnly, Secure, SameSite=Strict, 30 days, kept across a restart of the hub -- its SHA-256 only,
+in `hub-sessions.json` beside the logins; a removed login's sessions end with it), or
 `403` with the reason; five failures from one address in five minutes refuse it for a minute. Without a session every
-request but the page's own files, the login and `whoami` is `401`. Every POST must carry `X-Potluck-Request: 1`, which
+request but the page's own files, the login and `whoami` is `401`. `GET /hub-certificate.crt` (no login) is the hub's own
+certificate (DER; a CA naming the hub's addresses): a phone that trusts it once loads the dashboard without a
+certificate error, which is what lets its browser offer to save the password -- Chrome saves none on a page with one. Every POST must carry `X-Potluck-Request: 1`, which
 a page on another site cannot add, so it cannot write through a logged-in browser -- on 127.0.0.1 too, where there is
 no login to protect it; and 127.0.0.1 answers only a request whose `Host` is 127.0.0.1, localhost or ::1 (`403`
 otherwise), so a page elsewhere cannot reach it through a name of its own that resolves there. `GET /api/whoami` ->

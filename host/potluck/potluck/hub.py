@@ -1062,7 +1062,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
     host, _, p = addr.rpartition(":")
     from . import hubauth
 
-    PUBLIC = {"/", "/index.html", "/app.js", "/plan.js", "/library.js", "/style.css", "/potluck.svg", "/potluck-small.svg", "/api/login", "/api/whoami", "/api/hello"}
+    PUBLIC = {"/", "/index.html", "/app.js", "/plan.js", "/library.js", "/style.css", "/potluck.svg", "/potluck-small.svg", "/api/login", "/api/whoami", "/api/hello", "/hub-certificate.crt"}
     setup_state: dict = {}  # M20's setup wizard: its jobs, made on first use (owner actions, 127.0.0.1 only)
 
     def setup_jobs():
@@ -1484,6 +1484,21 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 else:
                     self._json(200, got)
                 return
+            if path == "/hub-certificate.crt":
+                # 2026-10-19: the hub's own certificate (already a CA naming its addresses), with no login -- nothing
+                # secret, its fingerprint is announced too. A phone that trusts it once loads the page without a
+                # certificate error, and only then does Chrome offer to save the password (none since Chrome 37).
+                der = getattr(model, "tls_der", None)
+                if der is None:
+                    self._json(404, {"error": "not found", "result": "this hub has no certificate (started without --listen)"})
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-x509-ca-cert")
+                self.send_header("Content-Disposition", 'attachment; filename="potluck-hub.crt"')
+                self.send_header("Content-Length", str(len(der)))
+                self.end_headers()
+                self.wfile.write(der)
+                return
             if path == "/api/hello":
                 # M17: who this hub is, with no login -- nothing secret: what it also announces on the network.
                 cl = getattr(model, "cluster", None)
@@ -1883,7 +1898,7 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ssl.SSLError) as exc:
             print(f"hub: the certificate or key could not be loaded: {exc}")
             return 2
-        lan = (Sessions(users), ctx)
+        lan = (Sessions(users, hubauth.sessions_file()), ctx)
     if a.replay:
         from .hubreplay import serve_replay
 
@@ -1985,6 +2000,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             der = ssl.PEM_cert_to_DER_cert(open(a.tls_cert, encoding="ascii").read())
             model.tls_fp = hashlib.sha256(der).hexdigest()
+            model.tls_der = der  # GET /hub-certificate.crt: a phone trusts it once, then saves passwords (2026-10-19)
             towards = str((cluster.present or {}).get("broker", "192.168.0.1")).partition(":")[0] if cluster else \
                 "192.168.0.1"
             ip = lan_ip(towards)
