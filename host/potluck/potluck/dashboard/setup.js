@@ -153,7 +153,13 @@
       order.forEach(function (port) {
         var b = boards[port];
         if (!here[port] && b.state !== "gone") { b.prev = b.state; b.state = "gone"; setWhat(b, "Unplugged", "muted"); plugReady(); }
-        else if (here[port] && b.state === "gone") { delete boards[port]; order.splice(order.indexOf(port), 1); b.el.remove(); }
+        else if (here[port] && b.state === "gone") {
+          // Back after one read without it: the same card, never a new probe -- a probe restarts the board (found by the
+          // Potluck Desk 2026-10-19: the card used to be removed and added again, which probed it again).
+          b.state = b.prev || "plugged";
+          setWhat(b, "Plugged in again (not checked again: a check restarts the board)", "muted");
+          plugReady();
+        }
       });
     }).finally(function () { setTimeout(scanPorts, 1500); });
   }

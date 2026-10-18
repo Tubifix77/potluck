@@ -27,6 +27,8 @@ Potluck's releases. The full record -- every milestone with its measurements and
   outside write for another board's resource to its owner and returns the owner's answer; the owner still checks the
   package. Before, every write to another board timed out (504) -- found by the Potluck Desk on B's LED. Needs the
   firmware and the hub of this change.
+- The setup wizard no longer checks a new board again when its port drops out of one look and comes back -- a check
+  restarts the board (found by the Potluck Desk, which follows the wizard's page).
 - The hub reads a request's body before refusing it (an unknown path, too large, not logged in): unread, it was taken
   for the next request on a kept-alive connection, and on Windows the client was often reset instead of answered.
 - The Node-RED nodes look for hubs on every network adapter: on a PC with a VPN, Tailscale or Hyper-V, the one query
