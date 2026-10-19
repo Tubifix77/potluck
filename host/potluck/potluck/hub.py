@@ -397,6 +397,8 @@ class Model:
         self.reports = Reports()  # M18: what the integrations say of themselves
         self.cluster = cluster
         self.package = package
+        self._pkg_seen: int | None = None  # the cell's package counter the hub's package was planned for
+        self._replanning = False
         self.pull_period_ms = pull_period_ms
         # M15: how often each board's telemetry is pulled over the radio (0: never). Its own rate, longer than the
         # inventory's: it is the larger load, and M15's [MEASURE] is the rate that leaves M0's figures intact.
@@ -582,6 +584,7 @@ class Model:
                     b["cabled"] = n == cabled
                 if prev != b["state"]:
                     self._event_locked("board_" + b["state"], n, {"was": prev})
+        self._follow_package()
         for path in self.resource_paths() + self.interest_paths():  # the package's, then what a viewer asked for
             t0 = time.monotonic()
             try:
@@ -596,6 +599,42 @@ class Model:
             self.pull_telemetry()
         with self.lock:
             self.frames_at.append((time.monotonic(), self.hub.stats.rx_frames + self.hub.stats.tx_frames))
+
+    def _follow_package(self) -> None:
+        """When the cell's package changes, the hub plans it again from the cluster file: its apps, resources and panels
+        follow what the boards run. Found 2026-10-19: the package was planned once at start, so after the owner's Apply
+        of a store app the hub knew neither the new app nor its outputs. Planned off the pull's thread (it may export an
+        app's repository); until it is done the hub shows the package it had."""
+        if self.cluster is None or getattr(self.cluster, "path", None) is None:
+            return
+        with self.lock:
+            counters = [b["status"].pkg_counter for b in self.boards.values()
+                        if b.get("status") is not None and b["state"] == "alive"]
+        if not counters:
+            return
+        now = max(counters)
+        if self._pkg_seen is None:
+            self._pkg_seen = now
+            return
+        if now == self._pkg_seen or self._replanning:
+            return
+        self._pkg_seen = now
+        self._replanning = True
+        threading.Thread(target=self._replan, args=(now,), daemon=True, name="hub-replan").start()
+
+    def _replan(self, counter: int) -> None:
+        from .apply import default_cache, load_cluster, plan_package
+        try:
+            c = load_cluster(str(self.cluster.path))
+            pkg = plan_package(c, default_cache(), lambda msg: None)
+        except Exception as exc:  # noqa: BLE001 -- the hub keeps what it had and says why
+            self.record("hub_package", None, {"counter": counter, "error": str(exc)[:300]})
+        else:
+            self.cluster, self.package = c, pkg
+            self.record("hub_package", None, {"counter": counter,
+                                              "actors": len(pkg.manifest.actors) if pkg is not None else 0})
+        finally:
+            self._replanning = False
 
     def _record(self, path: str, r) -> None:
         """One reading of a resource, kept with its settled quality.
@@ -977,6 +1016,16 @@ class Model:
             pin = m.placement_of(a)
             nodes = [f"{pin:04x}"] if pin is not None and not portable else [b["node"] for b in boards]
             running = [n for n, acts in running_here.items() if kind in acts and (portable or every or n in nodes)]
+            if portable:
+                # The boards' reconcilers name each portable actor's owner by its output's key: by actor, not by kind.
+                # Found 2026-10-19: two guests of one module -- the store's overheat_alarm on A, the earlier alarm on
+                # B -- read as one app "running on 2 nodes", and the other was not listed at all.
+                from . import reconcile as rc
+                key = f"{path_hash(rc.output_path(m, a)):08x}"
+                seen = [(b["node"], t) for b in boards for t in (b.get("telemetry") or {}).get("actors", [])
+                        if t.get("key") == key]
+                if seen:
+                    running = sorted({n for n, t in seen if t.get("running_here") and n in running_here})
             if portable and not running:
                 # M14: a placement host runs it -- NODE_STATUS sees boards only, but every board's telemetry names the
                 # owner its reconciler accepts (found on the bench: "running on 0 boards" while the PC ran the ticker).

@@ -603,5 +603,48 @@ class Interest(HubFixture):
             c.close()
 
 
+
+class TwoGuests(unittest.TestCase):
+    """2026-10-19: the store's overheat_alarm (A) beside the earlier guest alarm (B), one module: the hub's app view
+    showed one app "running on 2 nodes"."""
+
+    def test_each_portable_actor_is_counted_where_its_board_says_it_runs(self) -> None:
+        from types import SimpleNamespace as NS
+        from potluck import manifest as mf
+        cfg = {"bundle": "x.guest.json", "sha256": "00" * 32, "outputs": "out:f32 alarm:i32 count:i32",
+               "fuel": 100000, "memory_kib": 64, "period_ms": 1000}
+        m = mf.parse({"schema": 1, "system": "lab", "min_core_version": 1,
+                      "nodes": [{"node_id": 0x6300, "label": "A"}, {"node_id": 0x7368, "label": "B"}],
+                      "actors": [{"name": n, "module": "guest:overheat_alarm", "latency_class": 4, "config": cfg}
+                                 for n in ("alarm", "overheat_alarm")]})
+        model = hb.Model(NS(record=None), package=NS(manifest=m))
+        key = lambda name: f"{hb.path_hash(f'potluck://lab/act/{name}/out'):08x}"  # noqa: E731
+        tel = lambda here: {"actors": [{"key": key("alarm"), "running_here": here == "7368", "owner": "7368"},  # noqa: E731
+                                       {"key": key("overheat_alarm"), "running_here": here == "6300", "owner": "6300"}]}
+        boards = [{"node": n, "state": "alive", "actors": ["guest"], "telemetry": tel(n)} for n in ("6300", "7368")]
+        apps = {a["name"]: a for a in model._apps_json(boards, [])}
+        self.assertEqual((apps["alarm"]["running_on"], apps["alarm"]["working"]), (["7368"], True))
+        self.assertEqual((apps["overheat_alarm"]["running_on"], apps["overheat_alarm"]["working"]), (["6300"], True))
+        for b in boards:  # no telemetry yet: the kind is all there is, as before
+            b["telemetry"] = None
+        self.assertEqual(model._apps_json(boards, [])[0]["running_on"], ["6300", "7368"])
+
+    def test_a_new_package_on_the_boards_is_planned_again(self) -> None:
+        from types import SimpleNamespace as NS
+        model = hb.Model(NS(record=None), cluster=NS(path="cell.json", boards=[(0x6300, "A")], system="lab"))
+        calls = []
+        model._replan = lambda counter: calls.append(counter)  # noqa: E731 -- the thread's work, counted
+        model.boards[0x6300].update(state="alive", status=NS(pkg_counter=99))
+        model._follow_package()
+        self.assertEqual(calls, [])  # where the hub starts is not a change
+        model.boards[0x6300]["status"] = NS(pkg_counter=100)
+        model._follow_package()
+        for _ in range(50):
+            if calls:
+                break
+            time.sleep(0.02)
+        self.assertEqual(calls, [100])
+
+
 if __name__ == "__main__":
     unittest.main()

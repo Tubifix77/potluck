@@ -182,7 +182,8 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   room for a per_room module -- and only for exposed resources. `kind`: `room` | `value`; `on`: true, false, or `null`
   while `quality` is not GOOD. Their words are text: show them as text, never as markup.
 - `app.placement`: `pinned` | `portable` | `every`. `app.working`: as `python -m potluck.apply` verifies -- running
-  where the package says (portable: exactly once in the cell), and every output GOOD. `detail` says why not.
+  where the package says (portable: exactly once in the cell, by the owner the boards' telemetry names for that
+  actor), and every output GOOD. `detail` says why not.
   `null` while `hub.starting`, for an app the hub has not seen working yet.
 - `resource.value`: a number, a bool, or `null` when it has none to show (strict and not GOOD, or no value at all).
 - `resource.quality` (never omitted): `GOOD` (fresh), `STALE` (older than its staleness bound, still shown),
@@ -242,7 +243,8 @@ Kinds, in three groups:
   `{was}`), `board_rebooted` (its uptime went back; `{up_s}`), `board_restarted` (a new boot seen in its telemetry while
   the hub watched; `{reason, epoch}`, with `board.reset`'s reason), `telemetry_unsupported` (`{why}`),
   `quality_changed` (`{path, from, to}`), `cabled_board_rebooted`, `deploy` (a `deploys` entry settled).
-- **The hub's own**, `board: "hub"`: `hub_started`, `hub_lease_lost`, `relay_client`, `host_node`, `host_node_refused`,
+- **The hub's own**, `board: "hub"`: `hub_started`, `hub_lease_lost`, `hub_package` (the cell's package changed and
+  the hub planned it again from the cluster file: `{counter, actors}`, or `{counter, error}` while it keeps the old one), `relay_client`, `host_node`, `host_node_refused`,
   `login` (`{name, from, result}`), `pair_request`, `pair_answer`, `integration_forgotten`, and outside writes
   (`outside_write`, detail `{resource, value, result}` -- `path` carries the same as `resource`, and a write refused for
   its login adds `by`; a write that reached a board is logged under that board's id).
