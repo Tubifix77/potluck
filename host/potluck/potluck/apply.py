@@ -713,6 +713,25 @@ def _fits(fw: Firmware) -> Firmware:
     return fw
 
 
+def packaged_release(version: str) -> tuple[Path, bytes] | None:
+    """The image and ELF SHA-256 of release `version` as the installed package carries it (setup.packaged_firmware:
+    <package>/firmware/<version>/, release.json beside the images), or None."""
+    from .setup import packaged_firmware
+    root = packaged_firmware()
+    if root is None:
+        return None
+    d = root / version
+    try:
+        meta = json.loads((d / "release.json").read_text(encoding="utf-8"))
+        sha = bytes.fromhex(str(meta["elf_sha256"]))
+    except (OSError, ValueError, KeyError):
+        return None
+    img = d / "potluck_m0.bin"
+    if meta.get("version") != version or len(sha) != 32 or not img.is_file():
+        return None
+    return img, sha
+
+
 def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
     if c.firmware is None:
         return None
@@ -756,6 +775,14 @@ def build_firmware(c: Cluster, cache: Path, log) -> Firmware | None:
     if img.exists() and elf.exists():
         log(f"firmware: reusing the build of these sources ({version}, {out})")
         return _fits(Firmware(img, elf, elf_sha256(elf), version, False, size_json, comps))
+    rel = packaged_release(version)
+    if rel is not None:
+        # The installed package carries exactly this firmware (potluck.release): the tray's hub needs no ESP-IDF
+        # build for it. Found 2026-10-19: the owner's first Apply from the Desk -- a change to `outside` only --
+        # rebuilt 639e1f6 from scratch, and ESP-IDF's tool check stopped on a Windows error box.
+        img_rel, elf_sha = rel
+        log(f"firmware: the release image this package carries ({version}) -- nothing to build")
+        return _fits(Firmware(img_rel, img_rel.with_suffix(".elf"), elf_sha, version, False, None, comps))
     # PowerShell 7 where it is installed: Windows PowerShell 5.1 turns ESP-IDF's stderr into a terminating
     # error once the output is captured, and the build stops in export.ps1.
     shell = "pwsh" if shutil.which("pwsh") or os.name != "nt" else "powershell"

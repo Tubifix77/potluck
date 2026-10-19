@@ -615,5 +615,33 @@ class LeaseInAPartition(unittest.TestCase):
         self.assertIsNone(ap.lease_counts(0x6300, [0x00FE, 0x6300, 0x7368]))
 
 
+
+class PackagedRelease(unittest.TestCase):
+    """2026-10-19: the owner's first Apply from the Desk -- an `outside` change only -- rebuilt firmware the installed
+    package already carried, and the build stopped on a Windows error box. The release image is used when it matches."""
+
+    def test_the_release_the_package_carries_is_used_for_its_own_version_only(self):
+        with tempfile.TemporaryDirectory() as d:
+            rel = Path(d) / "639e1f6-910870"
+            rel.mkdir()
+            (rel / "potluck_m0.bin").write_bytes(b"\xe9" + b"\0" * 255)
+            sha = "6b4203943c58a3df039671bca620c2e413bc0d2c53a1be114f0b7e21bbf3d6fa"
+            (rel / "release.json").write_text(json.dumps({"version": "639e1f6-910870", "elf_sha256": sha}))
+            old = os.environ.get("POTLUCK_FIRMWARE_DIR")
+            os.environ["POTLUCK_FIRMWARE_DIR"] = d
+            try:
+                got = ap.packaged_release("639e1f6-910870")
+                self.assertIsNotNone(got)
+                self.assertEqual(got, (rel / "potluck_m0.bin", bytes.fromhex(sha)))
+                self.assertIsNone(ap.packaged_release("639e1f6-ffffff"))  # another build: built as before
+                (rel / "release.json").write_text(json.dumps({"version": "639e1f6-910870"}))
+                self.assertIsNone(ap.packaged_release("639e1f6-910870"))  # no ELF hash to compare boards with
+            finally:
+                if old is None:
+                    os.environ.pop("POTLUCK_FIRMWARE_DIR", None)
+                else:
+                    os.environ["POTLUCK_FIRMWARE_DIR"] = old
+
+
 if __name__ == "__main__":
     unittest.main()

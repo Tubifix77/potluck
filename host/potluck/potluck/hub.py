@@ -1855,6 +1855,16 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
 # ---- the program ----------------------------------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
+    if os.name == "nt":
+        # No Windows error box from a program the hub starts (an apply's ESP-IDF build, esptool): a tool missing a DLL
+        # fails instead of waiting, unseen, for a click -- found 2026-10-19, an apply from the Desk stopped on one from
+        # qemu-system-xtensa (libiconv-2.dll) during ESP-IDF's tool check. SEM_FAILCRITICALERRORS |
+        # SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX, inherited by every child process.
+        try:
+            import ctypes
+            ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002 | 0x8000)
+        except (AttributeError, OSError):
+            pass
     ap = argparse.ArgumentParser(prog="potluck-hub", description=__doc__.splitlines()[0])
     ap.add_argument("--port", help="the serial port of the PC's adapter (e.g. COM6)")
     ap.add_argument("--tcp", help="or a TCP endpoint carrying the frame link (an emulator)")
