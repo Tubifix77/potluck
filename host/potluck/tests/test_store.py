@@ -100,6 +100,22 @@ class Feed(unittest.TestCase):
         self.assertEqual(so.source("a/b", "apps/alarm"), "a/b/apps/alarm")
 
 
+class Candidates(unittest.TestCase):
+    def test_the_input_s_unit_comes_first_then_no_unit_then_the_rest(self):
+        """2026-10-19: the store's overheat alarm (unit "celsius") was offered the guest alarm's output first."""
+        app = so.parse_app(app_doc(bytes(range(32))))
+        res = [{"path": "potluck://lab/act/alarm/out", "type": "f32", "unit": ""},
+               {"path": "potluck://lab/node-8160/sys/die_temp", "type": "f32", "unit": "C"},
+               {"path": "potluck://lab/node-6300/sys/die_temp", "type": "f32", "unit": "C"},
+               {"path": "potluck://lab/node-6300/sys/heap", "type": "f32", "unit": "B"},
+               {"path": "potluck://lab/node-6300/sys/uptime", "type": "u32", "unit": "s"}]
+        self.assertEqual(so.candidates(app, res), [["potluck://lab/node-6300/sys/die_temp",
+                                                     "potluck://lab/node-8160/sys/die_temp",
+                                                     "potluck://lab/act/alarm/out", "potluck://lab/node-6300/sys/heap"]])
+        self.assertEqual(so._unit_key("CELSIUS"), so._unit_key("degC"))
+        self.assertEqual(so._unit_key("percent"), "%")
+
+
 class Installing(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()

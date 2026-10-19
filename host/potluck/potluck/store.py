@@ -218,10 +218,32 @@ def set_on(cell: Path, on: bool) -> None:
     (cell / REGISTRY).write_text(json.dumps(reg, indent=2) + "\n", encoding="utf-8")
 
 
+_UNIT_ALIASES = {"degc": "C", "°c": "C", "deg c": "C", "percent": "%", "pct": "%", "seconds": "s", "volts": "V"}
+
+
+def _unit_key(u: object) -> str:
+    """One spelling for a unit: an app's ("celsius", "CELSIUS", "degC") and the hub's suffix ("C") meet here."""
+    from .value import Unit, unit_suffix
+    t = str(u or "").strip()
+    if not t:
+        return ""
+    if t.upper() in Unit.__members__:
+        return unit_suffix(Unit[t.upper()]) or t.upper()
+    return _UNIT_ALIASES.get(t.lower(), t)
+
+
 def candidates(app: App, resources: list[dict]) -> list[list[str]]:
-    """Per input, the cell's resources of the same value type it could be bound to. The app's unit is shown to the
-    owner beside the choice, not matched: units are spelled differently on each side ("celsius", "C")."""
-    return [sorted(r["path"] for r in resources if r.get("type") == i["type"]) for i in app.inputs]
+    """Per input, the cell's resources of the same value type it could be bound to, those in the input's unit first,
+    then those with no unit, then the rest (each group by path). Nothing is chosen for the owner: found 2026-10-19,
+    the Desk preselected the first f32 by path -- another app's alarm output -- for the store's overheat alarm."""
+    out = []
+    for i in app.inputs:
+        want = _unit_key(i.get("unit"))
+        def rank(r: dict) -> tuple[int, str]:
+            have = _unit_key(r.get("unit"))
+            return (0 if not want or have == want else 1 if not have else 2), r["path"]
+        out.append([r["path"] for r in sorted((r for r in resources if r.get("type") == i["type"]), key=rank)])
+    return out
 
 
 def pin_author(reg: dict, repo: str, key: bytes) -> tuple[int, bool]:
