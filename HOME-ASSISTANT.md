@@ -171,8 +171,9 @@ Check too that your broker accepts the boards' connections: the login in step 6,
    certificate makes Home Assistant ask you to confirm it and allow it again. Better: give the PC a fixed address in
    the router. A phone's browser saves your password for the dashboard only once it trusts this certificate (Chrome saves
    none on a page with a certificate error): open `https://<PC address>:8443/hub-certificate.crt` on the phone, or the
-   link on the login page, and install the file as a trusted CA certificate in the phone's security settings -- after
-   checking its SHA-256 fingerprint against the one the dashboard's Cell tab shows on the PC.
+   link on the login page, then install the file as a trusted CA certificate from the phone's settings (Android: Security,
+   Encryption & credentials, Install a certificate, CA certificate; the names vary by maker) -- tapping the downloaded
+   file does not install it. Check its SHA-256 fingerprint against the one the dashboard's Cell tab shows on the PC first.
 2. **Start the hub** on the house network, from `host\potluck\`:
 
    ```
