@@ -1905,7 +1905,8 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ssl.SSLError) as exc:
             print(f"hub: the certificate or key could not be loaded: {exc}")
             return 2
-        lan = (Sessions(users, hubauth.sessions_file()), ctx)
+        from .hubauth import sessions_file
+        lan = (Sessions(users, sessions_file()), ctx)
     if a.replay:
         from .hubreplay import serve_replay
 
