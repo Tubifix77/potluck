@@ -10,6 +10,7 @@ import ssl
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -98,6 +99,60 @@ class KeptSessions(unittest.TestCase):
             token, _ = s.login("viewer", "look-only-password", "10.0.0.2")
             u.users.pop("viewer")  # removed with `potluck hubauth remove`
             self.assertIsNone(s.get(token))
+
+
+class StartsLikeTheTray(unittest.TestCase):
+    """The hub as the owner's tray starts it -- potluck.hub with --listen and a certificate. 2026-10-19: 234c1bf's kept
+    sessions called hubauth.sessions_file() in main(), where hubauth was not imported, and every such hub died at start;
+    the tests built Sessions directly and never ran main() with --listen."""
+
+    def test_the_hub_with_listen_starts_and_serves_its_certificate(self):
+        import shutil
+        import socket
+        import ssl
+        import subprocess
+        import urllib.request
+        if shutil.which("openssl") is None:
+            self.skipTest("no openssl to make a certificate")
+        with tempfile.TemporaryDirectory() as tmp:
+            cert, key = Path(tmp) / "c.pem", Path(tmp) / "k.pem"
+            subprocess.run(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
+                            "-nodes", "-keyout", str(key), "-out", str(cert), "-days", "2", "-subj", "/CN=potluck-hub",
+                            "-addext", "subjectAltName=IP:127.0.0.1"], check=True, capture_output=True,
+                           env={**os.environ, "MSYS_NO_PATHCONV": "1"})
+            link = socket.socket()  # a silent stand-in for the cable: the hub serves anyway
+            link.bind(("127.0.0.1", 0))
+            link.listen(1)
+            api, relay, lan = free_port(), free_port(), free_port()
+            env = {**os.environ, "LOCALAPPDATA": tmp,  # its own hub.json: the owner's running hub is no second hub
+                   "POTLUCK_HUB_USERS": str(Path(tmp) / "users.json"), "POTLUCK_HUB_NO_ANNOUNCE": "1",
+                   "PYTHONPATH": os.path.join(os.path.dirname(__file__), "..")}
+            proc = subprocess.Popen([sys.executable, "-m", "potluck.hub", "--tcp", f"127.0.0.1:{link.getsockname()[1]}",
+                                     "--api", f"127.0.0.1:{api}", "--relay", f"127.0.0.1:{relay}",
+                                     "--listen", f"127.0.0.1:{lan}", "--tls-cert", str(cert), "--tls-key", str(key)],
+                                    env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            try:
+                hello = None
+                for _ in range(60):
+                    if proc.poll() is not None:
+                        self.fail("the hub exited: " + proc.stdout.read().decode(errors="replace")[-800:])
+                    try:
+                        with urllib.request.urlopen(f"http://127.0.0.1:{api}/api/hello", timeout=1) as r:
+                            hello = json.loads(r.read())
+                        break
+                    except OSError:
+                        time.sleep(0.25)
+                self.assertIsNotNone(hello, "the hub never answered")
+                ctx = ssl.create_default_context(cafile=str(cert))  # the hub's own certificate is a CA for itself
+                with urllib.request.urlopen(f"https://127.0.0.1:{lan}/hub-certificate.crt", context=ctx,
+                                            timeout=3) as r:
+                    der = r.read()
+                self.assertEqual(der, ssl.PEM_cert_to_DER_cert(cert.read_text(encoding="ascii")))
+            finally:
+                proc.kill()
+                proc.wait(timeout=10)
+                proc.stdout.close()
+                link.close()
 
 
 class LoginApi(HubFixture):

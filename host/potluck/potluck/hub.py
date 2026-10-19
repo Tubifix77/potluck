@@ -2012,6 +2012,8 @@ def main(argv: list[str] | None = None) -> int:
             towards = str((cluster.present or {}).get("broker", "192.168.0.1")).partition(":")[0] if cluster else \
                 "192.168.0.1"
             ip = lan_ip(towards)
+            if os.environ.get("POTLUCK_HUB_NO_ANNOUNCE"):  # a test's hub: never announced on the owner's network
+                raise ValueError("POTLUCK_HUB_NO_ANNOUNCE is set")
             announcer = Announcer(cluster.system if cluster else "lab", model.cell_id, int(a.listen.rpartition(":")[2]),
                                   hashlib.sha256(der).hexdigest(), ip)
             announcer.start()
