@@ -5,6 +5,14 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **A board whose pocket page is up publishes its figures**: `node-<id>/sys/pocket/phones` (stations on its access
+  point), `sys/pocket/pages` and `sys/pocket/refused` (since boot), until now only on its console. Declared only where
+  the page is up, read for the PC through the cabled board like `sys/ext/*`. Asked for by the Potluck Desk. A firmware
+  change.
+- **Board telemetry carries the identity and frame-tag counters** (`telemetry.auth` in the hub's model, and in
+  `--telemetry-log`): after a move on 2026-10-19 the extender stayed out of the cell for ~4.5 minutes while the board
+  on the cable rejected its frames under an old key, and nothing on the PC could say why its new HELLOs were not
+  taken. A firmware change; older boards report `null`.
 - **On-demand reads in the hub's API.** `POST /api/interest` asks the hub to read, for as long as a program keeps
   asking, what its model leaves out: a board's per-link outputs (`{peer}`), outputs published only sometimes (`?`) and
   a board's built-in `sys/` resources. They arrive in the model marked `"on_demand": true`; at most 32 per program and

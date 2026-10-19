@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from . import frame as fr
 
 VERSION = 1
-HEALTH, LINKS, ACTORS, EVENTS = 1, 2, 3, 4
+HEALTH, LINKS, ACTORS, EVENTS, AUTH = 1, 2, 3, 4, 5
 
 HEALTH_NO_RADIO, HEALTH_BUSY, HEALTH_CONNECTED, HEALTH_LONG_WINDOW, HEALTH_ENROLLED = 1, 2, 4, 8, 16
 LINK_CABLE, LINK_VERIFIED = 1, 2
@@ -34,7 +34,12 @@ _HEALTH = struct.Struct("<IIBBHIIIIIBBBB12IHH")
 _LINK = struct.Struct("<HBbBBHBB6IHHH")
 _ACTOR = struct.Struct("<IBBHHIHH")
 _EVENT = struct.Struct("<IIBHII")
-assert (_HEALTH.size, _LINK.size, _ACTOR.size, _EVENT.size) == (88, 40, 18, 19)
+_AUTH = struct.Struct("<12I")
+assert (_HEALTH.size, _LINK.size, _ACTOR.size, _EVENT.size, _AUTH.size) == (88, 40, 18, 19, 48)
+
+#: The Auth section's counters, in their wire order (pot/telemetry.hpp, Node::AuthCounters; 2026-10-19).
+AUTH_FIELDS = ("verified", "cache_hits", "refused", "rate_limited", "stale_epoch", "tags_ok", "bad_tag", "replayed",
+               "untagged", "bcast_dropped", "beacon_epoch_ignored", "group_refusals")
 
 
 class TelemetryError(ValueError):
@@ -199,6 +204,13 @@ def parse_actors(raw: bytes) -> tuple[int, int, list[ActorTel]]:
     return total, start, out
 
 
+def parse_auth(raw: bytes) -> dict[str, int]:
+    _header(raw, AUTH)
+    if len(raw) < 4 + _AUTH.size:
+        raise TelemetryError("auth section cut short")
+    return dict(zip(AUTH_FIELDS, _AUTH.unpack_from(raw, 4)))
+
+
 def parse_events(raw: bytes) -> tuple[int, list[EventTel]]:
     _header(raw, EVENTS)
     if len(raw) < 9:
@@ -218,6 +230,11 @@ def _ask(bridge, target: int, section: int, *, start: int = 0, since: int = 0, t
 
 def health(bridge, target: int, *, timeout: float = 2.0) -> Health:
     return parse_health(_ask(bridge, target, HEALTH, timeout=timeout))
+
+
+def auth(bridge, target: int, *, timeout: float = 2.0) -> dict[str, int]:
+    """Its HELLO verification and frame tag counters: how a board kept out of the cell is told apart (2026-10-19)."""
+    return parse_auth(_ask(bridge, target, AUTH, timeout=timeout))
 
 
 def links(bridge, target: int, *, timeout: float = 2.0) -> list[Link]:

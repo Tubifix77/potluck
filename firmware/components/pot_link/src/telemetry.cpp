@@ -109,6 +109,17 @@ size_t store_telemetry_health(uint16_t node, const TelemetryHealth& h, uint8_t* 
     return w.at;
 }
 
+size_t store_telemetry_auth(uint16_t node, const TelemetryAuth& a, uint8_t* out, size_t cap) {
+    if (out == nullptr || cap < kTelemetryHeaderLen + kTelemetryAuthLen) return 0;
+    W w{out, 0};
+    header(w, kTelemetryAuth, node);
+    for (uint32_t v : {a.verified, a.cache_hits, a.refused, a.rate_limited, a.stale_epoch, a.tags_ok, a.bad_tag,
+                       a.replayed, a.untagged, a.bcast_dropped, a.beacon_epoch_ignored, a.group_refusals}) {
+        w.u32(v);
+    }
+    return w.at;
+}
+
 size_t store_telemetry_links(uint16_t node, uint8_t total, uint8_t start, const TelemetryLink* l, size_t n,
                              uint8_t* out, size_t cap) {
     if (n > kTelemetryLinksPerReply) n = kTelemetryLinksPerReply;

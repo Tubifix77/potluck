@@ -158,4 +158,42 @@ size_t declare_extender_resources(Namespace& ns, uint16_t node_id) {
     return n;
 }
 
+const char* pocket_resource_suffix(PocketResource r) {
+    switch (r) {
+        case PocketResource::Phones: return "sys/pocket/phones";
+        case PocketResource::Pages: return "sys/pocket/pages";
+        case PocketResource::Refused: return "sys/pocket/refused";
+    }
+    return "sys/pocket/?";
+}
+
+uint32_t pocket_resource_hash(uint16_t node_id, PocketResource r) {
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "potluck://%s/node-%04x/%s", g_system, static_cast<unsigned>(node_id),
+                  pocket_resource_suffix(r));
+    return path_hash(buf);
+}
+
+NsDecl pocket_resource_decl(uint16_t node_id, PocketResource r) {
+    NsDecl d;
+    d.path_hash = pocket_resource_hash(node_id, r);
+    d.owner_node = node_id;
+    d.kind = ResourceKind::Sampled;
+    d.access = Access::Read;
+    d.latency_class = kClassL4;
+    d.staleness_policy = StalenessPolicy::Informative;
+    d.staleness_bound_ms = 30000;  // refreshed with the built-ins, as the extender's figures
+    d.type = ValueType::U32;
+    d.unit = Unit::Count;
+    return d;
+}
+
+size_t declare_pocket_resources(Namespace& ns, uint16_t node_id) {
+    size_t n = 0;
+    for (uint8_t i = 0; i < kPocketResourceCount; ++i) {
+        if (ns.declare(pocket_resource_decl(node_id, static_cast<PocketResource>(i))) == NsError::Ok) ++n;
+    }
+    return n;
+}
+
 }  // namespace pot

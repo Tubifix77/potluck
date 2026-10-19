@@ -34,6 +34,9 @@ SYS_LABELS: dict[str, str] = {
     "sys/ext/router-rssi": "extender: signal to the router (dBm)",
     "sys/ext/clients": "extender: stations on its hotspot",
     "sys/ext/reconnects": "extender: router reconnects since boot",
+    "sys/pocket/phones": "pocket page: phones on its access point",
+    "sys/pocket/pages": "pocket page: pages served since boot",
+    "sys/pocket/refused": "pocket page: requests refused since boot",
 }
 
 #: An extender board's own (pot/sys_resources.hpp ExtenderResource, 2026-10-18): declared only on a board whose
@@ -43,6 +46,15 @@ EXT_SUFFIXES: tuple[str, ...] = (
     "sys/ext/router-rssi",
     "sys/ext/clients",
     "sys/ext/reconnects",
+)
+
+#: A pocket page's own (pot/sys_resources.hpp PocketResource, 2026-10-19): declared only on a board whose access point
+#: started. Counts: phones on the access point now, pages served and requests refused since boot. The access point's
+#: name is never published.
+POCKET_SUFFIXES: tuple[str, ...] = (
+    "sys/pocket/phones",
+    "sys/pocket/pages",
+    "sys/pocket/refused",
 )
 
 #: sys/reset's codes: ESP-IDF's esp_reset_reason_t, in its header's order (components/esp_system/include/esp_system.h,

@@ -1668,6 +1668,15 @@ bool Node::adopt_peer_sys_resource(uint32_t path_hash) {
                 return true;
             }
         }
+        // A pocket page's sys/pocket/* (2026-10-19), likewise: NO_DATA from a peer whose access point is not up.
+        for (size_t k = 0; k < kPocketResourceCount; ++k) {
+            const PocketResource which = static_cast<PocketResource>(k);
+            if (pocket_resource_hash(q.node_id, which) == path_hash) {
+                if (ns_.declare(pocket_resource_decl(q.node_id, which)) != NsError::Ok) return false;
+                ns_.mark_adopted(path_hash, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
+                return true;
+            }
+        }
     }
     return false;
 }

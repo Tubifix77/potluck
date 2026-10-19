@@ -30,6 +30,11 @@
 //     Events  (kTelemetryEvents): u32 next (the seq the next event will get), u8 n, n x event (19 bytes):
 //             u32 seq, u32 at_ms (board uptime), u8 kind (EventKind), u16 node, u32 a, u32 b
 //             -- the oldest kept events with seq > since, up to what fits; `next` tells the hub whether it missed any.
+//     Auth    (kTelemetryAuth, 2026-10-19): u32 verified, cache_hits, refused, rate_limited, stale_epoch, tags_ok,
+//             bad_tag, replayed, untagged, bcast_dropped, beacon_epoch_ignored, group_refusals          (48 bytes)
+//             -- Node::AuthCounters, so a board kept out of the cell can be told apart: its HELLOs not heard, heard and
+//             fenced as an older epoch, over the verification budget, or its frames under another key. Firmware before
+//             it answers section 0 (unreachable), which the hub takes as "not reported".
 
 #pragma once
 
@@ -45,6 +50,7 @@ constexpr uint8_t kTelemetryHealth = 1;
 constexpr uint8_t kTelemetryLinks = 2;
 constexpr uint8_t kTelemetryActors = 3;
 constexpr uint8_t kTelemetryEvents = 4;
+constexpr uint8_t kTelemetryAuth = 5;
 
 constexpr size_t kTelemetryRequestLen = 8;
 constexpr size_t kTelemetryReplyMax = 220;  // under the cable's 226-byte payload floor
@@ -53,6 +59,7 @@ constexpr size_t kTelemetryHealthLen = 88;
 constexpr size_t kTelemetryLinkLen = 40;
 constexpr size_t kTelemetryActorLen = 18;
 constexpr size_t kTelemetryEventLen = 19;
+constexpr size_t kTelemetryAuthLen = 48;
 constexpr size_t kTelemetryLinksPerReply = (kTelemetryReplyMax - kTelemetryHeaderLen - 3) / kTelemetryLinkLen;    // 5
 constexpr size_t kTelemetryActorsPerReply = (kTelemetryReplyMax - kTelemetryHeaderLen - 3) / kTelemetryActorLen;  // 11
 constexpr size_t kTelemetryEventsPerReply = (kTelemetryReplyMax - kTelemetryHeaderLen - 5) / kTelemetryEventLen;  // 11
@@ -120,7 +127,13 @@ struct TelemetryEvent {
     uint32_t a = 0, b = 0;
 };
 
+struct TelemetryAuth {
+    uint32_t verified = 0, cache_hits = 0, refused = 0, rate_limited = 0, stale_epoch = 0, tags_ok = 0, bad_tag = 0,
+             replayed = 0, untagged = 0, bcast_dropped = 0, beacon_epoch_ignored = 0, group_refusals = 0;
+};
+
 // Each returns the reply's length, 0 if `cap` is too small. n is clipped to what one reply holds.
+size_t store_telemetry_auth(uint16_t node, const TelemetryAuth& a, uint8_t* out, size_t cap);
 size_t store_telemetry_health(uint16_t node, const TelemetryHealth& h, uint8_t* out, size_t cap);
 size_t store_telemetry_links(uint16_t node, uint8_t total, uint8_t start, const TelemetryLink* l, size_t n,
                              uint8_t* out, size_t cap);

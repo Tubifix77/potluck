@@ -1451,6 +1451,23 @@ size_t build_telemetry(const TelemetryRequest& rq, uint8_t* out, size_t cap) {
 #endif
         return store_telemetry_actors(g_node_id, static_cast<uint8_t>(total), rq.start, acts, n, out, cap);
     }
+    if (rq.section == kTelemetryAuth) {
+        const Node::AuthCounters& c = g_node->auth_counters();
+        TelemetryAuth a;
+        a.verified = c.verified;
+        a.cache_hits = c.cache_hits;
+        a.refused = c.refused;
+        a.rate_limited = c.rate_limited;
+        a.stale_epoch = c.stale_epoch;
+        a.tags_ok = c.tags_ok;
+        a.bad_tag = c.bad_tag;
+        a.replayed = c.replayed;
+        a.untagged = c.untagged;
+        a.bcast_dropped = c.bcast_dropped;
+        a.beacon_epoch_ignored = c.beacon_epoch_ignored;
+        a.group_refusals = g_node->group_refusals();
+        return store_telemetry_auth(g_node_id, a, out, cap);
+    }
     if (rq.section == kTelemetryEvents) {
         TelemetryEvent ev[kTelemetryEventsPerReply];
         const size_t n = g_tel_events.since(rq.since, ev, kTelemetryEventsPerReply);
@@ -2100,6 +2117,13 @@ void refresh_sys_resources() {
         }
         g_node->publish(extender_resource_hash(me, ExtenderResource::Clients), Value::of_u32(clients));
         g_node->publish(extender_resource_hash(me, ExtenderResource::Reconnects), Value::of_u32(reconnects));
+    }
+    // A board whose pocket page is up: phones on its access point, pages served, requests refused (declared only there).
+    uint32_t phones = 0, pages = 0, refused = 0;
+    if (pocket::figures(&phones, &pages, &refused)) {
+        g_node->publish(pocket_resource_hash(me, PocketResource::Phones), Value::of_u32(phones));
+        g_node->publish(pocket_resource_hash(me, PocketResource::Pages), Value::of_u32(pages));
+        g_node->publish(pocket_resource_hash(me, PocketResource::Refused), Value::of_u32(refused));
     }
 }
 
@@ -4181,7 +4205,9 @@ extern "C" void app_main(void) {
     }
 #if CONFIG_POT_POCKET
     // M13.1: the pocket page, after the radio: it adds an access point beside the station ESP-NOW rides on.
-    if (espnow_up()) pocket::start(extender::active());
+    if (espnow_up() && pocket::start(extender::active())) {
+        declare_pocket_resources(g_node->ns(), cfg.node_id);  // sys/pocket/*: this board's own, where the page is up
+    }
 #endif
 
     ESP_LOGI(kTag, "Potluck M0 node 0x%04x epoch %u, heartbeat %u ms x %u misses = %u ms",

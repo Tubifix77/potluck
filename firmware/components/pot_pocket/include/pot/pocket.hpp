@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 #include "pot/pocket_core.hpp"
 
@@ -32,6 +33,8 @@ void publish(const Snapshot& s);
 
 // {"t":"pocket",...}: active, phones on it, pages served, refused requests, the internal heap.
 void print_status();
+// What the node publishes (sys/pocket/*, pot/sys_resources.hpp): false while the access point is not up.
+bool figures(uint32_t* phones, uint32_t* pages, uint32_t* refused);
 
 // Console, for the owner only:
 //   POT! pocket ap <name> <password>   the access point's name and WPA2 password (8-63 characters), at the next boot

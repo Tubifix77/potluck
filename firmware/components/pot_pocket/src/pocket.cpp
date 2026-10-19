@@ -171,6 +171,15 @@ void print_status() {
                 static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
 }
 
+bool figures(uint32_t* phones, uint32_t* pages, uint32_t* refused) {
+    if (!g_active) return false;
+    wifi_sta_list_t sta{};
+    *phones = esp_wifi_ap_get_sta_list(&sta) == ESP_OK ? static_cast<uint32_t>(sta.num) : 0;
+    *pages = g_pages.load();
+    *refused = g_refused.load();
+    return true;
+}
+
 bool handle_console(const char* line, size_t len) {
     static const char kPrefix[] = "POT! pocket ";
     constexpr size_t kPrefixLen = sizeof(kPrefix) - 1;
@@ -224,6 +233,7 @@ bool active() { return false; }
 int idle_reason() { return 1; }
 void publish(const Snapshot&) {}
 void print_status() {}
+bool figures(uint32_t*, uint32_t*, uint32_t*) { return false; }
 bool handle_console(const char*, size_t) { return false; }
 
 #endif

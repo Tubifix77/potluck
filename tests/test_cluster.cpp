@@ -76,6 +76,15 @@ TEST(cluster, a_rename_carries_an_extenders_figures_and_declares_none_on_another
     rename_cluster(*plain.node, "lab");
 }
 
+TEST(cluster, a_rename_carries_a_pocket_pages_figures) {
+    Rig r;
+    declare_pocket_resources(r.node->ns(), 0x100);  // as m0_main does where the access point started
+    CHECK_EQ(rename_cluster(*r.node, "home"), kSysResourceCount + kPocketResourceCount);
+    CHECK(r.node->ns().find(path_hash("potluck://home/node-0100/sys/pocket/phones")) != nullptr);
+    CHECK(r.node->ns().find(path_hash("potluck://lab/node-0100/sys/pocket/phones")) == nullptr);
+    rename_cluster(*r.node, "lab");
+}
+
 TEST(cluster, the_actor_renames_the_built_in_resources_and_its_end_restores_lab) {
     Rig r;
     const uint32_t lab_uptime = path_hash("potluck://lab/node-0100/sys/uptime");

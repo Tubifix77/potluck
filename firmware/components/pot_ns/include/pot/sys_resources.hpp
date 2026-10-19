@@ -83,4 +83,20 @@ uint32_t extender_resource_hash(uint16_t node_id, ExtenderResource r);
 NsDecl extender_resource_decl(uint16_t node_id, ExtenderResource r);
 size_t declare_extender_resources(Namespace& ns, uint16_t node_id);
 
+// What a board's pocket page (M13.1) reports, declared only on a board whose access point started -- the same rule as
+// the extender's. Until 2026-10-19 these reached only the console's {"t":"pocket"} line; asked for by the Potluck Desk
+// for a Pocket window. The access point's name is never published: it is what the owner typed.
+constexpr size_t kPocketResourceCount = 3;
+
+enum class PocketResource : uint8_t {
+    Phones = 0,   // stations on the access point now
+    Pages = 1,    // pages served since boot
+    Refused = 2,  // requests refused since boot (a method or path the page does not serve)
+};
+
+const char* pocket_resource_suffix(PocketResource r);
+uint32_t pocket_resource_hash(uint16_t node_id, PocketResource r);
+NsDecl pocket_resource_decl(uint16_t node_id, PocketResource r);
+size_t declare_pocket_resources(Namespace& ns, uint16_t node_id);
+
 }  // namespace pot

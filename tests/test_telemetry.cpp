@@ -190,3 +190,27 @@ TEST(telemetry, the_host_reads_exactly_these_bytes) {
     CHECK(std::vector<uint8_t>(w, w + n) ==
           unhex("01020063020001687302d3020264003c01e8030000de0300000a000000d007000007000000280000003300a000ffff"));
 }
+
+TEST(telemetry, the_auth_section_carries_the_twelve_counters_in_order) {
+    // host/potluck/tests/test_telemetry.py's AUTH_GOLDEN: 1..12 in the stated order.
+    TelemetryAuth a;
+    a.verified = 1;
+    a.cache_hits = 2;
+    a.refused = 3;
+    a.rate_limited = 4;
+    a.stale_epoch = 5;
+    a.tags_ok = 6;
+    a.bad_tag = 7;
+    a.replayed = 8;
+    a.untagged = 9;
+    a.bcast_dropped = 10;
+    a.beacon_epoch_ignored = 11;
+    a.group_refusals = 12;
+    uint8_t w[kTelemetryReplyMax];
+    const size_t n = store_telemetry_auth(0x6300, a, w, sizeof(w));
+    CHECK_EQ(n, kTelemetryHeaderLen + kTelemetryAuthLen);
+    CHECK(std::vector<uint8_t>(w, w + n) ==
+          unhex("01050063010000000200000003000000040000000500000006000000070000000800000009000000"
+                "0a0000000b0000000c000000"));
+    CHECK_EQ(store_telemetry_auth(1, a, w, n - 1), static_cast<size_t>(0));
+}

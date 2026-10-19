@@ -174,7 +174,11 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   peer's declared death window). `board.rssi`: the strongest radio link's. `telemetry` holds the board's counters --
   `{at, channel, flags, up_ms, epoch, peers_alive, peers_dead, deaths, revivals, reboots_seen, rx_total, rx_rejected,
   rx_queue_dropped, tx_total, tx_enqueue_err, events_dropped, writes_served, writes_rejected, actors_pinned,
-  actors_portable_here, link_stack_free, actors: [{key, running_here, owner, assigned, activations, fenced, released}]}`;
+  actors_portable_here, link_stack_free, actors: [{key, running_here, owner, assigned, activations, fenced, released}],
+  auth}`. `auth` (2026-10-19; `null` from older firmware) is the board's identity and frame-tag counters since boot --
+  `{verified, cache_hits, refused, rate_limited, stale_epoch, tags_ok, bad_tag, replayed, untagged, bcast_dropped,
+  beacon_epoch_ignored, group_refusals}` -- which tell a board kept out of the cell apart: its HELLOs fenced as an
+  older epoch, over the verification budget, refused, or its frames under another key;
   `flags` names `no_radio`, `busy`, `connected`, `long_window`, `enrolled`. A board that does not answer telemetry
   (older firmware) has `heap: null`, `links: []` and no `telemetry`, and an event `telemetry_unsupported`; the hub
   asks it again every 5 minutes.
@@ -304,7 +308,10 @@ new request; asking again renews it. The value then arrives in the model and the
   `{actor}` that actor, a `?` output too -- or a board's built-in `sys/` resource. Anything else is refused with
   `not an output of this cell's package or a board's sys/`. A board running the Wi-Fi extender also has
   `sys/ext/router-rssi` (its signal to the router, dBm; not published while it is not associated), `sys/ext/clients`
-  (stations on its hotspot) and `sys/ext/reconnects` (since boot); other boards have none of them.
+  (stations on its hotspot) and `sys/ext/reconnects` (since boot); other boards have none of them. A board whose pocket
+  page is up (M13.1) has `sys/pocket/phones` (stations on its access point now), `sys/pocket/pages` (pages served since
+  boot) and `sys/pocket/refused` (requests refused since boot), all U32 counts with a 30 s staleness bound; a board
+  whose page is idle has none, and the access point's name is never published.
 - **How much:** at most 32 paths per program and 64 in all (`hub.interest` in the model says how many are asked for and
   by how many programs). Each costs one READ per pull while asked for, so ask only for what is on the screen.
 - **Who:** a look right is enough; it reads, it changes nothing in the cell. Like every POST it needs

@@ -701,6 +701,10 @@ class Model:
                 evs, nxt = tm.events(self.hub, n, since)
                 if nxt <= since:  # the log is behind where we were: it rebooted, and the epoch did not say so
                     evs, nxt = tm.events(self.hub, n, 0)
+                try:
+                    auth = tm.auth(self.hub, n)
+                except (BridgeError, tm.TelemetryError):
+                    auth = None  # firmware before 2026-10-19 does not know the section, or no answer: not reported
             except (BridgeError, tm.TelemetryError) as exc:
                 self.telemetry_counts["failures"] += 1
                 with self.lock:
@@ -717,7 +721,7 @@ class Model:
             self.telemetry_counts["events"] += len(evs)
             if self.telemetry_log is not None:
                 rec = {"rec": "tel", "host_ts": time.time(), "node": n, "epoch": h.boot_epoch, "up_s": h.uptime_s,
-                       "flags": h.flag_names(), "int_free": h.int_free, "int_min": h.int_min,
+                       "flags": h.flag_names(), "int_free": h.int_free, "int_min": h.int_min, "auth": auth,
                        "links": [{"peer": k.node, "state": k.state_name, "rx_lost": k.rx_lost, "rx_bcast": k.rx_bcast,
                                   "rx_frames": k.rx_frames, "tx_cb_ok": k.tx_cb_ok, "tx_cb_fail": k.tx_cb_fail,
                                   "rtt_p50_ms": k.rtt_p50_ms, "rtt_p99_ms": k.rtt_p99_ms,
@@ -730,7 +734,7 @@ class Model:
                     continue
                 b["tel_failures"] = 0
                 b["tel_unsupported"] = False
-                b["tel"] = {"health": h, "links": ls, "actors": acts, "events_next": nxt, "at": _hub_ms()}
+                b["tel"] = {"health": h, "links": ls, "actors": acts, "events_next": nxt, "at": _hub_ms(), "auth": auth}
                 if reset is not None:
                     if old_epoch is not None and h.boot_epoch != old_epoch:  # it restarted while the hub watched
                         self._event_locked("board_restarted", n, {"reason": reset, "epoch": h.boot_epoch})
@@ -914,7 +918,8 @@ class Model:
                 "link_stack_free": h.link_stack_free,
                 "actors": [{"key": f"{a.key:08x}", "running_here": bool(a.flags & 1), "owner": f"{a.owner:04x}",
                             "assigned": f"{a.assigned:04x}", "activations": a.activations, "fenced": a.fenced,
-                            "released": a.released} for a in tel["actors"]]}
+                            "released": a.released} for a in tel["actors"]],
+                "auth": tel.get("auth")}
             radio = [k.rssi for k in tel["links"] if k.rssi and not (k.flags & 1)]
             out["rssi"] = max(radio) if radio else None
         return out

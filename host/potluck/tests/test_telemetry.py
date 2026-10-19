@@ -20,7 +20,20 @@ HEALTH_GOLDEN = ("01016081100e0000580100000114640073ec02000000000000000000000000
 LINKS_GOLDEN = "01020063020001687302d3020264003c01e8030000de0300000a000000d007000007000000280000003300a000ffff"
 
 
+AUTH_GOLDEN = ("01050063010000000200000003000000040000000500000006000000070000000800000009000000"
+               "0a0000000b0000000c000000")  # tests/test_telemetry.cpp: 1..12 in order
+
+
 class Sections(unittest.TestCase):
+    def test_auth(self) -> None:
+        a = tm.parse_auth(bytes.fromhex(AUTH_GOLDEN))
+        self.assertEqual(list(a.values()), list(range(1, 13)))
+        self.assertEqual((a["verified"], a["stale_epoch"], a["bad_tag"], a["group_refusals"]), (1, 5, 7, 12))
+        with self.assertRaises(tm.TelemetryError):
+            tm.parse_auth(bytes.fromhex(AUTH_GOLDEN)[:-1])
+        with self.assertRaises(tm.TelemetryError):  # firmware before it: section 0, "could not be reached"
+            tm.parse_auth(bytes.fromhex("01006300"))
+
     def test_health(self) -> None:
         h = tm.parse_health(bytes.fromhex(HEALTH_GOLDEN))
         self.assertEqual((h.node, h.uptime_s, h.boot_epoch, h.channel), (0x8160, 3600, 344, 1))

@@ -57,6 +57,24 @@ TEST(sysres, an_extenders_figures_are_its_own_read_only_and_spelled_as_the_host_
     }
 }
 
+TEST(sysres, a_pocket_pages_figures_are_its_own_read_only_counts_spelled_as_the_host_spells_them) {
+    // host/potluck/tests/test_sys_paths.py expects exactly these strings.
+    CHECK_EQ(pocket_resource_hash(0x1a2b, PocketResource::Phones), path_hash("potluck://lab/node-1a2b/sys/pocket/phones"));
+    CHECK_EQ(pocket_resource_hash(0x1a2b, PocketResource::Pages), path_hash("potluck://lab/node-1a2b/sys/pocket/pages"));
+    CHECK_EQ(pocket_resource_hash(0x1a2b, PocketResource::Refused),
+             path_hash("potluck://lab/node-1a2b/sys/pocket/refused"));
+    Namespace ns;
+    CHECK_EQ(declare_pocket_resources(ns, 0x0101), static_cast<size_t>(kPocketResourceCount));
+    for (uint8_t i = 0; i < kPocketResourceCount; ++i) {
+        const NsDecl d = pocket_resource_decl(0x0101, static_cast<PocketResource>(i));
+        CHECK(std::strstr(pocket_resource_suffix(static_cast<PocketResource>(i)), "?") == nullptr);
+        CHECK_EQ(static_cast<int>(d.access), static_cast<int>(Access::Read));
+        CHECK_EQ(static_cast<int>(d.type), static_cast<int>(ValueType::U32));
+        CHECK_EQ(static_cast<int>(d.unit), static_cast<int>(Unit::Count));
+        CHECK_EQ(d.staleness_bound_ms, 30000u);
+    }
+}
+
 TEST(sysres, they_declare_cleanly_and_leave_room_for_the_application) {
     Namespace ns;
     CHECK_EQ(declare_sys_resources(ns, 0x0101), static_cast<size_t>(kSysResourceCount));

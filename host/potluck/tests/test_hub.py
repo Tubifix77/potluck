@@ -311,10 +311,13 @@ class Telemetry(HubFixture):
         self.model.telemetry_log = io.StringIO()
         with mock.patch.object(self.model, "board_ids", return_value=[0x1001]), \
                 mock.patch.object(tm, "health", return_value=h), mock.patch.object(tm, "links", return_value=links), \
-                mock.patch.object(tm, "actors", return_value=[]), mock.patch.object(tm, "events", return_value=([], 1)):
+                mock.patch.object(tm, "actors", return_value=[]), mock.patch.object(tm, "events", return_value=([], 1)), \
+                mock.patch.object(tm, "auth", return_value={"verified": 3, "stale_epoch": 1}):
             self.model.pull_telemetry()
         rec = json.loads(self.model.telemetry_log.getvalue())
         self.assertEqual((rec["rec"], rec["node"], rec["epoch"]), ("tel", 0x1001, 344))
+        self.assertEqual(rec["auth"], {"verified": 3, "stale_epoch": 1})  # 2026-10-19: why a board is kept out
+        self.assertEqual(self.model.snapshot()["boards"][0]["telemetry"]["auth"], {"verified": 3, "stale_epoch": 1})
         self.assertEqual(rec["links"][0], {"peer": 0x7368, "state": "alive", "rx_lost": 7, "rx_bcast": 40,
                                            "rx_frames": 2000, "tx_cb_ok": 990, "tx_cb_fail": 10,
                                            "rtt_p50_ms": 5.1, "rtt_p99_ms": 16.0, "rtt_timeouts": 0xFFFF})
@@ -333,7 +336,7 @@ class Telemetry(HubFixture):
         new = tm.EventTel(seq=2, at_ms=3_599_000, kind=tm.EVENT_KINDS.index("peer_dead"), node=0x7368, a=0, b=0)
         with mock.patch.object(self.model, "board_ids", return_value=[0x1001]), \
                 mock.patch.object(tm, "health", return_value=h), mock.patch.object(tm, "links", return_value=links), \
-                mock.patch.object(tm, "actors", return_value=[]), \
+                mock.patch.object(tm, "actors", return_value=[]), mock.patch.object(tm, "auth", return_value=None), \
                 mock.patch.object(tm, "events", side_effect=[([old], 2), ([new], 3)]):
             self.model.pull_telemetry()  # the hub's first look: what the board kept happened before it watched
             first = [e for e in self.model.events if e["kind"] == "board_peer_dead"]
