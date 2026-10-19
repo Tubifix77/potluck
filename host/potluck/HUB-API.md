@@ -434,7 +434,8 @@ The owner's actions on boards plugged into the PC, served **only on 127.0.0.1** 
 like every POST there, only with `X-Potluck-Request` and a `Host` of 127.0.0.1, localhost or ::1. The page is
 `setup.html` ("Add boards" on the dashboard). Board actions are jobs: a POST answers `202 {"ok": true, "job": <id>}`
 and `GET /api/setup/jobs/<id>` follows it -- `{"id", "kind", "port", "state": "running" | "done" | "failed", "pct",
-"result", "error", "lines"}`; one job at a time per port (else 409). `GET /api/setup/jobs` lists them.
+"result", "error", "lines"}` (`pct` 0-100: a flash counts bytes; an apply moves by its steps -- the firmware
+build, each board of a rollout, the package, each board verified); one job at a time per port (else 409). `GET /api/setup/jobs` lists them.
 
 | call | what |
 |---|---|

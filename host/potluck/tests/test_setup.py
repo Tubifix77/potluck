@@ -389,6 +389,53 @@ class ApplyJob(unittest.TestCase):
         self.assertIn("REFUSED", str(self.run_fake("REFUSED, nothing changed: no port", 2)[1]))
         self.assertIn("exited with 3", str(self.run_fake("crash", 3)[1]))
 
+    def test_the_bar_moves_with_apply_s_own_lines(self):
+        """2026-10-19, the owner through the Desk: an Apply's progress was "0 % and then done"."""
+        def bar(lines):
+            p, seen = st.ApplyProgress(), []
+            for ln in lines:
+                n = p.feed(ln)
+                if n is not None:
+                    seen.append(n)
+            return seen
+        # A package change only, as the owner's Apply from the Desk: no firmware sent.
+        pkg_only = bar(["[    0.4 s] package: 'home', 12 actor(s) (3 portable), image 9000 B, for 3 board(s)",
+                        "[    6.3 s] firmware: the release image this package carries (639e1f6-910870) -- nothing to build",
+                        "[    7.0 s] inventory: 0x6300 ...", "[    7.1 s] plan: firmware unchanged on every board",
+                        "[    7.2 s] lease: the cell's deploy lease is ours", "[    7.3 s] firmware: every board already runs x",
+                        "[    7.5 s] package: signed at counter 97, kept as k", "[    9.0 s] package: counter 97 committed on 0x6300",
+                        "[   13.0 s] verify: 0x6300 confirmed package 97: a", "[   17.0 s] verify: 0x7368 confirmed package 97: b",
+                        "[   21.0 s] verify: 0x8160 confirmed package 97: c", "[   21.5 s] verify: sys/uptime = 5"])
+        self.assertEqual(pkg_only, [3, 30, 32, 35, 40, 60, 73, 86, 99])
+        # A firmware rollout to three boards moves by board.
+        rollout = bar(["package: 'home', 1 actor(s), for 3 board(s)", "firmware: building 1-2 (2 app component dir(s))",
+                       "firmware: built in 300 s", "firmware: 1-2 to 0x7368, 0x8160, 0x6300 at counter 64",
+                       "firmware: 0x7368 confirmed 1-2 in 110 s", "firmware: 0x8160 confirmed 1-2 in 100 s",
+                       "firmware: 0x6300 confirmed 1-2 in 120 s", "package: signed at counter 9, kept as k",
+                       "package: counter 9 committed on 0x6300", "verify: 0x6300 confirmed package 9: a"])
+        self.assertEqual(rollout, [3, 5, 30, 40, 53, 66, 80, 82, 87, 91])
+        self.assertTrue(all(a < b for a, b in zip(rollout, rollout[1:])))
+
+    def test_the_job_gets_the_progress_and_the_lines(self):
+        jobs = st.Jobs()
+        script = ("print(\"[ 0.1 s] package: 'h', 1 actor(s), for 1 board(s)\"); "
+                  "print('[ 0.2 s] package: counter 3 committed on 0x6300'); "
+                  "import time; time.sleep(0.5); print('VERIFIED: x')")
+        seen = []
+        def fn(pct):
+            def spy(x):
+                seen.append(x)
+                pct(x)
+            return st.run_apply("x.json", spy, cmd=[sys.executable, "-c", script])
+        jid = jobs.start("apply", "cell", fn)
+        for _ in range(100):
+            if jobs.get(jid)["state"] != "running":
+                break
+            time.sleep(0.05)
+        self.assertEqual([x for x in seen if isinstance(x, int)], [3, 60])
+        self.assertEqual(jobs.get(jid)["state"], "done")
+        self.assertIn("VERIFIED: x", jobs.get(jid)["lines"])
+
 
 if __name__ == "__main__":
     unittest.main()

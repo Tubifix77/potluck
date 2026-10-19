@@ -551,9 +551,64 @@ def _write_cluster(p: Path, doc: dict) -> None:
         raise SetupError(f"the cluster file would not load ({exc}); left as it was") from None
 
 
+class ApplyProgress:
+    """A percentage from apply's own lines, for a job's bar (2026-10-19: the Desk showed "0 % and then done"). Bands:
+    building the firmware 5-30, the plan to 35, a rollout 40-80 by boards confirmed, then the package and each board's
+    verify up to 99 -- or, with no firmware to send, the package from 40 and the verify from 60. Never goes back."""
+
+    _STAMP = re.compile(r"^\[\s*[\d.]+ s\]\s*")
+    _BOARDS = re.compile(r"for (\d+) board\(s\)")
+
+    def __init__(self) -> None:
+        self.pct = 0
+        self.boards = 0
+        self.fw_n = 0
+        self.fw_done = 0
+        self.verify_lo = 0
+        self.verified = 0
+
+    def feed(self, line: str) -> int | None:
+        """The new percentage if `line` moves the bar, else None."""
+        s = self._STAMP.sub("", line)
+        new = self.pct
+        m = self._BOARDS.search(s)
+        if s.startswith("package: ") and m and self.boards == 0:
+            self.boards = int(m.group(1))
+            new = 3
+        elif s.startswith("firmware: building"):
+            new = 5
+        elif s.startswith(("firmware: built", "firmware: reusing", "firmware: the release image")):
+            new = 30
+        elif s.startswith("inventory: "):
+            new = 32
+        elif s.startswith(("plan: ", "lease: ")):
+            new = 35
+        elif s.startswith("firmware: ") and " at counter " in s:
+            self.fw_n = max(1, s.count("0x"))
+            new = 40
+        elif s.startswith("firmware: 0x"):
+            self.fw_done += 1
+            new = 40 + 40 * min(self.fw_done, max(1, self.fw_n)) // max(1, self.fw_n)
+        elif s.startswith("package: signed"):
+            new = 82 if self.fw_n else 40
+        elif s.startswith("package: counter "):
+            self.verify_lo = 87 if self.fw_n else 60
+            new = self.verify_lo
+        elif s.startswith("verify: 0x"):
+            self.verified += 1
+            lo = self.verify_lo or self.pct
+            new = lo + (99 - lo) * min(self.verified, max(1, self.boards)) // max(1, self.boards)
+        new = min(new, 99)
+        if new > self.pct:
+            self.pct = new
+            return new
+        return None
+
+
 def run_apply(cluster: str | Path, on_line: Callable[[str], None], cmd: list[str] | None = None,
               passphrase: str | None = None) -> dict:
-    """`potluck apply <cluster>` as a child process (it runs beside the hub, through it); its lines go to `on_line`.
+    """`potluck apply <cluster>` as a child process (it runs beside the hub, through it); its lines go to `on_line`,
+    and so does its progress as a number (ApplyProgress) when `on_line` is a job's callback.
     Done when it says VERIFIED, failed on NOT VERIFIED, REFUSED or a non-zero exit. A sealed cell's passphrase goes
     to the child on its stdin, never in its arguments or environment. `cmd`: for the tests."""
     import subprocess
@@ -561,6 +616,7 @@ def run_apply(cluster: str | Path, on_line: Callable[[str], None], cmd: list[str
     cmd = cmd or base + [str(cluster)] + \
         (["--passphrase-stdin"] if passphrase is not None else [])
     verdict = None
+    progress = ApplyProgress()
     with subprocess.Popen(cmd, cwd=str(Path(__file__).resolve().parent.parent), stdout=subprocess.PIPE,
                           stdin=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                           errors="replace") as proc:
@@ -572,6 +628,9 @@ def run_apply(cluster: str | Path, on_line: Callable[[str], None], cmd: list[str
         for line in proc.stdout:  # type: ignore[union-attr]
             line = line.rstrip()
             on_line(line)
+            p = progress.feed(line)
+            if p is not None:
+                on_line(p)  # type: ignore[arg-type]  -- a job's callback takes a number as progress
             if line.startswith(("VERIFIED", "NOT VERIFIED", "REFUSED")):
                 verdict = line
         code = proc.wait()
