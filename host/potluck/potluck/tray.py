@@ -153,7 +153,12 @@ def start_hub() -> subprocess.Popen | None:
     out = open(logs / "hub.log", "ab")
     cwd = str(cluster.parent) if cluster else str(potluck_dir())
     extra = tray_config().get("hub_args") if cluster else None  # a hub with no cell serves the wizard only
-    return subprocess.Popen(hub_command(cluster, extra if isinstance(extra, list) else None), stdout=out,
+    cmd = hub_command(cluster, extra if isinstance(extra, list) else None)
+    # Each start dated: the hub's own lines carry none, so a crash before its first line could not be placed in time
+    # (found 2026-10-19 by the Desk: eleven tracebacks in hub.log, none with a time).
+    out.write(f"===== {time.strftime('%Y-%m-%d %H:%M:%S')} the tray starts the hub: {' '.join(cmd)}\n".encode())
+    out.flush()
+    return subprocess.Popen(cmd, stdout=out,
                             stderr=subprocess.STDOUT, cwd=cwd,
                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 

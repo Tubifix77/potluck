@@ -589,6 +589,15 @@ class Model:
             t0 = time.monotonic()
             try:
                 r = self.hub.read(path, timeout=1.5)
+                if r.quality == Quality.STALE:
+                    # Another board's value comes from the cabled board's copy, which a read refreshes: its age is the
+                    # hub's own pass over the cell. With 42 resources at ~100 ms a read that pass is 4-5 s, at a 5 s
+                    # bound (found 2026-10-19, after the store's app added three: the earlier alarm's outputs flipped
+                    # STALE and its app "not working"). A second read now answers from the refreshed copy -- measured
+                    # 5220 -> 1326 ms and 2162 -> 226 ms -- and is what is kept: a reading, not a guess.
+                    self.rtts.append(time.monotonic() - t0)
+                    t0 = time.monotonic()
+                    r = self.hub.read(path, timeout=1.5)
             except BridgeError:
                 self.errors.append(time.monotonic())
                 continue

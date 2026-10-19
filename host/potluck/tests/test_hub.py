@@ -466,6 +466,27 @@ class Settled(unittest.TestCase):
         self.assertEqual(me.resources["q"]["settled"], "STALE")
 
 
+class StaleReadsTwice(unittest.TestCase):
+    def test_a_stale_read_is_read_again_and_the_fresh_one_kept(self):
+        """2026-10-19: another board's value comes from the cabled board's copy, which a read refreshes; with 42
+        resources the hub's pass outlasted a 5 s bound. The second read answers from the refreshed copy."""
+        from types import SimpleNamespace as NS
+        from potluck.value import Quality, Reading
+        answers = {"stale": [Reading(quality=int(Quality.STALE), age_ms=5220), Reading(quality=int(Quality.GOOD), age_ms=1326)],
+                   "good": [Reading(quality=int(Quality.GOOD), age_ms=300)]}
+        asked = []
+
+        def read(path, timeout):
+            asked.append(path)
+            return answers[path].pop(0)
+        hub = NS(record=None, _quiet_until=0.0, peer_node_id=0, stats=NS(rx_frames=0, tx_frames=0), read=read)
+        model = hb.Model(hub, telemetry_period_ms=0)
+        model.resource_paths = lambda: ["stale", "good"]
+        model.pull()
+        self.assertEqual(asked, ["stale", "stale", "good"])  # only the STALE one twice
+        self.assertEqual((model.resources["stale"]["quality"], model.resources["stale"]["reading"].age_ms), ("GOOD", 1326))
+
+
 class Panels(unittest.TestCase):
     """M20's app panels: one per room for a per_room module, only for exposed resources, and a reading that is not
     GOOD is neither on nor off."""
