@@ -155,6 +155,13 @@ Check too that your broker accepts the boards' connections: the login in step 6,
 
 ## B. The hub and the Potluck integration
 
+**With Potluck's packaged Windows install, steps 1 and 2 are one request** on the PC (2026-10-20): `POST
+http://127.0.0.1:8470/api/setup/listen {"on": true}` (header `X-Potluck-Request: 1`; `"address"` names the PC's
+address, else the hub finds it) makes the certificate -- or keeps the one there when it already names the address, so
+Home Assistant's pairing and a phone's trust hold -- puts `--listen` into the tray's `tray.json`, and has the tray start
+the hub again with it within about half a minute. `{"on": false}` takes the hub off the house network again. The
+Potluck Desk's Home Assistant window does this for you. By hand, as before:
+
 1. **Make the hub a certificate**, once. The hub serves Home Assistant and phones over HTTPS with a certificate of its
    own. Find the PC's address with `ipconfig` (the IPv4 address on your house network), then in **Git Bash**, in
    `host/potluck/`, with your address in place of `192.168.1.20`:

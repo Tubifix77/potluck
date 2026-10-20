@@ -101,6 +101,57 @@ class KeptSessions(unittest.TestCase):
             self.assertIsNone(s.get(token))
 
 
+class ListenRestart(unittest.TestCase):
+    """2026-10-20: POST /api/setup/listen on a hub the tray runs -- the hub writes its new settings and stops cleanly
+    (its lease released, its state file gone), so the tray's HubKeeper starts it again with them."""
+
+    def test_the_hub_stops_cleanly_after_its_settings_change(self) -> None:
+        import socket
+        import urllib.request
+        with tempfile.TemporaryDirectory() as tmp:
+            cell = Path(tmp) / "home.json"
+            cell.write_text(json.dumps({"schema": "potluck-cluster/1", "system": "home", "firmware": None,
+                                        "boards": [{"node": "6300", "label": "A"}]}), encoding="utf-8")
+            (Path(tmp) / "potluck").mkdir()
+            (Path(tmp) / "potluck" / "tray.json").write_text(json.dumps({"cluster": str(cell)}), encoding="utf-8")
+            link = socket.socket()  # a silent stand-in for the cable
+            link.bind(("127.0.0.1", 0))
+            link.listen(1)
+            api, relay = free_port(), free_port()
+            env = {**os.environ, "LOCALAPPDATA": tmp, "POTLUCK_HUB_NO_ANNOUNCE": "1",
+                   "POTLUCK_HUB_USERS": str(Path(tmp) / "users.json"),
+                   "PYTHONPATH": os.path.join(os.path.dirname(__file__), "..")}
+            proc = subprocess.Popen([sys.executable, "-m", "potluck.hub", "--cluster", str(cell), "--tcp",
+                                     f"127.0.0.1:{link.getsockname()[1]}", "--api", f"127.0.0.1:{api}",
+                                     "--relay", f"127.0.0.1:{relay}"],
+                                    env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            try:
+                for _ in range(80):
+                    if proc.poll() is not None:
+                        self.fail("the hub exited: " + proc.stdout.read().decode(errors="replace")[-800:])
+                    try:
+                        urllib.request.urlopen(f"http://127.0.0.1:{api}/api/hello", timeout=1).close()
+                        break
+                    except OSError:
+                        time.sleep(0.25)
+                req = urllib.request.Request(f"http://127.0.0.1:{api}/api/setup/listen", method="POST",
+                                             data=json.dumps({"on": True, "address": "192.168.0.7"}).encode(),
+                                             headers={"X-Potluck-Request": "1", "Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    got = json.loads(r.read())
+                self.assertEqual((got["certificate"], got["listen"]), ("made", "0.0.0.0:8443"))
+                self.assertEqual(proc.wait(timeout=30), 0)  # stopped by itself, cleanly
+                self.assertFalse((Path(tmp) / "potluck" / "hub.json").exists())  # its state file removed
+                args = json.loads((Path(tmp) / "potluck" / "tray.json").read_text(encoding="utf-8"))["hub_args"]
+                self.assertEqual(args[:2], ["--listen", "0.0.0.0:8443"])
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                proc.wait(timeout=10)
+                proc.stdout.close()
+                link.close()
+
+
 class StartsLikeTheTray(unittest.TestCase):
     """The hub as the owner's tray starts it -- potluck.hub with --listen and a certificate. 2026-10-19: 234c1bf's kept
     sessions called hubauth.sessions_file() in main(), where hubauth was not imported, and every such hub died at start;

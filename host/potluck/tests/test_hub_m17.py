@@ -224,6 +224,35 @@ class Setup(Pair):
         code, r = self.req(self.local_addr, "POST", "/api/setup/flash", {"port": "COM98", "build": self.tmp.name})
         self.assertEqual(code, 403)
 
+    def test_the_hub_goes_on_the_house_network_from_the_pc_and_the_tray_restarts_it(self) -> None:
+        """2026-10-20, the Potluck Desk (HOME-ASSISTANT.md part B steps 1-2): no openssl, no Task Manager."""
+        from unittest import mock
+        from potluck.apply import load_cluster
+        p = Path(self.tmp.name) / "home.json"
+        p.write_text(json.dumps({"schema": "potluck-cluster/1", "system": "home", "firmware": None,
+                                 "boards": [{"node": "6300", "label": "A"}]}), encoding="utf-8")
+        saved = self.model.cluster
+        self.model.cluster = load_cluster(str(p))
+        lad = Path(self.tmp.name) / "lad"
+        (lad / "potluck").mkdir(parents=True)
+        (lad / "potluck" / "tray.json").write_text(json.dumps({"cluster": str(p)}), encoding="utf-8")
+        try:
+            with mock.patch.dict(os.environ, {"LOCALAPPDATA": str(lad)}):
+                self.assertIn(self.req(self.lan_addr, "POST", "/api/setup/listen", {"on": True})[0], (401, 404))
+                self.assertEqual(self.req(self.local_addr, "POST", "/api/setup/listen", {"on": "yes"})[0], 400)
+                code, r = self.req(self.local_addr, "POST", "/api/setup/listen", {"on": True, "address": "127.0.0.1"})
+                self.assertEqual(code, 409)
+                self.assertFalse(self.model.restart_requested)  # nothing written, nothing restarted
+                code, r = self.req(self.local_addr, "POST", "/api/setup/listen", {"on": True, "address": "192.168.0.7"})
+                self.assertEqual((code, r["certificate"], r["listen"]), (200, "made", "0.0.0.0:8443"))
+                self.assertIn("tray starts it again", r["restart"])
+                self.assertTrue(self.model.restart_requested)  # the main loop stops cleanly; the tray starts a new hub
+                args = json.loads((lad / "potluck" / "tray.json").read_text(encoding="utf-8"))["hub_args"]
+                self.assertIn("--listen", args)
+        finally:
+            self.model.cluster = saved
+            self.model.restart_requested = False
+
     def test_a_new_board_and_its_room_go_into_the_cluster_file_and_show_at_once(self) -> None:
         from potluck.apply import load_cluster
         p = Path(self.tmp.name) / "home.json"

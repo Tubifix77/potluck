@@ -400,6 +400,7 @@ class Model:
         self._pkg_seen: int | None = None  # the cell's package counter the hub's package was planned for
         self._replanning = False
         self._pins_for: tuple[str | None, dict | None] = (None, None)  # (firmware version, its pin map)
+        self.restart_requested = False  # POST /api/setup/listen: the main loop stops cleanly, the tray starts a new hub
         self.pull_period_ms = pull_period_ms
         # M15: how often each board's telemetry is pulled over the radio (0: never). Its own rate, longer than the
         # inventory's: it is the larger load, and M15's [MEASURE] is the rate that leaves M0's figures intact.
@@ -1286,6 +1287,28 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             except ValueError:
                 self._json(400, {"ok": False, "result": "expected a JSON object"})
                 return
+            if path == "/api/setup/listen":
+                # 2026-10-20 (the Potluck Desk, HOME-ASSISTANT.md part B steps 1-2): the hub on the house network, or
+                # back to the PC only -- its certificate made or kept, the tray's hub_args, then a restart by the tray.
+                from . import hubtls
+                on, address = req.get("on"), req.get("address")
+                if not isinstance(on, bool) or not (address is None or isinstance(address, str)):
+                    self._json(400, {"ok": False, "result": "expected {\"on\": true|false, \"address\"?: \"<IPv4>\"}"})
+                    return
+                try:
+                    res = hubtls.set_listen(on, address)
+                except ValueError as exc:
+                    self._json(409, {"ok": False, "result": str(exc)})
+                    return
+                restart = hubtls.runs_under_tray(cl.path)
+                res["restart"] = ("the hub stops now and the tray starts it again with these settings, within about "
+                                  "half a minute" if restart else
+                                  "the tray does not run this hub: start it again yourself for the change to apply")
+                model.record("hub_listen", None, {"on": on, "address": res["address"], "certificate": res["certificate"]})
+                self._json(200, {"ok": True, **res})
+                if restart:
+                    model.restart_requested = True
+                return
             if path == "/api/setup/tree":
                 # M19/M20's large setup: the cells proposed from what the boards measure (potluck.survey); with
                 # "write": true, put into the cluster file -- every screen writes the cluster file, every step is apply.
@@ -1471,7 +1494,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
         def _setup_post(self, path: str) -> None:
             """M20's setup wizard: probe, flash, enrol, Wi-Fi, identify -- each a job the dashboard follows."""
             from . import setup as st
-            if path in ("/api/setup/board", "/api/setup/apply", "/api/setup/tree"):
+            if path in ("/api/setup/board", "/api/setup/apply", "/api/setup/tree", "/api/setup/listen"):
                 self._setup_cell(path)
                 return
             if path in ("/api/setup/library", "/api/setup/broker"):
@@ -2132,6 +2155,9 @@ def main(argv: list[str] | None = None) -> int:
             t0 = time.monotonic()
             if hub.peer_node_id is None:
                 hub.hello(timeout=2.0)
+            if model.restart_requested:  # POST /api/setup/listen: a clean stop (the lease released), the tray restarts it
+                print("[hub] stopping for a restart with new settings (POST /api/setup/listen)", flush=True)
+                break
             if lease is not None and lease.lost is not None:
                 # The arbiter changed and another PC's hub took the lease there first: this one stands down.
                 model.record("hub_lease_lost", None, {"holder": lease.lost.name, "arbiter": lease.lost.arbiter})

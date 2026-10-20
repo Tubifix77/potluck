@@ -5,6 +5,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **The hub goes on the house network with one request**: `POST /api/setup/listen {"on": true}` on the PC makes the
+  hub's certificate (its own CA, naming the PC's address; one that already names it is kept, so Home Assistant's pairing
+  holds), writes `--listen` into the tray's `tray.json` and has the tray restart the hub -- no openssl, no Task Manager.
+  HOME-ASSISTANT.md part B. Asked for by the Potluck Desk.
 - **A program can publish values of its own: `builtin:inbox`.** Pinned to one board, it declares `act/<actor>/<name>`
   as writable values (1-12, scalar types, a unit, a staleness bound); a program on the hub's API writes them with
   `POST /api/write` where the cluster file's `outside` allows, and every board reads them like any actor's output.
