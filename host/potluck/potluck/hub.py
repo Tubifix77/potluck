@@ -1200,17 +1200,23 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
         snap = model.snapshot()
         m = getattr(getattr(model, "package", None), "manifest", None)
         prefix = f"potluck://{cl.system}/"
+        from .manifest import inbox_paths
+        inboxes = inbox_paths(m) if m is not None else set()  # writable by the inbox's own declaration
+        writers = getattr(cl, "writers", {}) or {}  # 2026-10-20: which programs may write it (null: any paired writer)
         res = []
         for r in snap["resources"]:
             decl = m.resource(r["path"]) if m is not None else None
             mode = cl.outside.get(r["path"], "off")
+            w = writers.get(r["path"])
             res.append({"path": r["path"], "name": r["name"], "mode": mode if isinstance(mode, str) else "read_write",
-                        "controllable": bool(decl is not None and decl.access in ("write", "read_write") and
-                                             not decl.safety_relevant)})
+                        "controllable": bool(r["path"] in inboxes or (decl is not None and
+                                             decl.access in ("write", "read_write") and not decl.safety_relevant)),
+                        "writers": list(w) if w else None})
         for path, mode in cl.outside.items():  # a rule for a resource the package no longer names (an app off)
             if not any(x["path"] == path for x in res):
+                w = writers.get(path)
                 res.append({"path": path, "name": path[len(prefix):] if path.startswith(prefix) else path,
-                            "mode": mode, "controllable": False, "missing": True})
+                            "mode": mode, "controllable": False, "missing": True, "writers": list(w) if w else None})
         pr = cl.present
         return {"apps": [{"name": a.name, "enabled": a.enabled, "built_in": bool(a.components)} for a in cl.apps],
                 "home_assistant": {"on": pr is not None, "broker": (pr or {}).get("broker"),

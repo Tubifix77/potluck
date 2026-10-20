@@ -359,7 +359,26 @@ class LibraryRoutes(Pair):
                                  {"outside": {"potluck://home/act/rf_fusion/out": "read"}})
             self.assertEqual(code, 200)
             self.assertIn({"path": "potluck://home/act/rf_fusion/out", "name": "act/rf_fusion/out", "mode": "read",
-                           "controllable": False, "missing": True}, lib["resources"])
+                           "controllable": False, "missing": True, "writers": None}, lib["resources"])
+            # 2026-10-20, the Potluck Desk: which programs may write it, so a re-paired "<name> 2" can be spotted
+            doc = json.loads(p.read_text(encoding="utf-8"))
+            doc["outside"] = {"act/phone/x": {"mode": "read_write", "writers": ["Synth"]}}
+            p.write_text(json.dumps(doc), encoding="utf-8")
+            self.model.cluster = load_cluster(str(p))
+            code, lib = self.req(self.local_addr, "GET", "/api/setup/library")
+            row = next(r for r in lib["resources"] if r["path"] == "potluck://home/act/phone/x")
+            self.assertEqual((row["mode"], row["writers"]), ("read_write", ["Synth"]))
+            # an inbox's output is controllable by the inbox's own declaration, with no `owns` entry
+            from types import SimpleNamespace as NS
+            from unittest import mock
+            import test_inbox as ti
+            from potluck.manifest import parse
+            snap = self.model.snapshot()
+            snap["resources"] = [{"path": "potluck://lab/act/phone/steps", "name": "act/phone/steps"}]
+            with mock.patch.object(self.model, "package", NS(manifest=parse(ti.doc(ti.PHONE)))),                     mock.patch.object(self.model, "snapshot", lambda: snap):
+                code, lib = self.req(self.local_addr, "GET", "/api/setup/library")
+            row = next(r for r in lib["resources"] if r["path"] == "potluck://lab/act/phone/steps")
+            self.assertTrue(row["controllable"])
             self.assertIn(self.req(self.lan_addr, "GET", "/api/setup/library")[0], (401, 404))
             self.assertEqual(self.req(self.local_addr, "POST", "/api/setup/broker", {"broker": "127.0.0.1:1"})[1]["ok"],
                              False)
