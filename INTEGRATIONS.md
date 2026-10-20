@@ -92,7 +92,7 @@ it ages into `STALE` -- that is how the cell knows your program stopped. Values 
 bytes; at most 12 per inbox. Mind step 6: two writes a second in all, so a program with many values writes each less
 often, and sets `stale_ms` to match (three values every 5 s is 0.6 writes a second; `stale_ms` 15000).
 Publish **now, never history**: a value is the current reading and its age, so after a dropped link write only the
-newest value of each and drop the backlog (the Potluck Desk's Synth Senses bridge skips its phone's spool to the newest).
+newest value of each and drop the backlog -- a phone that spooled readings while away flushes them; skip to the newest.
 A program that writes only on change sets `stale_ms` above its longest quiet spell -- its own heartbeat -- or a healthy
 quiet source reads STALE.
 
