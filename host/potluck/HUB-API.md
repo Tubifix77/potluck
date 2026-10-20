@@ -185,6 +185,10 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
 - `panels`: the cards apps ask for in their module descriptors (DEVELOPING-APPS.md, "panel"), one per actor -- per
   room for a per_room module -- and only for exposed resources. `kind`: `room` | `value`; `on`: true, false, or `null`
   while `quality` is not GOOD. Their words are text: show them as text, never as markup.
+- `cell.update` (2026-10-20): `{"boards", "available", "mixed", "pending"}` -- the firmware most boards run, the one
+  the installed Potluck carries (its release; `null` for a hub run from source), whether the boards run more than one
+  version, and whether an update is waiting (`available` differs from `boards`, or `mixed`). An update of the boards is
+  `POST /api/setup/update`; an Apply (`POST /api/setup/apply`) while `pending` updates the firmware too.
 - `cell.pins` (2026-10-20): the GPIOs the boards' firmware build itself drives, from that build's configuration --
   `{"frame_link": {"tx", "rx"} | null, "can": {"tx", "rx"} | null, "status_led": {"gpio", "alt"}, "button"}`
   (`alt`: the other board revision's LED pin); `null` when the hub has neither the release nor the build of the
@@ -462,6 +466,7 @@ build, each board of a rollout, the package, each board verified); one job at a 
 | `POST /api/setup/flash {"port", "build"}` | job: writes that build (only one under the hub's build cache; else 403) |
 | `POST /api/setup/enrol {"port", "passphrase"?, "node_id"?}` | job: a key signed by the cell's CA and a node id from its registry -- the lowest free one, or `node_id` (hex) if given; `result.node` |
 | `POST /api/setup/listen {"on", "address"?}` | the hub on the house network (`true`) or the PC only: its certificate made for the PC's address (`address`, else found), or kept when it already names it; `--listen 0.0.0.0:8443` and the TLS files in `tray.json`'s `hub_args`; `{"ok", "listen", "address", "certificate": "made" \| "kept" \| null, "fp", "tray_json", "restart"}`. When `tray.json` names this hub's cluster file the hub then stops cleanly and the tray starts it again with the new settings (`hub.tls_fp` changes when a certificate was made); otherwise `restart` says to start it yourself. `409` for an address that is not an IPv4 house-network address |
+| `POST /api/setup/update {"passphrase"?}` | the boards brought to the firmware the installed Potluck carries (`cell.update`): the same run as Apply, as a job of its own of kind `update` (`202 {"ok", "job"}`); `200 {"ok", "job": null, "result"}` when nothing is waiting. One job at a time with Apply |
 | `POST /api/setup/broker_login {"user", "password", "ports"?}` | the broker login for a broker that took anyone: the hub's own (`%LOCALAPPDATA%\potluck\hub-broker-login.txt`, `--broker-login` in `tray.json`'s `hub_args`) and each listed board's presenter over its USB console (one job per port, `{"saved": true}`); `{"ok", "jobs": {port: job}, "file", "restart"}`; the tray restarts the hub once the boards' jobs end. `409` before anything is written for a control character, a space in the user name, or either outside 1-64 bytes; never logged. `POST /api/setup/broker`'s test then logs in with it (`with_login: true`) |
 | `POST /api/setup/wifi {"port", "ssid", "password"}` | job: the house Wi-Fi into the board (kept only there; never logged), `{"saved": true}`, used at its next boot; refused with `409` before any job for a control character in either, a name over 32 bytes (UTF-8) or a password outside 8-64 |
 | `POST /api/setup/reset {"port"}` | job: restarts the board (a new id and a saved Wi-Fi take effect then) |

@@ -5,6 +5,9 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **Updating the boards is its own thing**: the hub's model says when the installed Potluck carries newer firmware than
+  the boards run (`cell.update`), and `POST /api/setup/update` brings them to it as an `update` job -- no more
+  pressing the library's Apply with nothing changed. The owner's point, 2026-10-20.
 - **A broker login from the PC**: `POST /api/setup/broker_login` writes the hub's own login and each presenting
   board's (over its USB console), then restarts the hub through the tray; the broker test logs in with it. Asked for
   by the Potluck Desk.

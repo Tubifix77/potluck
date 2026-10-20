@@ -979,13 +979,39 @@ class Model:
         pk = next((b["package"]["counter"] for b in boards if b.get("package")), None)
         fw = next((b["firmware"]["version"] for b in boards if b.get("firmware")), None)
         presenter = next((b["node"] for b in boards if "present" in b.get("actors", [])), None)
+        update = self._update_json(fw)
         if fw != self._pins_for[0]:  # the pins the boards' build uses (potluck.pins), looked up once a version
             from .pins import for_version
             self._pins_for = (fw, for_version(fw))
         return {"system": self.cluster.system if self.cluster is not None else "lab", "cell_id": self.cell_id,
-                "channel": None, "package": pk, "firmware": fw, "pins": self._pins_for[1], "other_cell_frames": None,
+                "channel": None, "package": pk, "firmware": fw, "pins": self._pins_for[1], "update": update,
+                "other_cell_frames": None,
                 "presenter": presenter,
                 "plan": getattr(self.cluster, "plan", None) if self.cluster is not None else None}
+
+    def _update_json(self, boards_fw: str | None) -> dict:
+        """2026-10-20, the owner: an update of the boards as its own thing, not hidden in an Apply. The firmware the
+        boards run (most of them), the one the installed Potluck carries (its release, setup.packaged_firmware), and
+        whether they differ -- or a board runs another version than the rest."""
+        from .setup import packaged_firmware
+        available = None
+        root = packaged_firmware()
+        if root is not None and root.is_dir():
+            found = []
+            for d in root.iterdir():
+                try:
+                    meta = json.loads((d / "release.json").read_text(encoding="utf-8"))
+                    found.append((d.stat().st_mtime, str(meta["version"])))
+                except (OSError, ValueError, KeyError):
+                    continue
+            if found:
+                available = max(found)[1]
+        with self.lock:
+            versions = {b["status"].fw_version for b in self.boards.values()
+                        if b.get("status") is not None and b["state"] == "alive"}
+        mixed = len(versions) > 1
+        return {"boards": boards_fw, "available": available, "mixed": mixed,
+                "pending": available is not None and (mixed or (boards_fw is not None and boards_fw != available))}
 
     def _panels_json(self, resources: list[dict]) -> list[dict]:
         """M20's app panels: what each app's descriptor asks the dashboard to show (modules.PANEL_KINDS), one entry per
@@ -1382,10 +1408,18 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                     return
                 self._json(200, {"ok": True, "board": entry})
                 return
+            if path == "/api/setup/update":
+                # 2026-10-20, the owner: an update of the boards is not an Apply of the library. The same run (apply
+                # brings firmware and package to what the cell's file and this Potluck say), as a job of its own.
+                up = model._update_json(model.snapshot()["cell"]["firmware"])
+                if not up["pending"]:
+                    self._json(200, {"ok": True, "job": None, "result": f"the boards already run {up['boards']}"
+                                     if up["available"] else "this Potluck carries no firmware to update to"})
+                    return
             jobs = setup_jobs()
             try:
                 phrase = req.get("passphrase")
-                jid = jobs.start("apply", "cell", lambda pct: st.run_apply(
+                jid = jobs.start("update" if path == "/api/setup/update" else "apply", "cell", lambda pct: st.run_apply(
                     cl.path, pct, passphrase=str(phrase) if phrase else None))
             except st.SetupError as exc:
                 self._json(409, {"ok": False, "result": str(exc)})
@@ -1540,7 +1574,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             """M20's setup wizard: probe, flash, enrol, Wi-Fi, identify -- each a job the dashboard follows."""
             from . import setup as st
             if path in ("/api/setup/board", "/api/setup/apply", "/api/setup/tree", "/api/setup/listen",
-                        "/api/setup/broker_login"):
+                        "/api/setup/broker_login", "/api/setup/update"):
                 self._setup_cell(path)
                 return
             if path in ("/api/setup/library", "/api/setup/broker"):

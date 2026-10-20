@@ -469,6 +469,33 @@ class Settled(unittest.TestCase):
         self.assertEqual(me.resources["q"]["settled"], "STALE")
 
 
+class UpdateStatus(unittest.TestCase):
+    def test_an_update_is_pending_when_the_boards_run_other_firmware_than_this_potluck_carries(self) -> None:
+        """2026-10-20, the owner: updating the boards should not hide inside the library's Apply."""
+        import tempfile
+        from pathlib import Path
+        from types import SimpleNamespace as NS
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            rel = Path(d) / "ba193e1-c1480d"
+            rel.mkdir()
+            (rel / "release.json").write_text(json.dumps({"version": "ba193e1-c1480d", "elf_sha256": "00" * 32}))
+            model = hb.Model(NS(record=None))
+            with mock.patch.dict(os.environ, {"POTLUCK_FIRMWARE_DIR": d}):
+                def boards(*versions):
+                    model.boards = {i: {"state": "alive", "status": NS(fw_version=v)} for i, v in enumerate(versions)}
+                boards("0c1162c-028577", "0c1162c-028577")
+                self.assertEqual(model._update_json("0c1162c-028577"),
+                                 {"boards": "0c1162c-028577", "available": "ba193e1-c1480d", "mixed": False,
+                                  "pending": True})
+                boards("ba193e1-c1480d", "ba193e1-c1480d")
+                self.assertFalse(model._update_json("ba193e1-c1480d")["pending"])
+                boards("ba193e1-c1480d", "0c1162c-028577")  # one left behind (a rollout stopped half-way)
+                self.assertTrue(model._update_json("ba193e1-c1480d")["pending"])
+            with mock.patch.dict(os.environ, {"POTLUCK_FIRMWARE_DIR": str(Path(d) / "none")}):
+                self.assertEqual(model._update_json("x")["available"], None)  # a hub run from source carries none
+
+
 class AppParts(unittest.TestCase):
     def test_an_app_lists_what_it_needs_wired_with_its_gpios(self) -> None:
         """2026-10-20, the Potluck Desk's Wiring window: apps[].parts from the module's descriptor and the actor's
