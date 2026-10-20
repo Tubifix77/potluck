@@ -61,8 +61,10 @@ def build(out: str | Path, repo: str | Path, rev: str = "HEAD", log=print, clust
         shutil.copy2(f, dest / rel)
         files.append(rel.as_posix())
     shutil.copy2(bdir / "flasher_args.json", dest / "flasher_args.json")
+    from .pins import from_build
     (dest / "release.json").write_text(json.dumps({"version": fw.version, "elf_sha256": fw.elf_sha.hex(),
-                                                   "extra": extra, "apps": apps, "files": files}, indent=2) + "\n",
+                                                   "extra": extra, "apps": apps, "files": files,
+                                                   "pins": from_build(bdir)}, indent=2) + "\n",
                                        encoding="utf-8")
     st.flash_parts(dest)  # every file flasher_args.json names is there
     log(f"release: firmware {fw.version} in {dest}")

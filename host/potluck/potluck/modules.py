@@ -86,6 +86,68 @@ class ModuleSpec:
     #: its words as text only: {"kind": "room", "output": "act/{actor}/out", "label": ..., "on": ..., "off": ...}.
     #: Kept as sorted (key, value) pairs so the spec stays hashable.
     panel: tuple[tuple[str, str], ...] = ()
+    #: 2026-10-20 (the Potluck Desk's Wiring window): "parts" -- what an actor of this module needs wired to its board,
+    #: each {"part", "bus", "pins": {role: <config field>}, "guide"?}. A pin names the module's own config field that
+    #: carries the GPIO, so the wiring guide and the firmware read one number: the actor's config, else the field's
+    #: default. `apply --plan` refuses two parts, or a part and the firmware (potluck.pins), on one GPIO of a board.
+    parts: tuple["Part", ...] = ()
+
+
+@dataclass(frozen=True)
+class Part:
+    part: str                          # what it is, e.g. "SHT41"
+    bus: str                           # PART_BUSES
+    pins: tuple[tuple[str, str], ...]  # (role, config field), e.g. (("scl", "scl_gpio"), ("sda", "sda_gpio"))
+    guide: str = ""                    # how to wire it, as text
+
+
+#: How a part is connected. "gpio" is any single pin (a button, a relay input, a 1-Wire data line).
+PART_BUSES = ("i2c", "spi", "uart", "adc", "onewire", "gpio")
+PART_TEXT_MAX = 40
+PART_GUIDE_MAX = 400
+#: An ESP32-S3's GPIOs are 0..48 (its technical reference); which of them a board leaves free is its datasheet's.
+GPIO_MAX = 48
+
+
+def _text(v: Any, cap: int) -> bool:
+    return isinstance(v, str) and len(v) <= cap and all(" " <= ch <= "~" or ch == "\n" for ch in v)
+
+
+def check_parts(p: Any, fields: list["Field"], where: str) -> tuple[Part, ...]:
+    if not isinstance(p, list):
+        raise ModuleError(f"{where}: 'parts' is a list of {{\"part\", \"bus\", \"pins\", \"guide\"?}}")
+    ints = {f.name for f in fields if f.kind in ("u8", "u16", "i8", "i16", "u32", "i32")}
+    out = []
+    for i, x in enumerate(p):
+        w = f"{where}.parts[{i}]"
+        if not isinstance(x, dict) or not set(x) <= {"part", "bus", "pins", "guide"}:
+            raise ModuleError(f"{w}: is {{\"part\", \"bus\", \"pins\", \"guide\"?}}")
+        if not _text(x.get("part"), PART_TEXT_MAX) or not x["part"].strip():
+            raise ModuleError(f"{w}: 'part' is a name, at most {PART_TEXT_MAX} printable characters")
+        if x.get("bus") not in PART_BUSES:
+            raise ModuleError(f"{w}: 'bus' is one of {list(PART_BUSES)}")
+        pins = x.get("pins")
+        if not isinstance(pins, dict) or not pins:
+            raise ModuleError(f"{w}: 'pins' maps each role to the module's config field that carries its GPIO")
+        for role, field in pins.items():
+            if not _text(role, PART_TEXT_MAX) or field not in ints:
+                raise ModuleError(f"{w}: pin {role!r} must name one of the module's integer config fields "
+                                  f"({sorted(ints) or 'it has none'}), which carries the GPIO")
+        if not _text(x.get("guide", ""), PART_GUIDE_MAX):
+            raise ModuleError(f"{w}: 'guide' is text, at most {PART_GUIDE_MAX} printable characters")
+        out.append(Part(x["part"], x["bus"], tuple(sorted(pins.items())), x.get("guide", "")))
+    return tuple(out)
+
+
+def actor_pins(spec: ModuleSpec, cfg: dict[str, Any]) -> list[tuple[str, str, int | None]]:
+    """(part, role, GPIO) for every pin of an actor's parts: its config, else the field's default; None if neither."""
+    defaults = {f.name: f.default for f in spec.fields}
+    out = []
+    for p in spec.parts:
+        for role, field in p.pins:
+            v = cfg.get(field, defaults.get(field))
+            out.append((p.part, role, v if isinstance(v, int) and not isinstance(v, bool) else None))
+    return out
 
 
 _REGISTRY: dict[str, ModuleSpec] = {}
@@ -192,8 +254,9 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
         if not isinstance(per_room, bool) or (per_room and place != "portable"):
             raise ModuleError(f"{w}: 'per_room' is true or false, and only for a portable module")
         panel = check_panel(m["panel"], outs, per_room, w) if "panel" in m else ()
+        parts = check_parts(m["parts"], fields, w) if "parts" in m else ()
         out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req), "outputs" in m, k,
-                              per_room, panel))
+                              per_room, panel, parts))
     return out
 
 

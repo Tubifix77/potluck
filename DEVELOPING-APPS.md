@@ -283,6 +283,16 @@ text only (the dashboard never runs an app's code or markup):
 `output` is one of the module's own `act/{actor}/` outputs; `label`, `on` and `off` are at most 40 printable characters.
 A card appears only for a resource the cluster file's `outside` makes visible (Library tab: Visible or Controllable).
 
+A module that needs something wired to its board says so in **parts**, and brings its own wiring guide:
+`"parts": [{"part": "SHT41", "bus": "i2c", "pins": {"sda": "sda_gpio", "scl": "scl_gpio"}, "guide": "VCC to 3V3, ..."}]`.
+Each pin names one of the module's own integer `config` fields, the one your actor reads its GPIO from -- so the guide
+and the firmware use the same number: the actor's config in the manifest, else the field's default. `bus` is one of
+`i2c`, `spi`, `uart`, `adc`, `onewire`, `gpio`; `part` and the roles are at most 40 printable characters, `guide` at
+most 400. `potluck apply --plan` refuses a GPIO that two parts claim on one board, one the firmware itself drives (the
+hub's `cell.pins`: the frame link, CAN when built in, the status LED, the button) and one outside the chip's 0..48;
+which pins a board leaves free beyond that (flash, PSRAM, USB) is its datasheet's to say. The hub lists each app's
+parts with their GPIOs (`apps[].parts`), for a wiring view.
+
 An actor that knows where something is declares seven outputs under one prefix, and the dashboard's floor plan
 draws it: `act/<name>/state` (u32: 0 nobody, 1 present but not placed, 2 placed), `x`, `y` (f32, Unit::Metre,
 plan coordinates as above), `a`, `b` (f32, Unit::Metre, the semi-axes of the zone), `theta` (f32, Unit::Radian,
@@ -353,7 +363,9 @@ the smaller figures in brackets.
               "outputs": ["{node}/<app>/<output>"],
               "config": [{"name": "...", "kind": "...", "default": ..., "min": ..., "max": ...}],
               "peers": {"nearest": K}, "per_room": true,
-              "panel": {"kind": "room|value", "output": "act/{actor}/<output>", "label": "...", "on": "...", "off": "..."}}]}
+              "panel": {"kind": "room|value", "output": "act/{actor}/<output>", "label": "...", "on": "...", "off": "..."},
+              "parts": [{"part": "...", "bus": "i2c|spi|uart|adc|onewire|gpio", "pins": {"<role>": "<config field>"},
+                         "guide": "..."}]}]}
 ```
 
 `component`, `types` and a non-empty `modules` are required; in each module, `module` (starting `ext:`), `type`

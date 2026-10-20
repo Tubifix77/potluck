@@ -5,6 +5,11 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **Wiring, for a wiring view**: an app's module descriptor may list the **parts** it needs wired (`"parts"`: part,
+  bus, pins by the config field that carries each GPIO, a guide); `potluck apply --plan` refuses a GPIO used twice on a
+  board or one the firmware drives; the hub's model lists each app's parts with their GPIOs (`apps[].parts`) and the
+  pins the boards' build drives (`cell.pins`, from the build's own configuration; a release carries them in
+  release.json). Asked for by the Potluck Desk. No firmware change.
 - **A board whose pocket page is up publishes its figures**: `node-<id>/sys/pocket/phones` (stations on its access
   point), `sys/pocket/pages` and `sys/pocket/refused` (since boot), until now only on its console. Declared only where
   the page is up, read for the PC through the cabled board like `sys/ext/*`. Asked for by the Potluck Desk. A firmware

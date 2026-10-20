@@ -139,5 +139,69 @@ class Compile(unittest.TestCase):
         self.assertEqual(h, path_hash("potluck://lab/node-7368/rf/link-8160/mean"))
 
 
+
+SENSOR = {"component": "probe", "types": [160, 161], "modules": [
+    {"module": "ext:probe/air", "type": 160, "placement": "pinned", "outputs": ["{node}/air/temp"],
+     "config": [{"name": "sda_gpio", "kind": "u8", "default": 8}, {"name": "scl_gpio", "kind": "u8", "default": 9}],
+     "parts": [{"part": "SHT41", "bus": "i2c", "pins": {"sda": "sda_gpio", "scl": "scl_gpio"},
+                "guide": "VCC to 3V3, GND to G, SDA and SCL to the pins below"}]}]}
+
+
+class Parts(unittest.TestCase):
+    """2026-10-20, for the Potluck Desk's Wiring window: an app says what it needs wired, by the config field that
+    carries each GPIO, and apply --plan refuses a GPIO used twice on a board."""
+
+    def setUp(self) -> None:
+        mods.clear()
+        mods.register(mods.parse_descriptor(SENSOR))
+
+    def tearDown(self) -> None:
+        mods.clear()
+
+    def test_a_part_names_its_pins_by_config_field_and_the_actor_gives_the_gpios(self) -> None:
+        spec = mods.get("ext:probe/air")
+        self.assertEqual(spec.parts[0].part, "SHT41")
+        self.assertEqual(mods.actor_pins(spec, {}), [("SHT41", "scl", 9), ("SHT41", "sda", 8)])  # the defaults
+        self.assertEqual(mods.actor_pins(spec, {"sda_gpio": 1, "scl_gpio": 2}), [("SHT41", "scl", 2), ("SHT41", "sda", 1)])
+
+    def test_a_pin_must_name_an_integer_config_field_and_the_words_are_text(self) -> None:
+        import copy
+        for change in ({"pins": {"sda": "nope"}}, {"bus": "can"}, {"guide": "x" * 401}, {"part": ""},
+                       {"color": "red"}):
+            bad = copy.deepcopy(SENSOR)
+            bad["modules"][0]["parts"][0].update(change)
+            with self.assertRaises(mods.ModuleError, msg=str(change)):
+                mods.parse_descriptor(bad)
+
+    def test_two_parts_on_one_gpio_of_a_board_or_on_the_firmwares_own_are_refused(self) -> None:
+        from potluck import apply as ap
+        fw = {"frame_link": {"tx": 17, "rx": 18}, "can": None, "status_led": {"gpio": 48, "alt": 38}, "button": 0}
+        one = {"name": "air_b", "module": "ext:probe/air", "latency_class": 4, "pin": 0x7368, "config": {}}
+        m = parse(manifest([one]))
+        self.assertEqual(ap.pin_clashes(m, [0x6300, 0x7368, 0x8160], fw), [])
+        two = dict(one, name="air_b2", config={"sda_gpio": 9, "scl_gpio": 10})  # 9 is air_b's SCL
+        m = parse(manifest([one, two]))
+        self.assertEqual(len(ap.pin_clashes(m, [0x6300, 0x7368, 0x8160], fw)), 1)
+        self.assertIn("GPIO 9 on 0x7368", ap.pin_clashes(m, [0x6300, 0x7368, 0x8160], fw)[0])
+        other_board = dict(two, pin=0x8160)  # the same GPIOs on another board: fine
+        self.assertEqual(ap.pin_clashes(parse(manifest([one, other_board])), [0x6300, 0x7368, 0x8160], fw), [])
+        on_link = dict(one, config={"sda_gpio": 17})
+        self.assertIn("firmware itself uses", ap.pin_clashes(parse(manifest([on_link])), [0x7368], fw)[0])
+        self.assertIn("outside", ap.pin_clashes(parse(manifest([dict(one, config={"sda_gpio": 60})])), [0x7368], fw)[0])
+
+
+class Pins(unittest.TestCase):
+    def test_the_map_names_only_what_the_build_drives(self) -> None:
+        from potluck import pins
+        cfg = {"POT_SERIAL_LINK": True, "POT_SERIAL_TX_GPIO": 17, "POT_SERIAL_RX_GPIO": 18, "POT_CAN": False,
+               "POT_CAN_TX_GPIO": 4, "POT_STATUS_LED_GPIO": 48, "POT_STATUS_LED_GPIO_ALT": 38, "POT_BYE_BUTTON_GPIO": 0}
+        got = pins.from_sdkconfig(cfg)
+        self.assertEqual(got, {"frame_link": {"tx": 17, "rx": 18}, "can": None, "status_led": {"gpio": 48, "alt": 38},
+                               "button": 0})
+        self.assertEqual(pins.used(got), {0, 17, 18, 38, 48})  # CAN not built in: 4 and 5 are free
+        cfg.update({"POT_CAN": True, "POT_CAN_RX_GPIO": 5})
+        self.assertEqual(pins.from_sdkconfig(cfg)["can"], {"tx": 4, "rx": 5})
+
+
 if __name__ == "__main__":
     unittest.main()

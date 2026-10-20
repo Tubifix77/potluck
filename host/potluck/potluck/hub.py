@@ -399,6 +399,7 @@ class Model:
         self.package = package
         self._pkg_seen: int | None = None  # the cell's package counter the hub's package was planned for
         self._replanning = False
+        self._pins_for: tuple[str | None, dict | None] = (None, None)  # (firmware version, its pin map)
         self.pull_period_ms = pull_period_ms
         # M15: how often each board's telemetry is pulled over the radio (0: never). Its own rate, longer than the
         # inventory's: it is the larger load, and M15's [MEASURE] is the rate that leaves M0's figures intact.
@@ -977,8 +978,12 @@ class Model:
         pk = next((b["package"]["counter"] for b in boards if b.get("package")), None)
         fw = next((b["firmware"]["version"] for b in boards if b.get("firmware")), None)
         presenter = next((b["node"] for b in boards if "present" in b.get("actors", [])), None)
+        if fw != self._pins_for[0]:  # the pins the boards' build uses (potluck.pins), looked up once a version
+            from .pins import for_version
+            self._pins_for = (fw, for_version(fw))
         return {"system": self.cluster.system if self.cluster is not None else "lab", "cell_id": self.cell_id,
-                "channel": None, "package": pk, "firmware": fw, "other_cell_frames": None, "presenter": presenter,
+                "channel": None, "package": pk, "firmware": fw, "pins": self._pins_for[1], "other_cell_frames": None,
+                "presenter": presenter,
                 "plan": getattr(self.cluster, "plan", None) if self.cluster is not None else None}
 
     def _panels_json(self, resources: list[dict]) -> list[dict]:
@@ -1059,9 +1064,15 @@ class Model:
                 why = "" if ok else "not running on " + ", ".join(n for n in want if n not in running)
             if ok and bad_outs:
                 ok, why = False, "output " + bad_outs[0].split("/", 3)[3] + " is " + quality.get(bad_outs[0], "?")
+            parts = []
+            if spec is not None and spec.parts:  # what it needs wired, with the GPIOs its config gives (2026-10-20)
+                gpios = {(p, r): g for p, r, g in mods.actor_pins(spec, a.config)}
+                parts = [{"part": p.part, "bus": p.bus, "pins": {r: gpios.get((p.part, r)) for r, _f in p.pins},
+                          "guide": p.guide} for p in spec.parts]
             out.append({"name": a.name, "module": a.module,
                         "placement": "portable" if portable else ("every" if every else "pinned"),
-                        "nodes": nodes, "running_on": running, "working": ok, "detail": why, "outputs": outs})
+                        "nodes": nodes, "running_on": running, "working": ok, "detail": why, "outputs": outs,
+                        "parts": parts})
         return out
 
     def _integrations_json(self, boards: list[dict], resources: list[dict]) -> list[dict]:

@@ -469,6 +469,27 @@ class Settled(unittest.TestCase):
         self.assertEqual(me.resources["q"]["settled"], "STALE")
 
 
+class AppParts(unittest.TestCase):
+    def test_an_app_lists_what_it_needs_wired_with_its_gpios(self) -> None:
+        """2026-10-20, the Potluck Desk's Wiring window: apps[].parts from the module's descriptor and the actor's
+        config, so a sensor app brings its own wiring guide."""
+        from types import SimpleNamespace as NS
+        import test_modules as tmods
+        from potluck import manifest as mf
+        from potluck import modules as mods
+        mods.clear()
+        try:
+            mods.register(mods.parse_descriptor(tmods.SENSOR))
+            m = mf.parse(tmods.manifest([{"name": "air_b", "module": "ext:probe/air", "latency_class": 4,
+                                          "pin": 0x7368, "config": {"sda_gpio": 1}}]))
+            model = hb.Model(NS(record=None), package=NS(manifest=m))
+            [app] = model._apps_json([{"node": "7368", "state": "alive", "actors": [], "telemetry": None}], [])
+            self.assertEqual(app["parts"], [{"part": "SHT41", "bus": "i2c", "pins": {"scl": 9, "sda": 1},
+                                             "guide": "VCC to 3V3, GND to G, SDA and SCL to the pins below"}])
+        finally:
+            mods.clear()
+
+
 class StaleReadsTwice(unittest.TestCase):
     def test_a_stale_read_is_read_again_and_the_fresh_one_kept(self):
         """2026-10-19: another board's value comes from the cabled board's copy, which a read refreshes; with 42

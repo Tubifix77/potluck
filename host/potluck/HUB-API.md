@@ -185,6 +185,13 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
 - `panels`: the cards apps ask for in their module descriptors (DEVELOPING-APPS.md, "panel"), one per actor -- per
   room for a per_room module -- and only for exposed resources. `kind`: `room` | `value`; `on`: true, false, or `null`
   while `quality` is not GOOD. Their words are text: show them as text, never as markup.
+- `cell.pins` (2026-10-20): the GPIOs the boards' firmware build itself drives, from that build's configuration --
+  `{"frame_link": {"tx", "rx"} | null, "can": {"tx", "rx"} | null, "status_led": {"gpio", "alt"}, "button"}`
+  (`alt`: the other board revision's LED pin); `null` when the hub has neither the release nor the build of the
+  version the boards run. What the board reserves beyond that (flash, PSRAM, USB) is its datasheet's.
+- `app.parts` (2026-10-20): what the app's actor needs wired, from its module's descriptor (DEVELOPING-APPS.md,
+  "parts") -- `[{"part", "bus", "pins": {role: GPIO | null}, "guide"}]`, the GPIOs as the actor's config gives them;
+  `[]` for an app with none. Its words are text.
 - `app.placement`: `pinned` | `portable` | `every`. `app.working`: as `python -m potluck.apply` verifies -- running
   where the package says (portable: exactly once in the cell, by the owner the boards' telemetry names for that
   actor), and every output GOOD. `detail` says why not.

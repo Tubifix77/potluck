@@ -1456,6 +1456,40 @@ NS_FIXED = ("sys/heap-free", "sys/heap-largest", "sys/uptime", "sys/boot-epoch",
             "sys/reset")
 
 
+def pin_clashes(m, boards: list[int], firmware_pins: dict | None) -> list[str]:
+    """2026-10-20: every board's wiring, from the package's actors' parts (modules.Part): a GPIO two parts claim, one
+    the firmware itself drives (potluck.pins), one outside the chip's range, or a part's pin with no value. A pinned
+    actor's parts are its board's; an every-node or portable one's could be on any board, so they count on each."""
+    from . import modules as mods
+    from .pins import used
+    fw = used(firmware_pins)
+    problems: list[str] = []
+    claims: dict[int, dict[int, str]] = {n: {} for n in boards}
+    for a in m.actors:
+        spec = mods.get(a.module)
+        if spec is None or not spec.parts:
+            continue
+        pin = m.placement_of(a)
+        on = [pin] if pin is not None and spec.placement == "pinned" else list(boards)
+        for part, role, g in mods.actor_pins(spec, a.config):
+            who = f"{a.name}'s {part} {role}"
+            if g is None:
+                problems.append(f"{who} has no GPIO (set it in the actor's config)")
+                continue
+            if not 0 <= g <= mods.GPIO_MAX:
+                problems.append(f"{who} is GPIO {g}, outside the chip's 0..{mods.GPIO_MAX}")
+                continue
+            if g in fw:
+                problems.append(f"{who} is GPIO {g}, which the firmware itself uses")
+                continue
+            for n in on:
+                if n in claims and g in claims[n]:
+                    problems.append(f"{who} and {claims[n][g]} are both GPIO {g} on 0x{n:04x}")
+                elif n in claims:
+                    claims[n][g] = who
+    return list(dict.fromkeys(problems))
+
+
 def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple[int, ...] = (),
               outside: tuple[str, ...] = (), extenders: tuple[int, ...] = (),
               pockets: tuple[int, ...] = ()) -> tuple[dict[int, dict], list[str]]:
@@ -1839,6 +1873,11 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                                                              for n in over)
                       + f" namespace entries, over the {NS_CAP} a board holds -- fewer outputs, fewer boards, or "
                         f"fewer per-link resources")
+                return 2
+            from .pins import from_build
+            clashes = pin_clashes(pkg.manifest, boards, from_build(fwb.image.parent) if fwb is not None else None)
+            if clashes:
+                print("REFUSED, nothing changed: the wiring -- " + "; ".join(clashes))
                 return 2
             runs_guest = "guest" in now
             has_guest = any(a.module.startswith("guest:") for a in pkg.manifest.actors)
