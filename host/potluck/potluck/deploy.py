@@ -71,6 +71,7 @@ PRESENT_TLS = 0x01  # M13: deploy.hpp's kPresentTls -- the presenter connects wi
 ACTOR_LED_SWITCH = 11  # M13: the status LED as a writable resource, node-<id>/led/on (pot/led_switch.hpp)
 ACTOR_POSITION = 12  # M20: where a board sits on the cell's floor plan, node-<id>/sys/pos/{x,y} (pot/position.hpp)
 ACTOR_FOREMAN = 13  # M19: a cell's foreman role -- portable among its foreman-eligible boards (pot/foreman.hpp)
+ACTOR_INBOX = 14  # 2026-10-20: values a program outside the cell writes, act/<actor>/<name> (pot/inbox.hpp)
 CLUSTER_NAME_MAX = 31
 OUTSIDE_NAME_MAX = 40  # M13: deploy.hpp's kMaxOutsideName
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
@@ -79,7 +80,7 @@ BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:tic
             "builtin:svc_client": ACTOR_SVC_CLIENT, "builtin:die_temp": ACTOR_DIE_TEMP,
             "builtin:mc_lender": ACTOR_MC_LENDER, "builtin:mc_job": ACTOR_MC_JOB,
             "builtin:present": ACTOR_PRESENT, "builtin:led_switch": ACTOR_LED_SWITCH,
-            "builtin:position": ACTOR_POSITION, "builtin:foreman": ACTOR_FOREMAN}
+            "builtin:position": ACTOR_POSITION, "builtin:foreman": ACTOR_FOREMAN, "builtin:inbox": ACTOR_INBOX}
 
 
 def mc_job_path(system: str, node_id: int) -> str:
@@ -216,6 +217,63 @@ def _portable_header(m: Manifest, a, period: int, where: str) -> bytes:
     cfg = struct.pack("<IHB", key, period, len(nodes))
     for node_id, gravity in nodes:
         cfg += struct.pack("<HB", node_id, gravity)
+    return cfg
+
+
+#: An inbox output's types: pot/value.hpp's ValueType codes for a scalar of at most eight bytes.
+INBOX_TYPES = {"bool": 1, "i32": 2, "u32": 3, "f32": 4, "i64": 5, "u64": 6, "f64": 7}
+INBOX_MAX = 12  # pot/actor.hpp's kMaxOutputs
+INBOX_STALE_MS = 10000  # the default bound: a program that writes less often than every 10 s lets its values go STALE
+
+
+def inbox_outputs(a, where: str = "inbox") -> list[tuple[str, int, int]]:
+    """An inbox actor's outputs, from its config's "outputs": "heart_rate:f32:hertz steps:u32 ..." -- (name, value type
+    code, unit code); the unit is a potluck.value.Unit name, lower case, and may be left out."""
+    from .value import Unit
+    spec = a.config.get("outputs")
+    if not isinstance(spec, str) or not spec.split():
+        raise DeployError(f"{where}: an inbox needs \"outputs\": \"<name>:<type>[:<unit>] ...\"")
+    out: list[tuple[str, int, int]] = []
+    for item in spec.split():
+        name, _, rest = item.partition(":")
+        typ, _, unit = rest.partition(":")
+        if not name or not all(ch.isalnum() or ch in "_-" for ch in name) or len(name) > 32:
+            raise DeployError(f"{where}: output name {name!r}: letters, digits, '_' or '-', at most 32")
+        if typ not in INBOX_TYPES:
+            raise DeployError(f"{where}: output {name!r}: type is one of {sorted(INBOX_TYPES)}")
+        u = 0
+        if unit:
+            try:
+                u = int(Unit[unit.upper()])
+            except KeyError:
+                raise DeployError(f"{where}: output {name!r}: unit {unit!r} is not one of "
+                                  f"{sorted(x.name.lower() for x in Unit)}") from None
+        if any(name == n for n, *_ in out):
+            raise DeployError(f"{where}: two outputs named {name!r}")
+        out.append((name, INBOX_TYPES[typ], u))
+    if len(out) > INBOX_MAX:
+        raise DeployError(f"{where}: an inbox holds at most {INBOX_MAX} outputs")
+    return out
+
+
+def inbox_path(system: str, actor: str, name: str) -> str:
+    """Where an inbox's output lives: under its actor, node-free, so a program's names do not depend on the board."""
+    return f"potluck://{system}/act/{actor}/{name}"
+
+
+def _inbox_config(m: Manifest, a, where: str) -> bytes:
+    extra = set(a.config) - {"outputs", "stale_ms"}
+    if extra:
+        raise DeployError(f"{where}: unknown inbox config key(s) {sorted(extra)}")
+    if a.pin is None:
+        raise DeployError(f"{where}: an inbox is held by one board, so it is pinned (the board on the cable is nearest)")
+    stale = a.config.get("stale_ms", INBOX_STALE_MS)
+    if not isinstance(stale, int) or isinstance(stale, bool) or not 0 <= stale <= 0xFFFFFFFF:
+        raise DeployError(f"{where}: stale_ms is a number of milliseconds (0: never stale)")
+    outs = inbox_outputs(a, where)
+    cfg = struct.pack("<IB", stale, len(outs))
+    for name, typ, unit in outs:
+        cfg += struct.pack("<IBB", path_hash(inbox_path(m.system, a.name, name)), typ, unit)
     return cfg
 
 
@@ -612,6 +670,11 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
             raise DeployError(f"{where}: placed on '{spec.label}', a host: built-in actors run on firmware")
         if a.module == "builtin:led_switch":
             cfg = _led_switch_config(m, a, where)
+            body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+            count += 1
+            continue
+        if a.module == "builtin:inbox":
+            cfg = _inbox_config(m, a, where)
             body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
             count += 1
             continue

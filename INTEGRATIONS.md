@@ -75,6 +75,23 @@ reporting and the dashboard shows you `disconnected` after 60 s.
 **6. Stay within your share.** Requests 20 a second, writes 2 a second, per program. Over it you get `429` with
 `Retry-After`: wait that long. Only you are slowed; the cell and the other programs are not.
 
+**7. Publish values of your own** (2026-10-20). A program can bring resources to the cell -- a phone's readings, a
+desktop app's state -- through an **inbox**: a built-in actor, pinned to one board, that holds named values for the
+whole cell. In a manifest the cluster file's package names:
+
+```json
+{"name": "phone", "module": "builtin:inbox", "latency_class": 4, "pin": "A",
+ "config": {"outputs": "heart_rate:f32:hertz steps:u32 moving:bool", "stale_ms": 10000}}
+```
+
+and in the cluster file `"outside": {"act/phone/heart_rate": "read_write", ...}` for each value, with `"writers"` naming
+your program. Write them with step 4's `POST /api/write {"path": "potluck://<system>/act/phone/heart_rate", "value":
+72.5}`. Every board reads them like any actor's output; the hub, Home Assistant and the dashboard show them. Pin it to the
+board on the PC's cable (one hop). Until you write a value it reads `NO_DATA`; write each more often than `stale_ms`, or
+it ages into `STALE` -- that is how the cell knows your program stopped. Values are numbers or a bool of at most eight
+bytes; at most 12 per inbox. Mind step 6: two writes a second in all, so a program with many values writes each less
+often, and sets `stale_ms` to match (three values every 5 s is 0.6 writes a second; `stale_ms` 15000).
+
 That is the whole interface: a new integration needs no change to the hub.
 
 ## The MQTT payload, for any consumer

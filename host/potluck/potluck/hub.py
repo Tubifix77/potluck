@@ -1064,6 +1064,10 @@ class Model:
                 why = "" if ok else "not running on " + ", ".join(n for n in want if n not in running)
             if ok and bad_outs:
                 ok, why = False, "output " + bad_outs[0].split("/", 3)[3] + " is " + quality.get(bad_outs[0], "?")
+                if a.module == "builtin:inbox":  # 2026-10-20: its values are its program's to write
+                    q = quality.get(bad_outs[0])
+                    why = ("nothing written yet by its program" if q == "NO_DATA" else
+                           "its program stopped writing" if q == "STALE" else why)
             parts = []
             if spec is not None and spec.parts:  # what it needs wired, with the GPIOs its config gives (2026-10-20)
                 gpios = {(p, r): g for p, r, g in mods.actor_pins(spec, a.config)}

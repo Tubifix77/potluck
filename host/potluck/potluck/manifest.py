@@ -843,9 +843,11 @@ def cross_check(m: Manifest, *, require_placement: bool = False) -> list[Manifes
         if mode != "read_write":
             continue
         r = m.resource(path)
+        if r is None and target in inbox_paths(m):
+            continue  # 2026-10-20: an inbox's output -- declared writable by the inbox itself, never safety-relevant
         if r is None:
             errors.append(ManifestError(where, "is writable from outside, so it must be a resource a node of this "
-                                               "manifest declares in 'owns'"))
+                                               "manifest declares in 'owns', or an inbox's output"))
         elif r.safety_relevant:
             errors.append(ManifestError(where, "is safety-relevant, and a safety-relevant resource is never "
                                                "writable from outside the cell (section 9.3)"))
@@ -875,6 +877,20 @@ def cross_check(m: Manifest, *, require_placement: bool = False) -> list[Manifes
 OUTSIDE_EXPOSED = 0x01
 OUTSIDE_WRITABLE = 0x02
 OUTSIDE_SAFETY = 0x04
+
+
+def inbox_paths(m: Manifest) -> set[str]:
+    """Every inbox actor's output paths (potluck.deploy.inbox_outputs); an inbox whose outputs do not parse adds none
+    here -- compiling it says why."""
+    from .deploy import DeployError, inbox_outputs, inbox_path
+    out: set[str] = set()
+    for a in m.actors:
+        if a.module == "builtin:inbox":
+            try:
+                out |= {inbox_path(m.system, a.name, n) for n, *_ in inbox_outputs(a, a.name)}
+            except DeployError:
+                pass
+    return out
 
 
 def outside_rules(m: Manifest) -> list[tuple[str, int]]:

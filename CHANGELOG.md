@@ -5,6 +5,11 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **A program can publish values of its own: `builtin:inbox`.** Pinned to one board, it declares `act/<actor>/<name>`
+  as writable values (1-12, scalar types, a unit, a staleness bound); a program on the hub's API writes them with
+  `POST /api/write` where the cluster file's `outside` allows, and every board reads them like any actor's output.
+  NO_DATA until written, STALE once the program stops; `apply`'s verify does not wait for them. INTEGRATIONS.md step 7.
+  Asked for by the Potluck Desk for the owner's phone app. A firmware change.
 - **Wiring, for a wiring view**: an app's module descriptor may list the **parts** it needs wired (`"parts"`: part,
   bus, pins by the config field that carries each GPIO, a guide); `potluck apply --plan` refuses a GPIO used twice on a
   board or one the firmware drives; the hub's model lists each app's parts with their GPIOs (`apps[].parts`) and the

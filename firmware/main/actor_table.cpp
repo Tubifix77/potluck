@@ -17,6 +17,7 @@
 #if CONFIG_POT_WASM
 #include "pot/guest.hpp"
 #endif
+#include "pot/inbox.hpp"
 #include "pot/led_switch.hpp"
 #include "pot/mc.hpp"
 #if CONFIG_POT_PRESENT
@@ -136,6 +137,7 @@ const ActorKind kBuiltinRows[] = {
     kClusterKind,  // M12: the cluster's name, carried by the package
     kLedSwitchKind,  // M13: the status LED as a writable resource
     kPositionKind,   // M20: the board's place on the floor plan
+    kInboxKind,      // 2026-10-20: values a program outside the cell writes, through the hub
 #if CONFIG_SPIRAM
     kForemanKind,    // M19: a cell's foreman role (portable; the reconciler needs PSRAM)
 #endif

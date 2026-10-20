@@ -1408,6 +1408,8 @@ def actor_reads(m, a, boards: list[int]) -> tuple[str, list[str]]:
             reads.append(dp.die_temp_path(m.system, node))
         if a.module == "builtin:led_switch":
             reads.append(dp.led_switch_path(m.system, node))
+        if a.module == "builtin:inbox":
+            reads += [dp.inbox_path(m.system, a.name, name) for name, *_ in dp.inbox_outputs(a, a.name)]
         if a.module == "builtin:position":
             if "x" in a.config:
                 reads += list(dp.position_paths(m.system, node))
@@ -1437,6 +1439,8 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
             node = m.placement_of(a)
             if node in pinned:
                 pinned[node] += 1
+        if a.module == "builtin:inbox":
+            continue  # its values are its program's to write: NO_DATA until it does, and that is no failed apply
         reads += outs
     if m.system != "lab":
         for n in boards:
@@ -1600,6 +1604,8 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
                 package.add(dp.die_temp_path(m.system, node))
             if a.module == "builtin:led_switch":
                 package.add(dp.led_switch_path(m.system, node))
+            if a.module == "builtin:inbox":
+                package.update(dp.inbox_path(m.system, a.name, name) for name, *_ in dp.inbox_outputs(a, a.name))
             if a.module == "builtin:position":
                 continue  # its board's own (pos_own); others adopt them when they read them
             package.update(expand(spec, a, node))

@@ -63,6 +63,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_actors/src/led_switch.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/position.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/foreman.cpp"
+  "${POT_FIRMWARE}/components/pot_actors/src/inbox.cpp"
   "${POT_FIRMWARE}/components/pot_wasm/src/wasm_sandbox.cpp"
   "${POT_FIRMWARE}/components/pot_wasm/src/guest.cpp"
   "${POT_FIRMWARE}/components/pot_present/src/present_core.cpp"

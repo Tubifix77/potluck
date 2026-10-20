@@ -185,6 +185,13 @@ bool check_decl(const ActorDecl& a, const char*& w) {
         }
         break;
     }
+    case ActorType::Inbox:
+            // 2026-10-20: pinned; pot/inbox.hpp judges the rest (the row's check).
+            if (a.node_id == kPortableNode || a.node_id == kEveryNode || a.cfg_len < 11 || (a.cfg_len - 5) % 6 != 0) {
+                w = "inbox must be pinned, with a staleness bound and 1..12 outputs";
+                return false;
+            }
+            break;
     case ActorType::Cluster:
             // M12: every node, a name of 1..31 characters; pot/cluster.hpp judges the characters.
             if (a.node_id != kEveryNode || a.cfg_len == 0 || a.cfg_len > 31) {

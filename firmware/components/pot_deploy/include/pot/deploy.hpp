@@ -117,6 +117,7 @@ enum class ActorType : uint8_t {
     LedSwitch = 11, // M13: the status LED as a writable resource, node-<id>/led/on (pot/led_switch.hpp)
     Position = 12,  // M20: the board's place on the floor plan, node-<id>/sys/pos/{x,y} (pot/position.hpp)
     Foreman = 13,   // M19: a cell's foreman role -- portable among its foreman-eligible boards (pot/foreman.hpp)
+    Inbox = 14,     // 2026-10-20: values a program outside the cell writes, act/<actor>/<name> (pot/inbox.hpp)
 };
 
 // M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an

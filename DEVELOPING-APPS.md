@@ -453,6 +453,7 @@ others into the owner's one package (below):
   | `builtin:svc_client` | pinned | `period_ms` 100-60000; one `needs` of `potluck://<system>/svc/<name>`; and on the actor itself, beside `pin` (never inside `config`), `"on_host_loss"`: `continue` or `hold` (the default) | the PC service's answer |
   | `builtin:led` | pinned | `r` `g` `b` 0-255, `blink`, `period_ms` 200-10000 | nothing shown: a healthy board is always green (GETTING-STARTED.md's LED table); kept so older packages still deploy |
   | `builtin:led_switch` | pinned | `r` `g` `b` 0-255, `blink_ms` 0 or 200-25500 | `node-<id>/led/on`, a writable bool: the status LED shows the colour in green's place while it is true (blue or cyan; any other colour is shown blue; purple, yellow and red still win) |
+  | `builtin:inbox` | pinned | `outputs`: `"<name>:<type>[:<unit>] ..."`, 1-12, type `bool` `i32` `u32` `f32` `i64` `u64` `f64`, unit a `potluck.value.Unit` name; `stale_ms` (10000; 0 never stale) | `act/<actor>/<name>`, writable: values a program outside the cell writes through the hub (INTEGRATIONS.md, step 7); NO_DATA until written, STALE past `stale_ms` |
   | `builtin:mc_lender` / `builtin:mc_job` | pinned | a demonstration job on borrowed idle cores (`slots`; `units`, `samples`, `seed`, `lend`, `start_after_ms`) | `node-<id>/job/mc/pi` |
   | `builtin:fault` | pinned | `panic_after_ms` | nothing: it crashes the node on purpose, to test reverts |
   | `guest:<name>` | portable | section 9 | `act/<actor>/<output>` |
