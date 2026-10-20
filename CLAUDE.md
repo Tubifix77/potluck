@@ -17,6 +17,7 @@ tools are tested on Windows 11. Licence: Apache-2.0 (NOTICE lists third-party co
 | what is accepted, with measurements and caveats | [STATUS.md](STATUS.md) |
 | build, flash, emulate, measure (operator's manual) | [M0-RUNBOOK.md](M0-RUNBOOK.md) |
 | the decision log, newest last | [M0-LOG.md](M0-LOG.md) |
+| the invariants and how a change is judged | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 `history/`, `BEYOND-M12.md` and `WHEN-THE-BOARDS-ARRIVE.md` are history: mine them for intent, never for current facts.
 

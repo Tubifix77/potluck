@@ -101,7 +101,8 @@ milestone with its measurements and caveats.
 - **Past twenty boards:** cells of cells -- a tree of radio cells under one signed package, each cell's *foreman*
   board presenting a summary of its cell upward.
 
-Limits in this release: up to 20 boards in one radio cell (more as a tree of cells), ESP32-S3 boards and PCs only,
+Limits in this release: up to 20 boards in one radio cell (more as a tree of cells), 128 namespace entries a board
+(`potluck apply --plan` counts them), ESP32-S3 boards and PCs only,
 one package per cluster, host tools tested on Windows only -- the getting-started guide's
 [Limits of this edition](GETTING-STARTED.md#limits-of-this-edition) has the full list. Some acceptance runs were shortened or waived by the
 maintainer (a few day-long soaks among them); [STATUS.md](STATUS.md) says which, and what stands in their place.
@@ -350,6 +351,7 @@ hub's API in full: [host/potluck/HUB-API.md](host/potluck/HUB-API.md).
 | [BEYOND-M12.md](BEYOND-M12.md) | Historical: the design discussion that led to the hub, the dashboard and the integrations. What was decided is in ARCHITECTURE.md; its milestone numbering differs |
 | [M0-LOG.md](M0-LOG.md) | The maintainer's decision log, newest session last — including the conclusions that were later **withdrawn**, kept struck-through rather than deleted. The QEMU sessions are a study in how a stale flash image manufactures false evidence |
 | [M0-RUNBOOK.md](M0-RUNBOOK.md) | Bench procedure: build, flash, emulate, soak, and the delay methodology to read *before quoting any number* |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | What must stay true (the invariants, each pointing into ARCHITECTURE.md), how a change is judged, how to build and test one |
 | [CLAUDE.md](CLAUDE.md) | A short guide for AI assistants working in this repository (Potluck was largely built with [Claude Code](https://claude.com/claude-code)) |
 | [.claude/zero-assumption/memory.md](.claude/zero-assumption/memory.md) | The evidence ledger: every external fact used, with source, retrieval date and status — including the withdrawn ones |
 | [history/](history/README.md) | How Potluck came to be: the original vision documents, the reviews that shaped the architecture, the first work orders. Not needed to use or build on it |
