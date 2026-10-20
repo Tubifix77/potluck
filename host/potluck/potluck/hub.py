@@ -1511,7 +1511,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 elif path == "/api/setup/reset":
                     jid = jobs.start("reset", port, lambda pct: st.reset(port))
                 elif path == "/api/setup/wifi":
-                    ssid, pw = str(req["ssid"]), str(req["password"])
+                    ssid, pw = st.check_wifi(req.get("ssid"), req.get("password"))  # 409 with why, before any job
                     jid = jobs.start("wifi", port, lambda pct: {"saved": st.set_wifi(port, ssid, pw)})
                 elif path == "/api/setup/enrol":
                     keys = cell_keys()

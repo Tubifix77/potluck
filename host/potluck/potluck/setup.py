@@ -281,12 +281,28 @@ def identify(port: str, seconds: int, opener: Callable | None = None) -> dict:
     return console(port, f"POT! identify {int(seconds)}", "cmd=identify", opener=opener)
 
 
+def check_wifi(ssid: object, password: object) -> tuple[str, str]:
+    """A network name and password fit to send to a board's console, or SetupError saying why -- never the values.
+    Found by the Potluck Desk (2026-10-20): a line break in either ended the console line early, and the rest arrived
+    as a second console command. No control character at all; the name 1..32 bytes as UTF-8 (the Desk's citation:
+    IEEE 802.11-2016 9.4.2.2); the password 8..64 characters, as the board's own rule."""
+    if not isinstance(ssid, str) or not isinstance(password, str):
+        raise SetupError("the network name and the password are text")
+    for what, v in (("network name", ssid), ("password", password)):
+        if any(ord(ch) < 0x20 or 0x7F <= ord(ch) <= 0x9F for ch in v):
+            raise SetupError(f"the {what} holds a control character (a line break, a tab, ...)")
+    if not 1 <= len(ssid.encode("utf-8")) <= 32:
+        raise SetupError("a network name is 1 to 32 bytes")
+    if not 8 <= len(password) <= 64:
+        raise SetupError("a Wi-Fi password is 8 to 64 characters")
+    return ssid, password
+
+
 def set_wifi(port: str, ssid: str, password: str, opener: Callable | None = None) -> bool:
     """Potluck's own station (the `wifi` module). Neither value is logged or returned."""
     def q(x):
         return '"' + x.replace("\\", "\\\\").replace('"', '\\"') + '"'
-    if not 8 <= len(password) <= 64:
-        raise SetupError("a Wi-Fi password is 8 to 64 characters")
+    ssid, password = check_wifi(ssid, password)
     d = console(port, f"POT! wifi sta {q(ssid)} {q(password)}", "t=wifi_cfg", opener=opener)  # as tools/wifi_set.py
     if d.get("result") != "sta_saved":
         raise SetupError(f"the board did not save it ({d.get('result')})")

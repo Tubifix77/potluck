@@ -186,6 +186,19 @@ class Console(unittest.TestCase):
         with self.assertRaises(st.SetupError):
             st.set_wifi("COM5", "x", "short", opener=lambda p: fw)
 
+    def test_a_line_break_or_an_oversized_name_never_reaches_the_console(self):
+        """The Potluck Desk, 2026-10-20: a line break in either value ended `POT! wifi sta ...` early, and the rest
+        arrived as a second console command."""
+        fw = FakeConsole({"t": "wifi_cfg", "result": "sta_saved"})
+        for ssid, pw in (("Home\nPOT! reset", "password123"), ("Home", "pass\rword123"), ("Home", "pass\tword1"),
+                         ("x" * 33, "password123"), ("\u00e6" * 17, "password123"), ("", "password123"),
+                         ("Home", "p" * 65), (7, "password123"), ("Home", None)):
+            with self.assertRaises(st.SetupError) as cm:
+                st.set_wifi("COM5", ssid, pw, opener=lambda p: fw)
+            self.assertNotIn("password1", str(cm.exception))  # says why, never the value
+        self.assertEqual(fw.sent, [])  # nothing was sent for any of them
+        self.assertTrue(st.set_wifi("COM5", "\u00c6blehaven", "password123", opener=lambda p: fw))  # UTF-8, 11 bytes
+
     def test_a_reset_pulses_rts_and_leaves_dtr_alone(self):
         seen = []
 

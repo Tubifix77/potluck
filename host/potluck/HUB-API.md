@@ -461,7 +461,7 @@ build, each board of a rollout, the package, each board verified); one job at a 
 | `POST /api/setup/probe {"port"}` | job: chip, flash, PSRAM, MAC, and whether it can run Potluck -- **restarts the board** |
 | `POST /api/setup/flash {"port", "build"}` | job: writes that build (only one under the hub's build cache; else 403) |
 | `POST /api/setup/enrol {"port", "passphrase"?, "node_id"?}` | job: a key signed by the cell's CA and a node id from its registry -- the lowest free one, or `node_id` (hex) if given; `result.node` |
-| `POST /api/setup/wifi {"port", "ssid", "password"}` | job: the house Wi-Fi into the board (kept only there; never logged) |
+| `POST /api/setup/wifi {"port", "ssid", "password"}` | job: the house Wi-Fi into the board (kept only there; never logged), `{"saved": true}`, used at its next boot; refused with `409` before any job for a control character in either, a name over 32 bytes (UTF-8) or a password outside 8-64 |
 | `POST /api/setup/reset {"port"}` | job: restarts the board (a new id and a saved Wi-Fi take effect then) |
 | `POST /api/setup/identify {"port", "seconds"?}` | job: the board's light blinks blue (default 20 s, at most 300) |
 | `POST /api/setup/board {"node", "label"?, "room"?, "position"?}` | adds the board to the cluster file or sets its room (`""` clears it) or its `[x, y]` on the floor plan (`[]` clears it); the file's previous version is kept as `<file>.bak`, and a change `apply` would refuse is never written (409). With `{"plan": {...} | null}` instead, sets the floor plan |
