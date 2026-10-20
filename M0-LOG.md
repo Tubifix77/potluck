@@ -6051,3 +6051,45 @@ tray (`keys/home.json`). What that use found, and what was fixed (all host-teste
 
 Static internal RAM: 63,629 B of 65,536 on `e734989` (the split probe +92 B, write forwarding +48 B). Open: the owner's
 final install of the tray package, and his hand tests (the list in CLAUDE.local.md's handover).
+
+## Session 48 -- 2026-10-19/21: the Desk's roadmap from the hub's side, updates as their own step, the PC presents
+
+The owner used the cell daily through the hub and the Potluck Desk (a Windows client of the hub's API); most of this
+session answered what that use found. In order of landing:
+
+- **An Apply from the Desk stalled in a firmware build** the tray's hub did not need: `apply` now uses the release image
+  the installed package carries when its version key matches, and the hub suppresses Windows error boxes in what it
+  starts (`73dd100`).
+- **Two guests of one module read as one app "running on 2 nodes"**: the hub planned its package once, at start, and
+  counted portable apps by kind. It now plans again when the boards' package counter moves and counts by the owner the
+  boards' telemetry names for each actor (`e58615f`). An apply job's progress follows apply's own steps (`d9b6334`).
+- **Values from another board flickered STALE**: they reach the hub through the cabled board's copy, refreshed when the
+  hub reads it, so their age is the hub's own pass -- 42 resources at ~100 ms, 4-5 s, at a 5 s bound. A STALE read is
+  read once more (measured: 5220 -> 1326 ms, 2162 -> 226 ms) (`8a5c778`).
+- **Firmware `0c1162c`** (rolled out at the owner's word): a pocket page's `sys/pocket/*`, and board telemetry's auth
+  counters. The "faster re-key after a move" was *not* built: every HELLO is already a signed want-ack HELLO every 2 s,
+  so re-announcing on a bad tag would change nothing; why A rejected B's frames for ~4.5 min after a move is not in the
+  evidence, and the counters are there to catch the next one.
+- **The Desk's roadmap, built in Potluck's own order** (the owner: "don't wait for my approval"): an app's module
+  descriptor declares the **parts** it needs wired, `apply --plan` refuses a pin clash, the hub publishes the pins a
+  build drives (`cell.pins`, from its own sdkconfig.json) (`8eb60a7`); **`builtin:inbox`**, values a program outside
+  the cell writes through `POST /api/write` and every board reads (`ba193e1`); a Wi-Fi input check (`38761ad`); the
+  hub on the house network with one request (`POST /api/setup/listen`, `1ed62d7`); the broker login from the PC
+  (`6d2a687`). The owner owns no sensor to add, so no sensor actor; the phone's inbox waits for his word.
+- **Updating the boards is its own step**, the owner's point: `cell.update` and `POST /api/setup/update` (`b1ace07`);
+  the Desk built an Updates window on them. The owner's Apply rolled `ba193e1` out; twice the rollout stopped at C while
+  the cell settled between the house mesh's channels after B's restart, so `apply` now waits up to 240 s for the next
+  board (`28c75a7`).
+- **Re-pairing trap** (found by the Desk): a program paired again without revoking first becomes "<name> 2" and a
+  writers list names the first; the 403 now says so (`94ca0c5`), and the library lists writers (`1fc9c04`).
+- **CAN bus-off recovery** (owed since `af23d35`): the frame the controller held is reported failed, the rest of its
+  message dropped, recovery started from the task a second later, transmit resumed on recovery (`caf6f30`). Built as the
+  CAN bench builds it (core 56,605 B); **the two-board bus-off test is owed.**
+- **The PC presents** (`305a6a7`): the tray now runs the PC's host node (M14's `present.hub`), so the presenting load
+  that wedges a board's radio is the PC's while it is in the cell. Shown live through the owner's hub with the packaged
+  program: the role moved to the PC in ~6 s, it published every entity over TLS, and C took the role back each time the
+  node stopped. **Not yet run by the owner's tray** -- that starts with his next install.
+- CONTRIBUTING.md: the invariants, each pointing into this document's design (`276e4c0`).
+
+Open: the owner's install of the package at `276e4c0` (the PC presenting starts with it), the CAN bus-off bench test,
+the phone inbox at the owner's word.
