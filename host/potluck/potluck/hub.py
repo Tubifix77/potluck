@@ -1993,6 +1993,45 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
 _TYPE_NAMES = {1: "bool", 2: "i32", 3: "u32", 4: "f32", 5: "i64", 6: "u64", 7: "f64", 8: "bytes"}
 
 
+def _inbox_type(model, path: str) -> int:
+    """The declared value type of an inbox's value (pot/value.hpp's ValueType code), or 0."""
+    pkg = getattr(model, "package", None)
+    if pkg is None:
+        return 0
+    from . import deploy as dp
+    m = pkg.manifest
+    for a in m.actors:
+        if a.module != "builtin:inbox":
+            continue
+        try:
+            for n, typ, _unit in dp.inbox_outputs(a, a.name):
+                if dp.inbox_path(m.system, a.name, n) == path:
+                    return typ
+        except dp.DeployError:
+            continue
+    return 0
+
+
+def _inbox_owner(model, path: str) -> int | None:
+    """The board an inbox is pinned to, if `path` is one of its values (builtin:inbox): written from outside like a
+    board's own resource. Found 2026-10-21 (the owner's phone-app session, reading HUB-API.md): only node-XXXX/ paths
+    were let through, so every inbox write was refused."""
+    pkg = getattr(model, "package", None)
+    if pkg is None:
+        return None
+    from . import deploy as dp
+    m = pkg.manifest
+    for a in m.actors:
+        if a.module != "builtin:inbox":
+            continue
+        try:
+            if path in {dp.inbox_path(m.system, a.name, n) for n, *_ in dp.inbox_outputs(a, a.name)}:
+                return m.placement_of(a)
+        except dp.DeployError:
+            continue
+    return None
+
+
 def write_outside(model: Model, path: str, value: Any, by: str | None = None) -> tuple[int, dict]:
     """POST /api/write: only a resource the package lets the outside write, never a safety-relevant one; sent to the
     owning board as a WRITE marked from outside, which checks the package again. M18: a resource whose cluster file
@@ -2000,6 +2039,12 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
     user on 127.0.0.1, the owner)."""
     cl = model.cluster
     mode = cl.outside.get(path) if cl is not None else None
+    paths = getattr(model, "resource_paths", None)
+    if callable(paths) and getattr(model, "package", None) is not None and path not in paths():
+        # 2026-10-21: not a resource of this cell's package -- an app that is off, or values not provisioned yet (an
+        # inbox before its Apply); a program can tell this from a refusal.
+        return 404, {"ok": False, "result": "no such resource in this cell (not in its package: an app that is off, or "
+                                            "not provisioned yet)"}
     writers = getattr(cl, "writers", {}).get(path) if cl is not None else None
     if writers and by is not None and by not in writers:
         model.record("outside_write", None, {"resource": path, "path": path, "value": value, "by": by,
@@ -2020,12 +2065,21 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
     # M18: a number is written as the resource's own type when the hub knows it, so a client never has to tell 20 from
     # 20.0 (JSON cannot): 20 to a float resource is 20.0, 20.0 to an integer one is 20.
     known = cur["reading"].value.type if cur is not None and cur.get("reading") is not None else 0
+    if not known:
+        # 2026-10-21: nothing read yet -- an inbox's value is NO_DATA until its program first writes it -- so its
+        # declared type, from the package (a phone's first heart rate of 72 must go out as the f32 it is).
+        known = _inbox_type(model, path)
+    whole = isinstance(value, (int, float)) and not isinstance(value, bool) and float(value).is_integer()
     if isinstance(value, bool):
         v = Value.of_bool(value)
     elif isinstance(value, (int, float)) and known == 4:  # F32
         v = Value.of_f32(float(value))
-    elif isinstance(value, (int, float)) and known in (2, 3) and float(value).is_integer():  # I32, U32
+    elif isinstance(value, (int, float)) and known == 7:  # F64
+        v = Value.of_f64(float(value))
+    elif whole and known in (2, 3):  # I32, U32
         v = Value.of_u32(int(value)) if known == 3 and hasattr(Value, "of_u32") else Value.of_i32(int(value))
+    elif whole and known in (5, 6):  # I64, U64 (an inbox's step count, say)
+        v = Value.of_u64(int(value)) if known == 6 else Value.of_i64(int(value))
     elif isinstance(value, int):
         v = Value.of_i32(value)
     elif isinstance(value, float):
@@ -2033,9 +2087,9 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
     else:
         return 400, {"ok": False, "result": "a bool or a number"}
     name = path.split("/", 3)[3]
-    owner = int(name[5:9], 16) if name.startswith("node-") else None
+    owner = int(name[5:9], 16) if name.startswith("node-") else _inbox_owner(model, path)
     if owner is None:
-        return 400, {"ok": False, "result": "only a board's own resource can be written from outside"}
+        return 400, {"ok": False, "result": "only a board's own resource or an inbox's value can be written from outside"}
     h = path_hash(path)
     try:
         # To the cabled board, which passes a write for another board's resource to its owner and returns the owner's

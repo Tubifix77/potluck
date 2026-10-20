@@ -284,19 +284,22 @@ three pull periods (at least 10 s) as dead; on a drop, poll `GET /api/model` and
 ## POST /api/write
 
 `{"path": "potluck://lab/node-7368/led/on", "value": true}` -> `{"ok": true, "result": "applied"}`. Only resources with
-`outside_writable: true`, and only a board's own resource (`.../node-XXXX/...`; an actor's output that moves between
-boards cannot be written from outside). `value` is a JSON bool or number -- an integer is written as a 32-bit integer, a
+`outside_writable: true`, and only a board's own resource (`.../node-XXXX/...`) or an inbox's value
+(`.../act/<actor>/<name>` of a pinned `builtin:inbox`, which holds values a program writes -- INTEGRATIONS.md step 7);
+an actor's output that moves between boards cannot be written from outside. `value` is a JSON bool or number -- an integer is written as a 32-bit integer, a
 number with a fraction as a 32-bit float -- unless the hub knows the resource's `type`, when a number is written as
 that (20 to an `f32` resource is 20.0, 20.0 to an `i32` one is 20), so a client never has to tell them apart; the
 owning board refuses a type that is not the resource's. Until the hub has read a value of the resource (`type: null`),
-a whole number goes as a 32-bit integer, which a float resource refuses. The write goes to the board on the cable, which
+a whole number goes as a 32-bit integer, which a float resource refuses -- except an inbox's value, whose declared
+type the hub takes from the package (2026-10-21); 64-bit types (`i64`, `u64`, `f64`) are written as such once known. The write goes to the board on the cable, which
 passes it to the owning board marked as from outside (firmware from 2026-10-18 on; before, a write to any other board
 timed out); the owner checks the package again and its answer comes back. Every answer is `{"ok", "result"}`:
 
 | status | result | why |
 |---|---|---|
 | 200 | `applied` | the owning board applied it |
-| 400 | `expected {"path": ..., "value": ...}` / `a bool or a number` / `only a board's own resource can be written from outside` | the request |
+| 400 | `expected {"path": ..., "value": ...}` / `a bool or a number` / `only a board's own resource or an inbox's value can be written from outside` | the request |
+| 404 | `no such resource in this cell (...)` | not in the cell's package: an app that is off, or values not provisioned yet (an inbox before its Apply) |
 | 403 | `not writable from outside` | the cluster file's `outside` does not mark it `read_write`, or it is safety-relevant |
 | 403 | `not writable by this program` | the cluster file names other programs as its writers (below) |
 | 403 | `this login may look, not write` | the login's or token's right is `look` |

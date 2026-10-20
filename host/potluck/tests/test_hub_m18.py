@@ -153,6 +153,72 @@ class Writers(unittest.TestCase):
         hb.write_outside(M(), "potluck://lab/node-7368/set/point", 20)
         self.assertEqual(sent[-1][4], int(ValueType.F32))  # WritePayload's value_type byte
 
+    def test_an_inbox_value_is_written_like_a_boards_own_resource_and_an_unknown_path_is_404(self) -> None:
+        """2026-10-21: only node-XXXX/ paths were let through, so every write to an inbox's act/<actor>/<name> was
+        refused (found by the owner's phone-app session reading HUB-API.md)."""
+        from types import SimpleNamespace as NS
+        import test_inbox as ti
+        from potluck.manifest import parse
+        from potluck.value import NsError, Reading, Value
+
+        sent = []
+        steps = "potluck://lab/act/phone/steps"
+
+        class Cl:
+            outside = {steps: "read_write"}
+            writers = {steps: ("Phone bridge",)}
+
+        class Hub:
+            peer_node_id = 0x6300
+
+            def _request(self, op, payload, h, timeout, dst):
+                sent.append((h, dst))
+                return NS(status=NsError.OK)
+
+        class M:
+            cluster = Cl()
+            hub = Hub()
+            lock = threading.Lock()
+            package = NS(manifest=parse(ti.doc(ti.PHONE)))  # "phone", pinned to 0x6300
+            resources = {steps: {"reading": Reading(value=Value.of_u32(0)), "at": 0}}
+            recorded: list = []
+
+            def resource_paths(self):
+                return [steps, "potluck://lab/act/phone/heart_rate", "potluck://lab/act/phone/moving"]
+
+            def record(self, kind, board, detail):
+                self.recorded.append((board, detail))
+
+            def _safety(self, path):
+                return False
+
+        m = M()
+        code, body = hb.write_outside(m, steps, 1234, by="Phone bridge")
+        self.assertEqual((code, body["result"]), (200, "applied"))
+        self.assertEqual(sent[-1][1], None)  # to the cabled board, which passes it to the owner
+        self.assertEqual(m.recorded[-1][0], 0x6300)  # logged under the inbox's board
+        self.assertEqual(sent[-1][0], hb.path_hash(steps))
+        # the first write of a value nobody has written yet goes out as its declared type, from the package
+        from potluck.ns_payloads import Write
+        captured = []
+        m.hub._request = lambda op, payload, h, timeout, dst: captured.append(Write.parse(payload)) or NS(
+            status=NsError.OK)
+        m.resources = {}  # nothing read yet: NO_DATA
+        Cl.outside["potluck://lab/act/phone/heart_rate"] = "read_write"
+        hb.write_outside(m, "potluck://lab/act/phone/heart_rate", 72)
+        self.assertEqual(captured[-1].value.type, 4)  # f32, not the i32 a bare 72 would be
+        hb.write_outside(m, steps, 98765, by="Phone bridge")
+        self.assertEqual(captured[-1].value.type, 3)  # u32, as the fixture declares it
+        big = "potluck://lab/act/phone/big"  # a u64 (a step count since the phone's first day)
+        m.package = NS(manifest=parse(ti.doc({"outputs": "big:u64"})))
+        m.resource_paths = lambda: [big]
+        Cl.outside[big] = "read_write"
+        hb.write_outside(m, big, 9876543210)
+        self.assertEqual(captured[-1].value.type, 6)  # u64, not an i32 that would not hold it
+        code, body = hb.write_outside(m, "potluck://lab/act/radio/volume", 3, by="Phone bridge")
+        self.assertEqual(code, 404)  # not in the package: not provisioned yet
+        self.assertIn("not provisioned yet", body["result"])
+
     def test_the_cluster_file_names_writers_only_for_a_read_write_resource(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             def cluster(outside):

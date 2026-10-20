@@ -237,7 +237,8 @@ def main(argv: list[str] | None = None) -> int:
             api = json.loads(state_file().read_text(encoding="utf-8"))["api"]
             body = {"name": REPORT_NAME} if path.endswith("/forget") else {"name": REPORT_NAME, "state": st, "detail": detail}
             req = urllib.request.Request(f"http://{api}{path}", method="POST", data=json.dumps(body).encode(),
-                                         headers={"X-Potluck-Request": "1", "Content-Type": "application/json"})
+                                         headers={"X-Potluck-Request": "1", "Content-Type": "application/json",
+                                                  "X-Potluck-Client": "00fe"})  # "where": the PC's node, as a board's
             urllib.request.urlopen(req, timeout=3).close()
         except (OSError, ValueError, KeyError):
             pass  # retried on the next pass
