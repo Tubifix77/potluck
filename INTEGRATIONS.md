@@ -91,6 +91,10 @@ board on the PC's cable (one hop). Until you write a value it reads `NO_DATA`; w
 it ages into `STALE` -- that is how the cell knows your program stopped. Values are numbers or a bool of at most eight
 bytes; at most 12 per inbox. Mind step 6: two writes a second in all, so a program with many values writes each less
 often, and sets `stale_ms` to match (three values every 5 s is 0.6 writes a second; `stale_ms` 15000).
+Publish **now, never history**: a value is the current reading and its age, so after a dropped link write only the
+newest value of each and drop the backlog (the Potluck Desk's Synth Senses bridge skips its phone's spool to the newest).
+A program that writes only on change sets `stale_ms` above its longest quiet spell -- its own heartbeat -- or a healthy
+quiet source reads STALE.
 
 That is the whole interface: a new integration needs no change to the hub.
 
