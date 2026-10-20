@@ -1987,7 +1987,14 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
     if writers and by is not None and by not in writers:
         model.record("outside_write", None, {"resource": path, "path": path, "value": value, "by": by,
                                              "result": "refused: not one of its writers"})
-        return 403, {"ok": False, "result": "not writable by this program"}
+        why = "not writable by this program"
+        base, _, n = by.rpartition(" ")
+        if n.isdigit() and base in writers:
+            # Paired again without revoking first, it got "<name> 2" (pairing never reuses a name) -- found by the
+            # Potluck Desk, 2026-10-20: every write refused while the dashboard showed the program paired.
+            why = (f"not writable by this program: it is paired as {by!r} and the writers list names {base!r} -- revoke "
+                   f"the old pairing and pair again, or add {by!r} to the cluster file's writers")
+        return 403, {"ok": False, "result": why}
     if mode != "read_write" or model._safety(path):
         model.record("outside_write", None, {"resource": path, "path": path, "value": value, "result": "refused: not writable from outside"})
         return 403, {"ok": False, "result": "not writable from outside"}

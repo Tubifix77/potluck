@@ -116,6 +116,10 @@ class Writers(unittest.TestCase):
         code, body = hb.write_outside(m, "potluck://lab/node-7368/led/on", True, by="Node-RED")
         self.assertEqual((code, body["result"]), (403, "not writable by this program"))
         self.assertEqual(m.recorded[-1]["by"], "Node-RED")
+        # Paired again without revoking first, a program comes back as "<name> 2": the refusal says so (2026-10-20).
+        code, body = hb.write_outside(m, "potluck://lab/node-7368/led/on", True, by="Home Assistant 2")
+        self.assertEqual(code, 403)
+        self.assertIn("paired as 'Home Assistant 2' and the writers list names 'Home Assistant'", body["result"])
 
     def test_a_number_is_written_as_the_resources_own_type(self) -> None:
         # From the Node-RED reader: JSON cannot tell 20 from 20.0, so the hub writes the type it knows the resource has.
