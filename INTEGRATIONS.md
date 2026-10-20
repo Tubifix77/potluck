@@ -54,7 +54,10 @@ you write), then poll `GET /api/pair/<pair_id>` every 2 s while the owner clicks
 the PC. Send `Authorization: Bearer <token>` from then on. The hub signs its own certificate, so pin the `fp` you paired
 with and refuse any other certificate. The announcement is not authenticated: to know `fp` is the hub's, compare it with
 the hub card's **Certificate** on the PC's dashboard, and the owner should allow only a request whose asking address
-(shown with it) is your program's. A person can log in instead (`POST /api/login`).
+(shown with it) is your program's. A person can log in instead (`POST /api/login`). Keep the token: a program that
+pairs again under a name already paired gets `<name> 2`, and a cluster file's `writers` (step 4) still names the
+first, so its writes are refused (the `403`'s `result` says so). Revoke the old pairing first -- `python -m
+potluck.hubauth revoke <name>` on the hub's PC.
 
 **3. Read.** `GET /api/model` is everything at once; `GET /api/stream` sends it again every pull period (2 s) and the
 events as they happen. Use the stream: it counts once against your share, however long it stays open. Each resource:
