@@ -298,6 +298,31 @@ def check_wifi(ssid: object, password: object) -> tuple[str, str]:
     return ssid, password
 
 
+def check_broker_login(user: object, password: object) -> tuple[str, str]:
+    """A broker login fit for a board's console and the hub's login file, or SetupError saying why -- never the values.
+    As the presenter's console reads it (pot_present: `POT! present login <user> <password>`): no control character, no
+    space in the user name (the password is the rest of the line), each 1..64 bytes."""
+    if not isinstance(user, str) or not isinstance(password, str):
+        raise SetupError("the user name and the password are text")
+    for what, v in (("user name", user), ("password", password)):
+        if any(ord(ch) < 0x20 or 0x7F <= ord(ch) <= 0x9F for ch in v):
+            raise SetupError(f"the {what} holds a control character (a line break, a tab, ...)")
+        if not 1 <= len(v.encode("utf-8")) <= 64:
+            raise SetupError(f"a broker {what} is 1 to 64 bytes")
+    if " " in user:
+        raise SetupError("a broker user name has no spaces")
+    return user, password
+
+
+def set_present_login(port: str, user: str, password: str, opener: Callable | None = None) -> bool:
+    """The broker login a presenting board uses, into that board (kept only there, in its NVS; never logged)."""
+    user, password = check_broker_login(user, password)
+    d = console(port, f"POT! present login {user} {password}", "t=present_cfg", opener=opener)
+    if d.get("result") != "login_saved":
+        raise SetupError(f"the board did not save it ({d.get('result')})")
+    return True  # used at the presenter's next connection
+
+
 def set_wifi(port: str, ssid: str, password: str, opener: Callable | None = None) -> bool:
     """Potluck's own station (the `wifi` module). Neither value is logged or returned."""
     def q(x):

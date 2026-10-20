@@ -186,6 +186,20 @@ class Console(unittest.TestCase):
         with self.assertRaises(st.SetupError):
             st.set_wifi("COM5", "x", "short", opener=lambda p: fw)
 
+    def test_a_presenting_boards_broker_login_goes_to_its_console_and_a_bad_one_never_does(self):
+        """2026-10-20, the Potluck Desk: the broker login without a console typed by hand."""
+        fp = FakeConsole({"t": "present_cfg", "result": "login_saved"})
+        self.assertTrue(st.set_present_login("COM5", "potluck", "s3cret pass", opener=lambda p: fp))
+        self.assertEqual(fp.sent, ["POT! present login potluck s3cret pass\n"])  # the password is the rest of the line
+        bad = FakeConsole({"t": "present_cfg", "result": "login_saved"})
+        for user, pw in (("two words", "x"), ("u", "a\nPOT! present forget"), ("", "x"), ("u", "p" * 65), (1, "x")):
+            with self.assertRaises(st.SetupError):
+                st.set_present_login("COM5", user, pw, opener=lambda p: bad)
+        self.assertEqual(bad.sent, [])
+        refused = FakeConsole({"t": "present_cfg", "result": "save_failed"})
+        with self.assertRaises(st.SetupError):
+            st.set_present_login("COM5", "potluck", "x", opener=lambda p: refused)
+
     def test_a_line_break_or_an_oversized_name_never_reaches_the_console(self):
         """The Potluck Desk, 2026-10-20: a line break in either value ended `POT! wifi sta ...` early, and the rest
         arrived as a second console command."""

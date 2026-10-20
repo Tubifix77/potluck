@@ -5,6 +5,9 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **A broker login from the PC**: `POST /api/setup/broker_login` writes the hub's own login and each presenting
+  board's (over its USB console), then restarts the hub through the tray; the broker test logs in with it. Asked for
+  by the Potluck Desk.
 - **The hub goes on the house network with one request**: `POST /api/setup/listen {"on": true}` on the PC makes the
   hub's certificate (its own CA, naming the PC's address; one that already names it is kept, so Home Assistant's pairing
   holds), writes `--listen` into the tray's `tray.json` and has the tray restart the hub -- no openssl, no Task Manager.

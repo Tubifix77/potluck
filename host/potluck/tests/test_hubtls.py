@@ -68,6 +68,18 @@ class Listen(unittest.TestCase):
                 hubtls.set_listen(True, bad)
         self.assertNotIn("--listen", self.cfg()["hub_args"])  # nothing written
 
+    def test_the_hubs_broker_login_is_a_file_in_hub_args_and_reads_back(self) -> None:
+        self.assertIsNone(hubtls.hub_login())
+        hubtls.set_listen(True, "192.168.0.7")
+        p = hubtls.set_broker_login("potluck", "s3cret pass")
+        self.assertEqual(hubtls.hub_login(), ("potluck", "s3cret pass"))
+        hubtls.set_broker_login("potluck", "other")  # again: one --broker-login, the listen settings kept
+        args = self.cfg()["hub_args"]
+        self.assertEqual(args.count("--broker-login"), 1)
+        self.assertEqual(args[args.index("--broker-login") + 1], str(p))
+        self.assertIn("--listen", args)
+        self.assertEqual(hubtls.hub_login(), ("potluck", "other"))
+
     def test_the_tray_runs_this_hub_when_tray_json_names_its_cell(self) -> None:
         self.assertTrue(hubtls.runs_under_tray("D:/cell/home.json"))
         self.assertFalse(hubtls.runs_under_tray("D:/other/cell.json"))

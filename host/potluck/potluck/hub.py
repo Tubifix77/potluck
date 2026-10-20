@@ -1287,6 +1287,47 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             except ValueError:
                 self._json(400, {"ok": False, "result": "expected a JSON object"})
                 return
+            if path == "/api/setup/broker_login":
+                # 2026-10-20 (the Potluck Desk, ROADMAP item 6): a login for a broker that took anyone -- the hub's own
+                # login file in tray.json, and each presenting board's over its USB console; then the tray's restart.
+                from . import hubtls
+                ports = req.get("ports", [])
+                if not isinstance(ports, list) or not all(isinstance(p, str) and p for p in ports):
+                    self._json(400, {"ok": False, "result": "expected {\"user\", \"password\", \"ports\"?: [...]}"})
+                    return
+                own = getattr(model.hub.transport, "port", None)
+                try:
+                    user, password = st.check_broker_login(req.get("user"), req.get("password"))
+                    if own is not None and own in ports:
+                        raise st.SetupError(f"{own} is the hub's own link to the cell")
+                except st.SetupError as exc:
+                    self._json(409, {"ok": False, "result": str(exc)})
+                    return
+                hubtls.set_broker_login(user, password)
+                jobs = setup_jobs()
+                started = {}
+                for p in ports:
+                    try:
+                        started[p] = jobs.start("broker_login", p,
+                                                lambda pct, p=p: {"saved": st.set_present_login(p, user, password)})
+                    except st.SetupError as exc:
+                        started[p] = None
+                        model.record("broker_login", None, {"port": p, "result": str(exc)})
+                restart = hubtls.runs_under_tray(cl.path)
+                if restart:
+                    def later(ids=[j for j in started.values() if j]):
+                        for _ in range(600):  # the boards' console jobs first: a restart would cut them off
+                            if all((jobs.get(j) or {}).get("state") != "running" for j in ids):
+                                break
+                            time.sleep(0.2)
+                        model.restart_requested = True
+                    threading.Thread(target=later, daemon=True, name="broker-login-restart").start()
+                model.record("broker_login", None, {"ports": ports, "hub": True})
+                self._json(200, {"ok": True, "jobs": started, "file": str(hubtls.login_path()),
+                                 "restart": ("the hub stops when the boards' jobs end and the tray starts it again with "
+                                             "the login" if restart else
+                                             "the tray does not run this hub: start it again with --broker-login")})
+                return
             if path == "/api/setup/listen":
                 # 2026-10-20 (the Potluck Desk, HOME-ASSISTANT.md part B steps 1-2): the hub on the house network, or
                 # back to the PC only -- its certificate made or kept, the tray's hub_args, then a restart by the tray.
@@ -1366,7 +1407,11 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                     broker = str(req.get("broker") or (cl.present or {}).get("broker") or "")
                     ca = (cl.present or {}).get("tls_ca")
                     use_tls = bool(req.get("tls", ca is not None))
-                    self._json(200, st.broker_test(broker, base64.b64decode(ca) if (use_tls and ca) else None))
+                    from .hubtls import hub_login
+                    login = hub_login()  # 2026-10-20: the hub's own, once it has one -- "a login is set" vs "refused"
+                    res = st.broker_test(broker, base64.b64decode(ca) if (use_tls and ca) else None,
+                                         *(login or (None, None)))
+                    self._json(200, dict(res, with_login=login is not None))
                     return
                 if "app" in req:
                     st.set_app(cl.path, str(req["app"]), bool(req.get("enabled", True)))
@@ -1494,7 +1539,8 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
         def _setup_post(self, path: str) -> None:
             """M20's setup wizard: probe, flash, enrol, Wi-Fi, identify -- each a job the dashboard follows."""
             from . import setup as st
-            if path in ("/api/setup/board", "/api/setup/apply", "/api/setup/tree", "/api/setup/listen"):
+            if path in ("/api/setup/board", "/api/setup/apply", "/api/setup/tree", "/api/setup/listen",
+                        "/api/setup/broker_login"):
                 self._setup_cell(path)
                 return
             if path in ("/api/setup/library", "/api/setup/broker"):

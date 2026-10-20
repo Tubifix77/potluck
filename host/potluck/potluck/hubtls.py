@@ -77,31 +77,60 @@ def make(ip: str, cert_path: Path, key_path: Path) -> None:
     cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
 
 
-def _strip_listen(args: list) -> list[str]:
+def _strip(args: list, flags: tuple[str, ...] = ("--listen", "--tls-cert", "--tls-key")) -> list[str]:
     out, skip = [], False
     for x in args:
         if skip:
             skip = False
             continue
-        if x in ("--listen", "--tls-cert", "--tls-key"):
+        if x in flags:
             skip = True
             continue
         out.append(str(x))
     return out
 
 
+def _tray() -> tuple[Path, dict]:
+    tray = potluck_dir() / "tray.json"
+    try:
+        cfg = json.loads(tray.read_text(encoding="utf-8-sig"))
+        return tray, cfg if isinstance(cfg, dict) else {}
+    except FileNotFoundError:
+        return tray, {}
+
+
+def login_path() -> Path:
+    """The hub's broker login (two lines, user then password), for its own entities in Home Assistant (--broker-login)."""
+    return potluck_dir() / "hub-broker-login.txt"
+
+
+def set_broker_login(user: str, password: str) -> Path:
+    """Write the hub's broker login file and put --broker-login into the tray's hub_args. The caller checked the
+    values (setup.check_broker_login); neither is logged."""
+    p = login_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(f"{user}\n{password}\n", encoding="utf-8")
+    tray, cfg = _tray()
+    cfg["hub_args"] = _strip(cfg.get("hub_args") or [], ("--broker-login",)) + ["--broker-login", str(p)]
+    tray.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+    return p
+
+
+def hub_login() -> tuple[str, str] | None:
+    """The hub's broker login, if it has one (for the broker test)."""
+    from .mqtt_link import read_login
+    try:
+        return read_login(str(login_path()))
+    except (OSError, ValueError):
+        return None
+
+
 def set_listen(on: bool, address: str | None = None, port: int = LISTEN_PORT) -> dict:
     """Write the tray's hub_args for the house network (on) or the PC only (off), making or keeping the certificate.
     Returns {"listen", "address", "certificate": "kept" | "made" | None, "fp", "tray_json"}. ValueError on a bad
     address."""
-    tray = potluck_dir() / "tray.json"
-    try:
-        cfg = json.loads(tray.read_text(encoding="utf-8-sig"))
-        if not isinstance(cfg, dict):
-            cfg = {}
-    except FileNotFoundError:
-        cfg = {}
-    args = _strip_listen(cfg.get("hub_args") or [])
+    tray, cfg = _tray()
+    args = _strip(cfg.get("hub_args") or [])
     out = {"listen": None, "address": None, "certificate": None, "fp": None, "tray_json": str(tray)}
     if on:
         if address is None:

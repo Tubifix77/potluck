@@ -253,6 +253,37 @@ class Setup(Pair):
             self.model.cluster = saved
             self.model.restart_requested = False
 
+    def test_the_broker_login_goes_into_the_hubs_file_and_the_hub_restarts_after_the_boards(self) -> None:
+        from unittest import mock
+        from potluck.apply import load_cluster
+        p = Path(self.tmp.name) / "home.json"
+        p.write_text(json.dumps({"schema": "potluck-cluster/1", "system": "home", "firmware": None,
+                                 "boards": [{"node": "6300", "label": "A"}]}), encoding="utf-8")
+        saved = self.model.cluster
+        self.model.cluster = load_cluster(str(p))
+        lad = Path(self.tmp.name) / "lad2"
+        (lad / "potluck").mkdir(parents=True)
+        (lad / "potluck" / "tray.json").write_text(json.dumps({"cluster": str(p)}), encoding="utf-8")
+        try:
+            with mock.patch.dict(os.environ, {"LOCALAPPDATA": str(lad)}):
+                self.assertEqual(self.req(self.local_addr, "POST", "/api/setup/broker_login",
+                                          {"user": "two words", "password": "x"})[0], 409)
+                self.assertFalse((lad / "potluck" / "hub-broker-login.txt").exists())  # nothing written
+                code, r = self.req(self.local_addr, "POST", "/api/setup/broker_login",
+                                   {"user": "potluck", "password": "s3cret", "ports": ["COM97-not-there"]})
+                self.assertEqual((code, set(r["jobs"])), (200, {"COM97-not-there"}))
+                self.assertEqual((lad / "potluck" / "hub-broker-login.txt").read_text(encoding="utf-8"),
+                                 "potluck\ns3cret\n")
+                self.assertEqual(self.wait(r["jobs"]["COM97-not-there"])["state"], "failed")  # no board there
+                for _ in range(100):
+                    if self.model.restart_requested:
+                        break
+                    time.sleep(0.05)
+                self.assertTrue(self.model.restart_requested)  # after the boards' jobs, never before
+        finally:
+            self.model.cluster = saved
+            self.model.restart_requested = False
+
     def test_a_new_board_and_its_room_go_into_the_cluster_file_and_show_at_once(self) -> None:
         from potluck.apply import load_cluster
         p = Path(self.tmp.name) / "home.json"
