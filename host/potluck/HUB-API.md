@@ -139,7 +139,8 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   yet seen working has `working: null` (not `false`), a board not heard yet is not a problem, and the dashboard says
   "Starting up" instead of a verdict. After it, a fault shows as usual.
 - `cell.channel`, `cell.other_cell_frames`, `signals.saturation.namespace` and `signals.saturation.airtime` are
-  reserved: version 1 always sends `null`. `cell.presenter`: the board running the presenting actor, or `null`.
+  reserved: version 1 always sends `null`. `cell.presenter`: the board running the presenting actor, `"00fe"` while the PC's host node holds the role (the
+  boards' telemetry names it the owner; 2026-10-21), or `null`.
   `signals.saturation.peers` is the boards the hub knows against 21 (a board and the 20 peers it can hold);
   `actor_slots` the busiest board's actors against 8.
 - `last_event_seq`: the newest event's `seq` (0 before the first), so a client knows where `GET /api/events` stands.

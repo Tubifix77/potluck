@@ -14,6 +14,9 @@
 
 cmake_minimum_required(VERSION 3.20)
 project(pot_host_tests C CXX)
+# The static C runtime for every target here (they link one library, pot_portable): pot_hostnode.exe goes into the
+# packaged Potluck and must start on a PC with no Visual Studio (2026-10-21).
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

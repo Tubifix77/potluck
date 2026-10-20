@@ -979,6 +979,17 @@ class Model:
         pk = next((b["package"]["counter"] for b in boards if b.get("package")), None)
         fw = next((b["firmware"]["version"] for b in boards if b.get("firmware")), None)
         presenter = next((b["node"] for b in boards if "present" in b.get("actors", [])), None)
+        if presenter is None and self.package is not None:
+            # 2026-10-21: the PC's host node holds the role (M14's present.hub) -- no board runs it, and every board's
+            # telemetry names 00fe the owner of the presenting actor
+            from . import reconcile as rc
+            for a in self.package.manifest.actors:
+                if a.module == "builtin:present":
+                    key = f"{path_hash(rc.output_path(self.package.manifest, a)):08x}"
+                    owners = {t["owner"] for b in boards for t in (b.get("telemetry") or {}).get("actors", [])
+                              if t.get("key") == key}
+                    if owners == {"00fe"}:
+                        presenter = "00fe"
         update = self._update_json(fw)
         if fw != self._pins_for[0]:  # the pins the boards' build uses (potluck.pins), looked up once a version
             from .pins import for_version

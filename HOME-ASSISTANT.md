@@ -153,6 +153,14 @@ reads `{"t":"present",...,"connected":1,...}` -- but the whole console includes 
 Wi-Fi network: do not share that file.) Or the hub's dashboard (path B) lists the board's `present` module as `active`.
 Check too that your broker accepts the boards' connections: the login in step 6, and TLS if you set `tls_ca`.
 
+**The PC presents while it is in the cell** (2026-10-21), when the cluster file's `present` says `"hub": true`: Potluck's
+tray then runs the PC's host node beside the hub, and the presenting role is the PC's while it runs -- a board that
+presents over its own Wi-Fi now and then stalls its radio, so this takes that load off the boards. When the PC is off, a
+board takes the role back within seconds, with the same entities. The tray needs the PC's enrolled identity beside the
+cluster file (`host-00fe.id`) and the cell's package as an Apply from this PC signed it; `"hostnode": false` in
+`%LOCALAPPDATA%\potluck\tray.json` turns it off. The hub's dashboard then lists "presenting (MQTT, this PC)" and its
+model's `cell.presenter` is `00fe`.
+
 ## B. The hub and the Potluck integration
 
 **With Potluck's packaged Windows install, steps 1 and 2 are one request** on the PC (2026-10-20): `POST

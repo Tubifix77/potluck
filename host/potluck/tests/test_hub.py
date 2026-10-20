@@ -469,6 +469,33 @@ class Settled(unittest.TestCase):
         self.assertEqual(me.resources["q"]["settled"], "STALE")
 
 
+class PcPresents(unittest.TestCase):
+    def test_the_pc_is_the_presenter_when_the_boards_telemetry_names_it(self) -> None:
+        """2026-10-21: with the tray's host node holding the role no board runs `present`; the model said nobody."""
+        from types import SimpleNamespace as NS
+        from potluck import manifest as mf
+        from potluck import reconcile as rc
+        m = mf.parse({"schema": 1, "system": "lab", "min_core_version": 1,
+                      "nodes": [{"node_id": 0x6300, "label": "A"}, {"node_id": 0x00FE, "label": "pc", "kind": "host",
+                                                                         "placement": True}],
+                      "actors": [{"name": "present", "module": "builtin:present", "latency_class": 4,
+                                  "config": {"broker": "192.168.0.77:1883", "hub": True}}]})
+        model = hb.Model(NS(record=None), package=NS(manifest=m))
+        key = f"{hb.path_hash(rc.output_path(m, m.actors[0])):08x}"
+        boards = [{"node": "6300", "actors": [], "telemetry": {"actors": [{"key": key, "owner": "00fe"}]}}]
+        self.assertEqual(model._cell_json(boards)["presenter"], "00fe")
+        boards[0]["telemetry"]["actors"][0]["owner"] = "6300"
+        boards[0]["actors"] = ["present"]
+        self.assertEqual(model._cell_json(boards)["presenter"], "6300")
+
+    def test_the_host_node_reports_its_presenting_state(self) -> None:
+        from types import SimpleNamespace as NS
+        from potluck import hostnode as hn
+        self.assertEqual(hn.report_state(NS(cfg=None, connected=False), ("b", 8883))[0], "idle")
+        self.assertEqual(hn.report_state(NS(cfg={}, connected=True), ("b", 8883))[0], "connected")
+        self.assertEqual(hn.report_state(NS(cfg={}, connected=False), ("b", 8883))[0], "disconnected")
+
+
 class UpdateStatus(unittest.TestCase):
     def test_an_update_is_pending_when_the_boards_run_other_firmware_than_this_potluck_carries(self) -> None:
         """2026-10-20, the owner: updating the boards should not hide inside the library's Apply."""

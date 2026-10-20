@@ -16,7 +16,7 @@ import importlib
 import sys
 
 COMMANDS = {"hub": "hub", "tray": "tray", "apply": "apply", "setup": "setup", "keystore": "keystore", "ctl": "ctl",
-            "enrol": "enrol", "fw": "fw", "hubauth": "hubauth"}
+            "enrol": "enrol", "fw": "fw", "hubauth": "hubauth", "hostnode": "hostnode"}
 
 
 def main(argv: list[str] | None = None) -> int:

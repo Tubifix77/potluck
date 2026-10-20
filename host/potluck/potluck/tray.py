@@ -163,6 +163,99 @@ def start_hub() -> subprocess.Popen | None:
                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
+def hostnode_plan(model: dict | None) -> tuple[list[str], int] | None:
+    """2026-10-21: the command that runs the PC's host node for the cell, and the package counter it runs, or None.
+
+    The cell's presenting role is the PC's while it is in the cell when the cluster file says `present.hub` (M14) --
+    and a board that presents over its own Wi-Fi wedges its radio now and then (C on the owner's bench, M0-LOG session
+    42), so the PC takes that load off the boards. Run only with the PC's enrolled identity beside the cluster file
+    (host-00fe.id), the cell's current package signed in the cache (an Apply from this PC keeps it), a hub to go through,
+    and tray.json not saying "hostnode": false."""
+    if model is None or tray_config().get("hostnode") is False:
+        return None
+    cluster = cell_file()
+    counter = (model.get("cell") or {}).get("package")
+    if cluster is None or not isinstance(counter, int):
+        return None
+    try:
+        doc = json.loads(cluster.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(doc.get("present"), dict) or not doc["present"].get("hub"):
+        return None
+    identity = cluster.parent / "host-00fe.id"
+    ca = cluster.parent / str((doc.get("keys") or {}).get("ca", "ca.pub"))
+    pkg = potluck_dir() / "cache" / "packages" / f"{doc.get('system', 'lab')}-{counter}.pkg.json"
+    if not (identity.is_file() and ca.is_file() and pkg.is_file()):
+        return None
+    if getattr(sys, "frozen", False):
+        base = [str(Path(sys.executable).with_name("potluck.exe")), "hostnode"]
+    else:
+        base = [sys.executable, "-u", "-m", "potluck.hostnode"]
+    cmd = base + ["--port", str(doc.get("port") or "COM6"), "--hub", "--package", str(pkg), "--identity", str(identity),
+                  "--ca", str(ca), "--cluster", str(cluster)]
+    login = potluck_dir() / "hub-broker-login.txt"  # the broker login the setup API wrote (hubtls.login_path)
+    if login.is_file():
+        cmd += ["--broker-login", str(login)]
+    return cmd, counter
+
+
+def start_hostnode(cmd: list[str], cwd: Path) -> subprocess.Popen:
+    logs = potluck_dir() / "logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    out = open(logs / "hostnode.log", "ab")
+    out.write(f"===== {time.strftime('%Y-%m-%d %H:%M:%S')} the tray starts the PC's host node\n".encode())
+    out.flush()
+    return subprocess.Popen(cmd, stdout=out, stderr=subprocess.STDOUT, cwd=str(cwd),
+                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+
+
+class HostnodeKeeper:
+    """2026-10-21: the tray keeps the PC's host node running beside the hub (hostnode_plan), started again when it stops
+    (at most once in BACKOFF_S) and whenever the cell's package changes -- the node runs the package it was started with."""
+
+    BACKOFF_S = 60.0
+
+    def __init__(self, plan=None, start=None, clock=time.monotonic) -> None:
+        self._plan = plan or hostnode_plan
+        self._start = start or (lambda cmd: start_hostnode(cmd, potluck_dir()))
+        self._clock = clock
+        self.child = None
+        self.counter: int | None = None
+        self.last_start: float | None = None
+        self.starts = 0
+
+    def _stop(self) -> None:
+        if self.child is not None and self.child.poll() is None:
+            self.child.terminate()
+            try:
+                self.child.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.child.kill()
+        self.child = None
+
+    def seen(self, model: dict | None) -> bool:
+        """One poll; True when it started the host node."""
+        plan = self._plan(model)
+        if plan is None:
+            if model is not None:  # the hub answers and says no host node (or hostnode: false): none runs
+                self._stop()
+            return False
+        cmd, counter = plan
+        running = self.child is not None and self.child.poll() is None
+        if running and counter == self.counter:
+            return False
+        if running:  # a new package: the node runs the one it was started with
+            self._stop()
+        elif self.last_start is not None and self._clock() - self.last_start < self.BACKOFF_S:
+            return False
+        self.child = self._start(cmd)
+        self.counter = counter
+        self.last_start = self._clock()
+        self.starts += 1
+        return True
+
+
 class HubKeeper:
     """A tray started at login keeps a hub running for as long as it runs. Found 2026-10-16 (M0-LOG session 46): the
     tray started a hub only when it started itself, and only if none answered -- so when the hub that was running then
@@ -245,7 +338,8 @@ CMD_OPEN, CMD_SETUP, CMD_START, CMD_DESK, CMD_QUIT = 1, 2, 3, 4, 9
 
 
 class Tray:
-    def __init__(self, keeper: HubKeeper | None = None) -> None:
+    def __init__(self, keeper: HubKeeper | None = None, hostkeeper: HostnodeKeeper | None = None) -> None:
+        self.hostkeeper = hostkeeper
         self.state, self.tip = "none", "Potluck"
         self.icons: dict[str, int] = {}
         self.child: subprocess.Popen | None = None
@@ -280,6 +374,11 @@ class Tray:
                 self.state, self.tip = judge(m)
                 if self.keeper is not None:
                     self.keeper.seen(m)
+            if self.hostkeeper is not None:
+                try:
+                    self.hostkeeper.seen(m)
+                except OSError as exc:
+                    note(f"the PC's host node did not start: {exc}")
         threading.Thread(target=run, daemon=True).start()
 
     def _show(self) -> None:
@@ -354,7 +453,7 @@ def main(argv: list[str] | None = None) -> int:
     if sys.platform != "win32":
         print("potluck-tray: the tray icon is Windows-only for now; the hub and dashboard work without it")
         return 2
-    return Tray(keeper).run()
+    return Tray(keeper, HostnodeKeeper() if keeper is not None else None).run()
 
 
 if __name__ == "__main__":

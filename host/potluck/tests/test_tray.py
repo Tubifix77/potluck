@@ -103,5 +103,81 @@ class Keeper(unittest.TestCase):
         self.assertEqual(started, [0.0, 60.0])
 
 
+
+class Hostnode(unittest.TestCase):
+    """2026-10-21: the tray keeps the PC's host node running, so the PC presents the cell to Home Assistant while it is
+    in the cell (present.hub) and the boards' radios are spared that load."""
+
+    def cell(self, d: Path, hub: bool = True) -> Path:
+        c = d / "keys" / "home.json"
+        c.parent.mkdir(parents=True, exist_ok=True)
+        c.write_text(json.dumps({"system": "lab", "port": "COM6", "keys": {"ca": "ca.pub"},
+                                 "present": {"broker": "192.168.0.77:8883", "hub": hub}}))
+        (c.parent / "ca.pub").write_text("x")
+        (c.parent / "host-00fe.id").write_text("x")
+        (d / "cache" / "packages").mkdir(parents=True, exist_ok=True)
+        (d / "cache" / "packages" / "lab-103.pkg.json").write_text("{}")
+        (d / "tray.json").write_text(json.dumps({"cluster": str(c)}))
+        return c
+
+    def test_it_runs_only_when_the_cell_wants_it_and_everything_it_needs_is_there(self):
+        model = {"cell": {"package": 103}}
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            saved = tray.potluck_dir
+            tray.potluck_dir = lambda: d
+            try:
+                c = self.cell(d)
+                cmd, counter = tray.hostnode_plan(model)
+                self.assertEqual(counter, 103)
+                self.assertIn("--hub", cmd)
+                self.assertEqual(cmd[cmd.index("--package") + 1], str(d / "cache" / "packages" / "lab-103.pkg.json"))
+                self.assertEqual(cmd[cmd.index("--identity") + 1], str(c.parent / "host-00fe.id"))
+                self.assertNotIn("--broker-login", cmd)
+                (d / "hub-broker-login.txt").write_text("u\np\n")
+                self.assertIn("--broker-login", tray.hostnode_plan(model)[0])
+                self.assertIsNone(tray.hostnode_plan(None))  # no hub to go through
+                self.assertIsNone(tray.hostnode_plan({"cell": {"package": 104}}))  # that package was applied elsewhere
+                (c.parent / "host-00fe.id").unlink()
+                self.assertIsNone(tray.hostnode_plan(model))  # the PC is not enrolled
+                self.cell(d, hub=False)
+                self.assertIsNone(tray.hostnode_plan(model))  # the cell file does not give the PC the role
+                self.cell(d)
+                (d / "tray.json").write_text(json.dumps({"cluster": str(c), "hostnode": False}))
+                self.assertIsNone(tray.hostnode_plan(model))  # turned off
+            finally:
+                tray.potluck_dir = saved
+
+    def test_the_keeper_restarts_it_when_it_stops_and_when_the_package_changes(self):
+        class Child:
+            def __init__(self):
+                self.alive = True
+
+            def poll(self):
+                return None if self.alive else 0
+
+            def terminate(self):
+                self.alive = False
+
+            def wait(self, timeout=None):
+                return 0
+        now, started, plan = [0.0], [], [(["hostnode"], 103)]
+        k = tray.HostnodeKeeper(plan=lambda m: plan[0], start=lambda cmd: started.append(Child()) or started[-1],
+                                clock=lambda: now[0])
+        self.assertTrue(k.seen(GOOD))
+        self.assertFalse(k.seen(GOOD))  # running, same package: left alone
+        started[-1].alive = False  # it stopped
+        now[0] += 10
+        self.assertFalse(k.seen(GOOD))  # not again within a minute
+        now[0] += 60
+        self.assertTrue(k.seen(GOOD))
+        plan[0] = (["hostnode"], 104)  # an Apply: the node runs the package it was started with
+        self.assertTrue(k.seen(GOOD))
+        self.assertFalse(started[1].alive)  # the old one was stopped
+        plan[0] = None
+        self.assertFalse(k.seen(GOOD))  # the cell no longer wants it: stopped
+        self.assertFalse(started[2].alive)
+
+
 if __name__ == "__main__":
     unittest.main()

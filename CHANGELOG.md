@@ -5,6 +5,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **The tray runs the PC's host node, so the PC presents the cell to Home Assistant while it is in the cell** (the
+  cluster file's `present.hub`), sparing the boards' radios; the package carries `pot_hostnode.exe` (static C runtime),
+  the hub shows the PC as `cell.presenter` `00fe` and lists "presenting (MQTT, this PC)". `"hostnode": false` in
+  tray.json turns it off. HOME-ASSISTANT.md, part A.
 - **CAN recovers from bus-off**: the frame in flight is reported failed, the rest of its message dropped, recovery
   starts a second later and transmit resumes when the bus is back (STATUS.md, M4; a two-board test is still owed).
 - **Updating the boards is its own thing**: the hub's model says when the installed Potluck carries newer firmware than

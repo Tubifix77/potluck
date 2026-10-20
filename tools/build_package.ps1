@@ -67,11 +67,19 @@ print('python|' + os.path.join(sys.base_prefix, 'LICENSE.txt'))
     }
     # licence texts a component's installed files lack (pyserial 3.5's, from its v3.5 tag)
     Copy-Item packaging\licenses\* $lic
+    # The PC's host node (2026-10-21): the tray runs it so the PC presents the cell while it is in the cell. An optimised
+    # build of its own, with the static C runtime (tests/CMakeLists.txt), so it starts on a PC with no Visual Studio.
+    & (Join-Path $root "tools\run_host_tests.ps1") -Release -BuildDir build/release -Target pot_hostnode | Out-Null
+    $hn = Get-ChildItem (Join-Path $root "build\release") -Filter "pot_hostnode.exe" -Recurse -File | Select-Object -First 1
+    if (-not $hn) { throw "pot_hostnode.exe was not built" }
+    Copy-Item $hn.FullName dist\Potluck\pot_hostnode.exe
+    & dist\Potluck\pot_hostnode.exe --caps | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "pot_hostnode.exe does not start" }
     if (-not $NoFirmware) {
         $env:PYTHONPATH = Join-Path $root "host\potluck"
         if ($FromCluster) { & $py -m potluck.release dist\Potluck\firmware --from (Resolve-Path $FromCluster) }
         else { & $py -m potluck.release dist\Potluck\firmware --repo $root }
         if ($LASTEXITCODE -ne 0) { throw "the release firmware was not built" }
     }
-    Write-Host "built: $root\dist\Potluck (potluck.exe, potluck-tray.exe$(if (-not $NoFirmware) { ', firmware' }))"
+    Write-Host "built: $root\dist\Potluck (potluck.exe, potluck-tray.exe, pot_hostnode.exe$(if (-not $NoFirmware) { ', firmware' }))"
 } finally { Pop-Location }

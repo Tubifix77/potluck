@@ -45,6 +45,22 @@ from .transport import SerialTransport, open_transport
 
 DEFAULT_EXE = os.path.join(os.path.dirname(__file__), "..", "..", "..", "build", "tests",
                            "pot_hostnode.exe" if os.name == "nt" else "pot_hostnode")
+if getattr(sys, "frozen", False):  # the packaged Potluck carries it beside potluck.exe (2026-10-21)
+    DEFAULT_EXE = os.path.join(os.path.dirname(sys.executable), "pot_hostnode.exe")
+
+#: What the hub's integrations list calls this node's presenting (POST /api/integrations, M18).
+REPORT_NAME = "presenting (MQTT, this PC)"
+
+
+def report_state(link, broker: tuple[str, int] | None) -> tuple[str, str]:
+    """(state, detail) for the hub's integrations list: connected while this PC holds the role and the broker took it,
+    disconnected while it holds the role and cannot reach the broker, idle while a board presents."""
+    where = f"{broker[0]}:{broker[1]}" if broker else ""
+    if link is None or link.cfg is None:
+        return "idle", "a board presents; this PC takes the role while it is in the cell"
+    if link.connected:
+        return "connected", f"this PC presents the cell to {where}"
+    return "disconnected", f"this PC holds the role but has not reached {where}"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -214,7 +230,27 @@ def main(argv: list[str] | None = None) -> int:
             control("net 1" if mqtt_link.reachable(*broker) else "net 0")
             stop.wait(5.0)
 
-    funcs = [cable_to_node, node_to_cable, stats] + ([broker_probe] if broker else [])
+    def post_report(st: str, detail: str, path: str = "/api/integrations") -> None:
+        import urllib.request
+        from .hub import state_file
+        try:
+            api = json.loads(state_file().read_text(encoding="utf-8"))["api"]
+            body = {"name": REPORT_NAME} if path.endswith("/forget") else {"name": REPORT_NAME, "state": st, "detail": detail}
+            req = urllib.request.Request(f"http://{api}{path}", method="POST", data=json.dumps(body).encode(),
+                                         headers={"X-Potluck-Request": "1", "Content-Type": "application/json"})
+            urllib.request.urlopen(req, timeout=3).close()
+        except (OSError, ValueError, KeyError):
+            pass  # retried on the next pass
+
+    def report() -> None:
+        # 2026-10-21: the hub's integrations list shows this PC's presenting, as it shows each board's (POST
+        # /api/integrations on the hub's own address).
+        while not stop.is_set():
+            post_report(*report_state(link, broker))
+            stop.wait(20.0)
+
+    funcs = [cable_to_node, node_to_cable, stats] + ([broker_probe] if broker else []) + \
+        ([report] if relay is not None else [])
     threads = [threading.Thread(target=f, daemon=True) for f in funcs]
     for t in threads:
         t.start()
@@ -228,6 +264,11 @@ def main(argv: list[str] | None = None) -> int:
     if link is not None:
         link.stop()  # its own availability offline, a clean DISCONNECT -- as a board that hands the role on
         time.sleep(0.3)
+        if relay is not None:
+            # Said at once, then gone from the list: left alone it read "connected", then "disconnected" once silent for
+            # 60 s -- red for a PC that only stopped presenting (found on the bench). A connected entry cannot be forgotten.
+            post_report("idle", "this PC's host node stopped; a board takes the role")
+            post_report("", "", "/api/integrations/forget")
     child.terminate()
     try:
         child.wait(timeout=3)
