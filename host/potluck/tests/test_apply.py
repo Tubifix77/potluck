@@ -616,6 +616,34 @@ class LeaseInAPartition(unittest.TestCase):
 
 
 
+class WaitReachable(unittest.TestCase):
+    """2026-10-19/20: the rollout stopped at C seconds after B restarted -- the cell was settling between a mesh's
+    channels, and C was back 2-3 minutes later. The next board is waited for before it is given up."""
+
+    def test_a_board_back_after_a_while_is_waited_for_and_one_that_never_answers_is_not(self) -> None:
+        from unittest import mock
+        from potluck import fw as fwm
+        from potluck.bridge import RequestTimeout
+        logs = []
+        answers = iter([RequestTimeout("no"), {"status": "unreachable"}, {"status": "ok"}])
+
+        def status(b, n):
+            a = next(answers)
+            if isinstance(a, Exception):
+                raise a
+            return a
+        with mock.patch.object(fwm, "status", status):
+            self.assertTrue(ap.wait_reachable(None, 0x8160, logs.append, settle_s=5.0, poll_s=0.01))
+        self.assertEqual(len(logs), 2)  # "waiting for", then "answers again"
+        self.assertTrue(logs[0].startswith("firmware: waiting for 0x8160"))
+        with mock.patch.object(fwm, "status", lambda b, n: {"status": "unreachable"}):
+            self.assertFalse(ap.wait_reachable(None, 0x8160, logs.append, settle_s=0.05, poll_s=0.01))
+        with mock.patch.object(fwm, "status", lambda b, n: {"status": "ok"}):
+            logs.clear()
+            self.assertTrue(ap.wait_reachable(None, 0x8160, logs.append))
+            self.assertEqual(logs, [])  # there at once: nothing said
+
+
 class PackagedRelease(unittest.TestCase):
     """2026-10-19: the owner's first Apply from the Desk -- an `outside` change only -- rebuilt firmware the installed
     package already carried, and the build stopped on a Windows error box. The release image is used when it matches."""

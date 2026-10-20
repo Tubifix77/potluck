@@ -602,7 +602,7 @@ class ApplyProgress:
         elif s.startswith("firmware: ") and " at counter " in s:
             self.fw_n = max(1, s.count("0x"))
             new = 40
-        elif s.startswith("firmware: 0x"):
+        elif s.startswith("firmware: 0x") and any(k in s for k in (" confirmed ", " took ", "stopped answering")):
             self.fw_done += 1
             new = 40 + 40 * min(self.fw_done, max(1, self.fw_n)) // max(1, self.fw_n)
         elif s.startswith("package: signed"):

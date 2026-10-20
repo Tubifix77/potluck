@@ -713,6 +713,36 @@ def _fits(fw: Firmware) -> Firmware:
     return fw
 
 
+#: After a board restarts into new firmware the next one may be out of reach for a while: an extender's Wi-Fi can join
+#: the house mesh's other access point and take the cell to its channel while a board with its own Wi-Fi stays on the
+#: old one, until the split probe brings it over (within ~3 minutes, pot/split_probe.hpp). Found 2026-10-19 and -20: the
+#: rollout stopped at C both times, seconds after B restarted, and C was back in the cell 2-3 minutes later.
+SETTLE_S = 240.0
+
+
+def wait_reachable(b, n: int, log, settle_s: float = SETTLE_S, poll_s: float = 5.0) -> bool:
+    """Whether board n answers a firmware status within settle_s, logging once that the rollout waits."""
+    from . import fw as fwm
+    from .bridge import RequestTimeout
+    t0 = time.monotonic()
+    said = False
+    while True:
+        try:
+            if fwm.status(b, n).get("status") == "ok":
+                if said:
+                    log(f"firmware: 0x{n:04x} answers again after {time.monotonic() - t0:.0f} s")
+                return True
+        except (RequestTimeout, fwm.FwError):
+            pass
+        if time.monotonic() - t0 >= settle_s:
+            return False
+        if not said:
+            log(f"firmware: waiting for 0x{n:04x} to answer -- the cell settles after the last restart (up to "
+                f"{settle_s:.0f} s)")
+            said = True
+        time.sleep(poll_s)
+
+
 def packaged_release(version: str) -> tuple[Path, bytes] | None:
     """The image and ELF SHA-256 of release `version` as the installed package carries it (setup.packaged_firmware:
     <package>/firmware/<version>/, release.json beside the images), or None."""
@@ -1935,6 +1965,11 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                     if lease.lost is not None:
                         print(f"FAILED: the cell's deploy lease is now {lease.lost.holder_line()} -- stopped before "
                               f"firmware to 0x{n:04x}")
+                        return 1
+                    if n != order[0] and not wait_reachable(b, n, log):
+                        print(f"FAILED: firmware to 0x{n:04x}: it has not answered for {SETTLE_S:.0f} s since the last "
+                              f"board restarted -- it keeps the image it runs; stopped before the package (run apply "
+                              f"again once it is back)")
                         return 1
                     t1 = time.monotonic()
                     try:
