@@ -457,6 +457,27 @@ TEST(can, a_started_segmented_message_finishes_before_a_higher_priority_one_star
     CHECK_EQ(rx.counters().out_of_order, 0u);
 }
 
+TEST(can, a_message_whose_start_was_lost_at_bus_off_is_dropped_and_the_rest_goes_on) {
+    // 2026-10-21: the controller went bus-off holding a probe's first segment. The receiver will never see that start,
+    // so the probe's queued rest is dropped; a single frame queued meanwhile still goes out after recovery.
+    CanTxQueue q;
+    const auto pr = to_can(probe(0x8160, 0x7368, 1, 0x77), 0x8160, can_alias_of(0x7368));
+    CHECK(push(q, pr));
+    CanTxItem it{};
+    CHECK(q.pop(it));  // segment 0 in the controller -- and lost
+    CHECK(push(q, to_can(safe_state(0x8160), 0x8160, kCanBroadcastAlias)));
+    CHECK_EQ(q.abandon_in_progress(), pr.size() - 1);
+    CHECK_EQ(q.abandon_in_progress(), static_cast<size_t>(0));  // nothing in progress any more
+    CHECK(q.pop(it));
+    CHECK_EQ(static_cast<int>(can_id_unpack(it.f.id).opcode), static_cast<int>(kOpSafeState));
+    CHECK(!q.pop(it));
+    CHECK_EQ(q.free(), CanTxQueue::kCapacity);
+    // A whole message queued after the loss is untouched, and can start.
+    CHECK(push(q, pr));
+    CHECK(q.pop(it));
+    CHECK_EQ(it.f.id, pr[0].id);
+}
+
 TEST(can, the_transmit_queue_orders_by_priority_then_fifo_and_takes_all_or_nothing) {
     CanTxQueue q;
     // Before anything is in flight, the higher-priority segmented message goes first.

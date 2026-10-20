@@ -289,6 +289,22 @@ bool CanTxQueue::before(const Entry& a, const Entry& b) {
     return a.part < b.part;
 }
 
+size_t CanTxQueue::abandon_in_progress() {
+    if (!in_progress_) {
+        return 0;
+    }
+    size_t n = 0;
+    for (Entry& e : e_) {
+        if (e.used && !e.single && e.seq == in_progress_seq_) {
+            e.used = false;
+            --used_;
+            ++n;
+        }
+    }
+    in_progress_ = false;
+    return n;
+}
+
 bool CanTxQueue::pop(CanTxItem& out) {
     Entry* best = nullptr;
     for (Entry& e : e_) {

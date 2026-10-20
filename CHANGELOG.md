@@ -5,6 +5,8 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **CAN recovers from bus-off**: the frame in flight is reported failed, the rest of its message dropped, recovery
+  starts a second later and transmit resumes when the bus is back (STATUS.md, M4; a two-board test is still owed).
 - **Updating the boards is its own thing**: the hub's model says when the installed Potluck carries newer firmware than
   the boards run (`cell.update`), and `POST /api/setup/update` brings them to it as an `update` job -- no more
   pressing the library's Apply with nothing changed. The owner's point, 2026-10-20.

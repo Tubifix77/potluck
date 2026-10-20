@@ -36,6 +36,13 @@ struct CanPortStats {
     uint32_t safe_state_last_us;
     uint32_t safe_state_max_us;
     uint32_t safe_state_min_us;
+    // Bus-off (2026-10-21; owed since af23d35): the controller left the bus after too many errors -- a shorted or
+    // unplugged bus. The frame it held is reported failed, the queued rest of its message dropped, sends refused until
+    // the bus is back; recovery is started from the task a second later and completes on its own.
+    uint32_t bus_off;        // times the controller went bus-off
+    uint32_t recoveries;     // times it came back (bus-off to error-active)
+    uint32_t tx_bus_off;     // messages refused while bus-off
+    uint32_t tx_abandoned;   // queued CAN frames dropped because their message's start was lost
 };
 
 bool can_start(const CanPortConfig& cfg);

@@ -119,6 +119,9 @@ class CanTxQueue {
     bool push(const CanFrame* f, size_t n, const CanTxMeta& meta);
     // The frame to send next, removed from the queue. False when there is none.
     bool pop(CanTxItem& out);
+    // A segmented message whose start went out and was lost (the controller went bus-off) can no longer be delivered:
+    // the receiver never saw its start. Drop its queued rest; returns how many CAN frames were dropped.
+    size_t abandon_in_progress();
     size_t free() const { return kCapacity - used_; }
     size_t size() const { return used_; }
 
