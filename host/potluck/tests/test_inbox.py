@@ -46,6 +46,17 @@ class Inbox(unittest.TestCase):
         _pinned, _portable, reads = ap.expected(parse(doc(PHONE)), [0x6300, 0x7368])
         self.assertFalse([r for r in reads if "/act/phone/" in r])  # NO_DATA until written: no failed apply
 
+    def test_the_hub_reads_its_values_though_the_verify_does_not_wait_for_them(self) -> None:
+        """2026-10-21: the hub reads what expected() lists; skipping inbox values there for everyone hid the phone's
+        values from the hub's model and made every write to them answer 404."""
+        from types import SimpleNamespace as NS
+        from potluck import hub as hb
+        m = parse(doc(PHONE))
+        model = hb.Model(NS(record=None), package=NS(manifest=m))
+        model.board_ids = lambda: [0x6300, 0x7368]
+        self.assertIn("potluck://lab/act/phone/steps", model.resource_paths())
+        self.assertNotIn("potluck://lab/act/phone/steps", ap.expected(m, [0x6300, 0x7368])[2])
+
     def test_a_program_may_be_let_write_it_from_outside(self) -> None:
         m = parse(doc(PHONE, outside={"potluck://lab/act/phone/heart_rate": "read_write",
                                         "potluck://lab/act/phone/steps": "read"}))

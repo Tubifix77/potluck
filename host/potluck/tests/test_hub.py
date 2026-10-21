@@ -488,6 +488,31 @@ class PcPresents(unittest.TestCase):
         boards[0]["actors"] = ["present"]
         self.assertEqual(model._cell_json(boards)["presenter"], "6300")
 
+    def test_the_presenting_app_works_by_the_host_nodes_report_while_the_pc_holds_the_role(self) -> None:
+        """2026-10-21: with the PC presenting, act/present/out read NO_DATA and the app showed red; the host node's own
+        report of its broker connection is what says whether it works."""
+        from types import SimpleNamespace as NS
+        from potluck import manifest as mf
+        from potluck import reconcile as rc
+        m = mf.parse({"schema": 1, "system": "lab", "min_core_version": 1,
+                      "nodes": [{"node_id": 0x6300, "label": "A"}, {"node_id": 0x00FE, "label": "pc", "kind": "host",
+                                                                         "placement": True}],
+                      "actors": [{"name": "present", "module": "builtin:present", "latency_class": 4,
+                                  "config": {"broker": "192.168.0.77:1883", "hub": True}}]})
+        model = hb.Model(NS(record=None), package=NS(manifest=m))
+        key = f"{hb.path_hash(rc.output_path(m, m.actors[0])):08x}"
+        boards = [{"node": "6300", "state": "alive", "actors": [],
+                   "telemetry": {"actors": [{"key": key, "owner": "00fe", "running_here": False}]}}]
+        res = [{"path": "potluck://lab/act/present/out", "quality": "NO_DATA", "settled_quality": "NO_DATA"}]
+        [app] = model._apps_json(boards, res)
+        self.assertEqual((app["running_on"], app["working"]), (["00fe"], False))
+        self.assertIn("no report", app["detail"])
+        model.reports.report("presenting (MQTT, this PC)", "connected", "", "00fe")
+        [app] = model._apps_json(boards, res)
+        self.assertEqual((app["working"], app["detail"]), (True, ""))
+        from potluck import apply as ap
+        self.assertEqual(ap.expected(m, [0x6300])[2], [])  # apply's verify does not wait for that read
+
     def test_the_host_node_reports_its_presenting_state(self) -> None:
         from types import SimpleNamespace as NS
         from potluck import hostnode as hn

@@ -1451,7 +1451,7 @@ def actor_reads(m, a, boards: list[int]) -> tuple[str, list[str]]:
     return "pinned", reads
 
 
-def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
+def expected(m, boards: list[int], verify: bool = True) -> tuple[dict[int, int], int, list[str]]:
     """(pinned actors per board, portable actors in the cell, output paths to read back)."""
     pinned = {n: 0 for n in boards}
     portable = 0
@@ -1469,8 +1469,14 @@ def expected(m, boards: list[int]) -> tuple[dict[int, int], int, list[str]]:
             node = m.placement_of(a)
             if node in pinned:
                 pinned[node] += 1
-        if a.module == "builtin:inbox":
+        # The verify skips two kinds of output; the hub, which reads with verify=False, reads them (found 2026-10-21:
+        # skipping them here for everyone hid the phone's values from the hub and made its writes answer 404).
+        if verify and a.module == "builtin:inbox":
             continue  # its values are its program's to write: NO_DATA until it does, and that is no failed apply
+        if verify and a.module == "builtin:present" and a.config.get("hub"):
+            # 2026-10-21: the PC may hold the role (present.hub), and then its output reads NO_DATA through the cabled
+            # board (open, M0-LOG session 48) -- the presenting is shown by the hub, not by this read.
+            continue
         reads += outs
     if m.system != "lab":
         for n in boards:

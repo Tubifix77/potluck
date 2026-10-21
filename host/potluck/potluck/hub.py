@@ -454,7 +454,7 @@ class Model:
         if self.package is None:
             return []
         from .apply import expected
-        _, _, reads = expected(self.package.manifest, self.board_ids())
+        _, _, reads = expected(self.package.manifest, self.board_ids(), verify=False)  # every output, inboxes' too
         return reads
 
     # On-demand reads (POST /api/interest): paths a client asks the hub to read besides the package's, for as long as
@@ -1100,6 +1100,14 @@ class Model:
                 want = nodes if not every else [b["node"] for b in boards if b["state"] == "alive"]
                 ok = all(n in running for n in want)
                 why = "" if ok else "not running on " + ", ".join(n for n in want if n not in running)
+            if a.module == "builtin:present" and running == ["00fe"]:
+                # 2026-10-21: the PC's host node holds the role. Its output reaches the hub as NO_DATA (a board's replica
+                # of an output the PC owns is not refreshed -- open, M0-LOG session 48), so the host node's own report of
+                # its broker connection is what says it works.
+                rep = next((r for r in self.reports.snapshot() if r.get("name") == "presenting (MQTT, this PC)"), None)
+                st = rep.get("state") if rep else None
+                ok, why, bad_outs = st == "connected", ("" if st == "connected" else
+                                                        f"this PC holds the role: {st or 'no report from it'}"), []
             if ok and bad_outs:
                 ok, why = False, "output " + bad_outs[0].split("/", 3)[3] + " is " + quality.get(bad_outs[0], "?")
                 if a.module == "builtin:inbox":  # 2026-10-20: its values are its program's to write
