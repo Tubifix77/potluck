@@ -13,6 +13,8 @@ Potluck's releases. The full record -- every milestone with its measurements and
   of waiting on it.
 - **A write to a value the package has but its board does not hold yet (an Apply under way) answers `404`
   `not_found`**, not `403`: absent, so send it again -- not forbidden. Found by the owner's phone app during a re-apply.
+- **An inbox reads working as soon as its program writes**: a value going from NO_DATA to GOOD settles at once (other
+  changes still wait for two reads); after an Apply the phone's app read "nothing written yet" ~20 s past its first write.
 - **`install.ps1` gets past a file another program holds** when it is already the same (Chrome's Claude helper had
   loaded the installed `VCRUNTIME140.dll`, and the install stopped half-way with the tray stopped).
 - **The tray runs the PC's host node, so the PC presents the cell to Home Assistant while it is in the cell** (the

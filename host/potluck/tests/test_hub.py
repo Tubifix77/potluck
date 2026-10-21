@@ -464,6 +464,11 @@ class Settled(unittest.TestCase):
         self.assertEqual(events, [{"path": path, "from": "GOOD", "to": "STALE"}])
         self.assertEqual(read(Quality.GOOD), ("GOOD", "STALE"))    # and one good read does not settle it back
         self.assertEqual(read(Quality.GOOD), ("GOOD", "GOOD"))
+        read(Quality.NO_DATA)
+        self.assertEqual(read(Quality.NO_DATA), ("NO_DATA", "NO_DATA"))  # an inbox restarted by an Apply: unwritten
+        self.assertEqual(read(Quality.GOOD), ("GOOD", "GOOD"))     # its program's first write settles at once
+        read(Quality.NO_DATA)
+        self.assertEqual(me.resources[path]["settled"], "GOOD")    # the other way still takes two reads
 
     def test_a_hub_start_is_quiet_until_a_quality_holds_and_says_so(self):
         from types import SimpleNamespace as NS

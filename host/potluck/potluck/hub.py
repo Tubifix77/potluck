@@ -683,7 +683,9 @@ class Model:
                 # is not a change, so no event.
                 if (streak >= self.SETTLE_READS and q == "GOOD") or time.monotonic() - first >= self.STARTUP_S:
                     settled = q
-            elif streak >= self.SETTLE_READS and settled != q:
+            elif settled != q and (streak >= self.SETTLE_READS or (settled == "NO_DATA" and q == "GOOD")):
+                # NO_DATA to GOOD at once: a value's first write (an inbox's program starting) is no late read -- held
+                # back, an app read "nothing written yet" ~20 s after its values were GOOD (the Potluck Desk, 2026-10-21).
                 self._event_locked("quality_changed", None, {"path": path, "from": settled, "to": q})
                 settled = q
             self.resources[path] = {"reading": r, "quality": q, "at": _hub_ms(), "streak": streak,
