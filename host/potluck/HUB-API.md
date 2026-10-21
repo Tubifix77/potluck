@@ -300,6 +300,7 @@ timed out); the owner checks the package again and its answer comes back. Every 
 | 200 | `applied` | the owning board applied it |
 | 400 | `expected {"path": ..., "value": ...}` / `a bool or a number` / `only a board's own resource or an inbox's value can be written from outside` | the request |
 | 404 | `no such resource in this cell (...)` | not in the cell's package: an app that is off, or values not provisioned yet (an inbox before its Apply) |
+| 404 | `not_found` | in the package, but the owning board does not hold it yet: an Apply under way. Send it again |
 | 403 | `not writable from outside` | the cluster file's `outside` does not mark it `read_write`, or it is safety-relevant |
 | 403 | `not writable by this program` | the cluster file names other programs as its writers (below) |
 | 403 | `this login may look, not write` | the login's or token's right is `look` |

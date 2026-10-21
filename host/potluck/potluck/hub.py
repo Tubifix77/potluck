@@ -2130,6 +2130,10 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
         result = "the board on the cable could not pass it to its owner (owner not alive, or firmware too old)"
     model.record("outside_write", owner, {"resource": path, "path": path, "value": value, "result": result})
     del cur
+    if not ok and raw.status == NsError.NOT_FOUND:
+        # The package has it, the board not (yet): mid-Apply. Absent, not forbidden -- a 403 here told a program to stop
+        # writing a value it should send again (found by the owner's phone-app session, 2026-10-21).
+        return 404, {"ok": False, "result": result}
     return (200 if ok else 403), {"ok": ok, "result": result}
 
 

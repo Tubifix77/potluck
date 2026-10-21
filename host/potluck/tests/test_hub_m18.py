@@ -218,6 +218,12 @@ class Writers(unittest.TestCase):
         code, body = hb.write_outside(m, "potluck://lab/act/radio/volume", 3, by="Phone bridge")
         self.assertEqual(code, 404)  # not in the package: not provisioned yet
         self.assertIn("not provisioned yet", body["result"])
+        # in the package but not on the board yet (mid-Apply): absent too, never 403 (2026-10-21)
+        m.hub._request = lambda op, payload, h, timeout, dst: NS(status=NsError.NOT_FOUND)
+        code, body = hb.write_outside(m, big, 1)
+        self.assertEqual((code, body["result"]), (404, "not_found"))
+        m.hub._request = lambda op, payload, h, timeout, dst: NS(status=NsError.TYPE_MISMATCH)
+        self.assertEqual(hb.write_outside(m, big, 1)[0], 403)  # a board that checked and refused stays 403
 
     def test_the_cluster_file_names_writers_only_for_a_read_write_resource(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

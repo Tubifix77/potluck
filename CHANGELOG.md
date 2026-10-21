@@ -11,6 +11,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
   handover that came while the PC was still connecting to the broker hung its presenting link for good (the node then
   stalled and the cell took the role back); fixed. The hub drops a relay client that stops reading after 5 s instead
   of waiting on it.
+- **A write to a value the package has but its board does not hold yet (an Apply under way) answers `404`
+  `not_found`**, not `403`: absent, so send it again -- not forbidden. Found by the owner's phone app during a re-apply.
+- **`install.ps1` gets past a file another program holds** when it is already the same (Chrome's Claude helper had
+  loaded the installed `VCRUNTIME140.dll`, and the install stopped half-way with the tray stopped).
 - **The tray runs the PC's host node, so the PC presents the cell to Home Assistant while it is in the cell** (the
   cluster file's `present.hub`), sparing the boards' radios; the package carries `pot_hostnode.exe` (static C runtime),
   the hub shows the PC as `cell.presenter` `00fe` and lists "presenting (MQTT, this PC)". `"hostnode": false` in
