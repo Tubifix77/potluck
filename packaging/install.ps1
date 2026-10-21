@@ -14,7 +14,21 @@ $running = @(Get-Process potluck-tray, potluck, esptool, pot_hostnode -ErrorActi
 $running | Stop-Process -Force
 $running | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $dest | Out-Null
-Copy-Item -Recurse -Force (Join-Path $src "*") $dest
+# File by file: another program can hold one of _internal's DLLs (2026-10-21: Chrome's Claude helper had loaded its
+# VCRUNTIME140.dll). A held file that is already the same is left as it is; a held file that differs stops the install.
+foreach ($file in Get-ChildItem -Recurse -File $src) {
+    $to = Join-Path $dest $file.FullName.Substring($src.Length + 1)
+    New-Item -ItemType Directory -Force (Split-Path -Parent $to) | Out-Null
+    try {
+        Copy-Item -Force $file.FullName $to
+    } catch {
+        if ((Test-Path $to) -and (Get-FileHash $to).Hash -eq (Get-FileHash $file.FullName).Hash) {
+            Write-Host "in use by another program, already the same: $to"
+        } else {
+            throw "$to is in use by another program and differs; close that program and run this again ($_)"
+        }
+    }
+}
 
 $shell = New-Object -ComObject WScript.Shell
 foreach ($dir in @([Environment]::GetFolderPath("Programs"), [Environment]::GetFolderPath("Startup"))) {
