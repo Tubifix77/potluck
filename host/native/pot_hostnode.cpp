@@ -288,6 +288,11 @@ int main(int argc, char** argv) {
     cfg.has_trusted_mac = true;  // the cable, as the board trusts it (section 9.3)
     std::memcpy(cfg.trusted_mac, kCableMac, kMacLen);
     cfg.channel_known = false;   // no radio here: declare no channel, so nobody follows a PC anywhere
+    // Section 8.2's host link row, not the radio's: its heartbeats cross two programs and a USB cable before the
+    // cabled board's radio. With the radio's 600 ms, A declared this node dead 2,700 times in an evening on the owner's
+    // PC and the presenting role went back and forth every ~2 s (2026-10-21).
+    cfg.hb_period_ms = kHbPeriodHostMs;
+    cfg.hb_miss_limit = kHbMissLimitHost;
     NodeHal hal{};
     hal.send = &hal_send;
     hal.now_ms = [](void*) { return now_ms(); };

@@ -104,6 +104,46 @@ class Transport(unittest.TestCase):
         self.assertFalse(any(e["ev"] == "will" for e in evs))  # a clean DISCONNECT: the broker sends no will
         self.assertTrue(wait_for(lambda: "connected 0" in self.ctl))
 
+    def test_the_role_handed_on_before_the_brokers_answer_leaves_the_link_usable(self) -> None:
+        """2026-10-21: the role handed on between CONNECT and CONNACK made the connection thread say goodbye while it
+        held the link's lock -- a lock it then took again. Every later start, stop and publish waited on it for good;
+        the stats thread stalled, then pot_hostnode on its full stderr, and the cell found the PC dead."""
+        slow = socket.socket()
+        slow.bind(("127.0.0.1", 0))
+        slow.listen(2)
+        accepted, answer = threading.Event(), threading.Event()
+
+        def broker() -> None:
+            s, _ = slow.accept()
+            accepted.set()
+            answer.wait(5)
+            try:
+                s.sendall(b"\x20\x02\x00\x00")  # CONNACK, accepted
+                time.sleep(0.5)
+                s.close()
+            except OSError:
+                pass
+
+        threading.Thread(target=broker, daemon=True).start()
+        try:
+            self.link.start(dict(self.cfg, port=slow.getsockname()[1]))
+            self.assertTrue(accepted.wait(5))
+            self.link.stop()  # the role handed on while the broker has not answered yet
+            answer.set()
+            time.sleep(0.3)  # the connection thread reads its CONNACK for a generation that has ended
+            done = threading.Event()
+
+            def again() -> None:
+                self.link.publish("potluck/ef76cc2e/0badf00d/state", b"1")
+                self.link.start(self.cfg)
+                done.set()
+
+            threading.Thread(target=again, daemon=True).start()
+            self.assertTrue(done.wait(2), "the link's lock was never let go")
+            self.assertTrue(wait_for(lambda: "connected 1" in self.ctl))
+        finally:
+            slow.close()
+
     def test_a_broker_that_is_not_there_is_retried_and_reachable_says_so(self) -> None:
         dead = socket.socket()
         dead.bind(("127.0.0.1", 0))

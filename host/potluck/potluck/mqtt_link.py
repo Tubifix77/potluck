@@ -171,11 +171,13 @@ class PresenterLink:
                     raise ConnectionError(f"CONNACK refused ({body[1] if len(body) > 1 else '?'})")
                 sock.sendall(subscribe_packet(1, [cfg["cmd_filter"], cfg["status_topic"]]))
                 with self.lock:
-                    if gen != self.generation:
-                        self._bye(sock)
-                        return
-                    self.connected = True
-                    self.counts["connects"] += 1
+                    ended = gen != self.generation
+                    if not ended:
+                        self.connected = True
+                        self.counts["connects"] += 1
+                if ended:
+                    self._bye(sock)  # takes the lock itself: never under it (a hang, found on the owner's PC)
+                    return
                 self.log(f"presenting: connected to {cfg['host']}:{cfg['port']}{' (TLS)' if cfg.get('tls') else ''}")
                 self.control("connected 1")
                 self._serve(sock, cfg, gen, buf[used:])

@@ -381,6 +381,27 @@ class RelayedFrames(unittest.TestCase):
         finally:
             hub.close()
 
+    def test_a_tool_that_stops_reading_is_dropped_not_waited_for(self) -> None:
+        """2026-10-21: a hung host node stopped reading its relay socket; the hub's reader, sending it the cell's
+        frames, would have waited on it for good once the socket's buffers filled."""
+        a, b = socket.socketpair()  # b is never read
+        old = hb._Client.SEND_TIMEOUT_S
+        hb._Client.SEND_TIMEOUT_S = 0.3
+        try:
+            c = hb._Client(a, "stuck")
+            t0 = time.monotonic()
+            frame = fr.encode(src=0x6300, dst=0x00FE, opcode=fr.Op.HEARTBEAT, seq=1, payload=bytes(200))
+            while c.alive and time.monotonic() - t0 < 10:
+                c.send_raw(frame)
+            self.assertFalse(c.alive)
+            self.assertLess(time.monotonic() - t0, 5)
+            c.send_raw(frame)  # dropped: returns at once
+        finally:
+            hb._Client.SEND_TIMEOUT_S = old
+            a.close()
+            b.close()
+
+
 class SecondHub(unittest.TestCase):
     def test_a_second_hub_on_this_pc_is_refused_naming_the_first_before_it_opens_the_port(self) -> None:
         import contextlib

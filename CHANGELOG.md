@@ -5,6 +5,12 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **The PC holds the presenting role steadily.** Its host node declared the radio's heartbeat window (600 ms); behind
+  the hub its heartbeats were late often enough that the cabled board declared it dead 2,700 times in an evening and
+  the role went between the PC and a board every ~2 s. It now declares section 8.2's host link row (250 ms x 4). And a
+  handover that came while the PC was still connecting to the broker hung its presenting link for good (the node then
+  stalled and the cell took the role back); fixed. The hub drops a relay client that stops reading after 5 s instead
+  of waiting on it.
 - **The tray runs the PC's host node, so the PC presents the cell to Home Assistant while it is in the cell** (the
   cluster file's `present.hub`), sparing the boards' radios; the package carries `pot_hostnode.exe` (static C runtime),
   the hub shows the PC as `cell.presenter` `00fe` and lists "presenting (MQTT, this PC)". `"hostnode": false` in

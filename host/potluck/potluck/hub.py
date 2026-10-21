@@ -105,19 +105,30 @@ def hub_endpoint(port: str | None) -> str | None:
 # ---- the relay -------------------------------------------------------------------------------------------
 
 class _Client:
+    #: A tool that stops reading is dropped after this long rather than holding the hub's reader, which sends it
+    #: the cell's frames (2026-10-21: a host node hung on the owner's PC and stopped reading its relay socket).
+    SEND_TIMEOUT_S = 5.0
+
     def __init__(self, sock: socket.socket, name: str) -> None:
         self.sock = sock
         self.name = name
         self.lock = threading.Lock()
         self.alive = True
+        sock.settimeout(self.SEND_TIMEOUT_S)  # the relay's recv loop reads on through a quiet tool's timeouts
 
     def send_raw(self, raw: bytes) -> None:
+        if not self.alive:
+            return
         wire = write_serial_frame(raw)
         with self.lock:
             try:
                 self.sock.sendall(wire)
-            except OSError:
+            except OSError:  # socket.timeout too: part of a frame may be out, so the stream is over either way
                 self.alive = False
+                try:
+                    self.sock.shutdown(socket.SHUT_RDWR)  # its handler's recv ends, and drops it
+                except OSError:
+                    pass
 
 
 @dataclass
@@ -353,7 +364,10 @@ def serve_relay(hub: Hub, addr: str) -> socketserver.ThreadingTCPServer:
             ra = SerialReassembler()
             try:
                 while c.alive:
-                    data = self.request.recv(4096)
+                    try:
+                        data = self.request.recv(4096)
+                    except socket.timeout:
+                        continue  # a quiet tool (the timeout is for sends to it)
                     if not data:
                         break
                     for raw in ra.feed(data):

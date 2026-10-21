@@ -80,6 +80,29 @@ class HostNode(unittest.TestCase):
         rec = [r for r in recs if r["t"] == "rec"]
         self.assertTrue(rec and rec[-1]["running"] == 1 and rec[-1]["owner"] == 0x00FE, text)
 
+    def test_it_declares_the_host_links_heartbeat_not_the_radios(self) -> None:
+        """2026-10-21: with the radio's 100 ms x 6 the cabled board declared the PC dead 2,700 times in an evening
+        behind the hub, and the presenting role went back and forth. Section 8.2's host link row: 250 ms x 4."""
+        import struct
+        from potluck import frame as fr
+        from potluck.payloads import Hello
+        self.enrol()
+        p = subprocess.Popen([EXE, "--identity", self.ident, "--image", self.image],
+                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        try:
+            hello = None
+            end = time.time() + 10
+            while hello is None and time.time() < end:
+                (n,) = struct.unpack("<H", p.stdout.read(2))
+                f = fr.parse(p.stdout.read(n))
+                if f.opcode == fr.Op.HELLO:
+                    hello = Hello.parse(bytes(f.payload))
+        finally:
+            p.terminate()
+            p.communicate(timeout=5)
+        self.assertIsNotNone(hello)
+        self.assertEqual((hello.hb_period_ms, hello.hb_miss_limit), (250, 4))
+
 
 if __name__ == "__main__":
     unittest.main()
