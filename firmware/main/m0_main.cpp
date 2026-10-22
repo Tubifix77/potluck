@@ -164,7 +164,9 @@ EXT_RAM_BSS_ATTR uint8_t g_tee_storage[kTeeBufBytes];
 StaticMessageBuffer_t g_tee_mb_ctl;
 MessageBufferHandle_t g_tee_mb = nullptr;
 std::atomic<uint32_t> g_tee_dropped{0};
-StackType_t g_tee_stack[3072 / sizeof(StackType_t)];
+// In PSRAM (2026-10-22: in internal RAM it put the core 1,649 B over its 64 KB cap). Allowed for a task that never
+// touches flash -- this one only prints (CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY, on in the PSRAM build).
+EXT_RAM_BSS_ATTR StackType_t g_tee_stack[3072 / sizeof(StackType_t)];
 StaticTask_t g_tee_tcb;
 // Held by the statistics task for its whole period's output, and by the tee for each line. Several
 // statistics lines (peers, ss, rec) are printed in pieces, and a tee line written between two pieces
