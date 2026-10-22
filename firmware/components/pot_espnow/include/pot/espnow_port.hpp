@@ -93,6 +93,10 @@ bool espnow_del_peer(const uint8_t mac[kMacLen]);
 // esp_wifi_set_channel "should not be called when STA is scanning or connecting to an external AP or
 // softAP has connected to external STAs" (esp_wifi.h, STA+softAP mode).
 bool espnow_set_channel(uint8_t channel);
+// Bench instrument (2026-10-22, an orientation experiment): the radio's maximum transmit power in 0.25 dBm, 8..84
+// (2-20 dBm; esp_wifi.h snaps it to its table). The whole radio, station and hotspot too; not saved, a restart
+// returns to the driver's default. `actual` is what the driver reports afterwards. False if refused.
+bool espnow_set_tx_power(int8_t qdbm, int8_t& actual);
 // The radio's current primary channel, 0 if unknown. What an attached node reports.
 uint8_t espnow_current_channel();
 bool espnow_attached();

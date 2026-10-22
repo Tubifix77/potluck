@@ -386,6 +386,14 @@ bool espnow_set_channel(uint8_t channel) {
     return esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) == ESP_OK;
 }
 
+bool espnow_set_tx_power(int8_t qdbm, int8_t& actual) {
+    actual = 0;
+    if (!g_espnow_up) return false;
+    const bool ok = esp_wifi_set_max_tx_power(qdbm) == ESP_OK;
+    esp_wifi_get_max_tx_power(&actual);
+    return ok;
+}
+
 bool espnow_scan_for(const char* ssid, uint8_t& channel, int8_t& rssi) {
     if (!g_espnow_up || g_attached || ssid == nullptr) return false;
     wifi_scan_config_t sc{};

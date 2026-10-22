@@ -2768,6 +2768,15 @@ bool handle_test(const char* line, size_t len) {
         std::printf("{\"t\":\"test\",\"cmd\":\"identify\",\"seconds\":%u}\n", secs);
         return true;
     }
+    if (std::sscanf(buf, "POT! txpower %d", &value) == 1) {
+        // 2026-10-22 bench instrument (an orientation experiment): the radio's maximum transmit power in 0.25 dBm,
+        // 8..84 (2-20 dBm). Not saved: a restart returns to the driver's default. Prints what the driver took.
+        int8_t actual = 0;
+        const bool ok = value >= 8 && value <= 84 && espnow_set_tx_power(static_cast<int8_t>(value), actual);
+        std::printf("{\"t\":\"test\",\"cmd\":\"txpower\",\"asked_qdbm\":%d,\"ok\":%d,\"qdbm\":%d}\n", value, ok ? 1 : 0,
+                    static_cast<int>(actual));
+        return true;
+    }
     if (std::sscanf(buf, "POT! write %x %d", &node, &value) == 2) {
         const bool outside = std::strstr(buf, " outside") != nullptr;
         lock_node();
