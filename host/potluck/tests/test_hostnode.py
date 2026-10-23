@@ -103,6 +103,38 @@ class HostNode(unittest.TestCase):
         self.assertIsNotNone(hello)
         self.assertEqual((hello.hb_period_ms, hello.hb_miss_limit), (250, 4))
 
+    def test_it_keeps_beating_across_the_microsecond_counters_wrap(self) -> None:
+        """2026-10-23: its millisecond clock was the 32-bit microsecond count divided down, so it fell back to 0 every
+        71.6 min; the node's timers then sat ~71 min ahead, its heartbeats stopped, and the cell declared the PC dead
+        tens of thousands of times. Started 2 s before that wrap, it must still beat after it."""
+        import struct
+        from potluck import frame as fr
+        self.enrol()
+        env = dict(os.environ, POT_HOSTNODE_CLOCK_START_MS=str(2**32 // 1000 - 2000))
+        p = subprocess.Popen([EXE, "--identity", self.ident, "--image", self.image], env=env,
+                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        beats = []
+        t0 = time.time()
+
+        def read() -> None:  # a thread: a node that stopped beating must not hang the test
+            while True:
+                hdr = p.stdout.read(2)
+                if len(hdr) < 2:
+                    return
+                f = fr.parse(p.stdout.read(struct.unpack("<H", hdr)[0]))
+                if f.opcode == fr.Op.HEARTBEAT:
+                    beats.append(time.time() - t0)
+
+        import threading
+        threading.Thread(target=read, daemon=True).start()
+        try:
+            time.sleep(7)
+        finally:
+            p.terminate()
+            p.communicate(timeout=5)
+        late = [b for b in beats if b > 4.0]  # well past the wrap at ~2 s
+        self.assertGreaterEqual(len(late), 8, f"heartbeats at {[round(b, 2) for b in beats]}")  # 250 ms apart: ~12
+
 
 if __name__ == "__main__":
     unittest.main()

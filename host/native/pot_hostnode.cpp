@@ -57,11 +57,20 @@ constexpr uint8_t kCableMac[kMacLen] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x01};
 constexpr uint8_t kSelfMac[kMacLen] = {0x02, 0x00, 0x00, 0x00, 0x00, 0xFE};
 
 using Clock = std::chrono::steady_clock;
-const Clock::time_point g_t0 = Clock::now();
+// POT_HOSTNODE_CLOCK_START_MS (tests only): the clock starts this far along, so a test can cross a wrap in seconds.
+const Clock::time_point g_t0 = Clock::now() - std::chrono::milliseconds(std::getenv("POT_HOSTNODE_CLOCK_START_MS")
+                                                ? std::strtoull(std::getenv("POT_HOSTNODE_CLOCK_START_MS"), nullptr, 10)
+                                                : 0);
 uint32_t now_us() {
     return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - g_t0).count());
 }
-uint32_t now_ms() { return now_us() / 1000u; }
+// From the clock, not from now_us(): a 32-bit microsecond count wraps every 71.6 min, and divided down it made this
+// millisecond clock fall back to 0 there instead of wrapping at 2^32 ms as the node's arithmetic expects -- its timers
+// then sat ~71 min in the future, its heartbeats stopped, and the cell declared the PC dead again and again; the
+// presenting role went back and forth tens of thousands of times (the owner's PC, 2026-10-21..23).
+uint32_t now_ms() {
+    return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - g_t0).count());
+}
 
 std::mutex g_out_mu;
 std::atomic<uint32_t> g_tx_frames{0};

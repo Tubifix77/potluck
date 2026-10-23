@@ -61,7 +61,11 @@ const Clock::time_point g_t0 = Clock::now();
 uint32_t now_us() {
     return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - g_t0).count());
 }
-uint32_t now_ms() { return now_us() / 1000u; }
+// From the clock, not from now_us(): divided down from a 32-bit microsecond count it fell back to 0 every 71.6 min
+// (the same fault as pot_hostnode's, 2026-10-23).
+uint32_t now_ms() {
+    return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - g_t0).count());
+}
 
 bool read_file(const std::string& path, std::vector<uint8_t>& out) {
     FILE* f = std::fopen(path.c_str(), "rb");

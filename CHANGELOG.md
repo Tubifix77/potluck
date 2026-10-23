@@ -5,6 +5,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **The PC's host node keeps time past 71 minutes.** Its millisecond clock was its 32-bit microsecond count divided
+  down, so it fell back to 0 every 71.6 min; the node's timers then sat ~71 min ahead, its heartbeats stopped and the
+  cell declared the PC dead -- on the owner's PC the presenting role went back and forth tens of thousands of times
+  over two days. `pot_stubs` had the same clock; both fixed.
 - **The PC holds the presenting role steadily.** Its host node declared the radio's heartbeat window (600 ms); behind
   the hub its heartbeats were late often enough that the cabled board declared it dead 2,700 times in an evening and
   the role went between the PC and a board every ~2 s. It now declares section 8.2's host link row (250 ms x 4). And a
