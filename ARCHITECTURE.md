@@ -1226,7 +1226,8 @@ landed 2026-10-19).
 hub's API that draws the cell: seven items it waits on that need no part bought. Numbering, order and kill lines are this
 section's. Each lands with its API shape in HUB-API.md.)* Ordered smallest and most visible first.
 
-**M21 — each board's chip in the model.** `boards[].chip` = `{model, revision, cores, flash_mb, psram_mb}`, reported by
+**M21 — each board's chip in the model.** *(Accepted 2026-10-23: telemetry section 6, all three boards in the hub's model;
+the PSRAM-less answer compile-checked only.)* `boards[].chip` = `{model, revision, cores, flash_mb, psram_mb}`, reported by
 the board itself (its node status), never by esptool, whose check restarts the board. *Acceptance:* all three boards
 report it in `/api/model`; a board built without PSRAM says `psram_mb: 0`. *Bound:* at most 16 bytes on the wire and
 no new internal RAM.
