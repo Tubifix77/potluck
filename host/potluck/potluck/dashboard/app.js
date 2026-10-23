@@ -108,7 +108,11 @@
         // settled: a quality that held for two reads -- one late read of another board's value is not a problem
         // STARTING: read fewer than two times since the hub started -- no verdict yet
         .filter(function (r) { var q = r && (r.settled_quality || r.quality); return r && q !== "GOOD" && q !== "STARTING" && !shown[r.path]; })
-        .filter(function (r) { return !(bb[r.owner] && bb[r.owner].state === "dead"); });  // the dead board is the headline
+        .filter(function (r) { return !(bb[r.owner] && bb[r.owner].state === "dead"); })  // the dead board is the headline
+        // The PC holds the app (its host node, 00fe): a board's copy of an output the PC owns reads NO_DATA -- a known
+        // open fault -- so the hub judges the app by the PC's own report, and so does this list (2026-10-23: the owner
+        // saw "Output out NO_DATA" for a presenting that worked).
+        .filter(function () { return !(a.working !== false && (a.running_on || []).join() === "00fe"); });
       var placed = a.placement === "portable" ? (a.running_on || []).length === 1 :
         (a.nodes || []).every(function (n) { return (a.running_on || []).indexOf(n) >= 0; });
       if (a.working === false && placed && badOut.length) {  // the outputs are the reason: say so, with an age that ticks
