@@ -40,18 +40,27 @@ class Api(HubFixture):
 
         def hammer():
             while not stop.is_set():
-                codes.append(self.req("GET", "/api/model", client="greedy")[0])
+                code = self.req("GET", "/api/model", client="greedy")[0]
+                codes.append(code)
+                if code == 429:
+                    stop.set()
 
-        t = threading.Thread(target=hammer, daemon=True)
-        t.start()
-        time.sleep(1.5)
+        # Until the greedy one is told to wait (or 10 s): a fixed 1.5 s flaked on a PC busy with a firmware build,
+        # whose requests came too slowly to empty the bucket (2026-10-23). Three threads, as a greedy program would.
+        t0 = time.monotonic()
+        threads = [threading.Thread(target=hammer, daemon=True) for _ in range(3)]
+        for t in threads:
+            t.start()
+        stop.wait(10.0)
+        elapsed = time.monotonic() - t0
         polite = [self.req("GET", "/api/model", client="dashboard")[0] for _ in range(5)]  # one every few ms
         stop.set()
-        t.join(timeout=5)
+        for t in threads:
+            t.join(timeout=5)
         self.assertIn(429, codes)  # the greedy one was told to wait
         self.assertEqual(polite, [200] * 5)  # the other was not slowed at all
         served = codes.count(200)
-        self.assertLessEqual(served, hc.READ_BURST + hc.READ_RATE * 2.5)  # its share, not more
+        self.assertLessEqual(served, hc.READ_BURST + hc.READ_RATE * (elapsed + 1.0))  # its share, not more
         code, body, retry = 0, None, None
         while code != 429:
             code, body, retry = self.req("GET", "/api/events", client="greedy2")

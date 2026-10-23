@@ -1764,7 +1764,11 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 from . import setup as st
                 if path == "/api/setup/ports":
                     own = getattr(model.hub.transport, "port", None)
-                    self._json(200, {"ports": st.list_ports(exclude=(own,) if own else ())})
+                    try:
+                        self._json(200, {"ports": st.list_ports(exclude=(own,) if own else ())})
+                    except ImportError:  # a hub run from source without pyserial: say so rather than drop the request
+                        self._json(200, {"ports": [], "result": "this hub cannot list USB ports (pyserial is not "
+                                                                 "installed)"})
                 elif path == "/api/setup/build":
                     # the firmware the cell runs (most of its boards), and its build on this PC, for new boards
                     vers = [b.get("firmware", {}).get("version") for b in model.snapshot()["boards"]]
