@@ -52,6 +52,21 @@ if getattr(sys, "frozen", False):  # the packaged Potluck carries it beside potl
 REPORT_NAME = "presenting (MQTT, this PC)"
 
 
+def reply_record(frame: bytes) -> str | None:
+    """M23: a REPLY the hub owes a member for one of the PC's services, handed down this link marked as the host node's
+    own (src 00fe): the node must send it, under the end-to-end key the member checks. As a control record --
+    "reply <dst> <msg_id> <payload, base64>" -- for pot_hostnode's reply_call. None for any other frame."""
+    from . import frame as fr
+    from .bridge import HOST_NODE_ID
+    try:
+        f = fr.parse(frame)
+    except fr.FrameError:
+        return None
+    if f.opcode != fr.Op.REPLY or f.src != HOST_NODE_ID or f.dst == HOST_NODE_ID:
+        return None
+    return f"reply {f.dst:04x} {f.msg_id:04x} {base64.b64encode(bytes(f.payload)).decode()}"
+
+
 def report_state(link, broker: tuple[str, int] | None) -> tuple[str, str]:
     """(state, detail) for the hub's integrations list: connected while this PC holds the role and the broker took it,
     disconnected while it holds the role and cannot reach the broker, idle while a board presents."""
@@ -164,6 +179,10 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             for frame in r.feed(chunk):
                 counts["cable_rx"] += 1
+                rec = reply_record(frame) if relay is not None else None
+                if rec is not None:
+                    control(rec)  # the hub's answer for a PC service, sent by the node (reply_record)
+                    continue
                 try:
                     with stdin_lock:
                         child.stdin.write(struct.pack("<H", len(frame)) + frame)

@@ -248,7 +248,16 @@ class Hub(Bridge):
             rep = Reply(path_hash=call.path_hash, timestamp_ms=self.uptime_ms & 0xFFFFFFFF, age_ms=0, unit=0,
                         reply_to=fr.Op.CALL, status=int(NsError.OK), quality=int(Quality.GOOD), latency_class=4,
                         value=value)
-            try:
+            node = self.node_client
+            if node is not None and node.alive:
+                # A board off the cable checks the end-to-end tag on what the PC's node sends it, and only pot_hostnode
+                # holds that key: an untagged reply from here was dropped by C (2026-10-24, the first speech on the
+                # cell: said aloud, C's result "gone"). So the host node sends it -- the reply goes down its link
+                # marked as its own, and potluck.hostnode turns it into a "reply" record for it (reply_record).
+                node.send_raw(fr.encode(src=HOST_NODE_ID, dst=f.src, opcode=fr.Op.REPLY, lclass=4, msg_id=f.msg_id,
+                                        payload=rep.encode()))
+                return
+            try:  # no host node: the cabled board, the cable's own end, takes it untagged; another writes it off
                 self.send_frame(fr.Op.REPLY, rep.encode(), dst=f.src, msg_id=f.msg_id, lclass=4)
             except BridgeError:
                 pass  # the link went away; the board writes the call off as its provider gone

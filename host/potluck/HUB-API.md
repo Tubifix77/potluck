@@ -199,7 +199,7 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   (older firmware) has `heap: null`, `links: []` and no `telemetry`, and an event `telemetry_unsupported`; the hub
   asks it again every 5 minutes.
 - A board's CALL of one of the PC's services (`potluck://<system>/svc/<name>`, the cluster file's `pc_services`) is
-  answered by the hub and not passed to the relay's tools; any other CALL to the PC goes to the tools as before (an
+  answered by the hub and not passed to the relay's tools (the reply goes out through the PC's host node when it is attached, because a board off the cable accepts only what that node tags; with no host node only the cabled board can be answered); any other CALL to the PC goes to the tools as before (an
   agent of M8 may still serve its own services).
 - `boards[].chip` (M21, 2026-10-23): what the board is, as the board itself reads it (telemetry section 6, once a
   boot -- never esptool's check, which restarts the board): `model` named (`model_id` is ESP-IDF's esp_chip_model_t,

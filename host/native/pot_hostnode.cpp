@@ -371,6 +371,21 @@ int main(int argc, char** argv) {
                 const uint32_t hash = static_cast<uint32_t>(std::strtoul(c.substr(4, 8).c_str(), nullptr, 16));
                 const std::vector<uint8_t> p = unb64(c.substr(13));
                 hostpresent::on_command(hash, reinterpret_cast<const char*>(p.data()), p.size());
+            } else if (c.compare(0, 6, "reply ") == 0 && c.size() > 16) {
+                // M23: the hub's answer to a member's CALL of one of the PC's services (potluck.hostnode's
+                // reply_record). Sent from here because a board off the cable checks the end-to-end tag on what
+                // this node sends it, and only this node holds the key.
+                const uint16_t dst = static_cast<uint16_t>(std::strtoul(c.substr(6, 4).c_str(), nullptr, 16));
+                const uint16_t msg = static_cast<uint16_t>(std::strtoul(c.substr(11, 4).c_str(), nullptr, 16));
+                const std::vector<uint8_t> p = unb64(c.substr(16));
+                ReplyPayload rep{};
+                if (p.size() >= offsetof(ReplyPayload, value_raw) && p.size() <= sizeof(rep)) {
+                    std::memcpy(&rep, p.data(), p.size());
+                    if (rep.value_len <= kValueBytesMax) {
+                        node.reply_call(dst, msg, rep.path_hash,
+                                        value_from_wire(rep.value_type, rep.value_len, rep.value_raw));
+                    }
+                }
             }
         }
         const uint32_t t = now_ms();

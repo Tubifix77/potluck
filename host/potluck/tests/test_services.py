@@ -112,6 +112,47 @@ class HubAnswers(unittest.TestCase):
         finally:
             hub.close()
 
+    def test_with_the_host_node_attached_the_reply_is_the_nodes_to_send(self) -> None:
+        """2026-10-24, the first speech on the cell: C dropped the hub's untagged reply (B and C check the end-to-end
+        tag of the PC's node). With pot_hostnode attached the reply goes down its link as its own, and potluck.hostnode
+        makes it a "reply" control record for the node's reply_call."""
+        import base64
+        from types import SimpleNamespace as NS
+        from potluck import frame as fr
+        from potluck import hub as hb
+        from potluck.hostnode import reply_record
+        from potluck.ns_payloads import Call, Reply
+        from potluck.transport import LoopbackTransport
+
+        host_side, node_side = LoopbackTransport.pair()
+        hub = hb.Hub(host_side)
+        ps = sv.PcServices("lab", ["speech"])
+        hub.services_for = lambda: ps
+        to_node = []
+        hub.node_client = NS(alive=True, send_raw=to_node.append)
+        hub._fan_out = lambda raw: None
+        try:
+            with mock.patch.object(sv, "speak_text", lambda text: True):
+                call = Call(path_hash=path_hash("potluck://lab/svc/speech"), args=b"Hello from board C")
+                f = fr.parse(fr.encode(src=0x8160, dst=0x00FE, opcode=fr.Op.CALL, seq=1, msg_id=41,
+                                       payload=call.encode()))
+                self.assertTrue(hub._serve_call(f))
+                end = time.time() + 5
+                while not to_node and time.time() < end:
+                    time.sleep(0.02)
+            self.assertEqual(len(to_node), 1)
+            rec = reply_record(to_node[0])
+            self.assertTrue(rec.startswith("reply 8160 0029 "), rec)
+            rep = Reply.parse(base64.b64decode(rec[16:]))
+            self.assertEqual((rep.path_hash, rep.status, rep.value.raw[:4]),
+                             (path_hash("potluck://lab/svc/speech"), 0, b"\x01\x00\x00\x00"))
+            # anything else down the link stays a frame for the node
+            self.assertIsNone(reply_record(fr.encode(src=0x8160, dst=0x00FE, opcode=fr.Op.REPLY, msg_id=1,
+                                                     payload=rep.encode())))
+            self.assertIsNone(reply_record(b"\x00\x01"))
+        finally:
+            hub.close()
+
 
 if __name__ == "__main__":
     unittest.main()
