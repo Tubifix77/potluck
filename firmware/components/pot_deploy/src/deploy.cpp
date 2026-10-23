@@ -567,7 +567,7 @@ bool mc_lender_config(const ActorDecl& a, McLenderConfig& out) {
 }
 
 bool mc_job_config(const ActorDecl& a, McJobConfig& out) {
-    if (a.type != ActorType::McJob || a.cfg_len != kMcJobCfgLen) {
+    if (a.type != ActorType::McJob || (a.cfg_len != kMcJobCfgLen && a.cfg_len != kMcJobCfgLenCtl)) {
         return false;
     }
     out.out_hash = rd32(a.cfg);
@@ -576,8 +576,9 @@ bool mc_job_config(const ActorDecl& a, McJobConfig& out) {
     out.seed = rd32(a.cfg + 10);
     out.lend = a.cfg[14];
     out.start_after_ms = rd32(a.cfg + 15);
+    out.ctl_hash = a.cfg_len == kMcJobCfgLenCtl ? rd32(a.cfg + 19) : 0;  // M22: started and stopped by a write
     return out.out_hash != 0 && out.units >= 1 && out.units <= 4096 && out.samples >= 1000 &&
-           out.samples <= 100000000u && out.lend <= 1;
+           out.samples <= 100000000u && out.lend <= 1 && out.ctl_hash != out.out_hash;
 }
 
 bool portable_header(const ActorDecl& a, TickerConfig& out, size_t& len) {

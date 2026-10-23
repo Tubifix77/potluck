@@ -140,6 +140,24 @@ size_t McLenderActor::stats_json(char* buf, size_t cap, uint32_t) {
 
 // ---- the job --------------------------------------------------------------------------------------------
 
+namespace {
+// M22: the job's control resource, a u32 -- a setting written to start (1 with lending, 2 alone) or stop (3) a run.
+NsDecl mc_ctl_decl(uint32_t hash, uint16_t node) {
+    NsDecl d;
+    d.path_hash = hash;
+    d.owner_node = node;
+    d.type = ValueType::U32;
+    d.unit = Unit::None;
+    d.kind = ResourceKind::Sampled;
+    d.access = Access::ReadWrite;  // written through WRITE: by the cell, or from outside where the package allows it
+    d.latency_class = kClassL4;
+    d.staleness_bound_ms = 0;      // a setting, not a measurement: it does not go stale
+    d.staleness_policy = StalenessPolicy::Informative;
+    return d;
+}
+constexpr uint32_t kMcCtlRunLend = 1, kMcCtlRunAlone = 2, kMcCtlStop = 3;
+}  // namespace
+
 bool McJobActor::start(uint32_t now_ms) {
     NsDecl d;
     d.path_hash = cfg_.out_hash;
@@ -152,7 +170,35 @@ bool McJobActor::start(uint32_t now_ms) {
     d.staleness_bound_ms = 3600000;  // a result, not a stream: it stays the last run's for an hour
     d.staleness_policy = StalenessPolicy::Informative;
     if (node_.ns().declare(d) != NsError::Ok) return false;
+    if (cfg_.ctl_hash != 0) {
+        if (node_.ns().declare(mc_ctl_decl(cfg_.ctl_hash, node_.config().node_id)) != NsError::Ok) return false;
+        const NsEntry* e = node_.ns().find(cfg_.ctl_hash);
+        if (e != nullptr && !e->has_data()) node_.ns().publish(cfg_.ctl_hash, Value::of_u32(0), now_ms);
+        if (e != nullptr) ctl_count_ = e->update_count;  // a value written before this start is not a command
+    }
     now_ = now_ms;
+    return true;
+}
+
+bool McJobActor::stop(uint32_t now_ms) {
+    if (!running_) return false;
+    running_ = false;
+    // Cleared first, so the node's synchronous Unavailable for each cancel finds no pending unit of ours.
+    Remote gone[kMaxLenders];
+    for (size_t i = 0; i < kMaxLenders; ++i) {
+        gone[i] = remote_[i];
+        remote_[i] = Remote{};
+    }
+    for (const Remote& r : gone) {
+        if (r.msg != 0) node_.cancel_call(r.msg);
+    }
+    cur_.elapsed_ms = now_ms - t0_;
+    cur_.hits = hits_;
+    cur_.stopped = 1;
+    last_ = cur_;
+    std::printf("{\"t\":\"mc_stopped\",\"node\":%u,\"run\":%u,\"done\":%u,\"units\":%u,\"elapsed_ms\":%u}\n",
+                static_cast<unsigned>(node_.config().node_id), static_cast<unsigned>(last_.run),
+                static_cast<unsigned>(done_), static_cast<unsigned>(cfg_.units), static_cast<unsigned>(last_.elapsed_ms));
     return true;
 }
 
@@ -235,6 +281,7 @@ void McJobActor::dispatch(uint32_t now) {
         u.samples = cfg_.samples;
         u.hits = 0;
         u.started_ms = now;
+        u.run = cur_.run;
         u.state.store(1, std::memory_order_relaxed);
         if (!board_->bg_submit(board_->ctx, &mc_unit_run, &u)) {
             u.state.store(0, std::memory_order_relaxed);
@@ -289,11 +336,26 @@ void McJobActor::tick(uint32_t now) {
         auto_started_ = true;
         run(cfg_.lend != 0, now);
     }
-    if (!running_) return;
-    const uint8_t workers = board_->bg_workers < 2 ? board_->bg_workers : 2;
+    if (cfg_.ctl_hash != 0) {  // M22: a write to the control resource -- every write is a command, even a repeat
+        const NsEntry* e = node_.ns().find(cfg_.ctl_hash);
+        uint32_t v = 0;
+        if (e != nullptr && e->update_count != ctl_count_ && e->value.as_u32(v)) {
+            ctl_count_ = e->update_count;
+            if (v == kMcCtlRunLend || v == kMcCtlRunAlone) {
+                run(v == kMcCtlRunLend, now);
+            } else if (v == kMcCtlStop) {
+                stop(now);
+            }
+        }
+    }
+    const uint8_t workers = board_ != nullptr ? (board_->bg_workers < 2 ? board_->bg_workers : 2) : 0;
     for (uint8_t i = 0; i < workers; ++i) {
         McUnit& u = local_[i];
         if (u.state.load(std::memory_order_acquire) != 2) continue;
+        if (!running_ || u.run != cur_.run) {  // finished after its run was stopped: not this run's
+            u.state.store(0, std::memory_order_relaxed);
+            continue;
+        }
         hits_ += u.hits;
         ++done_;
         ++cur_.local_units;
@@ -302,6 +364,7 @@ void McJobActor::tick(uint32_t now) {
         local_ms_ = local_ms_ == 0 ? took : (local_ms_ * 3u + took) / 4u;
         u.state.store(0, std::memory_order_relaxed);
     }
+    if (!running_) return;
     if (done_ >= cfg_.units) {
         finish(now);
         return;
@@ -373,6 +436,7 @@ void McJobActor::finish(uint32_t now) {
     const double total = static_cast<double>(cfg_.units) * static_cast<double>(cfg_.samples);
     cur_.pi = static_cast<float>(4.0 * static_cast<double>(hits_) / total);
     last_ = cur_;
+    last_pi_ = cur_.pi;
     node_.ns().publish(cfg_.out_hash, Value::of_f32(cur_.pi), now);
     // Once per run, so the result is on the console the moment it exists.
     std::printf("{\"t\":\"mc_done\",\"node\":%u,\"run\":%u,\"lend\":%u,\"units\":%u,\"samples\":%u,"
@@ -385,6 +449,30 @@ void McJobActor::finish(uint32_t now) {
                 static_cast<unsigned>(last_.local_units), static_cast<unsigned>(last_.lent_units),
                 static_cast<unsigned>(last_.refused), static_cast<unsigned>(last_.lost),
                 static_cast<unsigned>(last_.overdue));
+}
+
+McJobActor::View McJobActor::view(uint32_t now_ms) const {
+    View v{};
+    const Result& r = running_ ? cur_ : last_;
+    v.running = running_;
+    v.lend = r.lend;
+    v.stopped = running_ ? 0 : r.stopped;
+    v.run = r.run;
+    v.units = cfg_.units;
+    v.done = running_ ? done_ : static_cast<uint16_t>(r.local_units + r.lent_units);
+    v.local_units = r.local_units;
+    v.lent_units = r.lent_units;
+    v.refused = r.refused;
+    v.lost = r.lost;
+    v.overdue = r.overdue;
+    v.elapsed_ms = running_ ? now_ms - t0_ : r.elapsed_ms;
+    v.local_ms = local_ms_;
+    v.pi = last_pi_;
+    for (size_t i = 0; i < kMaxLenders; ++i) {
+        v.lender_node[i] = lenders_[i].node_id;
+        v.lender_answered[i] = lenders_[i].answered;
+    }
+    return v;
 }
 
 uint16_t McJobActor::lent_to(uint16_t node_id) const {
@@ -443,6 +531,7 @@ bool mc_job_check(const ActorDecl& d, const ActorEnv&, const char** why) {
 size_t mc_job_outputs(const ActorDecl& d, uint16_t node, uint16_t peer, NsDecl* out, size_t cap) {
     McJobConfig c{};
     if (peer != 0 || cap == 0 || node != d.node_id || !mc_job_config(d, c)) return 0;
+    if (c.ctl_hash != 0 && cap >= 2) out[1] = mc_ctl_decl(c.ctl_hash, node);  // M22: its control resource too
     NsDecl x;
     x.path_hash = c.out_hash;
     x.owner_node = node;
@@ -454,7 +543,7 @@ size_t mc_job_outputs(const ActorDecl& d, uint16_t node, uint16_t peer, NsDecl* 
     x.staleness_bound_ms = 3600000;
     x.staleness_policy = StalenessPolicy::Informative;
     out[0] = x;
-    return 1;
+    return (c.ctl_hash != 0 && cap >= 2) ? 2 : 1;
 }
 
 namespace {

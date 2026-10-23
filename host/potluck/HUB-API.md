@@ -143,6 +143,13 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
 - `cell.channel`, `cell.other_cell_frames`, `signals.saturation.namespace` and `signals.saturation.airtime` are
   reserved: version 1 always sends `null`. `cell.presenter`: the board running the presenting actor, `"00fe"` while the PC's host node holds the role (the
   boards' telemetry names it the owner; 2026-10-21), or `null`.
+  `cell.jobs` (M22, 2026-10-23): each job on borrowed cores (M9's `builtin:mc_job`) -- the run in progress, or the last --
+  as `{id, borrower, label, run, running, stopped, lend, units, done, local, lent, refused, lost, overdue, redone,
+  elapsed_ms, local_unit_ms, pi, lenders: [{node, label, answered}], speedup}`. `done` counts finished units, `local`
+  and `lent` where they ran, `redone` the units run again (refused by a busy lender, or lost with a lender that died);
+  `pi` is the last finished run's result; `speedup` is measured -- the board's last run alone over its last run with
+  lending, both finished with their last unit -- or `null` until both have run. Empty when no board runs a job.
+  `boards[].telemetry.lend`: M9's lender on that board -- `{accepted, refused, served, unit_ms}` -- or `null`.
   `signals.saturation.peers` is the boards the hub knows against 21 (a board and the 20 peers it can hold);
   `actor_slots` the busiest board's actors against 8.
 - `last_event_seq`: the newest event's `seq` (0 before the first), so a client knows where `GET /api/events` stands.
@@ -479,6 +486,7 @@ build, each board of a rollout, the package, each board verified); one job at a 
 | `POST /api/setup/flash {"port", "build"}` | job: writes that build (only one under the hub's build cache; else 403) |
 | `POST /api/setup/enrol {"port", "passphrase"?, "node_id"?, "replace"?}` | job: a key signed by the cell's CA and a node id from its registry -- the lowest free one, or `node_id` (hex) if given; with `"replace": true` and `node_id`, the owner says this is that board reinstalled and its new key replaces the old; `result.node` |
 | `POST /api/setup/listen {"on", "address"?}` | the hub on the house network (`true`) or the PC only: its certificate made for the PC's address (`address`, else found), or kept when it already names it; `--listen 0.0.0.0:8443` and the TLS files in `tray.json`'s `hub_args`; `{"ok", "listen", "address", "certificate": "made" \| "kept" \| null, "fp", "tray_json", "restart"}`. When `tray.json` names this hub's cluster file the hub then stops cleanly and the tray starts it again with the new settings (`hub.tls_fp` changes when a certificate was made); otherwise `restart` says to start it yourself. `409` for an address that is not an IPv4 house-network address |
+| `POST /api/setup/job {"run": "lend" \| "alone" \| "stop", "board"?}` | M22: start the job on borrowed cores with lending, alone, or stop it -- a write of its control resource `node-<id>/job/mc/run` (1, 2, 3; an `mc_job` with `"control": true`), so the cluster file's `outside` must mark it `read_write`. The answers are `POST /api/write`'s, plus `board`; 404 when no job in the package has a control resource |
 | `POST /api/setup/update {"passphrase"?}` | the boards brought to the firmware the installed Potluck carries (`cell.update`): the same run as Apply, as a job of its own of kind `update` (`202 {"ok", "job"}`); `200 {"ok", "job": null, "result"}` when nothing is waiting. One job at a time with Apply |
 | `POST /api/setup/broker_login {"user", "password", "ports"?}` | the broker login for a broker that took anyone: the hub's own (`%LOCALAPPDATA%\potluck\hub-broker-login.txt`, `--broker-login` in `tray.json`'s `hub_args`) and each listed board's presenter over its USB console (one job per port, `{"saved": true}`); `{"ok", "jobs": {port: job}, "file", "restart"}`; the tray restarts the hub once the boards' jobs end. `409` before anything is written for a control character, a space in the user name, or either outside 1-64 bytes; never logged. `POST /api/setup/broker`'s test then logs in with it (`with_login: true`) |
 | `POST /api/setup/wifi {"port", "ssid", "password"}` | job: the house Wi-Fi into the board (kept only there; never logged), `{"saved": true}`, used at its next boot; refused with `409` before any job for a control character in either, a name over 32 bytes (UTF-8) or a password outside 8-64 |

@@ -40,6 +40,11 @@
 //                                                                                                    (12 bytes)
 //             -- what the board is, as the board itself reads it (esp_chip_info, esp_flash_get_size,
 //             esp_psram_get_size): read at reply time, nothing kept. Firmware before it answers section 0.
+//     Compute (kTelemetryCompute, 2026-10-23, M22): u8 flags (kTelCompute*), then the lender here (u32 accepted,
+//             refused, served, unit_ms) and the job here (u32 run, u16 units, done, local_units, lent_units, refused,
+//             lost, overdue, u32 elapsed_ms, local_ms, f32 pi -- the last finished run's), u8 n, 4 x (u16 node,
+//             u16 answered) -- its lenders this run                                                  (64 bytes)
+//             -- M9's borrowed cores, as the hub shows them: zeros where the board runs no lender or job.
 
 #pragma once
 
@@ -57,6 +62,7 @@ constexpr uint8_t kTelemetryActors = 3;
 constexpr uint8_t kTelemetryEvents = 4;
 constexpr uint8_t kTelemetryAuth = 5;
 constexpr uint8_t kTelemetryChip = 6;
+constexpr uint8_t kTelemetryCompute = 7;
 
 constexpr size_t kTelemetryRequestLen = 8;
 constexpr size_t kTelemetryReplyMax = 220;  // under the cable's 226-byte payload floor
@@ -67,6 +73,7 @@ constexpr size_t kTelemetryActorLen = 18;
 constexpr size_t kTelemetryEventLen = 19;
 constexpr size_t kTelemetryAuthLen = 48;
 constexpr size_t kTelemetryChipLen = 12;
+constexpr size_t kTelemetryComputeLen = 64;
 constexpr size_t kTelemetryLinksPerReply = (kTelemetryReplyMax - kTelemetryHeaderLen - 3) / kTelemetryLinkLen;    // 5
 constexpr size_t kTelemetryActorsPerReply = (kTelemetryReplyMax - kTelemetryHeaderLen - 3) / kTelemetryActorLen;  // 11
 constexpr size_t kTelemetryEventsPerReply = (kTelemetryReplyMax - kTelemetryHeaderLen - 5) / kTelemetryEventLen;  // 11
@@ -139,6 +146,20 @@ struct TelemetryAuth {
              replayed = 0, untagged = 0, bcast_dropped = 0, beacon_epoch_ignored = 0, group_refusals = 0;
 };
 
+// kTelemetryCompute's flags.
+constexpr uint8_t kTelComputeLender = 1, kTelComputeJob = 2, kTelComputeRunning = 4, kTelComputeStopped = 8,
+                  kTelComputeLend = 16;
+struct TelemetryCompute {
+    uint8_t flags = 0;
+    uint32_t lender_accepted = 0, lender_refused = 0, lender_served = 0, lender_unit_ms = 0;
+    uint32_t run = 0;
+    uint16_t units = 0, done = 0, local_units = 0, lent_units = 0, refused = 0, lost = 0, overdue = 0;
+    uint32_t elapsed_ms = 0, local_ms = 0;
+    float pi = 0.0f;
+    uint8_t n = 0;  // lenders below, at most 4
+    uint16_t lender_node[4] = {}, lender_answered[4] = {};
+};
+
 struct TelemetryChip {
     uint8_t model = 0, cores = 0;
     uint16_t revision = 0, flash_mb = 0, psram_mb = 0;
@@ -148,6 +169,7 @@ struct TelemetryChip {
 // Each returns the reply's length, 0 if `cap` is too small. n is clipped to what one reply holds.
 size_t store_telemetry_auth(uint16_t node, const TelemetryAuth& a, uint8_t* out, size_t cap);
 size_t store_telemetry_chip(uint16_t node, const TelemetryChip& c, uint8_t* out, size_t cap);
+size_t store_telemetry_compute(uint16_t node, const TelemetryCompute& c, uint8_t* out, size_t cap);
 size_t store_telemetry_health(uint16_t node, const TelemetryHealth& h, uint8_t* out, size_t cap);
 size_t store_telemetry_links(uint16_t node, uint8_t total, uint8_t start, const TelemetryLink* l, size_t n,
                              uint8_t* out, size_t cap);

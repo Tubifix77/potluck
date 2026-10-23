@@ -325,6 +325,69 @@ class Telemetry(HubFixture):
         c = self.model.snapshot()["boards"][0]["chip"]
         self.assertEqual((c["model"], c["revision"], c["flash_mb"], c["psram_mb"]), ("ESP32-S3", "v0.2", 16, 8))
 
+    def test_a_job_on_borrowed_cores_is_listed_with_a_measured_speedup(self) -> None:
+        """M22: cell.jobs from a board's compute section; the speed-up is its last alone run over its last lending one."""
+        job = {"run": 4, "running": False, "stopped": False, "lend": True, "units": 240, "done": 240, "local": 90,
+               "lent": 150, "refused": 3, "lost": 1, "overdue": 0, "elapsed_ms": 20000, "local_unit_ms": 480,
+               "pi": 3.1415, "lenders": [{"node": "7368", "answered": 80}, {"node": "8160", "answered": 70}]}
+        with self.model.lock:
+            self.model.boards[0x1001] = {"state": "alive", "since_at": 0, "last_ok": time.monotonic(),
+                                         "tel": {"compute": {"lender": None, "job": job}}}
+        self.assertEqual(self.model._jobs_json()[0]["speedup"], None)  # one kind of run only: nothing to compare
+        self.model.job_times[0x1001] = {"alone": (3, 60000), "lend": (4, 20000)}
+        j = self.model._jobs_json()[0]
+        self.assertEqual((j["borrower"], j["id"], j["redone"], j["speedup"]), ("1001", "1001/4", 4, 3.0))
+        self.assertEqual([x["node"] for x in j["lenders"]], ["7368", "8160"])
+
+    def test_only_a_board_running_a_job_or_lender_is_asked_for_compute(self) -> None:
+        """M22: section 7 costs radio time, so only a board whose package runs mc_job or mc_lender is asked."""
+        from types import SimpleNamespace as NS
+        from unittest import mock
+        import test_telemetry as tt
+        from potluck import telemetry as tm
+
+        h = tm.parse_health(bytes.fromhex(tt.HEALTH_GOLDEN))
+        asked = []
+        done = tm.parse_compute(bytes.fromhex(tt.COMPUTE_GOLDEN))
+        done["job"].update(running=False, done=240, elapsed_ms=21000)
+
+        def compute(bridge, n, timeout=2.0):
+            asked.append(n)
+            return done
+
+        with self.model.lock:
+            self.model.boards[0x1001] = {"state": "alive", "since_at": 0, "last_ok": time.monotonic(),
+                                         "status": NS(actors=("rf_link", "mc_job"))}
+            self.model.boards[0x1002] = {"state": "alive", "since_at": 0, "last_ok": time.monotonic(),
+                                         "status": NS(actors=("rf_link",))}
+        with mock.patch.multiple(tm, health=lambda *a, **k: h, links=lambda *a, **k: [], actors=lambda *a, **k: [],
+                                 events=lambda *a, **k: ([], 1), auth=lambda *a, **k: None,
+                                 chip=lambda *a, **k: None, compute=compute), \
+                mock.patch.object(hb.Model, "_read_reset", lambda self, n: None):
+            self.model.pull_telemetry()
+        self.assertEqual(asked, [0x1001])
+        self.assertEqual(self.model.job_times[0x1001], {"lend": (3, 21000)})  # a run that ended with its last unit
+
+    def test_the_job_route_writes_the_jobs_control_and_needs_one(self) -> None:
+        """M22: POST /api/setup/job writes node-<id>/job/mc/run (1 lend, 2 alone, 3 stop) through write_outside."""
+        from types import SimpleNamespace as NS
+        from unittest import mock
+        from potluck.manifest import parse
+        doc = {"schema": 1, "system": "lab", "min_core_version": 1, "nodes": [{"node_id": 0x6300, "label": "A"}],
+               "actors": [{"name": "job", "module": "builtin:mc_job", "latency_class": 4, "pin": 0x6300,
+                           "config": {"units": 48, "control": True}}]}
+        model = NS(package=NS(manifest=parse(doc)))
+        seen = []
+        with mock.patch.object(hb, "write_outside", lambda m, path, v, by=None: (seen.append((path, v)) or
+                                                                               (200, {"ok": True, "result": "applied"}))):
+            self.assertEqual(hb.setup_job(model, {"run": "alone"})[0], 200)
+            self.assertEqual(hb.setup_job(model, {"run": "stop", "board": "6300"})[1]["board"], "6300")
+            self.assertEqual(hb.setup_job(model, {"run": "fast"})[0], 400)
+            self.assertEqual(hb.setup_job(model, {"run": "lend", "board": "7368"})[0], 404)
+        self.assertEqual(seen, [("potluck://lab/node-6300/job/mc/run", 2), ("potluck://lab/node-6300/job/mc/run", 3)])
+        doc["actors"][0]["config"] = {"units": 48}  # no control resource: nothing to write
+        self.assertEqual(hb.setup_job(NS(package=NS(manifest=parse(doc))), {"run": "lend"})[0], 404)
+
     def test_every_pull_goes_to_the_telemetry_log_so_no_console_is_needed(self) -> None:
         import io
         import json

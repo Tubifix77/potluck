@@ -216,6 +216,22 @@ class McJob(unittest.TestCase):
         self.assertEqual(out, path_hash("potluck://m3-test/node-6300/job/mc/pi"))
         self.assertEqual((units, samples, seed, lend, start), (48, 1000000, 1, 1, 0))
 
+    def test_a_job_with_a_control_resource_adds_its_hash_and_one_without_is_unchanged(self) -> None:
+        """M22: "control": true makes the 23-byte config (kMcJobCfgLenCtl) -- the hub starts and stops the job by writing
+        node-<id>/job/mc/run; without it the M9 config, byte for byte."""
+        from potluck.paths import path_hash
+        at = dp.IMAGE_HEADER_LEN
+        plain = dp.compile_image(parse(manifest([MC_JOB])), 7)
+        self.assertEqual(struct.unpack_from("<HBB", plain, at)[2], 19)
+        img = dp.compile_image(parse(manifest([dict(MC_JOB, config=dict(MC_JOB["config"], control=True))])), 7)
+        node, typ, cfg_len = struct.unpack_from("<HBB", img, at)
+        self.assertEqual((node, typ, cfg_len), (0x6300, dp.ACTOR_MC_JOB, 23))
+        self.assertEqual(img[at + 4:at + 4 + 19], plain[at + 4:at + 4 + 19])
+        (ctl,) = struct.unpack_from("<I", img, at + 4 + 19)
+        self.assertEqual(ctl, path_hash("potluck://m3-test/node-6300/job/mc/run"))
+        with self.assertRaises(dp.DeployError):
+            dp.compile_image(parse(manifest([dict(MC_JOB, config=dict(MC_JOB["config"], control=1))])), 7)
+
     def test_out_of_range_or_unpinned_mc_actors_are_refused(self) -> None:
         from potluck.manifest import ManifestErrors
         for bad in ({k: v for k, v in MC_JOB.items() if k != "pin"},

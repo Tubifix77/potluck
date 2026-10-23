@@ -1475,6 +1475,44 @@ size_t build_telemetry(const TelemetryRequest& rq, uint8_t* out, size_t cap) {
         c.features = ci.features;
         return store_telemetry_chip(g_node_id, c, out, cap);
     }
+    if (rq.section == kTelemetryCompute) {
+        // M22: M9's borrowed cores -- the lender and the job running here, found by their kind's name (no RTTI).
+        TelemetryCompute c;
+        const uint32_t now = now_ms_();
+        for (size_t i = 0; i < g_actors.running(); ++i) {
+            const char* kind = g_actors.name(i);
+            if ((c.flags & kTelComputeLender) == 0 && std::strcmp(kind, kMcLenderKind.name) == 0) {
+                const McLenderActor::Stats& s = static_cast<McLenderActor*>(g_actors.actor(i))->stats();
+                c.flags |= kTelComputeLender;
+                c.lender_accepted = s.accepted;
+                c.lender_refused = s.refused;
+                c.lender_served = s.served;
+                c.lender_unit_ms = s.unit_ms;
+            } else if ((c.flags & kTelComputeJob) == 0 && std::strcmp(kind, kMcJobKind.name) == 0) {
+                const McJobActor::View v = static_cast<McJobActor*>(g_actors.actor(i))->view(now);
+                c.flags |= kTelComputeJob | (v.running ? kTelComputeRunning : 0) | (v.stopped ? kTelComputeStopped : 0) |
+                           (v.lend ? kTelComputeLend : 0);
+                c.run = v.run;
+                c.units = v.units;
+                c.done = v.done;
+                c.local_units = v.local_units;
+                c.lent_units = v.lent_units;
+                c.refused = v.refused;
+                c.lost = v.lost;
+                c.overdue = v.overdue;
+                c.elapsed_ms = v.elapsed_ms;
+                c.local_ms = v.local_ms;
+                c.pi = v.pi;
+                for (size_t k = 0; k < McJobActor::kMaxLenders && c.n < 4; ++k) {
+                    if (v.lender_node[k] == 0) continue;
+                    c.lender_node[c.n] = v.lender_node[k];
+                    c.lender_answered[c.n] = v.lender_answered[k];
+                    ++c.n;
+                }
+            }
+        }
+        return store_telemetry_compute(g_node_id, c, out, cap);
+    }
     if (rq.section == kTelemetryAuth) {
         const Node::AuthCounters& c = g_node->auth_counters();
         TelemetryAuth a;

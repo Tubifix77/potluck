@@ -231,3 +231,32 @@ TEST(telemetry, the_chip_section_says_what_the_board_is) {
     CHECK(std::vector<uint8_t>(w, w + n) == unhex("01066081090202001000080092000000"));
     CHECK_EQ(store_telemetry_chip(1, c, w, n - 1), static_cast<size_t>(0));
 }
+
+TEST(telemetry, the_compute_section_carries_the_lender_and_the_job) {
+    // M22. host/potluck/tests/test_telemetry.py's COMPUTE_GOLDEN: A runs a job with lending (run 3, 240 units, 120 done:
+    // 70 here, 50 lent, 2 refused, 1 lost), and no lender; lenders 0x7368 (30) and 0x8160 (20).
+    TelemetryCompute c;
+    c.flags = kTelComputeJob | kTelComputeRunning | kTelComputeLend;
+    c.run = 3;
+    c.units = 240;
+    c.done = 120;
+    c.local_units = 70;
+    c.lent_units = 50;
+    c.refused = 2;
+    c.lost = 1;
+    c.elapsed_ms = 30000;
+    c.local_ms = 480;
+    c.pi = 3.0f;
+    c.n = 2;
+    c.lender_node[0] = 0x7368;
+    c.lender_answered[0] = 30;
+    c.lender_node[1] = 0x8160;
+    c.lender_answered[1] = 20;
+    uint8_t w[kTelemetryReplyMax];
+    const size_t n = store_telemetry_compute(0x6300, c, w, sizeof(w));
+    CHECK_EQ(n, kTelemetryHeaderLen + kTelemetryComputeLen);
+    CHECK(std::vector<uint8_t>(w, w + n) ==
+          unhex("01070063160000000000000000000000000000000003000000f000780046003200020001000000307500"
+                "00e0010000000040400268731e00608114000000000000000000"));
+    CHECK_EQ(store_telemetry_compute(1, c, w, n - 1), static_cast<size_t>(0));
+}

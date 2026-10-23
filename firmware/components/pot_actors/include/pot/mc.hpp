@@ -50,6 +50,7 @@ struct McUnit {
     uint32_t samples = 0;
     uint32_t hits = 0;
     uint32_t started_ms = 0;
+    uint32_t run = 0;  // M22: the job's run it belongs to -- a unit finishing after its run was stopped is not counted
     std::atomic<uint8_t> state{0};
 };
 // The work function bg_submit runs: computes, then marks the unit done.
@@ -99,8 +100,11 @@ class McJobActor : public Actor {
     bool on_console(const char* line, size_t len) override;
     size_t stats_json(char* buf, size_t cap, uint32_t now_ms) override;
 
-    // Start a run now (what the console and start_after_ms do). False if one is running.
+    // Start a run now (what the console, start_after_ms and the control resource do). False if one is running.
     bool run(bool lend, uint32_t now_ms);
+    // M22: end a run now (the control resource's 3). Its units in flight are dropped: a lender's are cancelled, a
+    // local worker's is not counted when it finishes. False if none is running.
+    bool stop(uint32_t now_ms);
     bool running() const { return running_; }
 
     static constexpr size_t kMaxLenders = 4;
@@ -115,9 +119,22 @@ class McJobActor : public Actor {
         uint16_t refused;      // units a lender declined (run again elsewhere)
         uint16_t lost;         // units whose lender died (run again elsewhere)
         uint16_t overdue;      // units cancelled at their deadline (run again elsewhere; also counted lost)
+        uint8_t stopped;       // M22: ended by a stop, not by its last unit (no result published)
     };
     const Result& last() const { return last_; }
     uint16_t lent_to(uint16_t node_id) const;  // units of the last run answered by that node
+
+    // M22: the job as telemetry reports it -- the run in progress, or the last one when none is.
+    struct View {
+        bool running;
+        uint8_t lend, stopped;
+        uint32_t run;
+        uint16_t units, done, local_units, lent_units, refused, lost, overdue;
+        uint32_t elapsed_ms, local_ms;
+        float pi;  // the last finished run's estimate (0 before one)
+        uint16_t lender_node[kMaxLenders], lender_answered[kMaxLenders];
+    };
+    View view(uint32_t now_ms) const;
 
   private:
     struct Remote {
@@ -162,6 +179,8 @@ class McJobActor : public Actor {
     Lender lenders_[kMaxLenders];
     Result cur_{};
     Result last_{};
+    uint32_t ctl_count_ = 0;  // M22: the control resource's update count last acted on
+    float last_pi_ = 0.0f;    // M22: the last finished run's estimate (a stopped run has none)
 };
 
 bool mc_lender_check(const ActorDecl& d, const ActorEnv& env, const char** why);

@@ -1448,6 +1448,10 @@ def actor_reads(m, a, boards: list[int]) -> tuple[str, list[str]]:
             reads.append(dp.die_temp_path(m.system, node))
         if a.module == "builtin:led_switch":
             reads.append(dp.led_switch_path(m.system, node))
+        if a.module == "builtin:mc_job":  # M9's result; M22's control, when it has one
+            reads.append(dp.mc_job_path(m.system, node))
+            if a.config.get("control"):
+                reads.append(dp.mc_job_ctl_path(m.system, node))
         if a.module == "builtin:inbox":
             reads += [dp.inbox_path(m.system, a.name, name) for name, *_ in dp.inbox_outputs(a, a.name)]
         if a.module == "builtin:position":
@@ -1483,6 +1487,9 @@ def expected(m, boards: list[int], verify: bool = True) -> tuple[dict[int, int],
         # skipping them here for everyone hid the phone's values from the hub and made its writes answer 404).
         if verify and a.module == "builtin:inbox":
             continue  # its values are its program's to write: NO_DATA until it does, and that is no failed apply
+        if verify and a.module == "builtin:mc_job":
+            # its result is NO_DATA until a run ends (M22 starts runs on demand); the control reads 0 from the start
+            outs = [o for o in outs if not o.endswith("/job/mc/pi")]
         if verify and a.module == "builtin:present" and a.config.get("hub"):
             # 2026-10-21: the PC may hold the role (present.hub), and then its output reads NO_DATA through the cabled
             # board (open, M0-LOG session 48) -- the presenting is shown by the hub, not by this read.

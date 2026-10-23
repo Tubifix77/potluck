@@ -14,6 +14,7 @@ using namespace pot;
 namespace {
 
 constexpr uint32_t kOut = path_hash("potluck://lab/node-0100/job/mc/pi");
+constexpr uint32_t kCtl = path_hash("potluck://lab/node-0100/job/mc/run");  // M22
 constexpr uint32_t kUnitMs = 200;
 constexpr uint32_t kSamples = 2000;
 
@@ -105,7 +106,7 @@ struct MCell {
         t.down = false;
     }
 
-    MCell(uint16_t units, bool lenders_lend = true) {
+    MCell(uint16_t units, bool lenders_lend = true, uint32_t ctl = 0) {
         for (size_t i = 0; i < 3; ++i) {
             n[i].cell = this;
             n[i].index = i;
@@ -115,7 +116,7 @@ struct MCell {
             n[i].lends = (i == 0) || lenders_lend;
         }
         for (size_t i = 0; i < 3; ++i) boot(i);
-        McJobConfig jc{kOut, units, kSamples, 12345, 0, 0};
+        McJobConfig jc{kOut, units, kSamples, 12345, 0, 0, ctl};
         job = new McJobActor(*n[0].node, &n[0].board, jc);
         n[0].node->set_call_result(&MCell::on_result, this);
         CHECK(job->start(now_ms()));
@@ -291,3 +292,48 @@ TEST(mc, a_unit_whose_answer_never_comes_is_cancelled_at_its_deadline_and_run_ag
     CHECK_EQ(static_cast<unsigned>(r.local_units + r.lent_units), 60u);
 }
 
+
+TEST(mc, the_control_resource_starts_and_stops_a_run_and_a_stopped_runs_units_are_not_counted) {
+    // M22: the hub starts and stops the demo job by writing node-<id>/job/mc/run (1 lend, 2 alone, 3 stop).
+    MCell c(60, true, kCtl);
+    c.run(3000);
+    Namespace& ns = c.n[0].node->ns();
+    const NsEntry* ctl = ns.find(kCtl);
+    CHECK(ctl != nullptr && ctl->access == static_cast<uint8_t>(Access::ReadWrite));
+    CHECK(!c.job->running());
+
+    ns.publish(kCtl, Value::of_u32(1), c.now_ms());  // run with lending
+    c.run(1500);
+    CHECK(c.job->running());
+    McJobActor::View v = c.job->view(c.now_ms());
+    CHECK(v.running && v.lend == 1 && v.units == 60u && v.done > 0u && v.elapsed_ms >= 1400u);
+    ns.publish(kCtl, Value::of_u32(3), c.now_ms());  // stop it, units in flight on workers and lenders
+    c.run(5);
+    CHECK(!c.job->running());
+    CHECK_EQ(static_cast<unsigned>(c.job->last().stopped), 1u);
+    v = c.job->view(c.now_ms());
+    CHECK(!v.running && v.stopped == 1 && v.done < 60u);
+    CHECK(!ns.find(kOut)->has_data());  // a stopped run publishes no result
+
+    ns.publish(kCtl, Value::of_u32(2), c.now_ms());  // alone, right away: the stopped run's units still finishing
+    c.run(1);
+    CHECK(c.job->running());
+    for (uint32_t k = 0; k < 120000 && c.job->running(); ++k) c.run(1);
+    const McJobActor::Result r = c.job->last();
+    CHECK_EQ(r.hits, expected_hits(60));  // exact: nothing of the stopped run was counted
+    CHECK_EQ(static_cast<unsigned>(r.local_units + r.lent_units), 60u);
+    CHECK_EQ(static_cast<unsigned>(r.lent_units), 0u);  // alone
+    CHECK_EQ(static_cast<unsigned>(r.stopped), 0u);
+    v = c.job->view(c.now_ms());
+    CHECK(v.pi > 3.0f && v.pi < 3.3f);
+    CHECK(ns.find(kOut)->has_data());
+
+    ns.publish(kCtl, Value::of_u32(2), c.now_ms());  // the same value again is a new command
+    c.run(1);
+    CHECK(c.job->running());
+}
+
+TEST(mc, a_job_without_a_control_resource_declares_none) {
+    MCell c(10);
+    CHECK(c.n[0].node->ns().find(kCtl) == nullptr);  // the M9 config, unchanged
+}

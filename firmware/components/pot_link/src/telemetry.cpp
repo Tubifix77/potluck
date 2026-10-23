@@ -2,6 +2,7 @@
 
 #include "pot/telemetry.hpp"
 
+#include <cstring>
 #include <initializer_list>
 
 namespace pot {
@@ -130,6 +131,27 @@ size_t store_telemetry_chip(uint16_t node, const TelemetryChip& c, uint8_t* out,
     w.u16(c.flash_mb);
     w.u16(c.psram_mb);
     w.u32(c.features);
+    return w.at;
+}
+
+size_t store_telemetry_compute(uint16_t node, const TelemetryCompute& c, uint8_t* out, size_t cap) {
+    if (out == nullptr || cap < kTelemetryHeaderLen + kTelemetryComputeLen) return 0;
+    W w{out, 0};
+    header(w, kTelemetryCompute, node);
+    w.u8(c.flags);
+    for (uint32_t v : {c.lender_accepted, c.lender_refused, c.lender_served, c.lender_unit_ms, c.run}) w.u32(v);
+    for (uint16_t v : {c.units, c.done, c.local_units, c.lent_units, c.refused, c.lost, c.overdue}) w.u16(v);
+    w.u32(c.elapsed_ms);
+    w.u32(c.local_ms);
+    uint32_t pi_bits = 0;
+    std::memcpy(&pi_bits, &c.pi, sizeof(pi_bits));
+    w.u32(pi_bits);
+    const uint8_t n = c.n > 4 ? 4 : c.n;
+    w.u8(n);
+    for (size_t i = 0; i < 4; ++i) {  // always four: a fixed length; the unused ones zero
+        w.u16(i < n ? c.lender_node[i] : 0);
+        w.u16(i < n ? c.lender_answered[i] : 0);
+    }
     return w.at;
 }
 

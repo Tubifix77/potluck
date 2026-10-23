@@ -316,8 +316,12 @@ bool mc_lender_config(const ActorDecl& a, McLenderConfig& out);
 // console ("POT! mc run 0|1") when that is 0. Pinned.
 //
 //   out_hash u32, units u16 (1..4096), samples u32 (1000..100000000), seed u32, lend u8 (0..1),
-//   start_after_ms u32
+//   start_after_ms u32[, ctl_hash u32]
+//
+// M22 (2026-10-23): with ctl_hash (a 23-byte config), the job also declares that resource, a u32 written from inside
+// or outside the cell: 1 runs it with lending, 2 alone, 3 stops a run. The 19-byte config is the M9 job unchanged.
 constexpr uint8_t kMcJobCfgLen = 19;
+constexpr uint8_t kMcJobCfgLenCtl = 23;
 struct McJobConfig {
     uint32_t out_hash;
     uint16_t units;
@@ -325,6 +329,7 @@ struct McJobConfig {
     uint32_t seed;
     uint8_t lend;
     uint32_t start_after_ms;
+    uint32_t ctl_hash = 0;  // 0: no control resource
 };
 bool mc_job_config(const ActorDecl& a, McJobConfig& out);
 

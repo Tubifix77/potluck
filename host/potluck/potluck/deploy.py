@@ -88,6 +88,11 @@ def mc_job_path(system: str, node_id: int) -> str:
     return f"potluck://{system}/node-{node_id:04x}/job/mc/pi"
 
 
+def mc_job_ctl_path(system: str, node_id: int) -> str:
+    """M22. An mc_job's control (with "control": true): a u32 written to run it with lending (1), alone (2), or stop (3)."""
+    return f"potluck://{system}/node-{node_id:04x}/job/mc/run"
+
+
 def _mc_lender_config(a, where: str) -> bytes:
     extra = set(a.config) - {"slots"}
     if extra:
@@ -101,7 +106,7 @@ def _mc_lender_config(a, where: str) -> bytes:
 
 
 def _mc_job_config(m: Manifest, a, where: str) -> bytes:
-    extra = set(a.config) - {"units", "samples", "seed", "lend", "start_after_ms"}
+    extra = set(a.config) - {"units", "samples", "seed", "lend", "start_after_ms", "control"}
     if extra:
         raise DeployError(f"{where}: unknown mc_job config key(s) {sorted(extra)}")
     if a.pin is None:
@@ -119,8 +124,13 @@ def _mc_job_config(m: Manifest, a, where: str) -> bytes:
         raise DeployError(f"{where}: mc_job seed and start_after_ms are u32")
     if not isinstance(lend, bool):
         raise DeployError(f"{where}: mc_job lend must be true or false")
-    return struct.pack("<IHIIBI", path_hash(mc_job_path(m.system, a.pin)), units, samples, seed,
-                       1 if lend else 0, start_after)
+    control = a.config.get("control", False)
+    if not isinstance(control, bool):
+        raise DeployError(f"{where}: mc_job control must be true or false")
+    cfg = struct.pack("<IHIIBI", path_hash(mc_job_path(m.system, a.pin)), units, samples, seed,
+                      1 if lend else 0, start_after)
+    # M22: the 23-byte config adds the control resource; without "control" the M9 config, byte for byte
+    return cfg + struct.pack("<I", path_hash(mc_job_ctl_path(m.system, a.pin))) if control else cfg
 
 
 def die_temp_path(system: str, node_id: int) -> str:

@@ -27,7 +27,26 @@ AUTH_GOLDEN = ("0105006301000000020000000300000004000000050000000600000007000000
 CHIP_GOLDEN = "01066081090202001000080092000000"  # tests/test_telemetry.cpp: C, an ESP32-S3 v0.2, 16 MB, 8 MB PSRAM
 
 
+COMPUTE_GOLDEN = "01070063160000000000000000000000000000000003000000f00078004600320002000100000030750000e0010000000040400268731e00608114000000000000000000"  # tests/test_telemetry.cpp: A's job with lending, two lenders
+
+
 class Sections(unittest.TestCase):
+    def test_compute(self) -> None:
+        """M22: M9's borrowed cores on one board."""
+        c = tm.parse_compute(bytes.fromhex(COMPUTE_GOLDEN))
+        self.assertIsNone(c["lender"])
+        j = c["job"]
+        self.assertEqual((j["run"], j["running"], j["lend"], j["stopped"]), (3, True, True, False))
+        self.assertEqual((j["units"], j["done"], j["local"], j["lent"], j["refused"], j["lost"], j["overdue"]),
+                         (240, 120, 70, 50, 2, 1, 0))
+        self.assertEqual((j["elapsed_ms"], j["local_unit_ms"], j["pi"]), (30000, 480, 3.0))
+        self.assertEqual(j["lenders"], [{"node": "7368", "answered": 30}, {"node": "8160", "answered": 20}])
+        idle = bytes.fromhex("01070073" + "01" + "00" * 63)  # a lender only, nothing lent yet
+        self.assertEqual(tm.parse_compute(idle), {"lender": {"accepted": 0, "refused": 0, "served": 0, "unit_ms": 0},
+                                                  "job": None})
+        with self.assertRaises(tm.TelemetryError):
+            tm.parse_compute(bytes.fromhex(COMPUTE_GOLDEN)[:-1])
+
     def test_chip(self) -> None:
         """M21: what the board is, as the board reads itself."""
         c = tm.parse_chip(bytes.fromhex(CHIP_GOLDEN))

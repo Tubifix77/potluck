@@ -421,6 +421,7 @@ class Model:
         self.telemetry_period_ms = telemetry_period_ms
         self._telemetry_due = 0.0
         self.telemetry_counts = {"pulls": 0, "replies": 0, "failures": 0, "events": 0}
+        self.job_times: dict[int, dict[str, tuple[int, int]]] = {}  # M22: a board's last finished run of each kind
         self.link_deaths: dict[tuple[int, int], int] = {}  # (board, peer) -> peer_dead events pulled since the hub started
         self.lock = threading.Lock()
         self.started = time.monotonic()
@@ -708,6 +709,8 @@ class Model:
                 old_epoch = old["health"].boot_epoch if old.get("health") is not None else None
                 have_reset = b.get("reset") is not None and b.get("reset_epoch") == old_epoch
                 have_chip = b.get("chip") is not None and b.get("chip_epoch") == old_epoch
+                st = b.get("status")
+                mc = bool(st is not None and {"mc_job", "mc_lender"} & set(getattr(st, "actors", ()) or ()))
             self.telemetry_counts["pulls"] += 1
             try:
                 h = tm.health(self.hub, n)
@@ -730,6 +733,12 @@ class Model:
                         chip = tm.chip(self.hub, n)
                     except (BridgeError, tm.TelemetryError):
                         chip = None  # firmware before M21, or no answer: asked again on the next pull
+                compute = None
+                if mc:  # M22: borrowed cores -- only a board that runs a lender or a job is asked
+                    try:
+                        compute = tm.compute(self.hub, n)
+                    except (BridgeError, tm.TelemetryError):
+                        compute = None  # firmware before M22, or no answer
             except (BridgeError, tm.TelemetryError) as exc:
                 self.telemetry_counts["failures"] += 1
                 with self.lock:
@@ -759,7 +768,13 @@ class Model:
                     continue
                 b["tel_failures"] = 0
                 b["tel_unsupported"] = False
-                b["tel"] = {"health": h, "links": ls, "actors": acts, "events_next": nxt, "at": _hub_ms(), "auth": auth}
+                b["tel"] = {"health": h, "links": ls, "actors": acts, "events_next": nxt, "at": _hub_ms(), "auth": auth,
+                            "compute": compute}
+                job = (compute or {}).get("job")
+                if job and not job["running"] and not job["stopped"] and job["run"]:
+                    # M22: a run that ended with its last unit -- kept by kind, so a speed-up is measured, not guessed
+                    times = self.job_times.setdefault(n, {})
+                    times["lend" if job["lend"] else "alone"] = (job["run"], job["elapsed_ms"])
                 if chip is not None:
                     b["chip"], b["chip_epoch"] = chip, h.boot_epoch
                 if reset is not None:
@@ -947,7 +962,9 @@ class Model:
                 "actors": [{"key": f"{a.key:08x}", "running_here": bool(a.flags & 1), "owner": f"{a.owner:04x}",
                             "assigned": f"{a.assigned:04x}", "activations": a.activations, "fenced": a.fenced,
                             "released": a.released} for a in tel["actors"]],
-                "auth": tel.get("auth")}
+                "auth": tel.get("auth"),
+                # M22: M9's lender here (accepted, refused, served, unit_ms), or null
+                "lend": (tel.get("compute") or {}).get("lender")}
             radio = [k.rssi for k in tel["links"] if k.rssi and not (k.flags & 1)]
             out["rssi"] = max(radio) if radio else None
         return out
@@ -1024,7 +1041,25 @@ class Model:
                 "channel": None, "package": pk, "firmware": fw, "pins": self._pins_for[1], "update": update,
                 "other_cell_frames": None,
                 "presenter": presenter,
+                "jobs": self._jobs_json(),
                 "plan": getattr(self.cluster, "plan", None) if self.cluster is not None else None}
+
+    def _jobs_json(self) -> list[dict]:
+        """M22: each board's job on borrowed cores (M9's mc_job), from its telemetry: the run in progress or the last.
+        `speedup` is measured -- the board's last run alone over its last run with lending -- or null until both ran."""
+        out = []
+        with self.lock:
+            for n, b in sorted(self.boards.items()):
+                job = ((b.get("tel") or {}).get("compute") or {}).get("job")
+                if not job:
+                    continue
+                times = self.job_times.get(n, {})
+                alone, lend = times.get("alone"), times.get("lend")
+                speed = round(alone[1] / lend[1], 2) if alone and lend and lend[1] else None
+                lenders = [dict(x, label=self.label_of(int(x["node"], 16))) for x in job["lenders"]]
+                out.append(dict(job, id=f"{n:04x}/{job['run']}", borrower=f"{n:04x}", label=self.label_of(n),
+                                lenders=lenders, redone=job["refused"] + job["lost"], speedup=speed))
+        return out
 
     def _update_json(self, boards_fw: str | None) -> dict:
         """2026-10-20, the owner: an update of the boards as its own thing, not hidden in an Apply. The firmware the
@@ -1464,6 +1499,10 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                     return
                 self._json(200, {"ok": True, "board": entry})
                 return
+            if path == "/api/setup/job":
+                code, body = setup_job(model, req)  # M22: start or stop the job on borrowed cores
+                self._json(code, body)
+                return
             if path == "/api/setup/update":
                 # 2026-10-20, the owner: an update of the boards is not an Apply of the library. The same run (apply
                 # brings firmware and package to what the cell's file and this Potluck say), as a job of its own.
@@ -1630,7 +1669,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             """M20's setup wizard: probe, flash, enrol, Wi-Fi, identify -- each a job the dashboard follows."""
             from . import setup as st
             if path in ("/api/setup/board", "/api/setup/apply", "/api/setup/tree", "/api/setup/listen",
-                        "/api/setup/broker_login", "/api/setup/update"):
+                        "/api/setup/broker_login", "/api/setup/update", "/api/setup/job"):
                 self._setup_cell(path)
                 return
             if path in ("/api/setup/library", "/api/setup/broker"):
@@ -2081,6 +2120,27 @@ def _inbox_owner(model, path: str) -> int | None:
         except dp.DeployError:
             continue
     return None
+
+
+def setup_job(model: Model, req: dict) -> tuple[int, dict]:
+    """M22: POST /api/setup/job {"run": "lend" | "alone" | "stop", "board"?} -- start or stop the cell's job on borrowed
+    cores (an mc_job with "control": true) by writing its control resource, through the same checks as any outside
+    write: the cluster file's `outside` must let it be written."""
+    from . import deploy as dp
+    runs = {"lend": 1, "alone": 2, "stop": 3}
+    what = str(req.get("run", ""))
+    if what not in runs:
+        return 400, {"ok": False, "result": 'expected {"run": "lend" | "alone" | "stop"}'}
+    m = model.package.manifest if getattr(model, "package", None) is not None else None
+    nodes = [m.placement_of(a) for a in (m.actors if m is not None else [])
+             if a.module == "builtin:mc_job" and a.config.get("control")]
+    want = req.get("board")
+    if want:
+        nodes = [x for x in nodes if x is not None and f"{x:04x}" == str(want).lower()]
+    if not nodes or nodes[0] is None:
+        return 404, {"ok": False, "result": "no job with a control resource in this cell's package"}
+    code, body = write_outside(model, dp.mc_job_ctl_path(m.system, nodes[0]), runs[what])
+    return code, dict(body, board=f"{nodes[0]:04x}")
 
 
 def write_outside(model: Model, path: str, value: Any, by: str | None = None) -> tuple[int, dict]:

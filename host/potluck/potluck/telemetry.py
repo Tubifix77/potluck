@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from . import frame as fr
 
 VERSION = 1
-HEALTH, LINKS, ACTORS, EVENTS, AUTH, CHIP = 1, 2, 3, 4, 5, 6
+HEALTH, LINKS, ACTORS, EVENTS, AUTH, CHIP, COMPUTE = 1, 2, 3, 4, 5, 6, 7
 
 HEALTH_NO_RADIO, HEALTH_BUSY, HEALTH_CONNECTED, HEALTH_LONG_WINDOW, HEALTH_ENROLLED = 1, 2, 4, 8, 16
 LINK_CABLE, LINK_VERIFIED = 1, 2
@@ -36,6 +36,8 @@ _ACTOR = struct.Struct("<IBBHHIHH")
 _EVENT = struct.Struct("<IIBHII")
 _AUTH = struct.Struct("<12I")
 _CHIP = struct.Struct("<BBHHHI")
+_COMPUTE = struct.Struct("<B4II7HIIfB8H")
+assert _COMPUTE.size == 64
 assert (_HEALTH.size, _LINK.size, _ACTOR.size, _EVENT.size, _AUTH.size, _CHIP.size) == (88, 40, 18, 19, 48, 12)
 
 #: The Auth section's counters, in their wire order (pot/telemetry.hpp, Node::AuthCounters; 2026-10-19).
@@ -230,6 +232,29 @@ def parse_chip(raw: bytes) -> dict:
             "features": [name for bit, name in sorted(CHIP_FEATURES.items()) if feats >> bit & 1]}
 
 
+#: kTelemetryCompute's flags (pot/telemetry.hpp, M22).
+COMPUTE_LENDER, COMPUTE_JOB, COMPUTE_RUNNING, COMPUTE_STOPPED, COMPUTE_LEND = 1, 2, 4, 8, 16
+
+
+def parse_compute(raw: bytes) -> dict:
+    """M22: M9's borrowed cores on one board -- `lender` (its counters, or None) and `job` (its run, or None)."""
+    _header(raw, COMPUTE)
+    if len(raw) < 4 + _COMPUTE.size:
+        raise TelemetryError("compute section cut short")
+    (flags, accepted, refused_l, served, unit_ms, run, units, done, local, lent, refused, lost, overdue, elapsed,
+     local_ms, pi, n, *pairs) = _COMPUTE.unpack_from(raw, 4)
+    lender = ({"accepted": accepted, "refused": refused_l, "served": served, "unit_ms": unit_ms}
+              if flags & COMPUTE_LENDER else None)
+    job = None
+    if flags & COMPUTE_JOB:
+        job = {"run": run, "running": bool(flags & COMPUTE_RUNNING), "stopped": bool(flags & COMPUTE_STOPPED),
+               "lend": bool(flags & COMPUTE_LEND), "units": units, "done": done, "local": local, "lent": lent,
+               "refused": refused, "lost": lost, "overdue": overdue, "elapsed_ms": elapsed, "local_unit_ms": local_ms,
+               "pi": round(pi, 7) if pi else None,
+               "lenders": [{"node": f"{pairs[2 * i]:04x}", "answered": pairs[2 * i + 1]} for i in range(min(n, 4))]}
+    return {"lender": lender, "job": job}
+
+
 def parse_events(raw: bytes) -> tuple[int, list[EventTel]]:
     _header(raw, EVENTS)
     if len(raw) < 9:
@@ -259,6 +284,11 @@ def auth(bridge, target: int, *, timeout: float = 2.0) -> dict[str, int]:
 def chip(bridge, target: int, *, timeout: float = 2.0) -> dict:
     """M21: the board's chip, flash and PSRAM, from the board itself (no esptool check, which restarts it)."""
     return parse_chip(_ask(bridge, target, CHIP, timeout=timeout))
+
+
+def compute(bridge, target: int, *, timeout: float = 2.0) -> dict:
+    """M22: the lender's counters and the job's run on one board (M9's borrowed cores)."""
+    return parse_compute(_ask(bridge, target, COMPUTE, timeout=timeout))
 
 
 def links(bridge, target: int, *, timeout: float = 2.0) -> list[Link]:

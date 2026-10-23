@@ -5,6 +5,11 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **Borrowed cores, visible (M22).** M9's job and lenders report through a new telemetry section (64 bytes): the hub's
+  model shows `cell.jobs` (each run's units, where they ran, the ones run again, its lenders, the result, and a
+  measured speed-up) and each lender's counters. An `mc_job` with `"control": true` declares `node-<id>/job/mc/run`,
+  written to run it with lending, alone, or stop it -- `POST /api/setup/job` on the hub's PC. A stopped run's units
+  still in flight are not counted in the next. The actor slot grows to 448 bytes (PSRAM).
 - **Each board's chip in the hub's model (M21).** `boards[].chip`: model, revision, cores, flash and PSRAM, as the
   board itself reads them (a new telemetry section, read once a boot -- never esptool's check, which restarts a
   board). A firmware change: 12 bytes on the wire, nothing kept in internal RAM.

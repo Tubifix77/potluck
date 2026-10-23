@@ -158,8 +158,9 @@ class Actor {
 
 // Every instance lives in a fixed slot of this many bytes; the registration table static_asserts
 // that each actor class fits. No heap.
-// 384 since M9 (the job actor keeps its units in flight); the slots live in PSRAM on the boards.
-constexpr size_t kActorSlotBytes = 384;
+// 384 since M9 (the job actor keeps its units in flight), 448 since M22 (its run tags, control and view state outgrew
+// 384 on a 64-bit host); the slots live in PSRAM on the boards.
+constexpr size_t kActorSlotBytes = 448;
 constexpr size_t kMaxPinnedActors = 8;
 // The longest actor configuration the runtime keeps a copy of (a ticker's is 7 + 3 x 8 = 31). 160 on a board with
 // PSRAM since M19: a foreman's names its cell's boards and its exports (pot/foreman.hpp).
