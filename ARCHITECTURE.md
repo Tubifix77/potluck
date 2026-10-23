@@ -1138,7 +1138,7 @@ What the evidence settled, and how it amends the maintainer's sketch:
 
 Three faults the building found, all fixed: the cable's exemption from group admission at first covered members relayed down the cable too (a stub admitted boards of other cells; 3,111 deaths in 8 minutes, 19 after); a tick passed a time read before that pass's frames saw `now < last_rx` -- four billion milliseconds of silence, a live peer declared dead at 255 misses, a foreman role flapping every 100 ms (pot_stubs; the boards read the clock after their frames, so they never hit it, but the node no longer depends on that); and the parsed-image copies, grown with 64 declarations, left the ESP32-S3 build 3 bytes of its 64 KB core RAM (they live in PSRAM now: 2.3 KB headroom on that build -- history; section 6 gives the release image's figure).
 
-**M20 — Potluck for everyone: a library, app panels, and a board added by tapping.** *(Built 2026-10-15/16, not accepted: its blind test is owed -- see the end of this milestone. Planned 2026-10-15, from the maintainer: Potluck works for developers -- an LLM can read the manuals and write apps -- but the way in should be "more like the Google Home app"; of a Steam-like store and built-in apps switched on and off, both, the built-ins first; and of a separate consumer project or a part of Potluck, the hybrid: one engine, the friendly layer inside Potluck, the bundle a release artifact. Researched under the zero-assumption contract; every fact below is a ledger row of 2026-10-15, "M20 research".)* Today a cell starts with ESP-IDF, a certificate authority made on a command line, every board flashed and enrolled by hand, a JSON cluster file and `potluck apply`. M20 gives a person who is not a developer the three moments Google Home is built on -- **add a device, put it in a room, pick what it does** ("Scan the QR code of your device", then "select a room") -- on top of exactly that machinery, which stays as it is.
+**M20 — Potluck for everyone: a library, app panels, and a board added by tapping.** *(Built 2026-10-15/16, accepted 2026-10-23 with caveats -- see the end of this milestone. Planned 2026-10-15, from the maintainer: Potluck works for developers -- an LLM can read the manuals and write apps -- but the way in should be "more like the Google Home app"; of a Steam-like store and built-in apps switched on and off, both, the built-ins first; and of a separate consumer project or a part of Potluck, the hybrid: one engine, the friendly layer inside Potluck, the bundle a release artifact. Researched under the zero-assumption contract; every fact below is a ledger row of 2026-10-15, "M20 research".)* Today a cell starts with ESP-IDF, a certificate authority made on a command line, every board flashed and enrolled by hand, a JSON cluster file and `potluck apply`. M20 gives a person who is not a developer the three moments Google Home is built on -- **add a device, put it in a room, pick what it does** ("Scan the QR code of your device", then "select a room") -- on top of exactly that machinery, which stays as it is.
 
 **The hybrid, as decided.** *One engine:* Potluck, with every fix in one place. *The friendly layer is optional and inside Potluck* (the basic/optional rule of M13-M18): **everything it does is a cluster file and `potluck apply` underneath** -- the library, rooms and toggles write the JSON a developer writes by hand, and nothing is reachable only through them; the manuals, the CLI and the test kit are untouched. *The bundle is a release artifact, not a fork:* the release pipeline builds one image with the two built-in apps compiled in -- poor-mans-extender, a Wi-Fi extender app (Apache-2.0), and passive-sensor, a room-presence app (Apache-2.0 since 2026-10-16) -- from their own private repositories, worked on in tandem as since M12, and publishes it with a build attestation, which proves which repository and commit it came from ("link you to the source code and the build instructions"), not that it is safe.
 
@@ -1211,8 +1211,65 @@ PC needs no Python, ESP-IDF or terminal; esptool runs as its own program beside 
 (the licence question above, settled). **The curated feed** -- `feed.json` in the public store repository
 (github.com/Tubifix77/potluck-store), signed by the store key whose public half is built into the hub
 (`potluck.store.FEED_KEY`; section 9.4). The installer is Windows only; a Linux host is untested (review item 13's
-Linux blind test is not run). **M20 stands built, not accepted:** still owed are the blind test of the whole path,
-Content-Security-Policy on the dashboard, and the release's build attestation.
+Linux blind test is not run).
+
+*Accepted 2026-10-23, with caveats.* The owner replaced the blind test with a reinstall of a known board (no newcomer
+and no spare board): C wiped and put back through the installed release's dashboard alone. The owner's first run
+failed on four faults (a wiped board enrolled as a stranger, the Wi-Fi folded away, the Rooms step read as a name, a
+board not yet heard splitting the cell into a tree Apply refused), fixed the same day (the owner confirms a wiped
+board's identity from its MAC; only boards heard count in a proposal; a tree Apply would refuse is never written);
+the second run brought C back as itself. Caveats: the maintainer's run on a cell they know, not a stranger's;
+one board, not a new cell; the release's build attestation still owed (the dashboard's Content-Security-Policy
+landed 2026-10-19).
+
+**After M20: what a desktop client waits for (planned 2026-10-23).** *(From the owner, through a desktop client of the
+hub's API that draws the cell: seven items it waits on that need no part bought. Numbering, order and kill lines are this
+section's. Each lands with its API shape in HUB-API.md.)* Ordered smallest and most visible first.
+
+**M21 — each board's chip in the model.** `boards[].chip` = `{model, revision, cores, flash_mb, psram_mb}`, reported by
+the board itself (its node status), never by esptool, whose check restarts the board. *Acceptance:* all three boards
+report it in `/api/model`; a board built without PSRAM says `psram_mb: 0`. *Bound:* at most 16 bytes on the wire and
+no new internal RAM.
+
+**M22 — borrowed cores, visible.** M9's lending counters in telemetry and the model: `boards[].telemetry.lend` =
+`{lent, done, redone, refused}`, and `cell.jobs[]` = `{id, borrower, lenders, pieces, done, redone, speedup}`; plus a
+standing demo job (M9's pure function) the owner starts and stops, `POST /api/setup/job {"kind": "demo", "seconds"}`,
+because nothing lends cores in an everyday cell. *Acceptance:* started from the API, the job shows its lenders and
+pieces; a lender reset mid-job shows redone pieces; the result equals one board's. *Kill:* a lender's heartbeat loss
+rises by more than one point during the job (M9's rule: lending changes no lender's duties).
+
+**M23 — the PC's services in the model, and speech.** `cell.services[]` = `{name, state, calls, last_call_at, errors,
+callers}` for what the PC offers the cell (M8's time today). Then speech out: a board's app calls `pc/speech/say` with up
+to 200 bytes of text and the PC speaks it with the system's own voice; the answer says done or failed. Speech in
+(speech to text) answers with more than a service reply's 8 bytes, so it follows M25. *Acceptance:* a board's actor
+makes the PC say a phrase and the model counts the call; with the PC off the call fails within its deadline and the
+service reads "gone".
+
+**M24 — keyboard and mouse into the cell.** The event kind through the hub: `POST /api/input {"app", "events": [...]}`
+(`key` and `pointer`); the hub numbers them and delivers them in order to the app's input; an app declares
+`"takes": ["key", "pointer"]` in its module descriptor and the model lists it (`apps[].takes`); a key-echo test app ships
+with it. *Acceptance:* 20 key events a second from the PC reach a board's app in order, none lost, the 99th
+percentile under 150 ms through the relay. *Kill:* order cannot be held under 300 ms at the 99th percentile.
+
+**M25 — a bulk channel for files on the PC.** A folder the owner offers, read-only; a board's app reads a file by name
+in windowed chunks over the existing frames (no new transport, ADR-001); `cell.bulk` = `{folder, files, reads: [{board,
+file, bytes, kbps}]}`. *Acceptance:* a board reads a 64 KB file through the hub intact (its SHA-256 matches) in under
+30 s, its links' heartbeat loss rising at most one point. *Kill:* a 64 KB read costs more than two points of heartbeat
+loss or takes over 60 s -- then the channel uses a board's own Wi-Fi station and stays off ESP-NOW.
+
+**M26 — the pocket page accepts writes.** Off by default. A login per board (a password the owner sets), a CSRF token
+per session, only `outside` read_write resources that are not safety-relevant, the hub's write limits (2 a second,
+bursts of 4), and a separate security review before it ships. Advised only where a write is needed with no PC around.
+*Acceptance:* a phone on a board's pocket network switches B's LED; a forged cross-site request, a wrong password, a
+safety-relevant and a read-only resource are each refused. *Kill:* the login and CSRF state need more than 4 KB of a
+board's internal heap.
+
+**M27 — an emulator beside Potluck (an experiment).** An existing open-source emulator (an MSX2+ first; a 386 PC or an
+Amiga 500 only if one runs on the S3) on core 1 of one of the three boards, beside Potluck on core 0, its frames sent
+over Wi-Fi to the PC. First the emulator's licence and its S3 port are checked (the ledger), before any code. The
+board is borrowed from the cell for the run. *Measured:* frames a second delivered, and that board's heartbeat loss and
+delivery with and without the stream, in one session. *Kill:* the board's links lose more than two points of heartbeat
+-- then an emulator never shares a board with Potluck.
 
 ## 14. Risk register
 

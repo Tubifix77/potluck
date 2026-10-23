@@ -70,10 +70,10 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 **Current release: 1.0.0** (2026-10-16; the first published release was v0.2.0, the same day).
 
 Everything below runs on real ESP32-S3 boards and has passed a test written before it was tried -- each step of the
-roadmap (a *milestone*) has one, and a criterion that would have killed it. 25 of the 26 milestones are accepted,
-some with caveats. The one that is not is the friendly way in -- a setup wizard, a library of apps, a floor plan,
-boards added from the dashboard over their own USB cable: it is built and shipped, but the test that would accept
-it (a newcomer setting up a cell with nothing but the release) has not been run. [STATUS.md](STATUS.md) lists every
+roadmap (a *milestone*) has one, and a criterion that would have killed it. All 26 milestones through M20 are
+accepted, some with caveats -- the last, the friendly way in (a setup wizard, a library of apps, a floor plan,
+boards added from the dashboard over their own USB cable), on a reinstall of a known board rather than a newcomer's
+first cell. Seven more are planned. [STATUS.md](STATUS.md) lists every
 milestone with its measurements and caveats.
 
 - **Boards that find each other and know when one is gone.** Over the radio, a missing board is declared dead
