@@ -125,6 +125,25 @@ def judge(info: dict) -> tuple[bool, str]:
     return True, "ready"
 
 
+def known_board(cluster: str | Path, mac: str | None) -> dict | None:
+    """The cell's board this one was, by the id its MAC gives (its last two bytes): a wiped board plugged in again.
+    A guess the owner confirms in the wizard -- two boards' MAC tails can collide -- never acted on alone."""
+    if not mac or not re.fullmatch(r"(?:[0-9a-f]{2}:){5}[0-9a-f]{2}", mac.lower()):
+        return None
+    nid = int(mac.lower().replace(":", "")[-4:], 16)
+    try:
+        doc = json.loads(Path(cluster).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    for bd in doc.get("boards", []):
+        try:
+            if int(str(bd.get("node")), 16) == nid:
+                return {"node": f"{nid:04x}", "label": bd.get("label") or f"node-{nid:04x}", "room": bd.get("room")}
+        except ValueError:
+            continue
+    return None
+
+
 def probe(port: str, runner: Callable[[list[str]], str] = _esptool) -> dict:
     info = parse_probe(runner(["--port", port, "--after", "hard-reset", "flash-id"]))
     ok, why = judge(info)
@@ -356,11 +375,12 @@ def reset(port: str, opener: Callable | None = None) -> dict:
     return {"reset": port}
 
 
-def enrol_board(port: str, ca_key: str, registry: str, node_id: int | None = None) -> dict:
-    """potluck.enrol with the cell's registry (M19/M20 step 1). The CA key comes from an unlocked vault or its file."""
+def enrol_board(port: str, ca_key: str, registry: str, node_id: int | None = None, replace: bool = False) -> dict:
+    """potluck.enrol with the cell's registry (M19/M20 step 1). The CA key comes from an unlocked vault or its file.
+    `replace`: the owner confirmed this board is the cell's board `node_id`, reinstalled (its new key replaces the old)."""
     from . import enrol as en
     from .signing import read_key
-    info, cert = en.enrol(port, read_key(ca_key), registry=en.Registry(registry), node_id=node_id)
+    info, cert = en.enrol(port, read_key(ca_key), registry=en.Registry(registry), node_id=node_id, replace=replace)
     return {"node": f"{info['assigned']:04x}", "mac_node": f"{int(info['node']):04x}",
             "reboot_needed": info["assigned"] != int(info["node"])}
 

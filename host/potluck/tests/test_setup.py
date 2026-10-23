@@ -250,6 +250,14 @@ class ClusterFile(unittest.TestCase):
         self.assertNotIn("room", self.boards()[1])
         self.assertTrue(self.p.with_suffix(".json.bak").exists())  # the previous version, kept
 
+    def test_a_wiped_board_is_known_by_its_mac_and_keeps_its_label_and_room(self):
+        """2026-10-23: the wizard did not know a wiped board; its MAC gives the id of one of the cell's boards."""
+        st.add_board(self.p, "6300", room="Room")
+        self.assertEqual(st.known_board(self.p, "b8:1f:3f:da:63:00"), {"node": "6300", "label": "A", "room": "Room"})
+        self.assertIsNone(st.known_board(self.p, "b8:1f:3f:da:99:99"))  # not one of the cell's
+        self.assertIsNone(st.known_board(self.p, None))
+        self.assertEqual(st.add_board(self.p, "6300"), {"node": "6300", "label": "A", "room": "Room"})  # not a 2nd A
+
     def test_a_floor_plan_and_a_boards_place_on_it(self):
         from potluck import apply as ap
         plan = {"width": 13, "height": 9, "rooms": [{"name": "Living room", "x": 0, "y": 0, "w": 8, "h": 9}]}

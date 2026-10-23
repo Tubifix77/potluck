@@ -182,6 +182,21 @@ class TestRegistry(unittest.TestCase):
             reg.choose(0x8160, "ab" * 32, 0x00FE)
         self.assertEqual(reg.choose(0x8160, "ab" * 32, 0x5000), 0x5000)
 
+    def test_a_wiped_board_the_owner_names_goes_back_to_its_id_with_its_new_key(self):
+        """2026-10-23: the owner wiped C (0x8160) and added it again; its new key made it a stranger (0x0100) beside
+        its own dead entry. With the owner's word (replace) it takes 0x8160 back and the old key is gone."""
+        reg = en.Registry(self.path)
+        reg.record(0x8160, "00" * 32)  # C's key before the wipe
+        board = FakeBoard(0x8160)
+        en._open = lambda port: board
+        info, cert = en.enrol("COMX", ca(), issued=1, registry=en.Registry(self.path))
+        self.assertEqual(info["assigned"], 0x0100)  # without the owner's word: a stranger, as before
+        reg2 = en.Registry(self.path)
+        info, cert = en.enrol("COMX", ca(), issued=1, registry=reg2, node_id=0x8160, replace=True)
+        self.assertEqual((info["assigned"], en.verify_cert(cert, ca().public).node_id), (0x8160, 0x8160))
+        nodes = json.load(open(self.path))["nodes"]
+        self.assertNotEqual(nodes["8160"]["pub"], "00" * 32)  # the new key replaced the old
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -119,7 +119,9 @@
     $("boards").appendChild(b.el);
     job("api/setup/probe", { port: p.port }).then(function (j) {
       b.probe = j.result;
-      if (j.result.ok) {
+      if (j.result.ok && j.result.known) {
+        askKnown(b, j.result.known);
+      } else if (j.result.ok) {
         b.state = "ready";
         setWhat(b, j.result.chip + ", " + j.result.flash_mb + " MB flash, " + j.result.psram_mb + " MB PSRAM: ready", "ok");
       } else {
@@ -132,6 +134,31 @@
       setWhat(b, "No board answered: " + e.message + ". Check the cable (some carry power only) and plug it in again.", "warn");
       plugReady();
     });
+  }
+
+  // A wiped board the cell had: its MAC gives the id of one of the cell's boards. Only the owner can say it is that
+  // board (two boards' MAC tails can collide), so it waits for an answer (2026-10-23: a wiped board came back as a
+  // stranger, node-0100, beside its own dead entry).
+  function askKnown(b, known) {
+    b.state = "asking";
+    setWhat(b, "This looks like " + known.label + " (node " + known.node + "), a board of this cell that was wiped. Is it?", "");
+    var row = el("div", "room-row");
+    var yes = el("button", "", "Yes: put it back as " + known.label);
+    var no = el("button", "", "No: it is a new board");
+    yes.type = no.type = "button";
+    yes.onclick = function () {
+      b.replace = known; b.state = "ready"; row.remove();
+      setWhat(b, "Goes back as " + known.label + (known.room ? ", in " + known.room : "") + ": ready", "ok");
+      plugReady();
+    };
+    no.onclick = function () {
+      b.replace = null; b.state = "ready"; row.remove();
+      setWhat(b, "A new board (it gets an id of its own): ready", "ok");
+      plugReady();
+    };
+    row.appendChild(yes);
+    row.appendChild(no);
+    b.el.appendChild(row);
   }
 
   function plugReady() {
@@ -230,12 +257,14 @@
         setWhat(b, "Joining...");
         var body = { port: b.port };
         if (pp) body.passphrase = pp;
+        if (b.replace) { body.node_id = b.replace.node; body.replace = true; }  // the cell's board, reinstalled
         return job("api/setup/enrol", body).then(function (j) {
           b.node = j.result.node;
           return api("POST", "api/setup/board", { node: b.node });
         }).then(function (r) {
           if (!r.ok) throw new Error(r.result || "the cell file refused it");
           b.label = r.board.label;
+          b.room = r.board.room || "";  // a reinstalled board keeps its room
           if (ssid) return job("api/setup/wifi", { port: b.port, ssid: ssid, password: pw });
         }).then(function () {
           return job("api/setup/reset", { port: b.port });
@@ -271,6 +300,14 @@
   function roomsStep() {
     show("s-rooms");
     var host = $("rooms");
+    // the rooms the cell already has, offered as you type: a room is where a board sits, not its name (2026-10-23)
+    var dl = $("room-names") || document.body.appendChild(el("datalist"));
+    dl.id = "room-names";
+    dl.textContent = "";
+    var seen = {};
+    (cell.boards || []).forEach(function (x) {
+      if (x.room && !seen[x.room]) { seen[x.room] = true; var o = el("option"); o.value = x.room; dl.appendChild(o); }
+    });
     order.forEach(function (p) {
       var b = boards[p];
       if (b.state !== "joined") return;
@@ -290,7 +327,9 @@
         }, function (e) { btn.disabled = false; say(b.label + ": " + e.message); });
       };
       var input = el("input");
-      input.placeholder = "Room, e.g. Kitchen";
+      input.placeholder = "Which room is it in? e.g. Kitchen";
+      input.setAttribute("list", "room-names");
+      input.value = b.room || "";
       input.maxLength = 40;
       input.setAttribute("aria-label", "Room for " + b.label);
       input.onchange = function () {

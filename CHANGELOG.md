@@ -5,6 +5,12 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **The setup wizard brings a wiped board back as itself.** It came back as a stranger (a new id beside its own dead
+  entry): now "Plug in" recognises one of the cell's boards by its MAC and asks the owner, and on yes it takes its
+  id, name and room back (`potluck.enrol --replace`). The house Wi-Fi is asked openly, not folded away; the Rooms
+  step offers the cell's rooms and says it asks for a room, not a name; a board not heard (dead, or just added) no
+  longer splits a working cell into several; and a tree of cells Apply would refuse is never written. Found by the
+  owner reinstalling a board with the wizard.
 - **The PC's host node keeps time past 71 minutes.** Its millisecond clock was its 32-bit microsecond count divided
   down, so it fell back to 0 every 71.6 min; the node's timers then sat ~71 min ahead, its heartbeats stopped and the
   cell declared the PC dead -- on the owner's PC the presenting role went back and forth tens of thousands of times

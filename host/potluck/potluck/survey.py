@@ -138,12 +138,16 @@ def propose(boards: list[int], links: dict[tuple[int, int], dict], chargers: set
 
 
 def links_from_model(model: dict) -> tuple[list[int], dict[tuple[int, int], dict], dict[int, str]]:
-    """The hub's model (GET /api/model) as propose()'s input: boards, links (delivery, rssi) and rooms."""
+    """The hub's model (GET /api/model) as propose()'s input: boards, links (delivery, rssi) and rooms -- the boards
+    that are alive only. A board not heard (dead, or just added and not in the cell yet) has no links to judge, and
+    counting it as hearing nobody split a working cell of four in two (the owner's reinstall of a board, 2026-10-23)."""
     boards, links, rooms = [], {}, {}
     for b in model.get("boards", []):
         try:
             n = int(str(b.get("node")), 16)
         except ValueError:
+            continue
+        if b.get("state") not in (None, "alive"):
             continue
         boards.append(n)
         if b.get("room"):
@@ -166,6 +170,10 @@ def write(cluster: str | Path, p: Proposal) -> dict:
                          f"written until one of each is")
     path = Path(cluster)
     doc = json.loads(path.read_text(encoding="utf-8"))
+    if not p.flat and doc.get("present") and doc["present"].get("cell") not in p.cells:
+        # apply refuses a tree whose presenting role names no cell; never write what it refuses (2026-10-23)
+        raise ValueError("this cell presents to Home Assistant, and in several cells one of them must do it -- this "
+                         "page cannot choose that yet, so the cell stays as it is")
     cell_of = {n: name for name, g in p.cells.items() for n in g}
     elig = {n for v in p.foremen.values() for n in v}
     for b in doc.get("boards", []):

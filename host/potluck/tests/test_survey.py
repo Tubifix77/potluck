@@ -90,6 +90,32 @@ class Propose(unittest.TestCase):
         self.assertEqual((boards, rooms), ([0x100, 0x200], {0x100: "A"}))
         self.assertTrue(sv.hears(links, 0x200, 0x100))
 
+    def test_a_board_not_heard_never_splits_a_working_cell(self):
+        """2026-10-23: one board added to a cell of three (and the wiped one it replaced, dead) had no links yet; counted
+        as hearing nobody, the cell of four was split into two cells by room."""
+        ok = {"delivery": 0.99, "rssi": -30}
+        model = {"boards": [
+            {"node": "6300", "state": "alive", "room": "Room", "links": [dict(ok, peer="7368")]},
+            {"node": "7368", "state": "alive", "room": "Room", "links": [dict(ok, peer="6300")]},
+            {"node": "8160", "state": "dead", "room": "Room", "links": [dict(ok, peer="6300")]},
+            {"node": "0100", "state": "unknown", "room": "C", "links": []}]}
+        boards, links, rooms = sv.links_from_model(model)
+        self.assertEqual(boards, [0x6300, 0x7368])
+        self.assertTrue(sv.propose(boards, links, set(), rooms).flat)
+
+    def test_a_tree_apply_would_refuse_is_never_written(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "c.json"
+            doc = {"boards": [{"node": "0100"}, {"node": "0200"}], "present": {"broker": "10.0.0.2:1883"}}
+            p.write_text(json.dumps(doc), encoding="utf-8")
+            tree = sv.Proposal(flat=False, cells={"a": [0x100], "b": [0x200]}, foremen={"a": [0x100], "b": [0x200]})
+            with self.assertRaisesRegex(ValueError, "presents to Home Assistant"):
+                sv.write(p, tree)
+            self.assertEqual(json.loads(p.read_text(encoding="utf-8")), doc)  # untouched
+
 
 if __name__ == "__main__":
     unittest.main()

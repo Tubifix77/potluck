@@ -77,18 +77,20 @@
     <h2>Join the cell</h2>
     <p>Each board gets its own key, signed by the cell, and a place in the cell's file.</p>
     <label id="pp-row" hidden>Your passphrase <input id="pp" type="password" autocomplete="current-password"></label>
-    <details class="small">
-      <summary>Boards that connect to the house Wi-Fi (only a board that presents or extends needs it)</summary>
-      <p class="muted">Sent to the board over its cable and kept only there. Leave empty to skip.</p>
+    <fieldset class="small">
+      <legend>The house Wi-Fi</legend>
+      <p>A board that presents the cell to Home Assistant, or extends your Wi-Fi, needs it -- and a board that was wiped
+        has lost it. Sent to the board over its cable and kept only there. Leave both empty to skip.</p>
       <label>Network <input id="wifi-ssid" autocomplete="off"></label>
       <label>Password <input id="wifi-pw" type="password" autocomplete="off"></label>
-    </details>
+    </fieldset>
     <button id="do-join" type="button">Join</button>
   </section>
 
   <section id="s-rooms" class="step" data-step="rooms" hidden>
     <h2>Where does each board live?</h2>
-    <p>Press <b>Show me</b>: that board's light blinks blue. Then say which room it is in.</p>
+    <p>Press <b>Show me</b>: that board's light blinks blue. Then type the <b>room</b> it is in -- the room, not a name
+      for the board. Boards in one room are counted together.</p>
     <div id="rooms" class="nbs"></div>
     <p class="calm">A room is only a name for you; you can change it later.</p>
     <button id="go-done" type="button">Next</button>

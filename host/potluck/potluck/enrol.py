@@ -2,6 +2,7 @@
 
     python -m potluck.enrol --port COM4 --ca-key keys/ca.key          # enrol the board on COM4
     python -m potluck.enrol --port COM4 --ca-key keys/ca.key --node-id 4242   # ... giving it this id
+    python -m potluck.enrol --port COM4 --ca-key keys/ca.key --node-id 8160 --replace   # a wiped board back as 8160
     python -m potluck.enrol --port COM4 --show                        # just print what it reports
     python -m potluck.enrol --check-cert <hex> --ca keys/ca.pub       # verify a certificate offline
     python -m potluck.enrol --guest-cert keys/acme.pub --author 7 --ca-key keys/ca.key --out keys/acme.gcert
@@ -197,14 +198,16 @@ class Registry:
             except FileNotFoundError:
                 pass
 
-    def choose(self, mac_id: int, pub_hex: str, wanted: int | None = None) -> int:
-        """The id this board gets: `wanted`, else its MAC id unless another board has it, else the lowest free."""
+    def choose(self, mac_id: int, pub_hex: str, wanted: int | None = None, replace: bool = False) -> int:
+        """The id this board gets: `wanted`, else its MAC id unless another board has it, else the lowest free.
+        `replace`: the owner says this board IS the one `wanted` names, reinstalled -- an erased board has a new key,
+        so the old key's entry is replaced (2026-10-23: without it a wiped board came back as a stranger, 0x0100)."""
         def owner(n):
             return self.nodes.get(n, {}).get("pub")
         if wanted is not None:
             if not ASSIGNED_MIN <= wanted <= 0xFFFE:
                 raise EnrolError(f"--node-id 0x{wanted:04x}: a board's id is 0x{ASSIGNED_MIN:04x}..0xfffe")
-            if owner(wanted) not in (None, pub_hex):
+            if owner(wanted) not in (None, pub_hex) and not replace:
                 raise EnrolError(f"node id 0x{wanted:04x} already belongs to another board in this cell")
             return wanted
         for n, v in self.nodes.items():
@@ -228,14 +231,14 @@ class Registry:
 
 
 def enrol(port: str, ca: KeyPair, issued: int | None = None, registry: Registry | None = None,
-          node_id: int | None = None) -> tuple[dict, bytes]:
+          node_id: int | None = None, replace: bool = False) -> tuple[dict, bytes]:
     s = _open(port)
     try:
         info = _ask(s, "POT! id")
         mac_id = int(info["node"])
         node_pub = bytes.fromhex(info["pub"])
         reg = registry if registry is not None else Registry(None)
-        node_id = reg.choose(mac_id, node_pub.hex(), node_id)
+        node_id = reg.choose(mac_id, node_pub.hex(), node_id, replace)
         cert = build_cert(ca, node_id, node_pub, issued)
         verify_cert(cert, ca.public)  # never send what we would not accept ourselves
         reply = _ask(s, f"POT! cert {ca.public.hex()} {cert.hex()}", timeout=10.0)
@@ -321,7 +324,8 @@ def main(argv: list[str] | None = None) -> int:
         import os
         reg_path = _flag(argv, "--registry") or os.path.join(os.path.dirname(os.path.abspath(ca_path)), "nodes.json")
         wanted = _flag(argv, "--node-id")
-        info, cert = enrol(port, ca, registry=Registry(reg_path), node_id=int(wanted, 16) if wanted else None)
+        info, cert = enrol(port, ca, registry=Registry(reg_path), node_id=int(wanted, 16) if wanted else None,
+                           replace="--replace" in argv)
         new_id = info["assigned"]
         print(f"enrolled node 0x{new_id:04x} on {port} under CA {ca.id} (registry {reg_path})")
         if new_id != int(info["node"]):

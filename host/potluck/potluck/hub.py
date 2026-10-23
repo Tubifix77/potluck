@@ -1423,8 +1423,13 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 from . import survey as sv
                 try:
                     chargers = {int(str(x), 16) for x in req.get("chargers", [])}
-                    boards, links, rooms = sv.links_from_model(model.snapshot())
+                    snap = model.snapshot()
+                    boards, links, rooms = sv.links_from_model(snap)
                     p = sv.propose(boards, links, chargers, rooms)
+                    unheard = [str(b.get("label") or b.get("node")) for b in snap.get("boards", [])
+                               if b.get("state") not in (None, "alive")]
+                    if unheard:
+                        p.notes.append("not counted, not heard now: " + ", ".join(unheard))
                     if req.get("write"):
                         sv.write(cl.path, p)
                         from .apply import load_cluster
@@ -1639,7 +1644,14 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
             jobs = setup_jobs()
             try:
                 if path == "/api/setup/probe":
-                    jid = jobs.start("probe", port, lambda pct: st.probe(port))
+                    cl = getattr(model, "cluster", None)
+
+                    def probe_job(pct, port=port, cluster=cl.path if cl is not None else None):
+                        r = st.probe(port)
+                        # a board the cell had, wiped and plugged in again: the wizard asks the owner (2026-10-23)
+                        r["known"] = st.known_board(cluster, r.get("mac")) if cluster else None
+                        return r
+                    jid = jobs.start("probe", port, probe_job)
                 elif path == "/api/setup/identify":
                     secs = int(req.get("seconds", 20))
                     jid = jobs.start("identify", port, lambda pct: st.identify(port, secs))
@@ -1665,14 +1677,15 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                     ca_key, registry = keys
                     passphrase = req.get("passphrase")
                     wanted = req.get("node_id")
+                    replace = bool(req.get("replace")) and bool(wanted)  # the owner said: the cell's board, reinstalled
 
-                    def run(pct, ca_key=ca_key, registry=registry, passphrase=passphrase, wanted=wanted):
+                    def run(pct, ca_key=ca_key, registry=registry, passphrase=passphrase, wanted=wanted, replace=replace):
                         from . import keystore
                         vault = Path(ca_key).parent / "vault.json"
                         try:
                             if passphrase and vault.exists():  # the owner's keys, unlocked for this one action
                                 keystore.unlock(vault, str(passphrase))
-                            return st.enrol_board(port, ca_key, registry, int(wanted, 16) if wanted else None)
+                            return st.enrol_board(port, ca_key, registry, int(wanted, 16) if wanted else None, replace)
                         finally:
                             keystore.lock()
                     jid = jobs.start("enrol", port, run)
