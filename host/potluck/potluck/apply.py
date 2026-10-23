@@ -1321,7 +1321,7 @@ def plan_package(c: Cluster, cache: Path, log) -> Package | None:
         m = mf.parse(doc)
         problems = mf.cross_check(m)
     except mf.ManifestErrors as exc:
-        raise ApplyError(f"the composed manifest is not valid: {exc}") from None
+        raise ApplyError(f"the composed manifest is not valid: {exc}:\n{exc.report()}") from None
     if problems:
         raise ApplyError("the composed manifest is not valid:\n  " + "\n  ".join(str(p) for p in problems))
     from . import locality

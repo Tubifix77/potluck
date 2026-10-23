@@ -1328,8 +1328,8 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
         snap = model.snapshot()
         m = getattr(getattr(model, "package", None), "manifest", None)
         prefix = f"potluck://{cl.system}/"
-        from .manifest import inbox_paths
-        inboxes = inbox_paths(m) if m is not None else set()  # writable by the inbox's own declaration
+        from .manifest import writable_actor_paths
+        inboxes = writable_actor_paths(m) if m is not None else set()  # writable by the actor's own declaration
         writers = getattr(cl, "writers", {}) or {}  # 2026-10-20: which programs may write it (null: any paired writer)
         res = []
         for r in snap["resources"]:

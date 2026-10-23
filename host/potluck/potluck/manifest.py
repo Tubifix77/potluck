@@ -843,11 +843,12 @@ def cross_check(m: Manifest, *, require_placement: bool = False) -> list[Manifes
         if mode != "read_write":
             continue
         r = m.resource(path)
-        if r is None and target in inbox_paths(m):
-            continue  # 2026-10-20: an inbox's output -- declared writable by the inbox itself, never safety-relevant
+        if r is None and target in writable_actor_paths(m):
+            continue  # an inbox's output (2026-10-20), a speak actor's request (M23) -- writable by the actor itself
         if r is None:
             errors.append(ManifestError(where, "is writable from outside, so it must be a resource a node of this "
-                                               "manifest declares in 'owns', or an inbox's output"))
+                                               "manifest declares in 'owns', an inbox's output or a speak actor's "
+                                               "request"))
         elif r.safety_relevant:
             errors.append(ManifestError(where, "is safety-relevant, and a safety-relevant resource is never "
                                                "writable from outside the cell (section 9.3)"))
@@ -879,10 +880,11 @@ OUTSIDE_WRITABLE = 0x02
 OUTSIDE_SAFETY = 0x04
 
 
-def inbox_paths(m: Manifest) -> set[str]:
-    """Every inbox actor's output paths (potluck.deploy.inbox_outputs); an inbox whose outputs do not parse adds none
-    here -- compiling it says why."""
-    from .deploy import DeployError, inbox_outputs, inbox_path
+def writable_actor_paths(m: Manifest) -> set[str]:
+    """The paths an actor itself declares writable, with no `owns` entry: every inbox actor's outputs
+    (potluck.deploy.inbox_outputs) and every speak actor's request, act/<name>/say (M23). Never safety-relevant. An
+    inbox whose outputs do not parse adds none here -- compiling it says why."""
+    from .deploy import DeployError, inbox_outputs, inbox_path, speak_paths
     out: set[str] = set()
     for a in m.actors:
         if a.module == "builtin:inbox":
@@ -890,6 +892,8 @@ def inbox_paths(m: Manifest) -> set[str]:
                 out |= {inbox_path(m.system, a.name, n) for n, *_ in inbox_outputs(a, a.name)}
             except DeployError:
                 pass
+        elif a.module == "builtin:speak":
+            out.add(speak_paths(m.system, a.name)[0])
     return out
 
 

@@ -225,6 +225,16 @@ class Speak(unittest.TestCase):
                                       path_hash("potluck://m3-test/act/speaker/result")))
         self.assertEqual(img[at + 4 + 15:at + 4 + 15 + n], b"Hello from board C")
 
+    def test_its_request_may_be_written_from_outside_but_not_its_result(self) -> None:
+        """The speak actor declares act/<name>/say writable itself, as an inbox does its outputs: no `owns` entry."""
+        from potluck import manifest as mf
+        ok = dict(self.doc(SPEAKER), outside={"potluck://m3-test/act/speaker/say": "read_write",
+                                            "potluck://m3-test/act/speaker/result": "read"})
+        self.assertEqual(mf.cross_check(mf.parse(ok)), [])
+        bad = dict(self.doc(SPEAKER), outside={"potluck://m3-test/act/speaker/result": "read_write"})
+        with self.assertRaisesRegex(mf.ManifestErrors, "1 problem"):
+            mf.cross_check(mf.parse(bad))
+
     def test_a_bad_phrase_or_a_missing_service_is_refused(self) -> None:
         from potluck.manifest import ManifestErrors
         for bad in (dict(SPEAKER, config={"text": ""}), dict(SPEAKER, config={"text": "x" * 121}),
