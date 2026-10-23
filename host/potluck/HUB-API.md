@@ -332,6 +332,7 @@ timed out); the owner checks the package again and its answer comes back. Every 
 | 403 | `the board on the cable could not pass it to its owner (owner not alive, or firmware too old)` | the owner is dead as the cabled board sees it, or that board's firmware cannot pass a write on |
 | 429 | `slow down: ...` | over this program's share of writes (below) |
 | 504 | `the owning board did not answer` | no answer in 2 s |
+| 503 | `no board answers on the PC's link` | the hub has no board on its cable yet (just started, or the cable is out): send it again later |
 
 ## POST /api/interest
 

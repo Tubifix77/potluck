@@ -2266,6 +2266,11 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
     except RequestTimeout:
         model.record("outside_write", owner, {"resource": path, "path": path, "value": value, "result": "no answer"})
         return 504, {"ok": False, "result": "the owning board did not answer"}
+    except BridgeError:
+        # No board on the PC's link yet (the hub started before the cabled board answered, or the cable is out): an
+        # answer, not a dropped connection -- found 2026-10-24 smoke-testing M22's job route on the packaged hub.
+        model.record("outside_write", owner, {"resource": path, "path": path, "value": value, "result": "no board"})
+        return 503, {"ok": False, "result": "no board answers on the PC's link"}
     from .value import NsError
     ok = raw.status == NsError.OK
     result = "applied" if ok else NsError.name_of(raw.status).lower()

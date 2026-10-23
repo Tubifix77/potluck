@@ -282,6 +282,11 @@ class Writers(unittest.TestCase):
         m.hub._request = lambda op, payload, h, timeout, dst: NS(status=NsError.TYPE_MISMATCH)
         self.assertEqual(hb.write_outside(m, big, 1)[0], 403)  # a board that checked and refused stays 403
 
+        def no_board(op, payload, h, timeout, dst):
+            raise hb.BridgeError("no peer yet: call hello() first")
+        m.hub._request = no_board  # no board on the PC's link: an answer, never a dropped connection (2026-10-24)
+        self.assertEqual(hb.write_outside(m, big, 1), (503, {"ok": False, "result": "no board answers on the PC's link"}))
+
     def test_the_cluster_file_names_writers_only_for_a_read_write_resource(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             def cluster(outside):
