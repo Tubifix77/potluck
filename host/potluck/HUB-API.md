@@ -150,6 +150,12 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   `pi` is the last finished run's result; `speedup` is measured -- the board's last run alone over its last run with
   lending, both finished with their last unit -- or `null` until both have run. Empty when no board runs a job.
   `boards[].telemetry.lend`: M9's lender on that board -- `{accepted, refused, served, unit_ms}` -- or `null`.
+  `cell.services` (M23, 2026-10-24): the named services the hub's PC offers the cell (the cluster file's
+  `pc_services`), answered by the hub itself -- `[{name, description, path, state, calls, errors, last_call_at,
+  callers}]`: `state` `serving` while a call is being answered, else `ready`; `errors` the calls answered "not done"
+  (speech: an empty, too long or control-character text, or no voice on this PC); `callers` the boards that called,
+  by node id. Empty when the PC offers none. With the PC off there is no hub to ask: a board's caller says so itself
+  (a speak actor's result 3, "gone").
   `signals.saturation.peers` is the boards the hub knows against 21 (a board and the 20 peers it can hold);
   `actor_slots` the busiest board's actors against 8.
 - `last_event_seq`: the newest event's `seq` (0 before the first), so a client knows where `GET /api/events` stands.
@@ -192,6 +198,9 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   `flags` names `no_radio`, `busy`, `connected`, `long_window`, `enrolled`. A board that does not answer telemetry
   (older firmware) has `heap: null`, `links: []` and no `telemetry`, and an event `telemetry_unsupported`; the hub
   asks it again every 5 minutes.
+- A board's CALL of one of the PC's services (`potluck://<system>/svc/<name>`, the cluster file's `pc_services`) is
+  answered by the hub and not passed to the relay's tools; any other CALL to the PC goes to the tools as before (an
+  agent of M8 may still serve its own services).
 - `boards[].chip` (M21, 2026-10-23): what the board is, as the board itself reads it (telemetry section 6, once a
   boot -- never esptool's check, which restarts the board): `model` named (`model_id` is ESP-IDF's esp_chip_model_t,
   9 for an ESP32-S3; an unknown one reads "chip <n>"), `revision` ("v<major>.<minor>"), `cores`, `flash_mb`, `psram_mb`

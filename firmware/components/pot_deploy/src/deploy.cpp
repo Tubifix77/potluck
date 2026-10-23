@@ -143,6 +143,14 @@ bool check_decl(const ActorDecl& a, const char*& w) {
             }
             break;
         }
+        case ActorType::Speak: {
+            SpeakConfig sk{};
+            if (a.node_id == kPortableNode || a.node_id == kEveryNode || !speak_config(a, sk)) {
+                w = "speak must be pinned, with a service, a provider, its two resources and a 1..120-byte phrase";
+                return false;
+            }
+            break;
+        }
         case ActorType::Guest: {
             // M7: portable, then the index of its program in the guest section, checked below.
             TickerConfig pc{};
@@ -579,6 +587,18 @@ bool mc_job_config(const ActorDecl& a, McJobConfig& out) {
     out.ctl_hash = a.cfg_len == kMcJobCfgLenCtl ? rd32(a.cfg + 19) : 0;  // M22: started and stopped by a write
     return out.out_hash != 0 && out.units >= 1 && out.units <= 4096 && out.samples >= 1000 &&
            out.samples <= 100000000u && out.lend <= 1 && out.ctl_hash != out.out_hash;
+}
+
+bool speak_config(const ActorDecl& a, SpeakConfig& out) {
+    if (a.type != ActorType::Speak || a.cfg == nullptr || a.cfg_len < kSpeakCfgFixed + 1) return false;
+    out.svc_hash = rd32(a.cfg);
+    out.provider = rd16(a.cfg + 4);
+    out.ctl_hash = rd32(a.cfg + 6);
+    out.out_hash = rd32(a.cfg + 10);
+    out.text_len = a.cfg[14];
+    if (out.text_len == 0 || out.text_len > kSpeakTextMax || a.cfg_len != kSpeakCfgFixed + out.text_len) return false;
+    std::memcpy(out.text, a.cfg + kSpeakCfgFixed, out.text_len);
+    return out.svc_hash != 0 && out.ctl_hash != 0 && out.out_hash != 0 && out.ctl_hash != out.out_hash;
 }
 
 bool portable_header(const ActorDecl& a, TickerConfig& out, size_t& len) {

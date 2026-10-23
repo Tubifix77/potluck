@@ -90,6 +90,14 @@ class ClusterFile(unittest.TestCase):
         doc.update(kw)
         return ap.load_cluster(str(write(self.d, "cell.json", doc)))
 
+    def test_the_pcs_services_are_named_from_the_ones_the_hub_offers(self):
+        """M23: the cluster file's pc_services -- the PC user's choice of what the hub answers."""
+        self.assertEqual(self.cluster().pc_services, ())
+        self.assertEqual(self.cluster(pc_services=["time", "speech"]).pc_services, ("time", "speech"))
+        for bad in (["teleport"], "speech", ["time", "time"]):
+            with self.assertRaisesRegex(ap.ApplyError, "pc_services"):
+                self.cluster(pc_services=bad)
+
     def test_bad_files_are_refused_with_a_reason(self):
         with self.assertRaisesRegex(ap.ApplyError, "not a cluster file"):
             ap.load_cluster(str(write(self.d, "x.json", {"schema": "nope"})))

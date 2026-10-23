@@ -5,6 +5,12 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **The PC's services in the model, and speech (M23).** The hub answers the cell's calls of the services the cluster
+  file's `pc_services` names -- `time`, and new, `speech`: a board's text said aloud with the PC's own voice
+  (System.Speech on Windows, the text on its stdin) -- and lists them in `cell.services` with their calls, errors
+  and callers. `builtin:speak`, a new pinned actor (firmware type 15), asks the PC to say its phrase whenever
+  `act/<name>/say` is written and publishes how it went (`act/<name>/result`: done, refused, or gone -- the PC off is
+  said at once, a silent PC after 30 s). `POST /api/write` reaches a speak actor's request as a board's own resource.
 - **Borrowed cores, visible (M22).** M9's job and lenders report through a new telemetry section (64 bytes): the hub's
   model shows `cell.jobs` (each run's units, where they ran, the ones run again, its lenders, the result, and a
   measured speed-up) and each lender's counters. An `mc_job` with `"control": true` declares `node-<id>/job/mc/run`,

@@ -199,6 +199,42 @@ MC_LEND = {"name": "lend_b", "module": "builtin:mc_lender", "latency_class": 4, 
            "config": {"slots": 2}}
 
 
+SPEAK_DOC_NODES = [{"node_id": 0x8160, "label": "C"},
+                   {"node_id": 0x00FE, "label": "pc", "kind": "host",
+                    "owns": [{"path": "potluck://m3-test/svc/speech", "unit": "none", "kind": "sampled",
+                              "access": "read", "latency_class": 4, "staleness_bound_ms": 0}]}]
+SPEAKER = {"name": "speaker", "module": "builtin:speak", "latency_class": 4, "pin": 0x8160,
+           "needs": ["potluck://m3-test/svc/speech"], "config": {"text": "Hello from board C"}}
+
+
+class Speak(unittest.TestCase):
+    """M23: a board asks the PC to speak -- compiled as the firmware's SpeakConfig (pot/deploy.hpp)."""
+
+    def doc(self, actor: dict) -> dict:
+        return {"schema": 1, "system": "m3-test", "min_core_version": 1, "nodes": SPEAK_DOC_NODES, "actors": [actor]}
+
+    def test_it_compiles_to_the_layout_the_node_parses_and_the_provider_is_the_services_owner(self) -> None:
+        from potluck.paths import path_hash
+        img = dp.compile_image(parse(self.doc(SPEAKER)), 3)
+        at = dp.IMAGE_HEADER_LEN
+        node, typ, cfg_len = struct.unpack_from("<HBB", img, at)
+        self.assertEqual((node, typ, cfg_len), (0x8160, dp.ACTOR_SPEAK, 15 + 18))  # kSpeakCfgFixed + the phrase
+        svc, provider, ctl, out, n = struct.unpack_from("<IHIIB", img, at + 4)
+        self.assertEqual((svc, provider, n), (path_hash("potluck://m3-test/svc/speech"), 0x00FE, 18))
+        self.assertEqual((ctl, out), (path_hash("potluck://m3-test/act/speaker/say"),
+                                      path_hash("potluck://m3-test/act/speaker/result")))
+        self.assertEqual(img[at + 4 + 15:at + 4 + 15 + n], b"Hello from board C")
+
+    def test_a_bad_phrase_or_a_missing_service_is_refused(self) -> None:
+        from potluck.manifest import ManifestErrors
+        for bad in (dict(SPEAKER, config={"text": ""}), dict(SPEAKER, config={"text": "x" * 121}),
+                    dict(SPEAKER, config={"text": "two\nlines"}), dict(SPEAKER, config={"text": "hi", "voice": 1}),
+                    dict(SPEAKER, needs=["potluck://m3-test/svc/nobody"]),
+                    {k: v for k, v in SPEAKER.items() if k != "pin"}):
+            with self.assertRaises((dp.DeployError, ManifestErrors)):
+                dp.compile_image(parse(self.doc(bad)), 1)
+
+
 class McJob(unittest.TestCase):
     """M9: the Monte Carlo job and its lenders, compiled as the firmware's McJobConfig/McLenderConfig."""
 

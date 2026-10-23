@@ -162,6 +162,54 @@ class Writers(unittest.TestCase):
         hb.write_outside(M(), "potluck://lab/node-7368/set/point", 20)
         self.assertEqual(sent[-1][4], int(ValueType.F32))  # WritePayload's value_type byte
 
+    def test_a_speak_actors_request_is_written_to_its_board_as_a_u32(self) -> None:
+        """M23: act/<name>/say goes to the board the speak actor is pinned to, as the u32 it is -- even before the hub
+        has read it (a bare 1 would otherwise go out as an i32 the board refuses)."""
+        from types import SimpleNamespace as NS
+        from potluck.manifest import parse
+        from potluck.ns_payloads import Write
+        from potluck.value import NsError
+
+        say = "potluck://lab/act/speaker/say"
+        doc = {"schema": 1, "system": "lab", "min_core_version": 1,
+               "nodes": [{"node_id": 0x8160, "label": "C", "owns": [
+                   {"path": say, "unit": "none", "kind": "sampled", "access": "read_write", "latency_class": 4}]},
+                   {"node_id": 0x00FE, "label": "pc", "kind": "host", "owns": [
+                       {"path": "potluck://lab/svc/speech", "unit": "none", "kind": "sampled", "access": "read",
+                        "latency_class": 4, "staleness_bound_ms": 0}]}],
+               "actors": [{"name": "speaker", "module": "builtin:speak", "latency_class": 4, "pin": 0x8160,
+                           "needs": ["potluck://lab/svc/speech"], "config": {"text": "Hello"}}]}
+        written = []
+
+        class Hub:
+            peer_node_id = 0x6300
+
+            def _request(self, op, payload, h, timeout, dst):
+                written.append(Write.parse(payload))
+                return NS(status=NsError.OK)
+
+        class M:
+            cluster = NS(outside={say: "read_write"}, writers={})
+            hub = Hub()
+            lock = threading.Lock()
+            package = NS(manifest=parse(doc))
+            resources: dict = {}  # not read yet
+            recorded: list = []
+
+            def resource_paths(self):
+                return [say]
+
+            def record(self, kind, board, detail):
+                self.recorded.append((board, detail))
+
+            def _safety(self, path):
+                return False
+
+        m = M()
+        self.assertEqual(hb.write_outside(m, say, 1)[0], 200)
+        self.assertEqual(written[-1].value.type, 3)  # U32
+        self.assertEqual(m.recorded[-1][0], 0x8160)  # logged under the speak actor's board
+
     def test_an_inbox_value_is_written_like_a_boards_own_resource_and_an_unknown_path_is_404(self) -> None:
         """2026-10-21: only node-XXXX/ paths were let through, so every write to an inbox's act/<actor>/<name> was
         refused (found by the owner's phone-app session reading HUB-API.md)."""

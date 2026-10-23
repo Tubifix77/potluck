@@ -72,6 +72,7 @@ ACTOR_LED_SWITCH = 11  # M13: the status LED as a writable resource, node-<id>/l
 ACTOR_POSITION = 12  # M20: where a board sits on the cell's floor plan, node-<id>/sys/pos/{x,y} (pot/position.hpp)
 ACTOR_FOREMAN = 13  # M19: a cell's foreman role -- portable among its foreman-eligible boards (pot/foreman.hpp)
 ACTOR_INBOX = 14  # 2026-10-20: values a program outside the cell writes, act/<actor>/<name> (pot/inbox.hpp)
+ACTOR_SPEAK = 15  # M23: asks the PC to speak a phrase when act/<actor>/say is written (pot/speak.hpp)
 CLUSTER_NAME_MAX = 31
 OUTSIDE_NAME_MAX = 40  # M13: deploy.hpp's kMaxOutsideName
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
@@ -80,7 +81,8 @@ BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:tic
             "builtin:svc_client": ACTOR_SVC_CLIENT, "builtin:die_temp": ACTOR_DIE_TEMP,
             "builtin:mc_lender": ACTOR_MC_LENDER, "builtin:mc_job": ACTOR_MC_JOB,
             "builtin:present": ACTOR_PRESENT, "builtin:led_switch": ACTOR_LED_SWITCH,
-            "builtin:position": ACTOR_POSITION, "builtin:foreman": ACTOR_FOREMAN, "builtin:inbox": ACTOR_INBOX}
+            "builtin:position": ACTOR_POSITION, "builtin:foreman": ACTOR_FOREMAN, "builtin:inbox": ACTOR_INBOX,
+            "builtin:speak": ACTOR_SPEAK}
 
 
 def mc_job_path(system: str, node_id: int) -> str:
@@ -264,6 +266,38 @@ def inbox_outputs(a, where: str = "inbox") -> list[tuple[str, int, int]]:
     if len(out) > INBOX_MAX:
         raise DeployError(f"{where}: an inbox holds at most {INBOX_MAX} outputs")
     return out
+
+
+def speak_paths(system: str, actor: str) -> tuple[str, str]:
+    """M23. A speak actor's two resources: (act/<actor>/say -- written to ask, act/<actor>/result -- how it went)."""
+    return f"potluck://{system}/act/{actor}/say", f"potluck://{system}/act/{actor}/result"
+
+
+#: pot/deploy.hpp's kSpeakTextMax: the phrase a board may ask the PC to say.
+SPEAK_TEXT_MAX = 120
+
+
+def _speak_config(m: Manifest, a, where: str) -> bytes:
+    """M23. The service is the actor's one binding (as a svc_client's); the provider is the node that owns it."""
+    extra = set(a.config) - {"text"}
+    if extra:
+        raise DeployError(f"{where}: unknown speak config key(s) {sorted(extra)}")
+    if a.pin is None:
+        raise DeployError(f"{where}: a speak actor is pinned to the board that asks")
+    if len(a.needs) != 1 or "/svc/" not in a.needs[0]:
+        raise DeployError(f"{where}: a speak actor binds exactly one potluck://<cluster>/svc/<name> path")
+    provider = m.owner_of(a.needs[0])
+    if provider is None:
+        raise DeployError(f"{where}: no node in the package owns {a.needs[0]}")
+    text = a.config.get("text")
+    raw = text.encode("utf-8") if isinstance(text, str) else b""
+    if not 1 <= len(raw) <= SPEAK_TEXT_MAX:
+        raise DeployError(f"{where}: speak text is 1..{SPEAK_TEXT_MAX} bytes of UTF-8 (got {len(raw)})")
+    if any(ch < " " for ch in text):
+        raise DeployError(f"{where}: speak text has a control character")
+    say, result = speak_paths(m.system, a.name)
+    svc = path_hash(m.bindings.get(a.needs[0], a.needs[0]))
+    return struct.pack("<IHIIB", svc, provider.node_id, path_hash(say), path_hash(result), len(raw)) + raw
 
 
 def inbox_path(system: str, actor: str, name: str) -> str:
@@ -680,6 +714,11 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
             raise DeployError(f"{where}: placed on '{spec.label}', a host: built-in actors run on firmware")
         if a.module == "builtin:led_switch":
             cfg = _led_switch_config(m, a, where)
+            body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+            count += 1
+            continue
+        if a.module == "builtin:speak":
+            cfg = _speak_config(m, a, where)
             body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
             count += 1
             continue

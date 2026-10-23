@@ -285,6 +285,8 @@ class Cluster:
     #: M20: the floor plan the dashboard draws -- its size in metres and the rooms as rectangles -- or None. For
     #: people only: nothing on a board depends on it (the boards' positions above are what travels).
     plan: dict[str, Any] | None = None
+    #: M23: the named services the hub's PC offers the cell (potluck.services: "time", "speech") -- the PC user's choice.
+    pc_services: tuple[str, ...] = ()
     #: M19: the cells (groups) each board belongs to, by name -- one, or two for a foreman. A cluster file with none
     #: is one cell as before; with cells, a board admits only boards of its own cells.
     cells: dict[int, tuple[str, ...]] = field(default_factory=dict)
@@ -392,7 +394,7 @@ def load_cluster(path: str) -> Cluster:
     if not isinstance(doc, dict) or doc.get("schema") != SCHEMA:
         raise ApplyError(f"{path}: not a cluster file (\"schema\": \"{SCHEMA}\")")
     allowed = {"schema", "system", "port", "baud", "boards", "keys", "firmware", "apps", "package", "verify",
-               "comment", "outside", "present", "plan", "cells"}
+               "comment", "outside", "present", "plan", "cells", "pc_services"}
     extra = set(doc) - allowed
     if extra:
         raise ApplyError(f"{path}: unknown key(s) {sorted(extra)}")
@@ -563,6 +565,11 @@ def load_cluster(path: str) -> Cluster:
     cl.rooms = rooms
     cl.positions = positions
     cl.plan = check_plan(doc.get("plan"))
+    svcs = doc.get("pc_services", [])
+    from .services import SERVICES
+    if not isinstance(svcs, list) or any(x not in SERVICES for x in svcs) or len(set(svcs)) != len(svcs):
+        raise ApplyError(f"pc_services: a list of the services this PC offers the cell, from {sorted(SERVICES)}")
+    cl.pc_services = tuple(svcs)
     cl.cells = cells
     cw, parents = {}, {}
     cells_doc = doc.get("cells") or {}
@@ -1448,6 +1455,8 @@ def actor_reads(m, a, boards: list[int]) -> tuple[str, list[str]]:
             reads.append(dp.die_temp_path(m.system, node))
         if a.module == "builtin:led_switch":
             reads.append(dp.led_switch_path(m.system, node))
+        if a.module == "builtin:speak":  # M23: its result and its request
+            reads += list(reversed(dp.speak_paths(m.system, a.name)))
         if a.module == "builtin:mc_job":  # M9's result; M22's control, when it has one
             reads.append(dp.mc_job_path(m.system, node))
             if a.config.get("control"):

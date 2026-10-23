@@ -56,11 +56,11 @@ from typing import Any
 from . import frame as fr
 from .bridge import HOST_NODE_ID, Bridge, BridgeError, RequestTimeout
 from .payloads import HELLO_FLAG_WANT_ACK, Hello
-from .ns_payloads import Write
+from .ns_payloads import Call, Reply, Write
 from .paths import path_hash
 from .serial_framing import SerialReassembler, write_serial_frame
 from .transport import open_transport
-from .value import Quality, Value, unit_suffix
+from .value import NsError, Quality, Value, unit_suffix
 
 API_VERSION = 1
 DEFAULT_API = "127.0.0.1:8470"
@@ -152,6 +152,7 @@ class Hub(Bridge):
         self._clients: list[_Client] = []
         self._clients_lock = threading.Lock()
         self.node_client: _Client | None = None  # M10's placement host, while attached
+        self.services_for = lambda: None  # M23: the PC's named services (potluck.services.PcServices), from the model
         self._node_window_s = 6.0  # its declared death window (HELLO), for the silence after it goes
         self._quiet_until = 0.0     # after it went: say nothing as 0x00fe until the cell has declared it dead
         self.relay_counts = {"clients": 0, "requests": 0, "replies": 0, "unmatched": 0, "fanned_out": 0,
@@ -220,11 +221,43 @@ class Hub(Bridge):
                 node.send_raw(raw)  # HELLO, heartbeats, the cell's READs and WRITEs of the PC's resources, ...
                 if f.opcode == fr.Op.HELLO_ACK:
                     return  # the cell answering the host node's HELLO: not the hub's to learn from
+        if f.opcode == fr.Op.CALL and f.dst == HOST_NODE_ID and self._serve_call(f):
+            return  # M23: one of the PC's own services -- answered here, never also fanned out to tools
         if f.opcode in (fr.Op.CALL, fr.Op.CAST) or (node is None and f.opcode == fr.Op.READ):
             if f.dst == HOST_NODE_ID:
                 # The cell asks the PC (an agent's service, M8): every tool hears it; the one offering it answers.
                 self._fan_out(raw)
         super()._on_raw_frame(raw)
+
+    def _serve_call(self, f: fr.Frame) -> bool:
+        """M23: a board's CALL of one of the PC's named services (the cluster file's `pc_services`): answered here.
+        A slow one (speech) on a thread of its own, so the reader never waits on it. False if not one of ours."""
+        svc = self.services_for()
+        if svc is None:
+            return False
+        try:
+            call = Call.parse(bytes(f.payload))
+        except ValueError:
+            return False
+        name = svc.name_of(call.path_hash)
+        if name is None:
+            return False
+
+        def answer() -> None:
+            value = svc.serve(name, f.src, bytes(call.args))
+            rep = Reply(path_hash=call.path_hash, timestamp_ms=self.uptime_ms & 0xFFFFFFFF, age_ms=0, unit=0,
+                        reply_to=fr.Op.CALL, status=int(NsError.OK), quality=int(Quality.GOOD), latency_class=4,
+                        value=value)
+            try:
+                self.send_frame(fr.Op.REPLY, rep.encode(), dst=f.src, msg_id=f.msg_id, lclass=4)
+            except BridgeError:
+                pass  # the link went away; the board writes the call off as its provider gone
+
+        if svc.slow(name):
+            threading.Thread(target=answer, name=f"potluck-svc-{name}", daemon=True).start()
+        else:
+            answer()
+        return True
 
     def _fan_out(self, raw: bytes) -> None:
         with self._clients_lock:
@@ -422,6 +455,8 @@ class Model:
         self._telemetry_due = 0.0
         self.telemetry_counts = {"pulls": 0, "replies": 0, "failures": 0, "events": 0}
         self.job_times: dict[int, dict[str, tuple[int, int]]] = {}  # M22: a board's last finished run of each kind
+        self._services = None  # M23: (system, names, PcServices) -- kept while the cluster file names the same ones
+        hub.services_for = self.pc_services
         self.link_deaths: dict[tuple[int, int], int] = {}  # (board, peer) -> peer_dead events pulled since the hub started
         self.lock = threading.Lock()
         self.started = time.monotonic()
@@ -1042,7 +1077,20 @@ class Model:
                 "other_cell_frames": None,
                 "presenter": presenter,
                 "jobs": self._jobs_json(),
+                "services": self.pc_services().snapshot() if self.pc_services() is not None else [],
                 "plan": getattr(self.cluster, "plan", None) if self.cluster is not None else None}
+
+    def pc_services(self):
+        """M23: the services this PC offers (the cluster file's `pc_services`), or None. One object per configuration,
+        so a cluster file reloaded for another reason keeps the counters."""
+        names = tuple(getattr(self.cluster, "pc_services", ()) or ()) if self.cluster is not None else ()
+        if not names:
+            return None
+        system = getattr(self.cluster, "system", "lab")
+        if self._services is None or self._services[:2] != (system, names):
+            from .services import PcServices
+            self._services = (system, names, PcServices(system, list(names)))
+        return self._services[2]
 
     def _jobs_json(self) -> list[dict]:
         """M22: each board's job on borrowed cores (M9's mc_job), from its telemetry: the run in progress or the last.
@@ -2084,13 +2132,18 @@ _TYPE_NAMES = {1: "bool", 2: "i32", 3: "u32", 4: "f32", 5: "i64", 6: "u64", 7: "
 
 
 def _inbox_type(model, path: str) -> int:
-    """The declared value type of an inbox's value (pot/value.hpp's ValueType code), or 0."""
+    """The declared value type of a value written from outside before the hub has read it -- an inbox's, a speak
+    actor's request, a job's control (pot/value.hpp's ValueType code) -- or 0."""
     pkg = getattr(model, "package", None)
     if pkg is None:
         return 0
     from . import deploy as dp
     m = pkg.manifest
     for a in m.actors:
+        node = m.placement_of(a)
+        if (a.module == "builtin:speak" and path == dp.speak_paths(m.system, a.name)[0]) or (
+                a.module == "builtin:mc_job" and node is not None and path == dp.mc_job_ctl_path(m.system, node)):
+            return 3  # U32: M23's request and M22's job control, written before the hub has read them
         if a.module != "builtin:inbox":
             continue
         try:
@@ -2112,6 +2165,8 @@ def _inbox_owner(model, path: str) -> int | None:
     from . import deploy as dp
     m = pkg.manifest
     for a in m.actors:
+        if a.module == "builtin:speak" and path == dp.speak_paths(m.system, a.name)[0]:
+            return m.placement_of(a)  # M23: a speak actor's request, act/<name>/say -- a board's own resource too
         if a.module != "builtin:inbox":
             continue
         try:

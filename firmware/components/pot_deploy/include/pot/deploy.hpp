@@ -118,6 +118,7 @@ enum class ActorType : uint8_t {
     Position = 12,  // M20: the board's place on the floor plan, node-<id>/sys/pos/{x,y} (pot/position.hpp)
     Foreman = 13,   // M19: a cell's foreman role -- portable among its foreman-eligible boards (pot/foreman.hpp)
     Inbox = 14,     // 2026-10-20: values a program outside the cell writes, act/<actor>/<name> (pot/inbox.hpp)
+    Speak = 15,     // M23: asks the PC to speak a phrase (its svc/speech) when act/<actor>/say is written (pot/speak.hpp)
 };
 
 // M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an
@@ -332,6 +333,25 @@ struct McJobConfig {
     uint32_t ctl_hash = 0;  // 0: no control resource
 };
 bool mc_job_config(const ActorDecl& a, McJobConfig& out);
+
+// Speak (M23, 2026-10-24): when `ctl_hash` is written (any value; every write is a request), CALL the service
+// `svc_hash` on node `provider` -- the PC's svc/speech -- with the phrase as its arguments, and publish how it went to
+// `out_hash` (a u32): 0 not asked yet, 1 done, 2 refused (the service said no, or does not serve it), 3 gone (the
+// provider not alive, dead with the call, or silent past 30 s). A write while a call is out is counted, not queued.
+// Pinned.
+//
+//   svc_hash u32, provider u16, ctl_hash u32, out_hash u32, text_len u8 (1..120), text bytes
+constexpr uint8_t kSpeakCfgFixed = 15;
+constexpr uint8_t kSpeakTextMax = 120;
+struct SpeakConfig {
+    uint32_t svc_hash;
+    uint16_t provider;
+    uint32_t ctl_hash;
+    uint32_t out_hash;
+    uint8_t text_len;
+    uint8_t text[kSpeakTextMax];
+};
+bool speak_config(const ActorDecl& a, SpeakConfig& out);
 
 // ---------------------------------------------------------------------------------------------
 // The A/B state machine, persisted in NVS.
