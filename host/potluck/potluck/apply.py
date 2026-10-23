@@ -1354,6 +1354,9 @@ def sign_and_compile(c: Cluster, pkg: Package, counter: int, keep: Path | None =
 
 
 LEASE_MIN_BOARD_ID = 0x0100  # pot/lease.hpp's kLeaseMinBoardId: ids below it are hosts
+#: A board that answers a package step BUSY is asked again this often, this far apart (a catch-up push to a board that
+#: just joined takes ~10-30 s on the bench).
+BUSY_RETRIES, BUSY_WAIT_S = 8, 5.0
 
 
 def lease_counts(arbiter: int, boards) -> str | None:
@@ -1381,7 +1384,14 @@ def send_package(b, node: int, img: bytes, counter: int, digest8: bytes, log) ->
     from . import frame as fr
 
     def step(op, payload, timeout):
-        rep = dp.DeployReply.parse(b.deploy_step(op, payload, timeout=timeout, dst=node))
+        # A board busy with another transfer -- a catch-up it is sending a board that just joined -- answers BUSY: wait
+        # and ask again rather than fail (2026-10-23: the wizard's Apply failed right after a wiped board came back).
+        for attempt in range(BUSY_RETRIES + 1):
+            rep = dp.DeployReply.parse(b.deploy_step(op, payload, timeout=timeout, dst=node))
+            if rep.ok or rep.status_name != "BUSY" or attempt == BUSY_RETRIES:
+                break
+            log(f"package: 0x{node:04x} is busy (another transfer); asking again in {BUSY_WAIT_S:.0f} s")
+            time.sleep(BUSY_WAIT_S)
         if not rep.ok:
             raise ApplyError(f"0x{node:04x} refused the package: {rep.status_name}")
         return rep

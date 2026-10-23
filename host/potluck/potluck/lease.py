@@ -168,10 +168,16 @@ class CellLease:
         if self._thread is not None:
             self._thread.join(timeout=5.0)
         if self.supported and self.lost is None:
-            try:
-                request(self.bridge, self.kind, OP_RELEASE, self.token, timeout=2.0)
-            except Exception:
-                pass  # it lapses at the end of its time to live
+            # Asked a few times: a board busy with a catch-up push let the lease lapse instead, and the owner's next
+            # Apply was refused for its time to live (2026-10-23).
+            for attempt in range(3):
+                try:
+                    rep = request(self.bridge, self.kind, OP_RELEASE, self.token, timeout=2.0)
+                    if getattr(rep, "status", STATUS_OK) == STATUS_OK:
+                        break
+                except Exception:
+                    pass  # it lapses at the end of its time to live
+                time.sleep(1.0)
         self.supported = False
 
     def __enter__(self) -> "CellLease":

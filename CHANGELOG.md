@@ -5,6 +5,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **Apply waits for a busy board.** A board busy sending a catch-up to one that just joined answers a package step
+  BUSY; Apply now asks again (every 5 s, up to 8 times) instead of failing, and asks a busy board again to release
+  its lease rather than leaving it to lapse. The wizard clears the last try's refusal when you try again. Found on
+  the reinstall test.
 - **The setup wizard brings a wiped board back as itself.** It came back as a stranger (a new id beside its own dead
   entry): now "Plug in" recognises one of the cell's boards by its MAC and asks the owner, and on yes it takes its
   id, name and room back (`potluck.enrol --replace`). The house Wi-Fi is asked openly, not folded away; the Rooms

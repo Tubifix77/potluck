@@ -196,9 +196,12 @@
     ports.forEach(function (p) {
       var li = el("li");
       li.appendChild(el("span", "", p.port + " (" + (p.chip || p.description || "USB serial") + ") "));
-      var btn = el("button", "small", "This one is new: check it");
+      var btn = el("button", "small", "This one is new or wiped: check it");
       btn.type = "button";
-      btn.onclick = function () { delete baseline[p.port]; li.remove(); addBoard(p); };
+      btn.onclick = function () {
+        delete baseline[p.port]; li.remove(); addBoard(p);
+        $("n-old").textContent = String($("old-list").children.length);
+      };
       li.appendChild(btn);
       ul.appendChild(li);
     });
@@ -430,6 +433,7 @@
 
   // ---- step 7: done -------------------------------------------------------------------------------------------
   function applyAll() {
+    say("");  // a try again: the last try's refusal is not this one's (it stayed above "Done" on 2026-10-23)
     $("do-apply").disabled = true;
     var out = $("apply-out");
     out.hidden = false;

@@ -592,6 +592,39 @@ class BoardModules(unittest.TestCase):
         self.assertEqual(lines[2], "Potluck core: 61,520 B of 65,536 B static internal RAM (4,016 B left)")
 
 
+class BusyBoard(unittest.TestCase):
+    """2026-10-23: right after a wiped board came back, the board on the cable was busy sending it the cell's package
+    (catch-up) and answered BUSY; apply failed instead of asking again."""
+
+    def run_send(self, busy_answers: int):
+        import struct
+        from potluck import deploy as dp
+        answers = []
+
+        class B:
+            def deploy_step(self, op, payload, timeout, dst):
+                answers.append(op)
+                busy = len(answers) <= busy_answers
+                status = dp.STATUS_NAMES.index("BUSY") if busy else 0
+                return struct.pack("<HBBIIBB", status, 0, 0, 0, 0, 2, 0).ljust(16, b"\x00")
+
+        old = ap.BUSY_WAIT_S
+        ap.BUSY_WAIT_S = 0.0
+        try:
+            return ap.send_package(B(), 0x6300, b"x" * 10, 7, b"d" * 8, lambda m: None), answers
+        finally:
+            ap.BUSY_WAIT_S = old
+
+    def test_a_busy_board_is_asked_again(self):
+        (ok, failed), answers = self.run_send(busy_answers=3)
+        self.assertEqual((ok, failed), (2, 0))
+        self.assertGreater(len(answers), 3)
+
+    def test_a_board_that_stays_busy_still_fails_with_the_reason(self):
+        with self.assertRaisesRegex(ap.ApplyError, "BUSY"):
+            self.run_send(busy_answers=100)
+
+
 class LeaseInAPartition(unittest.TestCase):
     """M0-LOG session 43: each side of a split has an arbiter of its own (tests/test_deploy_partition.cpp,
     [lease_partition]), so a deploy lease counts only when the cluster's lowest board granted it."""
