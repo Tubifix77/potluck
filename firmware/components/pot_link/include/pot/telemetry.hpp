@@ -35,6 +35,11 @@
 //             -- Node::AuthCounters, so a board kept out of the cell can be told apart: its HELLOs not heard, heard and
 //             fenced as an older epoch, over the verification budget, or its frames under another key. Firmware before
 //             it answers section 0 (unreachable), which the hub takes as "not reported".
+//     Chip    (kTelemetryChip, 2026-10-23, M21): u8 model (esp_chip_model_t: 9 = ESP32-S3), u8 cores, u16 revision
+//             (MXX: major x 100 + minor), u16 flash_mb, u16 psram_mb (0 without PSRAM), u32 features (CHIP_FEATURE_*)
+//                                                                                                    (12 bytes)
+//             -- what the board is, as the board itself reads it (esp_chip_info, esp_flash_get_size,
+//             esp_psram_get_size): read at reply time, nothing kept. Firmware before it answers section 0.
 
 #pragma once
 
@@ -51,6 +56,7 @@ constexpr uint8_t kTelemetryLinks = 2;
 constexpr uint8_t kTelemetryActors = 3;
 constexpr uint8_t kTelemetryEvents = 4;
 constexpr uint8_t kTelemetryAuth = 5;
+constexpr uint8_t kTelemetryChip = 6;
 
 constexpr size_t kTelemetryRequestLen = 8;
 constexpr size_t kTelemetryReplyMax = 220;  // under the cable's 226-byte payload floor
@@ -60,6 +66,7 @@ constexpr size_t kTelemetryLinkLen = 40;
 constexpr size_t kTelemetryActorLen = 18;
 constexpr size_t kTelemetryEventLen = 19;
 constexpr size_t kTelemetryAuthLen = 48;
+constexpr size_t kTelemetryChipLen = 12;
 constexpr size_t kTelemetryLinksPerReply = (kTelemetryReplyMax - kTelemetryHeaderLen - 3) / kTelemetryLinkLen;    // 5
 constexpr size_t kTelemetryActorsPerReply = (kTelemetryReplyMax - kTelemetryHeaderLen - 3) / kTelemetryActorLen;  // 11
 constexpr size_t kTelemetryEventsPerReply = (kTelemetryReplyMax - kTelemetryHeaderLen - 5) / kTelemetryEventLen;  // 11
@@ -132,8 +139,15 @@ struct TelemetryAuth {
              replayed = 0, untagged = 0, bcast_dropped = 0, beacon_epoch_ignored = 0, group_refusals = 0;
 };
 
+struct TelemetryChip {
+    uint8_t model = 0, cores = 0;
+    uint16_t revision = 0, flash_mb = 0, psram_mb = 0;
+    uint32_t features = 0;
+};
+
 // Each returns the reply's length, 0 if `cap` is too small. n is clipped to what one reply holds.
 size_t store_telemetry_auth(uint16_t node, const TelemetryAuth& a, uint8_t* out, size_t cap);
+size_t store_telemetry_chip(uint16_t node, const TelemetryChip& c, uint8_t* out, size_t cap);
 size_t store_telemetry_health(uint16_t node, const TelemetryHealth& h, uint8_t* out, size_t cap);
 size_t store_telemetry_links(uint16_t node, uint8_t total, uint8_t start, const TelemetryLink* l, size_t n,
                              uint8_t* out, size_t cap);

@@ -214,3 +214,20 @@ TEST(telemetry, the_auth_section_carries_the_twelve_counters_in_order) {
                 "0a0000000b0000000c000000"));
     CHECK_EQ(store_telemetry_auth(1, a, w, n - 1), static_cast<size_t>(0));
 }
+
+TEST(telemetry, the_chip_section_says_what_the_board_is) {
+    // M21. host/potluck/tests/test_telemetry.py's CHIP_GOLDEN: C, an ESP32-S3 v0.2, 2 cores, 16 MB flash, 8 MB PSRAM,
+    // Wi-Fi + BLE + embedded PSRAM.
+    TelemetryChip c;
+    c.model = 9;
+    c.cores = 2;
+    c.revision = 2;
+    c.flash_mb = 16;
+    c.psram_mb = 8;
+    c.features = 0x92;
+    uint8_t w[kTelemetryReplyMax];
+    const size_t n = store_telemetry_chip(0x8160, c, w, sizeof(w));
+    CHECK_EQ(n, kTelemetryHeaderLen + kTelemetryChipLen);
+    CHECK(std::vector<uint8_t>(w, w + n) == unhex("01066081090202001000080092000000"));
+    CHECK_EQ(store_telemetry_chip(1, c, w, n - 1), static_cast<size_t>(0));
+}

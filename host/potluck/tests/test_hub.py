@@ -297,6 +297,34 @@ class Telemetry(HubFixture):
             self.model.pull()
         self.assertEqual(self.model.boards[0x1001]["state"], "dead")
 
+    def test_the_chip_is_read_from_the_board_once_a_boot_and_shown(self) -> None:
+        """M21: each board's chip, flash and PSRAM in the model, from the board itself (telemetry section 6)."""
+        from unittest import mock
+        import test_telemetry as tt
+        from potluck import telemetry as tm
+
+        h = tm.parse_health(bytes.fromhex(tt.HEALTH_GOLDEN))
+        calls = []
+
+        def chip(bridge, n, timeout=2.0):
+            calls.append(n)
+            if len(calls) == 1:
+                raise tm.TelemetryError("no answer")  # missed once: asked again on the next pull
+            return tm.parse_chip(bytes.fromhex(tt.CHIP_GOLDEN))
+
+        with self.model.lock:
+            self.model.boards[0x1001] = {"state": "alive", "since_at": 0, "last_ok": time.monotonic()}
+        with mock.patch.multiple(tm, health=lambda *a, **k: h, links=lambda *a, **k: [], actors=lambda *a, **k: [],
+                                 events=lambda *a, **k: ([], 1), auth=lambda *a, **k: None, chip=chip), \
+                mock.patch.object(hb.Model, "_read_reset", lambda self, n: None):
+            self.model.pull_telemetry()
+            self.assertIsNone(self.model.snapshot()["boards"][0]["chip"])
+            self.model.pull_telemetry()
+            self.model.pull_telemetry()  # same boot: not asked again
+        self.assertEqual(calls, [0x1001, 0x1001])
+        c = self.model.snapshot()["boards"][0]["chip"]
+        self.assertEqual((c["model"], c["revision"], c["flash_mb"], c["psram_mb"]), ("ESP32-S3", "v0.2", 16, 8))
+
     def test_every_pull_goes_to_the_telemetry_log_so_no_console_is_needed(self) -> None:
         import io
         import json

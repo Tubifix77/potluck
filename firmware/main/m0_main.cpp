@@ -70,6 +70,11 @@
 #include "driver/uart.h"
 #include "driver/uart_vfs.h"
 #include "esp_app_desc.h"
+#include "esp_chip_info.h"
+#include "esp_flash.h"
+#if CONFIG_SPIRAM
+#include "esp_psram.h"
+#endif
 #include "esp_attr.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -1452,6 +1457,23 @@ size_t build_telemetry(const TelemetryRequest& rq, uint8_t* out, size_t cap) {
         }
 #endif
         return store_telemetry_actors(g_node_id, static_cast<uint8_t>(total), rq.start, acts, n, out, cap);
+    }
+    if (rq.section == kTelemetryChip) {
+        // M21: what this board is, read now from the chip itself -- never esptool's check, which restarts the board.
+        esp_chip_info_t ci{};
+        esp_chip_info(&ci);
+        uint32_t flash_bytes = 0;
+        if (esp_flash_get_size(nullptr, &flash_bytes) != ESP_OK) flash_bytes = 0;
+        TelemetryChip c;
+        c.model = static_cast<uint8_t>(ci.model);
+        c.cores = ci.cores;
+        c.revision = ci.revision;
+        c.flash_mb = static_cast<uint16_t>(flash_bytes / (1024u * 1024u));
+#if CONFIG_SPIRAM
+        c.psram_mb = static_cast<uint16_t>(esp_psram_get_size() / (1024u * 1024u));
+#endif
+        c.features = ci.features;
+        return store_telemetry_chip(g_node_id, c, out, cap);
     }
     if (rq.section == kTelemetryAuth) {
         const Node::AuthCounters& c = g_node->auth_counters();

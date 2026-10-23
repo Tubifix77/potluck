@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from . import frame as fr
 
 VERSION = 1
-HEALTH, LINKS, ACTORS, EVENTS, AUTH = 1, 2, 3, 4, 5
+HEALTH, LINKS, ACTORS, EVENTS, AUTH, CHIP = 1, 2, 3, 4, 5, 6
 
 HEALTH_NO_RADIO, HEALTH_BUSY, HEALTH_CONNECTED, HEALTH_LONG_WINDOW, HEALTH_ENROLLED = 1, 2, 4, 8, 16
 LINK_CABLE, LINK_VERIFIED = 1, 2
@@ -35,11 +35,19 @@ _LINK = struct.Struct("<HBbBBHBB6IHHH")
 _ACTOR = struct.Struct("<IBBHHIHH")
 _EVENT = struct.Struct("<IIBHII")
 _AUTH = struct.Struct("<12I")
-assert (_HEALTH.size, _LINK.size, _ACTOR.size, _EVENT.size, _AUTH.size) == (88, 40, 18, 19, 48)
+_CHIP = struct.Struct("<BBHHHI")
+assert (_HEALTH.size, _LINK.size, _ACTOR.size, _EVENT.size, _AUTH.size, _CHIP.size) == (88, 40, 18, 19, 48, 12)
 
 #: The Auth section's counters, in their wire order (pot/telemetry.hpp, Node::AuthCounters; 2026-10-19).
 AUTH_FIELDS = ("verified", "cache_hits", "refused", "rate_limited", "stale_epoch", "tags_ok", "bad_tag", "replayed",
                "untagged", "bcast_dropped", "beacon_epoch_ignored", "group_refusals")
+
+
+#: esp_chip_model_t (ESP-IDF esp_chip_info.h), named as a person reads it (M21, 2026-10-23).
+CHIP_MODELS = {1: "ESP32", 2: "ESP32-S2", 9: "ESP32-S3", 5: "ESP32-C3", 12: "ESP32-C2", 13: "ESP32-C6", 16: "ESP32-H2",
+               18: "ESP32-P4", 20: "ESP32-C61", 23: "ESP32-C5", 25: "ESP32-H21", 28: "ESP32-H4"}
+#: CHIP_FEATURE_* (esp_chip_info.h): bit -> name.
+CHIP_FEATURES = {0: "embedded_flash", 1: "wifi", 4: "ble", 5: "bt_classic", 6: "ieee802154", 7: "embedded_psram"}
 
 
 class TelemetryError(ValueError):
@@ -211,6 +219,17 @@ def parse_auth(raw: bytes) -> dict[str, int]:
     return dict(zip(AUTH_FIELDS, _AUTH.unpack_from(raw, 4)))
 
 
+def parse_chip(raw: bytes) -> dict:
+    """M21: what the board is, as it reads itself -- `model` named (`model_id` the raw code), `revision` as "v0.2"."""
+    _header(raw, CHIP)
+    if len(raw) < 4 + _CHIP.size:
+        raise TelemetryError("chip section cut short")
+    model, cores, rev, flash_mb, psram_mb, feats = _CHIP.unpack_from(raw, 4)
+    return {"model": CHIP_MODELS.get(model, f"chip {model}"), "model_id": model, "revision": f"v{rev // 100}.{rev % 100}",
+            "cores": cores, "flash_mb": flash_mb, "psram_mb": psram_mb,
+            "features": [name for bit, name in sorted(CHIP_FEATURES.items()) if feats >> bit & 1]}
+
+
 def parse_events(raw: bytes) -> tuple[int, list[EventTel]]:
     _header(raw, EVENTS)
     if len(raw) < 9:
@@ -235,6 +254,11 @@ def health(bridge, target: int, *, timeout: float = 2.0) -> Health:
 def auth(bridge, target: int, *, timeout: float = 2.0) -> dict[str, int]:
     """Its HELLO verification and frame tag counters: how a board kept out of the cell is told apart (2026-10-19)."""
     return parse_auth(_ask(bridge, target, AUTH, timeout=timeout))
+
+
+def chip(bridge, target: int, *, timeout: float = 2.0) -> dict:
+    """M21: the board's chip, flash and PSRAM, from the board itself (no esptool check, which restarts it)."""
+    return parse_chip(_ask(bridge, target, CHIP, timeout=timeout))
 
 
 def links(bridge, target: int, *, timeout: float = 2.0) -> list[Link]:

@@ -707,6 +707,7 @@ class Model:
                 since = old.get("events_next", 1) - 1
                 old_epoch = old["health"].boot_epoch if old.get("health") is not None else None
                 have_reset = b.get("reset") is not None and b.get("reset_epoch") == old_epoch
+                have_chip = b.get("chip") is not None and b.get("chip_epoch") == old_epoch
             self.telemetry_counts["pulls"] += 1
             try:
                 h = tm.health(self.hub, n)
@@ -723,6 +724,12 @@ class Model:
                     auth = tm.auth(self.hub, n)
                 except (BridgeError, tm.TelemetryError):
                     auth = None  # firmware before 2026-10-19 does not know the section, or no answer: not reported
+                chip = None
+                if h.boot_epoch != old_epoch or not have_chip:  # M21: what the board is -- once a boot
+                    try:
+                        chip = tm.chip(self.hub, n)
+                    except (BridgeError, tm.TelemetryError):
+                        chip = None  # firmware before M21, or no answer: asked again on the next pull
             except (BridgeError, tm.TelemetryError) as exc:
                 self.telemetry_counts["failures"] += 1
                 with self.lock:
@@ -753,6 +760,8 @@ class Model:
                 b["tel_failures"] = 0
                 b["tel_unsupported"] = False
                 b["tel"] = {"health": h, "links": ls, "actors": acts, "events_next": nxt, "at": _hub_ms(), "auth": auth}
+                if chip is not None:
+                    b["chip"], b["chip_epoch"] = chip, h.boot_epoch
                 if reset is not None:
                     if old_epoch is not None and h.boot_epoch != old_epoch:  # it restarted while the hub watched
                         self._event_locked("board_restarted", n, {"reason": reset, "epoch": h.boot_epoch})
@@ -899,7 +908,8 @@ class Model:
                "position": list(pos) if pos else None, "state": b["state"],
                "since_at": b["since_at"],
                "silent_ms": int((time.monotonic() - b["last_ok"]) * 1000) if b.get("last_ok") else None,
-               "rssi": None, "cabled": bool(b.get("cabled"))}
+               "rssi": None, "cabled": bool(b.get("cabled")),
+               "chip": b.get("chip")}  # M21: {model, model_id, revision, cores, flash_mb, psram_mb, features} or null
         if st is not None:
             out.update({
                 "firmware": {"version": st.fw_version, "counter": st.fw_running, "state": st.fw_state},

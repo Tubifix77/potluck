@@ -24,7 +24,21 @@ AUTH_GOLDEN = ("0105006301000000020000000300000004000000050000000600000007000000
                "0a0000000b0000000c000000")  # tests/test_telemetry.cpp: 1..12 in order
 
 
+CHIP_GOLDEN = "01066081090202001000080092000000"  # tests/test_telemetry.cpp: C, an ESP32-S3 v0.2, 16 MB, 8 MB PSRAM
+
+
 class Sections(unittest.TestCase):
+    def test_chip(self) -> None:
+        """M21: what the board is, as the board reads itself."""
+        c = tm.parse_chip(bytes.fromhex(CHIP_GOLDEN))
+        self.assertEqual(c, {"model": "ESP32-S3", "model_id": 9, "revision": "v0.2", "cores": 2, "flash_mb": 16,
+                             "psram_mb": 8, "features": ["wifi", "ble", "embedded_psram"]})
+        self.assertEqual(tm.parse_chip(bytes.fromhex("01066081ee0100000400000000000000"))["model"], "chip 238")
+        with self.assertRaises(tm.TelemetryError):
+            tm.parse_chip(bytes.fromhex(CHIP_GOLDEN)[:-1])
+        with self.assertRaises(tm.TelemetryError):  # firmware before M21: section 0, "could not be reached"
+            tm.parse_chip(bytes.fromhex("01006081"))
+
     def test_auth(self) -> None:
         a = tm.parse_auth(bytes.fromhex(AUTH_GOLDEN))
         self.assertEqual(list(a.values()), list(range(1, 13)))

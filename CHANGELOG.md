@@ -5,6 +5,9 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **Each board's chip in the hub's model (M21).** `boards[].chip`: model, revision, cores, flash and PSRAM, as the
+  board itself reads them (a new telemetry section, read once a boot -- never esptool's check, which restarts a
+  board). A firmware change: 12 bytes on the wire, nothing kept in internal RAM.
 - **Apply waits for a busy board.** A board busy sending a catch-up to one that just joined answers a package step
   BUSY; Apply now asks again (every 5 s, up to 8 times) instead of failing, and asks a busy board again to release
   its lease rather than leaving it to lapse. The wizard clears the last try's refusal when you try again. Found on

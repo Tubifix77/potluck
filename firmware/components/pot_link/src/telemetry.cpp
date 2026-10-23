@@ -120,6 +120,19 @@ size_t store_telemetry_auth(uint16_t node, const TelemetryAuth& a, uint8_t* out,
     return w.at;
 }
 
+size_t store_telemetry_chip(uint16_t node, const TelemetryChip& c, uint8_t* out, size_t cap) {
+    if (out == nullptr || cap < kTelemetryHeaderLen + kTelemetryChipLen) return 0;
+    W w{out, 0};
+    header(w, kTelemetryChip, node);
+    w.u8(c.model);
+    w.u8(c.cores);
+    w.u16(c.revision);
+    w.u16(c.flash_mb);
+    w.u16(c.psram_mb);
+    w.u32(c.features);
+    return w.at;
+}
+
 size_t store_telemetry_links(uint16_t node, uint8_t total, uint8_t start, const TelemetryLink* l, size_t n,
                              uint8_t* out, size_t cap) {
     if (n > kTelemetryLinksPerReply) n = kTelemetryLinksPerReply;

@@ -83,6 +83,8 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
   "boards": [
     {"node": "7368", "label": "B", "room": "Kitchen", "position": [4.5, 2.0], "state": "alive",
      "since_at": 1791775000000, "silent_ms": 1210, "rssi": -34, "cabled": false,
+     "chip": {"model": "ESP32-S3", "model_id": 9, "revision": "v0.2", "cores": 2, "flash_mb": 16, "psram_mb": 8,
+              "features": ["wifi", "ble", "embedded_psram"]},
      "firmware": {"version": "78c5305-6df6a4", "counter": 20, "state": "confirmed"},
      "package": {"counter": 47, "state": "confirmed", "live_applies": 1},
      "roles": ["sandbox", "reconciler", "enrolled"],
@@ -183,6 +185,11 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   `flags` names `no_radio`, `busy`, `connected`, `long_window`, `enrolled`. A board that does not answer telemetry
   (older firmware) has `heap: null`, `links: []` and no `telemetry`, and an event `telemetry_unsupported`; the hub
   asks it again every 5 minutes.
+- `boards[].chip` (M21, 2026-10-23): what the board is, as the board itself reads it (telemetry section 6, once a
+  boot -- never esptool's check, which restarts the board): `model` named (`model_id` is ESP-IDF's esp_chip_model_t,
+  9 for an ESP32-S3; an unknown one reads "chip <n>"), `revision` ("v<major>.<minor>"), `cores`, `flash_mb`, `psram_mb`
+  (0 for a board without PSRAM) and `features` (`embedded_flash`, `wifi`, `ble`, `bt_classic`, `ieee802154`,
+  `embedded_psram`). `null` until the board has answered, and from firmware before M21.
 - `panels`: the cards apps ask for in their module descriptors (DEVELOPING-APPS.md, "panel"), one per actor -- per
   room for a per_room module -- and only for exposed resources. `kind`: `room` | `value`; `on`: true, false, or `null`
   while `quality` is not GOOD. Their words are text: show them as text, never as markup.
