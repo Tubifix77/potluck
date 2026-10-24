@@ -1232,14 +1232,20 @@ the board itself (its node status), never by esptool, whose check restarts the b
 report it in `/api/model`; a board built without PSRAM says `psram_mb: 0`. *Bound:* at most 16 bytes on the wire and
 no new internal RAM.
 
-**M22 — borrowed cores, visible.** M9's lending counters in telemetry and the model: `boards[].telemetry.lend` =
+**M22 — borrowed cores, visible.** *(Accepted 2026-10-24: 2.98x with B and C lending, B reset mid-run, the same result,
+the lenders' heartbeat loss up 0.37 points at most. As built, the demo job is an mc_job with `"control": true` started
+with `POST /api/setup/job {"run": "lend" | "alone" | "stop"}`, and the lender's counters are `{accepted, refused,
+served, unit_ms}` -- HUB-API.md.)* M9's lending counters in telemetry and the model: `boards[].telemetry.lend` =
 `{lent, done, redone, refused}`, and `cell.jobs[]` = `{id, borrower, lenders, pieces, done, redone, speedup}`; plus a
 standing demo job (M9's pure function) the owner starts and stops, `POST /api/setup/job {"kind": "demo", "seconds"}`,
 because nothing lends cores in an everyday cell. *Acceptance:* started from the API, the job shows its lenders and
 pieces; a lender reset mid-job shows redone pieces; the result equals one board's. *Kill:* a lender's heartbeat loss
 rises by more than one point during the job (M9's rule: lending changes no lender's duties).
 
-**M23 — the PC's services in the model, and speech.** `cell.services[]` = `{name, state, calls, last_call_at, errors,
+**M23 — the PC's services in the model, and speech.** *(Accepted 2026-10-24: C made the PC speak three times, each
+answered done and counted; the PC-off case in the host tests only. As built, the services are the cluster file's
+`pc_services`, answered by the hub and sent through the PC's node, whose end-to-end tag the boards check; the actor is
+`builtin:speak`.)* `cell.services[]` = `{name, state, calls, last_call_at, errors,
 callers}` for what the PC offers the cell (M8's time today). Then speech out: a board's app calls `pc/speech/say` with up
 to 200 bytes of text and the PC speaks it with the system's own voice; the answer says done or failed. Speech in
 (speech to text) answers with more than a service reply's 8 bytes, so it follows M25. *Acceptance:* a board's actor
