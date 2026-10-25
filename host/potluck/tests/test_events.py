@@ -27,11 +27,19 @@ class Check(unittest.TestCase):
             ev.check_events([{"kind": "pointer"}], ("key",))
 
     def test_a_batch_is_laid_out_as_pot_input_parses_it(self) -> None:
-        b = ev.encode_batch([(7, 1, 1, 0x04, 0, 0.0), (8, 2, 0, -1, 2, 0.0)])
-        self.assertEqual(b[:2], bytes([1, 2]))
-        self.assertEqual(struct.unpack_from("<HBBhh", b, 2), (7, 1, 1, 4, 0))
-        self.assertEqual(struct.unpack_from("<HBBhh", b, 10), (8, 2, 0, -1, 2))
-        self.assertEqual(len(ev.encode_batch([(i, 1, 0, 0, 0) for i in range(ev.BATCH_MAX)])), 2 + 8 * ev.BATCH_MAX)
+        b = ev.encode_batch([(7, 1, 1, 0x04, 0, 0.0), (8, 2, 0, -1, 2, 0.0)], 0xBEEF)
+        self.assertEqual(b[:4], bytes([2, 2]) + struct.pack("<H", 0xBEEF))  # version 2, two events, the stream
+        self.assertEqual(struct.unpack_from("<HBBhh", b, 4), (7, 1, 1, 4, 0))
+        self.assertEqual(struct.unpack_from("<HBBhh", b, 12), (8, 2, 0, -1, 2))
+        self.assertEqual(len(ev.encode_batch([(i, 1, 0, 0, 0) for i in range(ev.BATCH_MAX)], 1)), 4 + 8 * ev.BATCH_MAX)
+
+    def test_each_queue_has_a_stream_of_its_own(self) -> None:
+        """A restarted hub numbers from 1 again: its stream tells the board these are new (2026-10-25)."""
+        a, b = (ev.InputQueue("echo", 0x8160, 1, ("key",)) for _ in range(2))
+        self.assertTrue(1 <= a.stream <= 0xFFFF)
+        a.put([(1, 1, 4, 0)], 0.0)
+        self.assertEqual(struct.unpack_from("<H", a.due(0.0), 2)[0], a.stream)
+        self.assertNotEqual(a.stream, b.stream)  # 1 in 65535 to fail by chance
 
 
 class Queue(unittest.TestCase):
@@ -46,7 +54,7 @@ class Queue(unittest.TestCase):
         self.assertIsNone(q.due(ev.RESEND_S / 4))  # one batch out at a time
         self.assertEqual(q.ack(ev.BATCH_MAX, 0.05), ev.BATCH_MAX)
         second = q.due(0.06)
-        self.assertEqual((second[1], struct.unpack_from("<H", second, 2)[0]), (6, ev.BATCH_MAX + 1))
+        self.assertEqual((second[1], struct.unpack_from("<H", second, 4)[0]), (6, ev.BATCH_MAX + 1))
         q.ack(30, 0.1)
         snap = q.snapshot()
         self.assertEqual((snap["taken"], snap["waiting"], snap["batches"], snap["resent"]), (30, 0, 2, 0))
@@ -148,7 +156,7 @@ class HubSide(unittest.TestCase):
         hub = hb.Hub(host_side)
         sent = []
         hub.send_frame = lambda op, payload, dst=None, msg_id=0, lclass=3, **kw: sent.append((op, dst, Call.parse(payload)))
-        args = ev.encode_batch([(1, 1, 1, 4, 0)])
+        args = ev.encode_batch([(1, 1, 1, 4, 0)], 7)
         self.assertFalse(hub._send_input(0x8160, 0xABCD1234, args))  # no board on the cable yet: kept
         hub.peer_node_id = 0x6300
         self.assertTrue(hub._send_input(0x8160, 0xABCD1234, args))

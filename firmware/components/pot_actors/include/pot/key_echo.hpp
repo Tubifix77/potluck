@@ -25,7 +25,7 @@ class KeyEchoActor : public Actor {
   public:
     KeyEchoActor(Node& node, const KeyEchoConfig& cfg) : node_(node), cfg_(cfg) {}
     bool start(uint32_t now_ms) override;
-    void tick(uint32_t now_ms) override { now_ = now_ms; }
+    void tick(uint32_t now_ms) override;
     int on_call(uint16_t from_node, uint16_t msg_id, uint32_t path_hash, const uint8_t* args, uint16_t len) override;
     size_t stats_json(char* buf, size_t cap, uint32_t now_ms) override;
 
@@ -34,12 +34,14 @@ class KeyEchoActor : public Actor {
     uint32_t last_key() const { return key_; }
 
   private:
+    void publish(uint32_t now_ms);
     Node& node_;
     KeyEchoConfig cfg_;
     InputOrder order_{};
     uint32_t key_ = 0;
     uint32_t batches_ = 0, bad_ = 0;
     uint32_t now_ = 0;
+    uint32_t published_at_ = 0;
 };
 
 bool key_echo_check(const ActorDecl& d, const ActorEnv& env, const char** why);

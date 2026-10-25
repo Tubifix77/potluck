@@ -17,7 +17,7 @@ NsDecl key_echo_decl(uint32_t hash, uint16_t node) {
     d.kind = ResourceKind::Sampled;
     d.access = Access::Read;
     d.latency_class = kClassL4;
-    d.staleness_bound_ms = 0;  // changes when an event arrives, not on a schedule: it does not go stale
+    d.staleness_bound_ms = 10000;  // published at least every 2 s (tick): a copy on another board is read again past this
     d.staleness_policy = StalenessPolicy::Informative;
     return d;
 }
@@ -31,6 +31,7 @@ bool KeyEchoActor::start(uint32_t now_ms) {
         node_.ns().publish(h, Value::of_u32(0), now_ms);
     }
     now_ = now_ms;
+    published_at_ = now_ms;
     return true;
 }
 
@@ -38,7 +39,8 @@ int KeyEchoActor::on_call(uint16_t from_node, uint16_t msg_id, uint32_t path_has
                           uint16_t len) {
     if (path_hash != cfg_.in_hash) return kCallNotMine;
     InputEvent ev[kInputBatchMax];
-    const int n = parse_input(args, len, ev, kInputBatchMax);
+    uint16_t stream = 0;
+    const int n = parse_input(args, len, ev, kInputBatchMax, &stream);
     if (n < 0) {
         ++bad_;
         return kCallRefused;
@@ -46,19 +48,27 @@ int KeyEchoActor::on_call(uint16_t from_node, uint16_t msg_id, uint32_t path_has
     ++batches_;
     bool any = false;
     for (int i = 0; i < n; ++i) {
-        if (!order_.take(ev[i].seq)) continue;
+        if (!order_.take(stream, ev[i].seq)) continue;
         any = true;
         if (ev[i].kind == kInputKey) {
             key_ = static_cast<uint16_t>(ev[i].a) | (static_cast<uint32_t>(ev[i].flags & 1u) << 16);
         }
     }
-    if (any) {
-        node_.ns().publish(cfg_.key_hash, Value::of_u32(key_), now_);
-        node_.ns().publish(cfg_.count_hash, Value::of_u32(order_.taken), now_);
-        node_.ns().publish(cfg_.gaps_hash, Value::of_u32(order_.missed), now_);
-    }
+    if (any) publish(now_);
     node_.reply_call(from_node, msg_id, path_hash, Value::of_u32(order_.last));
     return kCallAccepted;
+}
+
+void KeyEchoActor::publish(uint32_t now_ms) {
+    node_.ns().publish(cfg_.key_hash, Value::of_u32(key_), now_ms);
+    node_.ns().publish(cfg_.count_hash, Value::of_u32(order_.taken), now_ms);
+    node_.ns().publish(cfg_.gaps_hash, Value::of_u32(order_.missed), now_ms);
+    published_at_ = now_ms;
+}
+
+void KeyEchoActor::tick(uint32_t now_ms) {
+    now_ = now_ms;
+    if (now_ms - published_at_ >= 2000) publish(now_ms);  // fresh between events, so copies elsewhere are re-read
 }
 
 size_t KeyEchoActor::stats_json(char* buf, size_t cap, uint32_t) {

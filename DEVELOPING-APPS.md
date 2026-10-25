@@ -296,9 +296,9 @@ parts with their GPIOs (`apps[].parts`), for a wiring view.
 A module whose actor takes **key or pointer events from the PC** says so in **takes**: `"takes": ["key"]`,
 `["pointer"]` or both (M24). A program gives the hub events for the app (`POST /api/input`, HUB-API.md); the hub
 numbers them and delivers them in order as CALLs of `act/<actor>/in`, one batch at a time, sending a batch again when
-its answer is late. Your actor implements `on_call`: for that path, read the batch with `parse_input` and keep order
-with `InputOrder` (both in `pot/input.hpp`, which documents the 8-byte event), act on each event `take()` returns true
-for, and answer at once with `node().reply_call(from, msg_id, path, Value::of_u32(order.last))` -- the hub sends the
+its answer is late. Your actor implements `on_call`: for that path, read the batch with `parse_input` (which also gives
+its stream: a restarted hub numbers from 1 again in a new one) and keep order with `InputOrder` (both in
+`pot/input.hpp`, which documents the 8-byte event), act on each event `take(stream, seq)` returns true for, and answer at once with `node().reply_call(from, msg_id, path, Value::of_u32(order.last))` -- the hub sends the
 next batch only after that answer. Pin the actor: events go to one board. `builtin:key_echo` is the worked example.
 
 An actor that knows where something is declares seven outputs under one prefix, and the dashboard's floor plan

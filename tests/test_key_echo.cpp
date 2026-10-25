@@ -108,8 +108,10 @@ struct ECell {
         }
     }
     // A batch as the hub builds it (potluck.events.encode_batch): keys with consecutive numbers from `first`.
-    static std::vector<uint8_t> keys(uint16_t first, const std::vector<uint16_t>& codes, bool down = true) {
-        std::vector<uint8_t> b = {kInputVersion, static_cast<uint8_t>(codes.size())};
+    static std::vector<uint8_t> keys(uint16_t first, const std::vector<uint16_t>& codes, bool down = true,
+                                     uint16_t stream = 0x5151) {
+        std::vector<uint8_t> b = {kInputVersion, static_cast<uint8_t>(codes.size()), static_cast<uint8_t>(stream),
+                                  static_cast<uint8_t>(stream >> 8)};
         for (size_t i = 0; i < codes.size(); ++i) {
             const uint16_t seq = static_cast<uint16_t>(first + i);
             b.insert(b.end(), {static_cast<uint8_t>(seq), static_cast<uint8_t>(seq >> 8), kInputKey,
@@ -158,10 +160,21 @@ TEST(key_echo, a_resent_batch_is_dropped_and_a_skipped_number_is_counted) {
     CHECK_EQ(c.results.back().v, 6u);
 }
 
-TEST(key_echo, a_batch_that_is_not_version_one_is_refused) {
+TEST(key_echo, a_restarted_hubs_numbers_are_taken_as_new_not_dropped) {
+    // 2026-10-25 on the bench: after a hub restart all 1,200 keys of a run were dropped as already taken -- and answered
+    // as taken. A new stream starts the numbers over.
+    ECell c;
+    c.send_batch(ECell::keys(1, {0x04, 0x05, 0x06}, true, 0x1111));
+    c.send_batch(ECell::keys(1, {0x07, 0x08}, true, 0x2222));  // the hub restarted: 1 again, another stream
+    CHECK_EQ(c.read(kCount), 5u);
+    CHECK_EQ(c.actor->order().dropped, 0u);
+    CHECK_EQ(c.read(kGaps), 0u);
+}
+
+TEST(key_echo, a_batch_that_is_not_this_version_is_refused) {
     ECell c;
     std::vector<uint8_t> b = ECell::keys(1, {0x04});
-    b[0] = 2;
+    b[0] = 1;
     c.send_batch(b);
     CHECK_EQ(c.results.size(), size_t{1});
     CHECK(c.results[0].o == Node::CallOutcome::Refused);
@@ -171,18 +184,20 @@ TEST(key_echo, a_batch_that_is_not_version_one_is_refused) {
 TEST(input, parse_bounds_and_numbers_wrap) {
     InputEvent ev[kInputBatchMax];
     std::vector<uint8_t> b = ECell::keys(7, {0x04, 0x05});
-    CHECK_EQ(parse_input(b.data(), static_cast<uint16_t>(b.size()), ev, kInputBatchMax), 2);
+    uint16_t stream = 0;
+    CHECK_EQ(parse_input(b.data(), static_cast<uint16_t>(b.size()), ev, kInputBatchMax, &stream), 2);
+    CHECK_EQ(stream, uint16_t{0x5151});
     CHECK_EQ(ev[1].seq, uint16_t{8});
     CHECK_EQ(ev[1].a, int16_t{0x05});
-    CHECK_EQ(parse_input(b.data(), static_cast<uint16_t>(b.size() - 1), ev, kInputBatchMax), -1);  // cut short
+    CHECK_EQ(parse_input(b.data(), static_cast<uint16_t>(b.size() - 1), ev, kInputBatchMax, nullptr), -1);  // cut short
     b[1] = kInputBatchMax + 1;
-    CHECK_EQ(parse_input(b.data(), static_cast<uint16_t>(b.size()), ev, kInputBatchMax), -1);
-    CHECK(2 + kInputBatchMax * kInputEventBytes <= kMaxCallArgsV1);
+    CHECK_EQ(parse_input(b.data(), static_cast<uint16_t>(b.size()), ev, kInputBatchMax, nullptr), -1);
+    CHECK(2 + 4 + kInputBatchMax * kInputEventBytes <= kMaxCallArgsV1);  // passed on: the member's two bytes too
     InputOrder o;
-    CHECK(o.take(0xFFFE));
-    CHECK(o.take(0xFFFF));
-    CHECK(o.take(0x0000));  // past 65535 the numbers wrap
-    CHECK(!o.take(0xFFFF));
+    CHECK(o.take(9, 0xFFFE));
+    CHECK(o.take(9, 0xFFFF));
+    CHECK(o.take(9, 0x0000));  // past 65535 the numbers wrap
+    CHECK(!o.take(9, 0xFFFF));
     CHECK_EQ(o.missed, 0u);
     CHECK_EQ(o.taken, 3u);
 }

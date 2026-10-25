@@ -8,13 +8,14 @@ already took. Which events an app takes is its module's "takes" (a descriptor ke
 
 from __future__ import annotations
 
+import secrets
 import struct
 import threading
 import time
 from collections import deque
 
 KINDS = {"key": 1, "pointer": 2}  # pot/input.hpp's kInputKey, kInputPointer
-VERSION = 1
+VERSION = 2  # pot/input.hpp's kInputVersion: the stream in the header
 BATCH_MAX = 24  # pot/input.hpp's kInputBatchMax
 QUEUE_MAX = 512  # events waiting per app; beyond it a POST is refused (429), never silently dropped
 RESEND_S = 0.15  # ~5 x the median answer through the cabled board (32 ms, 2026-10-25); a late answer after it is harmless
@@ -56,11 +57,11 @@ def check_events(events, takes: tuple[str, ...]) -> list[tuple[int, int, int, in
     return out
 
 
-def encode_batch(batch: list[tuple]) -> bytes:
-    """The CALL's arguments for (seq, kind, flags, a, b, ...) events, as pot/input.hpp parses them."""
+def encode_batch(batch: list[tuple], stream: int) -> bytes:
+    """The CALL's arguments for (seq, kind, flags, a, b, ...) events of `stream`, as pot/input.hpp parses them."""
     if not 1 <= len(batch) <= BATCH_MAX:
         raise InputError(f"a batch is 1..{BATCH_MAX} events")
-    out = bytes([VERSION, len(batch)])
+    out = bytes([VERSION, len(batch)]) + struct.pack("<H", stream & 0xFFFF)
     for seq, kind, flags, a, b, *_ in batch:
         out += struct.pack("<HBBhh", seq & 0xFFFF, kind, flags, a if a < 0x8000 else a - 0x10000, b)
     return out
@@ -82,6 +83,9 @@ class InputQueue:
         self.sent_at = 0.0
         self.again = False  # the batch out goes again on the next pass (not sent, or partly answered): no resend
         self.next_seq = 1
+        # a stream of its own: a restarted hub numbers from 1 again, and a board must not take those numbers for ones it
+        # already took (found 2026-10-25 -- a whole run dropped as duplicates, and answered as taken)
+        self.stream = secrets.randbelow(0xFFFF) + 1
         self.queued = self.batches = self.acked = self.resent = self.refused = 0
         self.last_ack_at: float | None = None
         self.latencies: deque = deque(maxlen=2000)  # seconds from POST to the board's answer, per event
@@ -115,7 +119,7 @@ class InputQueue:
                     self.in_flight.append(self.waiting.popleft())
                 self.batches += 1
             self.sent_at = now
-            return encode_batch(self.in_flight)
+            return encode_batch(self.in_flight, self.stream)
 
     def ack(self, last: int, now: float) -> int:
         """The board took everything up to `last`: those leave; the count that did."""
