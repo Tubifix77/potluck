@@ -99,8 +99,8 @@ void on_retry(void*) {
     if (!g_assoc.load()) scan_now();  // an association that came in meanwhile stands
 }
 
-// The access point to join: on the preferred channel if one there is within the margin of the strongest,
-// else the strongest. Returns false if the network was not heard.
+// The access point to join: on the preferred channel if one there is within the margin of the strongest, or
+// heard at least CONFIG_POT_WIFI_PREFER_FLOOR_DBM (a good link: no reason to split the cell), else the strongest. Returns false if the network was not heard.
 bool pick(wifi_ap_record_t& out) {
     EXT_RAM_BSS_ATTR static wifi_ap_record_t recs[kMaxRecords];  // only the event task: PSRAM where there is any
     uint16_t n = kMaxRecords;
@@ -118,7 +118,8 @@ bool pick(wifi_ap_record_t& out) {
     }
     if (best < 0) return false;
     const bool take_pref = best_pref >= 0 && (force != 0 ||
-                                              recs[best_pref].rssi >= recs[best].rssi - CONFIG_POT_WIFI_PREFER_MARGIN_DB);
+                                              recs[best_pref].rssi >= recs[best].rssi - CONFIG_POT_WIFI_PREFER_MARGIN_DB ||
+                                              recs[best_pref].rssi >= CONFIG_POT_WIFI_PREFER_FLOOR_DBM);
     out = recs[take_pref ? best_pref : best];
     ESP_LOGI(kTag, "joining an access point on channel %u (%d dBm)%s", static_cast<unsigned>(out.primary),
              static_cast<int>(out.rssi), take_pref ? ", the cell's" : (prefer != 0 ? "; none within the margin on the cell's" : ""));

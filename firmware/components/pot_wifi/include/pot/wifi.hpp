@@ -8,7 +8,8 @@
 //    tools/wifi_set.py from a file); nothing typed is ever printed back, and ESP-IDF's own "connected with
 //    <name>" line is silenced, since a soak captures the console whole;
 //  * a scan before each association that prefers an access point on the channel the cell is on, within a margin
-//    of the strongest (the house mesh serves one network on several channels: CR-7, M0-LOG session 31), so a
+//    of the strongest or heard at -70 dBm or better (the house mesh serves one network on several channels:
+//    CR-7, M0-LOG session 31; the floor from 2026-10-25), so a
 //    station does not drag or split the cell when it joins;
 //  * reconnects that back off (1 s, doubling to 60 s): each scan takes the radio off the cell's channel for
 //    seconds (M0-LOG session 30), and the node declares a looser heartbeat window while the station hunts.

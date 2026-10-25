@@ -363,6 +363,17 @@ config POT_WIFI_PREFER_MARGIN_DB
         A house mesh serves one network on several channels; a station that joins another channel than
         the cell's drags or splits the cell (CR-7, M0-LOG session 31). The same rule as the extender's.
 
+config POT_WIFI_PREFER_FLOOR_DBM
+    int "Also prefer an access point on the cell's channel heard at least this strong (dBm)"
+    depends on POT_WIFI
+    range -95 -30
+    default -70
+    help
+        However much stronger another channel's access point is: a link this good serves the station, and
+        joining another channel splits the cell until the split probe heals it -- up to ~5 minutes, in which a
+        firmware rollout stopped and the board rolled back (2026-10-25: C joined channel 1 at -43 dBm at every
+        restart while the cell stayed on 11).
+
 config POT_WIFI_HUNT_MISSES
     int "Heartbeat misses this node declares while its station looks for the network"
     depends on POT_WIFI

@@ -722,9 +722,13 @@ def _fits(fw: Firmware) -> Firmware:
 
 #: After a board restarts into new firmware the next one may be out of reach for a while: an extender's Wi-Fi can join
 #: the house mesh's other access point and take the cell to its channel while a board with its own Wi-Fi stays on the
-#: old one, until the split probe brings it over (within ~3 minutes, pot/split_probe.hpp). Found 2026-10-19 and -20: the
-#: rollout stopped at C both times, seconds after B restarted, and C was back in the cell 2-3 minutes later.
-SETTLE_S = 240.0
+#: old one, until the split probe brings it over (pot/split_probe.hpp). Found 2026-10-19 and -20: the rollout stopped at
+#: C both times, seconds after B restarted, and C was back in the cell 2-3 minutes later. 2026-10-25: a board's first probe
+#: can find nothing and return, so the worst case is kSplitMs 60 s + a probe (kLandMs 45 + kDwellMs 30) + kFirstBackoffMs
+#: 120 s + a second probe 75 s = 330 s, plus its boot and 100 heartbeats to confirm -- B and C each took ~4-5 minutes
+#: that day, and the rollout stopped at both at 240 s.
+SETTLE_S = 420.0
+FW_BACK_S = SETTLE_S  # how long a board that restarted into new firmware may take to answer again
 
 
 def wait_reachable(b, n: int, log, settle_s: float = SETTLE_S, poll_s: float = 5.0) -> bool:
@@ -2019,7 +2023,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                     except RequestTimeout as exc:
                         # M19: it may have taken the image by catch-up from a board already updated (then it restarted
                         # under the PC's push) -- that is the image, confirmed the same way
-                        got = fwm.wait_confirmed(b, n, counter, 240.0)
+                        got = fwm.wait_confirmed(b, n, counter, FW_BACK_S)
                         if got is not None and got.get("running") == counter and got.get("state") == "confirmed":
                             reboots_expected.add(n)
                             log(f"firmware: 0x{n:04x} took {got['version']} by catch-up while the PC was sending it")
@@ -2036,7 +2040,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                         return 1
                     if r["status"] == "downgrade":
                         # M19: it may have taken this very image by catch-up before the PC came to it
-                        got = fwm.wait_confirmed(b, n, counter, 240.0)
+                        got = fwm.wait_confirmed(b, n, counter, FW_BACK_S)
                         if got is not None and got.get("running") == counter and got.get("state") == "confirmed":
                             reboots_expected.add(n)
                             log(f"firmware: 0x{n:04x} already took {got['version']} by catch-up")
@@ -2045,12 +2049,12 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                         print(f"FAILED: firmware to 0x{n:04x}: {r['status']} -- it keeps the image it runs; "
                               f"stopped before the package")
                         return 1
-                    done = fwm.wait_confirmed(b, n, counter, 240.0)
+                    done = fwm.wait_confirmed(b, n, counter, FW_BACK_S)
                     if done is not None and done.get("status") == "unreachable":
                         # Found 2026-10-18: B took the image, restarted into it and came up on another channel of the
                         # house mesh; "received 0, running 59" in the unreachable reply was read as nothing sent.
                         print(f"FAILED: 0x{n:04x} took firmware {counter} and restarted, but has not answered for "
-                              f"240 s -- it confirms the image itself once it has a radio peer, or rolls back; "
+                              f"{FW_BACK_S:.0f} s -- it confirms the image itself once it has a radio peer, or rolls back; "
                               f"stopped before the other boards")
                         return 1
                     if done is None or done["running"] != counter or done["state"] != "confirmed":
