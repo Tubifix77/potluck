@@ -46,6 +46,9 @@ void Auth::set_login(const uint8_t salt[kSaltBytes], const uint8_t hash[kHashByt
     std::memcpy(salt_, salt, kSaltBytes);
     std::memcpy(hash_, hash, kHashBytes);
     enabled_ = true;
+    fails_ = 0;  // the owner setting it on the console is the way back from a lockout a stranger keeps going
+    locked_until_ = 0;
+    lock_ms_ = kLockMs;
 }
 
 void Auth::clear_login() {

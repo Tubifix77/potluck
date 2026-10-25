@@ -383,7 +383,7 @@ bool start(bool other_ap) {
     cfg.max_uri_handlers = 16;  // 2 paths x (GET + 4 refused methods), and M26's three POSTs
     cfg.max_open_sockets = 3;
     cfg.lru_purge_enable = true;
-    cfg.stack_size = 4096;
+    cfg.stack_size = 5120;  // M26: the login's and the write's buffers (review, 2026-10-26: 4096 was close)
     if (httpd_start(&g_server, &cfg) != ESP_OK) {
         ESP_LOGE(kTag, "HTTP server not started");
         g_reason = 3;

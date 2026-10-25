@@ -88,6 +88,18 @@ TEST(pocket_auth, each_lockout_after_the_first_is_twice_as_long_until_a_right_pa
     CHECK(a.login("ship-ahoy-ship", 14, t + kLockMs + 1, &counting_random, &s) == LoginResult::Ok);  // reset to one
 }
 
+TEST(pocket_auth, the_owner_setting_the_login_again_ends_a_lockout) {
+    Auth a = with_login("ship-ahoy-ship");
+    const Session* s = nullptr;
+    for (int i = 0; i < 5; ++i) a.login("wrong", 5, 1000, &counting_random, &s);
+    CHECK(a.login("ship-ahoy-ship", 14, 2000, &counting_random, &s) == LoginResult::Locked);
+    uint8_t salt[kSaltBytes] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+    uint8_t h[kHashBytes];
+    hash_login(salt, "ship-ahoy-ship", 14, h);
+    a.set_login(salt, h);  // what the console's POT! pocket login does
+    CHECK(a.login("ship-ahoy-ship", 14, 2100, &counting_random, &s) == LoginResult::Ok);
+}
+
 TEST(pocket_auth, a_session_ends_after_fifteen_idle_minutes_and_the_oldest_gives_way) {
     Auth a = with_login("pw");
     const Session* s = nullptr;
