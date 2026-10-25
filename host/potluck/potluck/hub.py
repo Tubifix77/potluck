@@ -1146,9 +1146,19 @@ class Model:
         if self._services is None or self._services[:3] != (system, names, folder):
             from .services import PcServices
             hub = getattr(self, "hub", None)
-            on_file = (lambda caller, path, name, data: hub.bulk.start(caller, path, name, data)) if hub is not None else None
+            on_file = ((lambda caller, path, name, data: hub.bulk.start(caller, path, name, data, self._bulk_rate()))
+                       if hub is not None else None)
             self._services = (system, names, folder, PcServices(system, list(names), folder, on_file))
         return self._services[3]
+
+    def _bulk_rate(self) -> float | None:
+        """M25: the cluster file's bulk.rate (chunks a second), read afresh at each transfer: tuned without a restart."""
+        try:
+            doc = json.loads(Path(self.cluster.path).read_text(encoding="utf-8-sig"))
+            r = (doc.get("bulk") or {}).get("rate")
+            return float(r) if isinstance(r, (int, float)) and 1 <= r <= 200 else None
+        except (OSError, ValueError, AttributeError):
+            return None
 
     def _bulk_json(self) -> dict:
         """M25: the folder the PC offers, its files, and the reads of them (potluck.bulk)."""

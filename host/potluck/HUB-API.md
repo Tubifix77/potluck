@@ -154,7 +154,7 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   resent, ms}]}` -- the folder the cluster file's `bulk` offers (`null` when none), what the PC's `file` service would
   serve from it, and the reads of it by boards' apps (`state` reading, done or failed; the last 20 kept). The hub
   answers a board's `file` CALL with the size and pushes the file to the asking app's input through the board on the
-  cable, three 192-byte chunks in flight and at most 30 a second (the radio's share for files: unpaced, a read cost
+  cable, three 192-byte chunks in flight and at most 30 a second (the cluster file's `bulk.rate`, read at each transfer) (the radio's share for files: unpaced, a read cost
   every link up to 2 points of heartbeat loss), sending again from the app's last answer after 150 ms of quiet.
   `cell.inputs` (M24, 2026-10-25): per app given events, `{app, board, takes, queued, waiting, batches, taken, resent,
   refused, p50_ms, p99_ms, last_answer_at}` -- `taken` the events the board answered for, `p50_ms`/`p99_ms` from a

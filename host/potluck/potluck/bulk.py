@@ -66,10 +66,13 @@ class Bulk:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
-    def start(self, board: int, path_hash: int, name: str, data: bytes) -> Transfer:
-        """A new transfer to (board, path); one there already is replaced -- the app asked again."""
+    def start(self, board: int, path_hash: int, name: str, data: bytes, rate: float | None = None) -> Transfer:
+        """A new transfer to (board, path); one there already is replaced -- the app asked again. `rate`: chunks a second
+        from now on (the cluster file's bulk.rate, read at each start), else as before."""
         t = Transfer(board, path_hash, name, data, self.clock())
         with self.lock:
+            if rate:
+                self.gap = 1.0 / rate
             self.transfers = [x for x in self.transfers if (x.board, x.path_hash) != (board, path_hash)][-19:] + [t]
             if self._thread is None:
                 self._thread = threading.Thread(target=self._run, name="potluck-bulk", daemon=True)

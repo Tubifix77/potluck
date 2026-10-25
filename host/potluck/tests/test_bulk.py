@@ -140,6 +140,10 @@ class Cluster(unittest.TestCase):
                 cluster(pc_services=["file"])
             with self.assertRaisesRegex(ap.ApplyError, "not a folder"):
                 cluster(bulk={"folder": "nope"})
+            cluster(bulk={"folder": "files", "rate": 15})  # chunks a second, read by the hub at each transfer
+            for bad in (0, 500, "fast", True):
+                with self.assertRaisesRegex(ap.ApplyError, "rate"):
+                    cluster(bulk={"folder": "files", "rate": bad})
 
 
 class Compile(unittest.TestCase):
