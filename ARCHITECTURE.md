@@ -1252,7 +1252,7 @@ to 200 bytes of text and the PC speaks it with the system's own voice; the answe
 makes the PC say a phrase and the model counts the call; with the PC off the call fails within its deadline and the
 service reads "gone".
 
-**M24 — keyboard and mouse into the cell.** The event kind through the hub: `POST /api/input {"app", "events": [...]}`
+**M24 — keyboard and mouse into the cell.** *(Accepted 2026-10-25: 1,200 keys at 20 a second to C, all taken in order, p99 141.7 ms. As built, the hub delivers through the board on the PC's cable, which passes each batch on as a CALL (`kCallForward`), and each batch carries a stream so a restarted hub's numbers start over -- HUB-API.md, pot/input.hpp.)* The event kind through the hub: `POST /api/input {"app", "events": [...]}`
 (`key` and `pointer`); the hub numbers them and delivers them in order to the app's input; an app declares
 `"takes": ["key", "pointer"]` in its module descriptor and the model lists it (`apps[].takes`); a key-echo test app ships
 with it. *Acceptance:* 20 key events a second from the PC reach a board's app in order, none lost, the 99th

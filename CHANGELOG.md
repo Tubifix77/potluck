@@ -5,6 +5,7 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **The PC's cable answers in milliseconds.** The cabled board's reader held every short frame from the PC 50 ms (`uart_read_bytes` waits for its whole length): reads through the cable 72 -> 10 ms at the median, firmware rollouts about twice as fast. The tray starts the PC's node from the newest package it signed when the hub has not heard one yet (a hub that started deaf after an install stayed deaf).
 - **Keyboard and mouse into the cell (M24).** `POST /api/input` gives an app key and pointer events; the hub numbers
   them and delivers them in order to the app's board as CALLs of `act/<actor>/in` (the board on the cable passes them
   on, `kCallForward`, as it passes an outside write on), one batch at a time, again when an answer is late; `cell.inputs` shows the delivery and
