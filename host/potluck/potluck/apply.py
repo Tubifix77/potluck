@@ -1670,6 +1670,14 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
                 package.add(dp.led_switch_path(m.system, node))
             if a.module == "builtin:inbox":
                 package.update(dp.inbox_path(m.system, a.name, name) for name, *_ in dp.inbox_outputs(a, a.name))
+            if a.module == "builtin:speak":  # M23 (counted from 2026-10-25: it declares both on its board)
+                package.update(dp.speak_paths(m.system, a.name))
+            if a.module == "builtin:key_echo":  # M24
+                package.update(dp.key_echo_paths(m.system, a.name))
+            if a.module == "builtin:mc_job":  # M9's result; M22's control
+                package.add(dp.mc_job_path(m.system, node))
+                if a.config.get("control"):
+                    package.add(dp.mc_job_ctl_path(m.system, node))
             if a.module == "builtin:position":
                 continue  # its board's own (pos_own); others adopt them when they read them
             package.update(expand(spec, a, node))
