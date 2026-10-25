@@ -287,6 +287,7 @@ class Cluster:
     plan: dict[str, Any] | None = None
     #: M23: the named services the hub's PC offers the cell (potluck.services: "time", "speech") -- the PC user's choice.
     pc_services: tuple[str, ...] = ()
+    bulk_folder: str | None = None  # M25: the folder the PC's `file` service offers (cluster file bulk.folder)
     #: M19: the cells (groups) each board belongs to, by name -- one, or two for a foreman. A cluster file with none
     #: is one cell as before; with cells, a board admits only boards of its own cells.
     cells: dict[int, tuple[str, ...]] = field(default_factory=dict)
@@ -394,7 +395,7 @@ def load_cluster(path: str) -> Cluster:
     if not isinstance(doc, dict) or doc.get("schema") != SCHEMA:
         raise ApplyError(f"{path}: not a cluster file (\"schema\": \"{SCHEMA}\")")
     allowed = {"schema", "system", "port", "baud", "boards", "keys", "firmware", "apps", "package", "verify",
-               "comment", "outside", "present", "plan", "cells", "pc_services"}
+               "comment", "outside", "present", "plan", "cells", "pc_services", "bulk"}
     extra = set(doc) - allowed
     if extra:
         raise ApplyError(f"{path}: unknown key(s) {sorted(extra)}")
@@ -570,6 +571,18 @@ def load_cluster(path: str) -> Cluster:
     if not isinstance(svcs, list) or any(x not in SERVICES for x in svcs) or len(set(svcs)) != len(svcs):
         raise ApplyError(f"pc_services: a list of the services this PC offers the cell, from {sorted(SERVICES)}")
     cl.pc_services = tuple(svcs)
+    bulk = doc.get("bulk")  # M25: {"folder": ...} -- what the PC's `file` service offers, read-only
+    if bulk is not None:
+        if not isinstance(bulk, dict) or set(bulk) != {"folder"} or not isinstance(bulk["folder"], str):
+            raise ApplyError('bulk: {"folder": "<a folder this PC offers the cell, read-only>"}')
+        folder = Path(bulk["folder"])
+        if not folder.is_absolute():
+            folder = p.parent / folder
+        if not folder.is_dir():
+            raise ApplyError(f"bulk.folder: {folder} is not a folder")
+        cl.bulk_folder = str(folder)
+    if "file" in cl.pc_services and cl.bulk_folder is None:
+        raise ApplyError('pc_services names "file", so the cluster file says which folder it offers: "bulk": {"folder"}')
     cl.cells = cells
     cw, parents = {}, {}
     cells_doc = doc.get("cells") or {}
@@ -1461,6 +1474,9 @@ def actor_reads(m, a, boards: list[int]) -> tuple[str, list[str]]:
             reads.append(dp.led_switch_path(m.system, node))
         if a.module == "builtin:key_echo":  # M24: what it took
             reads += list(dp.key_echo_paths(m.system, a.name))
+        if a.module == "builtin:file_hash":  # M25: its reads and its request
+            p = dp.file_hash_paths(m.system, a.name)
+            reads += [p[k] for k in ("bytes", "state", "digest", "ms", "go")]
         if a.module == "builtin:speak":  # M23: its result and its request
             reads += list(reversed(dp.speak_paths(m.system, a.name)))
         if a.module == "builtin:mc_job":  # M9's result; M22's control, when it has one
@@ -1678,6 +1694,8 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
                 package.update(dp.speak_paths(m.system, a.name))
             if a.module == "builtin:key_echo":  # M24
                 package.update(dp.key_echo_paths(m.system, a.name))
+            if a.module == "builtin:file_hash":  # M25: all but its input, which is a CALL path, not an entry
+                package.update(v for k, v in dp.file_hash_paths(m.system, a.name).items() if k != "in")
             if a.module == "builtin:mc_job":  # M9's result; M22's control
                 package.add(dp.mc_job_path(m.system, node))
                 if a.config.get("control"):

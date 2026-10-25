@@ -143,6 +143,14 @@ bool check_decl(const ActorDecl& a, const char*& w) {
             }
             break;
         }
+        case ActorType::FileHash: {
+            FileHashConfig fh{};
+            if (a.node_id == kPortableNode || a.node_id == kEveryNode || !file_hash_config(a, fh)) {
+                w = "file_hash must be pinned, with a service, a provider, its resources and a 1..64-byte name";
+                return false;
+            }
+            break;
+        }
         case ActorType::KeyEcho: {
             KeyEchoConfig ke{};
             if (a.node_id == kPortableNode || a.node_id == kEveryNode || !key_echo_config(a, ke)) {
@@ -607,6 +615,30 @@ bool speak_config(const ActorDecl& a, SpeakConfig& out) {
     if (out.text_len == 0 || out.text_len > kSpeakTextMax || a.cfg_len != kSpeakCfgFixed + out.text_len) return false;
     std::memcpy(out.text, a.cfg + kSpeakCfgFixed, out.text_len);
     return out.svc_hash != 0 && out.ctl_hash != 0 && out.out_hash != 0 && out.ctl_hash != out.out_hash;
+}
+
+bool file_hash_config(const ActorDecl& a, FileHashConfig& out) {
+    if (a.type != ActorType::FileHash || a.cfg == nullptr || a.cfg_len < kFileHashCfgFixed + 1) return false;
+    out.svc_hash = rd32(a.cfg);
+    out.provider = rd16(a.cfg + 4);
+    out.in_hash = rd32(a.cfg + 6);
+    out.go_hash = rd32(a.cfg + 10);
+    out.bytes_hash = rd32(a.cfg + 14);
+    out.state_hash = rd32(a.cfg + 18);
+    out.digest_hash = rd32(a.cfg + 22);
+    out.ms_hash = rd32(a.cfg + 26);
+    out.name_len = a.cfg[30];
+    if (out.name_len == 0 || out.name_len > kFileNameMax || a.cfg_len != kFileHashCfgFixed + out.name_len) return false;
+    std::memcpy(out.name, a.cfg + kFileHashCfgFixed, out.name_len);
+    const uint32_t h[7] = {out.svc_hash, out.in_hash, out.go_hash, out.bytes_hash, out.state_hash, out.digest_hash,
+                           out.ms_hash};
+    for (int i = 0; i < 7; ++i) {
+        if (h[i] == 0) return false;
+        for (int j = 0; j < i; ++j) {
+            if (h[i] == h[j]) return false;
+        }
+    }
+    return true;
 }
 
 bool key_echo_config(const ActorDecl& a, KeyEchoConfig& out) {

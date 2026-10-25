@@ -894,6 +894,9 @@ def writable_actor_paths(m: Manifest) -> set[str]:
                 pass
         elif a.module == "builtin:speak":
             out.add(speak_paths(m.system, a.name)[0])
+        elif a.module == "builtin:file_hash":  # M25: its request, act/<name>/go
+            from .deploy import file_hash_paths
+            out.add(file_hash_paths(m.system, a.name)["go"])
     return out
 
 

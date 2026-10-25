@@ -120,6 +120,7 @@ enum class ActorType : uint8_t {
     Inbox = 14,     // 2026-10-20: values a program outside the cell writes, act/<actor>/<name> (pot/inbox.hpp)
     Speak = 15,     // M23: asks the PC to speak a phrase (its svc/speech) when act/<actor>/say is written (pot/speak.hpp)
     KeyEcho = 16,   // M24: takes key and pointer events from the PC (act/<actor>/in) and echoes them (pot/key_echo.hpp)
+    FileHash = 17,  // M25: reads a file the PC offers (svc/file) and hashes it, the bulk channel's test app (pot/file_hash.hpp)
 };
 
 // M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an
@@ -368,6 +369,24 @@ struct KeyEchoConfig {
     uint32_t gaps_hash;
 };
 bool key_echo_config(const ActorDecl& a, KeyEchoConfig& out);
+
+// FileHash (M25, 2026-10-25): when `go_hash` (act/<actor>/go) is written, ask the PC's file service (`svc_hash` on
+// `provider`) for the file `name`; the hub then pushes it to `in_hash` (act/<actor>/in) in chunks (pot/bulk.hpp). The
+// actor hashes what arrives with SHA-512 and publishes `bytes_hash` (u32 received), `state_hash` (u32: 0 idle, 1 reading,
+// 2 done, 3 failed -- no such file, the PC gone, or 10 s without a chunk), `digest_hash` (u64: the SHA-512's first eight
+// bytes, big-endian, when done) and `ms_hash` (u32: from the request to the last byte). Pinned.
+//
+//   svc u32, provider u16, in u32, go u32, bytes u32, state u32, digest u32, ms u32, name_len u8 (1..64), name
+constexpr uint8_t kFileHashCfgFixed = 31;
+constexpr uint8_t kFileNameMax = 64;
+struct FileHashConfig {
+    uint32_t svc_hash;
+    uint16_t provider;
+    uint32_t in_hash, go_hash, bytes_hash, state_hash, digest_hash, ms_hash;
+    uint8_t name_len;
+    uint8_t name[kFileNameMax];
+};
+bool file_hash_config(const ActorDecl& a, FileHashConfig& out);
 
 // ---------------------------------------------------------------------------------------------
 // The A/B state machine, persisted in NVS.

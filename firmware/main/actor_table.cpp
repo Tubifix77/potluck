@@ -25,6 +25,7 @@
 #endif
 #include "pot/speak.hpp"
 #include "pot/key_echo.hpp"
+#include "pot/file_hash.hpp"
 #include "pot/svc_client.hpp"
 #include "pot/ticker.hpp"
 
@@ -142,6 +143,7 @@ const ActorKind kBuiltinRows[] = {
     kInboxKind,      // 2026-10-20: values a program outside the cell writes, through the hub
     kSpeakKind,      // M23: asks the PC to speak a phrase (its svc/speech)
     kKeyEchoKind,    // M24: takes key and pointer events from the PC, echoes them
+    kFileHashKind,   // M25: reads a file the PC offers and hashes it
 #if CONFIG_SPIRAM
     kForemanKind,    // M19: a cell's foreman role (portable; the reconciler needs PSRAM)
 #endif

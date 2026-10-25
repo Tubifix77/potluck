@@ -157,13 +157,13 @@ class HubSide(unittest.TestCase):
         sent = []
         hub.send_frame = lambda op, payload, dst=None, msg_id=0, lclass=3, **kw: sent.append((op, dst, Call.parse(payload)))
         args = ev.encode_batch([(1, 1, 1, 4, 0)], 7)
-        self.assertFalse(hub._send_input(0x8160, 0xABCD1234, args))  # no board on the cable yet: kept
+        self.assertFalse(hub._call_app(0x8160, 0xABCD1234, args))  # no board on the cable yet: kept
         hub.peer_node_id = 0x6300
-        self.assertTrue(hub._send_input(0x8160, 0xABCD1234, args))
+        self.assertTrue(hub._call_app(0x8160, 0xABCD1234, args))
         op, dst, call = sent[-1]
         self.assertEqual((op, dst, call.path_hash, call.flags), (fr.Op.CALL, 0x6300, 0xABCD1234, CALL_FORWARD))
         self.assertEqual(call.args, struct.pack("<H", 0x8160) + args)  # the member first, then the batch
-        self.assertTrue(hub._send_input(0x6300, 0xABCD1234, args))  # the cabled board's own app: a plain CALL
+        self.assertTrue(hub._call_app(0x6300, 0xABCD1234, args))  # the cabled board's own app: a plain CALL
         self.assertEqual((sent[-1][2].flags, sent[-1][2].args), (0, args))
         hub.inputs.stop()
 

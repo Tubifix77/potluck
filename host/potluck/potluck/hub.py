@@ -153,8 +153,10 @@ class Hub(Bridge):
         self._clients_lock = threading.Lock()
         self.node_client: _Client | None = None  # M10's placement host, while attached
         self.services_for = lambda: None  # M23: the PC's named services (potluck.services.PcServices), from the model
+        from .bulk import Bulk
         from .events import Inputs
-        self.inputs = Inputs(self._send_input)  # M24: key and pointer events on their way to apps
+        self.inputs = Inputs(self._call_app)  # M24: key and pointer events on their way to apps
+        self.bulk = Bulk(self._call_app)  # M25: files the PC offers, on their way to the apps that asked
         self._node_window_s = 6.0  # its declared death window (HELLO), for the silence after it goes
         self._quiet_until = 0.0     # after it went: say nothing as 0x00fe until the cell has declared it dead
         self.relay_counts = {"clients": 0, "requests": 0, "replies": 0, "unmatched": 0, "fanned_out": 0,
@@ -233,8 +235,8 @@ class Hub(Bridge):
                 self._fan_out(raw)
         super()._on_raw_frame(raw)
 
-    def _send_input(self, owner: int, path_hash: int, args: bytes) -> bool:
-        """M24: one batch of events CALLed to an app's input, through the cabled board: for another board it is marked to
+    def _call_app(self, owner: int, path_hash: int, args: bytes) -> bool:
+        """M24: one CALL of an app's input (a batch of events; M25: a chunk of a file), through the cabled board: for another board it is marked to
         be passed on (ns_payloads.hpp kCallForward, the member first), and the board brings the answer back -- as an
         outside write is passed on. (Through the PC's node it took 741 ms at the 99th percentile on the bench,
         2026-10-25: that node's own round trip and its pending slots, shared with presenting.) False: no board yet."""
@@ -254,6 +256,13 @@ class Hub(Bridge):
         except ValueError:
             return
         if rep.reply_to != fr.Op.CALL:
+            return
+        t = self.bulk.by_path(rep.path_hash)  # M25: a chunk's answer -- the offset the app expects next
+        if t is not None:
+            if rep.status == int(NsError.OK):
+                self.bulk.ack(t, int.from_bytes(bytes(rep.value.raw[:4]), "little"))
+            else:
+                self.bulk.fail(t)  # the app refused a chunk: no such reader there
             return
         q = self.inputs.by_path(rep.path_hash)  # from the app's board, or from the cabled board passing it on
         if q is None:
@@ -1121,6 +1130,7 @@ class Model:
                 "presenter": presenter,
                 "jobs": self._jobs_json(),
                 "services": self.pc_services().snapshot() if self.pc_services() is not None else [],
+                "bulk": self._bulk_json(),  # M25
                 "inputs": (self.hub.inputs.snapshot()  # M24
                            if getattr(getattr(self, "hub", None), "inputs", None) is not None else []),
                 "plan": getattr(self.cluster, "plan", None) if self.cluster is not None else None}
@@ -1132,10 +1142,20 @@ class Model:
         if not names:
             return None
         system = getattr(self.cluster, "system", "lab")
-        if self._services is None or self._services[:2] != (system, names):
+        folder = getattr(self.cluster, "bulk_folder", None)  # M25: what `file` serves from
+        if self._services is None or self._services[:3] != (system, names, folder):
             from .services import PcServices
-            self._services = (system, names, PcServices(system, list(names)))
-        return self._services[2]
+            hub = getattr(self, "hub", None)
+            on_file = (lambda caller, path, name, data: hub.bulk.start(caller, path, name, data)) if hub is not None else None
+            self._services = (system, names, folder, PcServices(system, list(names), folder, on_file))
+        return self._services[3]
+
+    def _bulk_json(self) -> dict:
+        """M25: the folder the PC offers, its files, and the reads of them (potluck.bulk)."""
+        svc = self.pc_services()
+        bulk = getattr(getattr(self, "hub", None), "bulk", None)
+        return {"folder": getattr(self.cluster, "bulk_folder", None) if self.cluster is not None else None,
+                "files": svc.files() if svc is not None else [], "reads": bulk.snapshot() if bulk is not None else []}
 
     def _jobs_json(self) -> list[dict]:
         """M22: each board's job on borrowed cores (M9's mc_job), from its telemetry: the run in progress or the last.
@@ -2233,6 +2253,7 @@ def _inbox_type(model, path: str) -> int:
     for a in m.actors:
         node = m.placement_of(a)
         if (a.module == "builtin:speak" and path == dp.speak_paths(m.system, a.name)[0]) or (
+                a.module == "builtin:file_hash" and path == dp.file_hash_paths(m.system, a.name)["go"]) or (
                 a.module == "builtin:mc_job" and node is not None and path == dp.mc_job_ctl_path(m.system, node)):
             return 3  # U32: M23's request and M22's job control, written before the hub has read them
         if a.module != "builtin:inbox":
@@ -2256,8 +2277,9 @@ def _inbox_owner(model, path: str) -> int | None:
     from . import deploy as dp
     m = pkg.manifest
     for a in m.actors:
-        if a.module == "builtin:speak" and path == dp.speak_paths(m.system, a.name)[0]:
-            return m.placement_of(a)  # M23: a speak actor's request, act/<name>/say -- a board's own resource too
+        if (a.module == "builtin:speak" and path == dp.speak_paths(m.system, a.name)[0]) or (
+                a.module == "builtin:file_hash" and path == dp.file_hash_paths(m.system, a.name)["go"]):
+            return m.placement_of(a)  # M23's say, M25's go -- a board's own resource too
         if a.module != "builtin:inbox":
             continue
         try:
