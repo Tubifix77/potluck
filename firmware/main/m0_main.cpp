@@ -3119,9 +3119,15 @@ void console_task(void*) {
     static uint8_t buf[64];
     for (;;) {
         serve_jobs(0);
-        // 10 ms, so a queued crypto job waits at most that long behind an idle console.
-        const int got = uart_read_bytes(static_cast<uart_port_t>(uart), buf, sizeof(buf), pdMS_TO_TICKS(10));
+        // 10 ms, so a queued crypto job waits at most that long behind an idle console. The first byte, then what is
+        // already buffered: uart_read_bytes waits for its whole length (see serial_port.cpp's reader, 2026-10-25).
+        int got = uart_read_bytes(static_cast<uart_port_t>(uart), buf, 1, pdMS_TO_TICKS(10));
         if (got <= 0) continue;
+        size_t more = 0;
+        if (uart_get_buffered_data_len(static_cast<uart_port_t>(uart), &more) == ESP_OK && more > 0) {
+            const int m = uart_read_bytes(static_cast<uart_port_t>(uart), buf + 1, more < sizeof(buf) - 1 ? more : sizeof(buf) - 1, 0);
+            if (m > 0) got += m;
+        }
 #if CONFIG_POT_SERIAL_LINK
         serial_console_feed(buf, static_cast<size_t>(got), on_text, &lines);
 #else

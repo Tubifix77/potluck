@@ -88,9 +88,18 @@ void reader_task(void*) {
     // A modest read buffer: the reassembler holds the frame state, so this only needs to be big
     // enough to keep the UART driver from backing up.
     uint8_t buf[256];
+    const auto port = static_cast<uart_port_t>(g_cfg.uart_num);
     for (;;) {
-        const int n = uart_read_bytes(static_cast<uart_port_t>(g_cfg.uart_num), buf, sizeof(buf), pdMS_TO_TICKS(50));
+        // The first byte, then whatever else is already buffered. uart_read_bytes waits for its whole length or the
+        // timeout (ESP-IDF uart.c), so asking for 256 held every short frame from the PC 50 ms -- found 2026-10-25: a
+        // read of this board's own uptime through the cable took 72 ms at the median (M24's input, 144 ms).
+        int n = uart_read_bytes(port, buf, 1, pdMS_TO_TICKS(50));
         if (n > 0) {
+            size_t more = 0;
+            if (uart_get_buffered_data_len(port, &more) == ESP_OK && more > 0) {
+                const int m = uart_read_bytes(port, buf + 1, more < sizeof(buf) - 1 ? more : sizeof(buf) - 1, 0);
+                if (m > 0) n += m;
+            }
             g_reassembler.feed(buf, static_cast<size_t>(n), &on_frame, nullptr);  // null ctx: the dedicated UART
             g_stats.framing = g_reassembler.stats();
         }
