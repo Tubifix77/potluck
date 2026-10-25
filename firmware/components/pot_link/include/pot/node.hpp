@@ -520,7 +520,7 @@ class Node {
     // slot, or the transport refused. 0 is not a failure of the job: nothing was dispatched, so
     // the caller still owns the work.
     uint16_t request_call(uint16_t peer_node_id, uint32_t path_hash, const uint8_t* args,
-                          uint16_t arg_len);
+                          uint16_t arg_len, uint16_t flags = 0);  // flags: CallPayload's (kCallForward)
 
     // Answer a unit accepted earlier. `msg_id` and `peer_node_id` are the ones the handler was
     // given.
@@ -629,6 +629,9 @@ class Node {
     // PC on the cable reaches only its own board, and the owner applies it by its own rules (handle_write).
     bool proxy_write(const PeerLink& requester, uint16_t requester_msg, uint16_t owner, uint32_t path_hash,
                      const Value& v);
+    // M24: the same for a CALL the PC on the cable asks to be passed on (ns_payloads.hpp kCallForward).
+    bool proxy_call(const PeerLink& requester, uint16_t requester_msg, uint16_t member, uint32_t path_hash,
+                    const uint8_t* args, uint16_t arg_len);
     void handle_reply(PeerLink* p, const Frame& f);
     void handle_call(PeerLink* p, const Frame& f, bool wants_reply);
     void abandon_calls_to(uint16_t peer_node_id);
@@ -663,8 +666,8 @@ class Node {
         uint32_t sent_ms;
         uint8_t op;           // kOpRead or kOpWrite
     };
-    // Outside writes passed on to their owner (proxy_write), kept apart from pending_ so its section-6 size holds: rare,
-    // so four, the oldest reused. requester 0 = free.
+    // Outside writes passed on to their owner (proxy_write), and CALLs passed on for the PC (proxy_call, M24), kept
+    // apart from pending_ so its section-6 size holds: rare, so four, the oldest reused. requester 0 = free.
     struct ProxiedWrite {
         uint16_t msg_id;      // our WRITE to the owner
         uint16_t owner;

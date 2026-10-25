@@ -138,7 +138,7 @@ static_assert(offsetof(ReplyPayload, value_raw) == 20, "REPLY offset");
 //
 //  off  size  field       notes
 //   0     4   path_hash   the actor's canonical path, hashed like any other §7.2 path
-//   4     2   flags       reserved, zero
+//   4     2   flags       bit0 kCallForward (M24); the other bits zero
 //   6     2   arg_len     bytes of argument data following this header
 //   8   arg_len  args     opaque to the transport; meaning is between caller and callee
 //
@@ -164,6 +164,13 @@ static_assert(offsetof(CallPayload, flags) == 4, "CALL offset");
 static_assert(offsetof(CallPayload, arg_len) == 6, "CALL offset");
 
 using CastPayload = CallPayload;
+
+// M24 (2026-10-25): a CALL from the PC on the cable for another member. Its first two argument bytes name that
+// member (little-endian); the cabled board passes the rest on as its own CALL and the member's answer back, word for
+// word -- as an outside WRITE is passed on (Node::proxy_write). The PC on the cable reaches only its own board: a
+// member checks the end-to-end tag on what the PC's node sends it, and the hub holds no key. Taken only from the
+// cable's own end; a CALL that cannot be passed on now gets no answer (the PC sends it again).
+constexpr uint16_t kCallForward = 0x0001;
 
 // How many argument bytes fit unfragmented on each transport profile (§5.3). A caller that stays
 // under the v1 figure works on a mixed-version link without touching §5.4's reassembly path.

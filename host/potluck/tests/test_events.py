@@ -1,7 +1,6 @@
 """M24: key and pointer events from the PC (potluck.events), the hub's route and delivery, the host node's call record,
 and the key-echo test app's compiled config."""
 
-import base64
 import struct
 import sys
 import unittest
@@ -135,25 +134,29 @@ class HubSide(unittest.TestCase):
         q.due(0.0)  # out (nothing attached to send it through: it waits as in flight)
         rep = Reply(path_hash=h, timestamp_ms=0, age_ms=0, unit=0, reply_to=fr.Op.CALL, status=0, quality=1,
                     latency_class=4, value=Value.of_u32(2))
-        hub._input_reply(fr.parse(fr.encode(src=0x8160, dst=0x00FE, opcode=fr.Op.REPLY, msg_id=5,
+        # passed on by the cabled board: the answer comes back from it, not from the app's board
+        hub._input_reply(fr.parse(fr.encode(src=0x6300, dst=0x00FE, opcode=fr.Op.REPLY, msg_id=0x8005,
                                             payload=rep.encode())))
         self.assertEqual(q.snapshot()["taken"], 2)
         hub.inputs.stop()
 
-    def test_with_the_host_node_attached_the_batch_is_its_to_call(self) -> None:
+    def test_the_batch_goes_to_the_cabled_board_marked_to_be_passed_on(self) -> None:
         from potluck import hub as hb
-        from potluck.hostnode import reply_record
+        from potluck.ns_payloads import CALL_FORWARD, Call
         from potluck.transport import LoopbackTransport
         host_side, _ = LoopbackTransport.pair()
         hub = hb.Hub(host_side)
-        down = []
-        hub.node_client = NS(alive=True, send_raw=down.append)
+        sent = []
+        hub.send_frame = lambda op, payload, dst=None, msg_id=0, lclass=3, **kw: sent.append((op, dst, Call.parse(payload)))
         args = ev.encode_batch([(1, 1, 1, 4, 0)])
+        self.assertFalse(hub._send_input(0x8160, 0xABCD1234, args))  # no board on the cable yet: kept
+        hub.peer_node_id = 0x6300
         self.assertTrue(hub._send_input(0x8160, 0xABCD1234, args))
-        rec = reply_record(down[0])
-        self.assertEqual(rec, f"call 8160 abcd1234 {base64.b64encode(args).decode()}")
-        hub.node_client = None
-        self.assertFalse(hub._send_input(0x8160, 0xABCD1234, args))  # not the cabled board, no node: kept
+        op, dst, call = sent[-1]
+        self.assertEqual((op, dst, call.path_hash, call.flags), (fr.Op.CALL, 0x6300, 0xABCD1234, CALL_FORWARD))
+        self.assertEqual(call.args, struct.pack("<H", 0x8160) + args)  # the member first, then the batch
+        self.assertTrue(hub._send_input(0x6300, 0xABCD1234, args))  # the cabled board's own app: a plain CALL
+        self.assertEqual((sent[-1][2].flags, sent[-1][2].args), (0, args))
         hub.inputs.stop()
 
 

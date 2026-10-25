@@ -221,6 +221,11 @@ CALL_SIZE = 8
 assert _CALL.size == CALL_SIZE, _CALL.size
 
 
+#: M24: ns_payloads.hpp's kCallForward -- a CALL from the PC on the cable that its board passes on to the member named in
+#: the first two argument bytes (little-endian), bringing the answer back.
+CALL_FORWARD = 0x0001
+
+
 @dataclass
 class Call:
     """An actor invocation. The result returns as an ordinary REPLY, carrying a Value.

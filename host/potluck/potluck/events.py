@@ -1,7 +1,7 @@
 """M24: key and pointer events from the PC into the cell.
 
 A program gives the hub events for an app (POST /api/input); the hub numbers them and delivers them in order to the
-app's input, act/<actor>/in, as CALLs of batches (pot/input.hpp) -- one batch at a time, the next only after the board
+app's input, act/<actor>/in, as CALLs of batches (pot/input.hpp) through the cabled board -- one batch at a time, the next only after the board
 answered the last with the number it took up to. A batch not answered in RESEND_S is sent again; the board drops what it
 already took. Which events an app takes is its module's "takes" (a descriptor key; the key-echo test app takes both).
 """
@@ -168,9 +168,10 @@ class Inputs:
                 self.start()  # the sender runs once there is something to send
             return q
 
-    def by_reply(self, src: int, path_hash: int) -> InputQueue | None:
+    def by_path(self, path_hash: int) -> InputQueue | None:
+        """The queue whose app's input this is (an input path names its actor, so it is one queue's)."""
         with self.lock:
-            return next((q for q in self.queues.values() if q.owner == src and q.path_hash == path_hash), None)
+            return next((q for q in self.queues.values() if q.path_hash == path_hash), None)
 
     def pump(self) -> None:
         now = self.clock()

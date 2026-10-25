@@ -1564,6 +1564,15 @@ bool Node::proxy_write(const PeerLink& requester, uint16_t requester_msg, uint16
     return msg != 0;
 }
 
+bool Node::proxy_call(const PeerLink& requester, uint16_t requester_msg, uint16_t member, uint32_t path_hash,
+                      const uint8_t* args, uint16_t arg_len) {
+    if (requester.node_id == 0) return false;
+    proxy_arm_ = ProxiedWrite{0, member, requester.node_id, requester_msg};
+    const uint16_t msg = request_call(member, path_hash, args, arg_len);  // refuses a member that is not alive
+    proxy_arm_ = ProxiedWrite{};  // used by request_call, or nothing was sent
+    return msg != 0;
+}
+
 uint8_t Node::outranking_channel() {
     if (authority_id_ == 0 || authority_id_ >= cfg_.node_id || authority_declared_ == 0) return 0;
     const PeerLink* a = peers_.find_by_node_id(authority_id_);
@@ -1770,13 +1779,14 @@ void Node::handle_reply(PeerLink* p, const Frame& f) {
     const uint16_t worker = q->peer_node;
     q->msg_id = 0;
     ++ns_counters_.replies_matched;
-    if (op == kOpWrite) {
-        // An outside write we passed on: the owner's answer, word for word, to the one who asked.
+    if (op == kOpWrite || op == kOpCall) {
+        // An outside write, or a CALL for the PC (M24), we passed on: the answer, word for word, to the one who asked.
         for (ProxiedWrite& w : proxied_) {
             if (w.requester == 0 || w.msg_id != f.hdr.msg_id || w.owner != p->node_id) continue;
             PeerLink* r = peers_.find_by_node_id(w.requester);
             if (r != nullptr) send_frame(r, r->mac, kOpReply, &rep, sizeof(rep), false, w.requester_msg, r->node_id, false);
             w = ProxiedWrite{};
+            if (op == kOpCall) return;  // not this node's own call: no call result here
             break;
         }
     }
@@ -1912,7 +1922,7 @@ bool Node::cancel_call(uint16_t msg_id) {
 }
 
 uint16_t Node::request_call(uint16_t peer_node_id, uint32_t path_hash, const uint8_t* args,
-                            uint16_t arg_len) {
+                            uint16_t arg_len, uint16_t flags) {
     if (arg_len > kCallArgLimit || (arg_len != 0 && args == nullptr)) {
         return 0;
     }
@@ -1946,16 +1956,25 @@ uint16_t Node::request_call(uint16_t peer_node_id, uint32_t path_hash, const uin
     uint8_t buf[sizeof(CallPayload) + kCallArgLimit];
     CallPayload hdr{};
     hdr.path_hash = path_hash;
-    hdr.flags = 0;
+    hdr.flags = flags;
     hdr.arg_len = arg_len;
     std::memcpy(buf, &hdr, sizeof(hdr));
     if (arg_len != 0) {
         std::memcpy(buf + sizeof(hdr), args, arg_len);
     }
     const uint16_t len = static_cast<uint16_t>(sizeof(hdr) + arg_len);
+    // A CALL passed on for the PC (proxy_call) is recorded before the frame leaves, as a proxied write is.
+    ProxiedWrite* armed = nullptr;
+    if (proxy_arm_.requester != 0) {
+        armed = &proxied_[proxied_next_];
+        *armed = ProxiedWrite{msg_id, peer_node_id, proxy_arm_.requester, proxy_arm_.requester_msg};
+        proxied_next_ = (proxied_next_ + 1) % kMaxProxiedWrites;
+        proxy_arm_ = ProxiedWrite{};
+    }
 
     if (!send_frame(p, p->mac, kOpCall, buf, len, true, msg_id, p->node_id, false)) {
         q->msg_id = 0;
+        if (armed != nullptr) *armed = ProxiedWrite{};
         return 0;
     }
     ++ns_counters_.calls_requested;
@@ -2022,6 +2041,21 @@ void Node::handle_call(PeerLink* p, const Frame& f, bool wants_reply) {
     }
 
     const uint8_t* args = f.payload + sizeof(CallPayload);
+    if ((req.flags & kCallForward) != 0) {
+        // M24: from the PC on the cable, for the member its first two argument bytes name (ns_payloads.hpp).
+        if (!cable_end(p->mac) || req.arg_len < 2) {
+            ++ns_counters_.calls_refused;
+            return;
+        }
+        const uint16_t member = static_cast<uint16_t>(args[0] | (args[1] << 8));
+        args += 2;
+        req.arg_len = static_cast<uint16_t>(req.arg_len - 2);
+        if (member != cfg_.node_id) {
+            if (member != p->node_id) proxy_call(*p, f.hdr.msg_id, member, req.path_hash, args, req.arg_len);
+            return;  // passed on, its answer to come back through us -- or not passable now: no answer, asked again
+        }
+        // for this board itself: an ordinary CALL from here on
+    }
     const bool accepted =
         call_handler_ != nullptr &&
         call_handler_(call_ctx_, p->node_id, f.hdr.msg_id, req.path_hash, args, req.arg_len);

@@ -56,7 +56,7 @@ from typing import Any
 from . import frame as fr
 from .bridge import HOST_NODE_ID, Bridge, BridgeError, RequestTimeout
 from .payloads import HELLO_FLAG_WANT_ACK, Hello
-from .ns_payloads import Call, Reply, Write
+from .ns_payloads import CALL_FORWARD, Call, Reply, Write
 from .paths import path_hash
 from .serial_framing import SerialReassembler, write_serial_frame
 from .transport import open_transport
@@ -234,18 +234,19 @@ class Hub(Bridge):
         super()._on_raw_frame(raw)
 
     def _send_input(self, owner: int, path_hash: int, args: bytes) -> bool:
-        """M24: one batch of events CALLed to an app's input. Through the PC's node when it is attached (a board off the
-        cable takes only what that node tags -- potluck.hostnode makes the frame a "call" record); to the cabled board
-        directly otherwise. False: no way to reach that board now."""
-        payload = Call(path_hash=path_hash, args=args).encode()
-        node = self.node_client
-        if node is not None and node.alive:
-            node.send_raw(fr.encode(src=HOST_NODE_ID, dst=owner, opcode=fr.Op.CALL, lclass=4, payload=payload))
-            return True
-        if owner == self.peer_node_id:
-            self.send_frame(fr.Op.CALL, payload, dst=owner, msg_id=self._next_msg_id(), lclass=4)
-            return True
-        return False
+        """M24: one batch of events CALLed to an app's input, through the cabled board: for another board it is marked to
+        be passed on (ns_payloads.hpp kCallForward, the member first), and the board brings the answer back -- as an
+        outside write is passed on. (Through the PC's node it took 741 ms at the 99th percentile on the bench,
+        2026-10-25: that node's own round trip and its pending slots, shared with presenting.) False: no board yet."""
+        peer = self.peer_node_id
+        if peer is None:
+            return False
+        if owner == peer:
+            payload = Call(path_hash=path_hash, args=args).encode()
+        else:
+            payload = Call(path_hash=path_hash, args=struct.pack("<H", owner) + args, flags=CALL_FORWARD).encode()
+        self.send_frame(fr.Op.CALL, payload, dst=peer, msg_id=self._next_msg_id(), lclass=4)
+        return True
 
     def _input_reply(self, f: fr.Frame) -> None:
         try:
@@ -254,7 +255,7 @@ class Hub(Bridge):
             return
         if rep.reply_to != fr.Op.CALL:
             return
-        q = self.inputs.by_reply(f.src, rep.path_hash)
+        q = self.inputs.by_path(rep.path_hash)  # from the app's board, or from the cabled board passing it on
         if q is None:
             return
         if rep.status == int(NsError.OK):

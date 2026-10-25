@@ -341,22 +341,6 @@ int main(int argc, char** argv) {
     std::thread rd(reader);
     rd.detach();
     uint32_t next_stats = now_ms() + 2000;
-    // M24: the input batches CALLed for the hub, so one whose answer was lost does not hold a call slot for good.
-    struct InputCall {
-        uint16_t id;
-        uint32_t at;
-    };
-    InputCall input_calls[8] = {};
-    // A batch the node could not send yet (every pending slot taken -- they are shared with the presenter's reads):
-    // tried again each pass for up to 500 ms rather than left to the hub's resend (found 2026-10-25: 1-2% of batches).
-    struct InputWait {
-        uint16_t dst;
-        uint32_t path;
-        std::vector<uint8_t> args;
-        uint32_t since;
-    };
-    std::deque<InputWait> input_wait;
-    uint32_t input_waited = 0, input_given_up = 0;
     while (!g_eof) {
         for (;;) {
             std::vector<uint8_t> f;
@@ -387,12 +371,6 @@ int main(int argc, char** argv) {
                 const uint32_t hash = static_cast<uint32_t>(std::strtoul(c.substr(4, 8).c_str(), nullptr, 16));
                 const std::vector<uint8_t> p = unb64(c.substr(13));
                 hostpresent::on_command(hash, reinterpret_cast<const char*>(p.data()), p.size());
-            } else if (c.compare(0, 5, "call ") == 0 && c.size() > 19) {
-                // M24: a batch of the PC's key and pointer events for an app (potluck.hostnode's call record), CALLed
-                // from here for the same reason as a reply below. The hub hears the answer itself, on the cable.
-                const uint16_t dst = static_cast<uint16_t>(std::strtoul(c.substr(5, 4).c_str(), nullptr, 16));
-                const uint32_t path = static_cast<uint32_t>(std::strtoul(c.substr(10, 8).c_str(), nullptr, 16));
-                input_wait.push_back({dst, path, unb64(c.substr(19)), now_ms()});
             } else if (c.compare(0, 6, "reply ") == 0 && c.size() > 16) {
                 // M23: the hub's answer to a member's CALL of one of the PC's services (potluck.hostnode's
                 // reply_record). Sent from here because a board off the cable checks the end-to-end tag on what
@@ -411,31 +389,6 @@ int main(int argc, char** argv) {
             }
         }
         const uint32_t t = now_ms();
-        while (!input_wait.empty()) {
-            InputWait& w = input_wait.front();
-            const uint16_t call_id = node.request_call(w.dst, w.path, w.args.data(), static_cast<uint16_t>(w.args.size()));
-            if (call_id == 0 && t - w.since < 500) {
-                ++input_waited;
-                break;  // in order: the next batch waits behind this one
-            }
-            if (call_id == 0) {
-                ++input_given_up;  // the hub sends it again
-            } else {
-                for (auto& slot : input_calls) {
-                    if (slot.id == 0) {
-                        slot = {call_id, t};
-                        break;
-                    }
-                }
-            }
-            input_wait.pop_front();
-        }
-        for (auto& slot : input_calls) {
-            if (slot.id != 0 && t - slot.at >= 2000) {
-                node.cancel_call(slot.id);  // answered long ago or never: free its slot either way (a no-op if answered)
-                slot.id = 0;
-            }
-        }
         node.tick(t);
         rec.tick(t);
         Event e{};
@@ -458,11 +411,9 @@ int main(int argc, char** argv) {
                               node.peer_relayed(&p) ? 1 : 0, static_cast<unsigned>(p.boot_epoch));
                 peers += b;
             }
-            std::fprintf(stderr, "{\"t\":\"host\",\"node\":%u,\"up_ms\":%u,\"rx\":%u,\"tx\":%u,\"settled\":%d,"
-                                 "\"input_waited\":%u,\"input_given_up\":%u,\"peers\":[%s]}\n",
+            std::fprintf(stderr, "{\"t\":\"host\",\"node\":%u,\"up_ms\":%u,\"rx\":%u,\"tx\":%u,\"settled\":%d,\"peers\":[%s]}\n",
                          static_cast<unsigned>(node_id), static_cast<unsigned>(t), static_cast<unsigned>(g_rx_frames.load()),
-                         static_cast<unsigned>(g_tx_frames.load()), rec.settled() ? 1 : 0,
-                         static_cast<unsigned>(input_waited), static_cast<unsigned>(input_given_up), peers.c_str());
+                         static_cast<unsigned>(g_tx_frames.load()), rec.settled() ? 1 : 0, peers.c_str());
             {
                 const Reconciler::Counters& rc = rec.counters();
                 std::fprintf(stderr, "{\"t\":\"rec_counters\",\"node\":%u,\"up_ms\":%u,\"sent\":%u,\"received\":%u,"

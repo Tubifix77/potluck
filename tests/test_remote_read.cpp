@@ -6,6 +6,7 @@
 // The last clause is the one that matters and the one this file is built around. Everything else is
 // plumbing; that sentence is the reason the project exists.
 
+#include <cstdint>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -49,7 +50,7 @@ struct Cell2 {
         return false;
     }
 
-    void build(size_t n) {
+    void build(size_t n, size_t cabled = SIZE_MAX) {  // cabled: the slot whose trusted link is slot 0 (the PC's cable)
         slots.resize(n);
         for (size_t i = 0; i < n; ++i) {
             Slot& s = slots[i];
@@ -63,6 +64,10 @@ struct Cell2 {
             cfg.boot_epoch = 1;
             std::memcpy(cfg.mac, s.mac, kMacLen);
             cfg.hello_interval_ms = 500;
+            if (i == cabled) {
+                cfg.has_trusted_mac = true;
+                std::memcpy(cfg.trusted_mac, slots[0].mac, kMacLen);
+            }
 
             s.hal.ctx = &s;
             s.hal.send = &Cell2::send;
@@ -702,6 +707,68 @@ TEST(m18, a_write_from_the_pc_reaches_another_board_through_the_one_on_the_cable
     c.advance_ms(100);
     CHECK_EQ(pc.ns_counters().replies_matched, 3u);
     CHECK_EQ(a.ns_counters().writes_outside_refused, 1u);
+}
+
+namespace {
+struct CallSeen {
+    int handled = 0;
+    std::vector<uint8_t> args;
+    std::vector<std::pair<int, uint32_t>> results;  // (outcome, value) heard by the PC
+};
+CallSeen g_seen;
+constexpr uint32_t kIn = path_hash("potluck://lab/act/echo/in");
+}  // namespace
+
+TEST(m24, a_call_from_the_pc_reaches_another_board_through_the_one_on_the_cable) {
+    // M24: the hub's input batches. The PC on A's cable cannot reach B; A passes the CALL on (kCallForward, B named in
+    // the first two argument bytes) and brings B's answer back.
+    g_seen = CallSeen{};
+    Cell2 c;
+    c.build(3, /*cabled=*/1);
+    c.cut.push_back({0, 2});
+    c.start();
+    c.advance_ms(300);
+    Node& pc = *c.slots[0].node;
+    Node& a = *c.slots[1].node;
+    Node& b = *c.slots[2].node;
+    b.set_call_handler(
+        [](void* ctx, uint16_t from, uint16_t msg, uint32_t path, const uint8_t* args, uint16_t len) {
+            if (path != kIn) return false;
+            ++g_seen.handled;
+            g_seen.args.assign(args, args + len);
+            static_cast<Node*>(ctx)->reply_call(from, msg, path, Value::of_u32(41));
+            return true;
+        },
+        &b);
+    pc.set_call_result(
+        [](void*, uint16_t, uint16_t, uint32_t, Node::CallOutcome o, const Value& v) {
+            uint32_t x = 0;
+            v.as_u32(x);
+            g_seen.results.push_back({static_cast<int>(o), x});
+        },
+        nullptr);
+    const uint16_t bid = b.config().node_id;
+    const uint8_t args[] = {static_cast<uint8_t>(bid), static_cast<uint8_t>(bid >> 8), 'k', 'e', 'y'};
+    CHECK(pc.request_call(a.config().node_id, kIn, args, sizeof(args), kCallForward) != 0);
+    c.advance_ms(100);
+    CHECK_EQ(g_seen.handled, 1);
+    CHECK_EQ(g_seen.args.size(), size_t{3});  // B got the batch without the member's two bytes
+    CHECK_EQ(g_seen.args[0], uint8_t{'k'});
+    CHECK_EQ(g_seen.results.size(), size_t{1});  // and its answer came back to the PC, from A
+    CHECK_EQ(g_seen.results[0].first, static_cast<int>(Node::CallOutcome::Ok));
+    CHECK_EQ(g_seen.results[0].second, 41u);
+
+    // From anywhere but the cable's end it is not passed on: B never hears it.
+    CHECK(b.request_call(a.config().node_id, kIn, args, sizeof(args), kCallForward) != 0);
+    c.advance_ms(100);
+    CHECK_EQ(g_seen.handled, 1);
+
+    // B gone: nothing to pass it to, so no answer -- the PC sends it again rather than drop the batch on a refusal.
+    c.cut.push_back({1, 2});
+    c.advance_ms(2000);
+    CHECK(pc.request_call(a.config().node_id, kIn, args, sizeof(args), kCallForward) != 0);
+    c.advance_ms(100);
+    CHECK_EQ(g_seen.results.size(), size_t{1});
 }
 
 TEST(m14, a_node_without_the_actor_type_learns_the_declaration_from_one_with_it) {
