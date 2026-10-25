@@ -44,7 +44,7 @@ class Queue(unittest.TestCase):
         self.assertEqual(q.put([(1, 1, 4, 0)] * 30, 0.0), 1)
         first = q.due(0.0)
         self.assertEqual(first[1], ev.BATCH_MAX)
-        self.assertIsNone(q.due(0.1))  # one batch out at a time
+        self.assertIsNone(q.due(0.04))  # one batch out at a time
         self.assertEqual(q.ack(ev.BATCH_MAX, 0.05), ev.BATCH_MAX)
         second = q.due(0.06)
         self.assertEqual((second[1], struct.unpack_from("<H", second, 2)[0]), (6, ev.BATCH_MAX + 1))
@@ -57,10 +57,10 @@ class Queue(unittest.TestCase):
         q = self.q()
         q.put([(1, 1, 4, 0)] * 3, 0.0)
         a = q.due(0.0)
-        self.assertIsNone(q.due(0.5))
-        self.assertEqual(q.due(1.0), a)  # the same numbers again
-        q.ack(2, 1.1)  # part of it answered: the rest goes again at once
-        self.assertEqual(q.due(1.1)[1], 1)
+        self.assertIsNone(q.due(0.25))
+        self.assertEqual(q.due(0.5), a)  # the same numbers again
+        q.ack(2, 0.6)  # part of it answered: the rest goes again at once
+        self.assertEqual(q.due(0.6)[1], 1)
         self.assertEqual(q.snapshot()["resent"], 1)
 
     def test_numbers_wrap_and_a_refused_batch_is_dropped_and_counted(self) -> None:
@@ -88,6 +88,14 @@ class Queue(unittest.TestCase):
         inputs.pump()
         self.assertEqual(len(sent), 1)
         self.assertEqual(q.snapshot()["resent"], 0)
+
+
+class Fair(unittest.TestCase):
+    def test_a_keyboards_rate_is_inside_the_input_share_and_does_not_spend_the_write_share(self) -> None:
+        from potluck.hub_clients import FairShare
+        f = FairShare()
+        self.assertTrue(all(f.take("kbd", "input") <= 0 for _ in range(60)))  # 60 keys at once: inside the burst
+        self.assertLessEqual(f.take("kbd", "write"), 0)  # writes keep their own share
 
 
 class HubSide(unittest.TestCase):

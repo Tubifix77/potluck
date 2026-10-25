@@ -2152,7 +2152,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 model.record("outside_write", None, {"by": who[0], "result": "refused: this login may only look"})
                 self._json(403, {"ok": False, "result": "this login may look, not write"})
                 return
-            if not self._fair("write"):
+            if not self._fair("input" if self.path == "/api/input" else "write"):
                 return
             if self.path == "/api/input":
                 try:

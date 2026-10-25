@@ -19,6 +19,9 @@ import time
 
 READ_RATE, READ_BURST = 20.0, 40.0
 WRITE_RATE, WRITE_BURST = 2.0, 4.0
+#: M24: POST /api/input -- a keyboard sends a request a key; the cell's load is the hub's batches (one in flight per app)
+#: and the 512-event queue, not these requests.
+INPUT_RATE, INPUT_BURST = 50.0, 100.0
 SEEN_S, REPORT_FRESH_S = 600.0, 60.0
 STATES = ("connected", "disconnected", "error", "idle")
 
@@ -50,6 +53,7 @@ class FairShare:
             c = self.clients.get(who)
             if c is None:
                 c = self.clients[who] = {"read": Bucket(READ_RATE, READ_BURST), "write": Bucket(WRITE_RATE, WRITE_BURST),
+                                         "input": Bucket(INPUT_RATE, INPUT_BURST),
                                          "reads": 0, "writes": 0, "refused": 0, "first_at": int(time.time() * 1000)}
             wait = c[kind].take()
             c["reads" if kind == "read" else "writes"] += 1
