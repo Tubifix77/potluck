@@ -2,7 +2,8 @@
 # half (an access point and ESP-IDF's HTTP server), compiled to stubs without CONFIG_POT_POCKET. The requirements are
 # the same either way: ESP-IDF expands them before Kconfig values exist.
 idf_component_register(
-  SRCS "src/pocket_core.cpp" "src/pocket.cpp"
+  SRCS "src/pocket_core.cpp" "src/pocket_auth.cpp" "src/pocket.cpp"
   INCLUDE_DIRS "include"
-  PRIV_REQUIRES esp_wifi esp_netif esp_http_server nvs_flash log heap freertos
+  REQUIRES pot_ns
+  PRIV_REQUIRES monocypher esp_wifi esp_netif esp_http_server nvs_flash log heap freertos
 )

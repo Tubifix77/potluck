@@ -55,18 +55,31 @@ void ago(Out& o, uint32_t s) {
 
 }  // namespace
 
-size_t render_html(const Snapshot& s, char* out, size_t cap) {
+size_t render_html(const Snapshot& s, char* out, size_t cap) { return render_html(s, PageView{}, out, cap); }
+
+size_t render_html(const Snapshot& s, const PageView& v, char* out, size_t cap) {
     Out o{out, cap};
     size_t alive = 0;
     for (size_t i = 0; i < s.n_boards; ++i) alive += s.boards[i].alive ? 1 : 0;
-    o.add("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\">"
-          "<meta http-equiv=\"refresh\" content=\"5\"><title>");
+    o.add("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\">");
+    if (!v.logged_in) o.add("<meta http-equiv=\"refresh\" content=\"5\">");  // a form being typed into is never reloaded
+    o.add("<title>");
     o.text(s.system, false);
     o.add(" cell</title><style>body{font-family:sans-serif;margin:16px;max-width:520px}td,th{padding:4px 8px;"
           "text-align:left;border-bottom:1px solid #ccc}.dead{color:#c2412b;font-weight:bold}.ok{color:#2f7d32}"
           "small{color:#666}</style></head><body><h2>");
     o.text(s.system, false);
     o.add(" cell &middot; %u of %u alive</h2>", static_cast<unsigned>(alive), static_cast<unsigned>(s.n_boards));
+    if (v.note[0] != '\0') {
+        o.add("<p><b>");
+        o.text(v.note, false);
+        o.add("</b></p>");
+    }
+    if (v.writes_on && !v.logged_in) {
+        o.add("<form method=\"post\" action=\"/login\"><input type=\"password\" name=\"password\" "
+              "autocomplete=\"current-password\" placeholder=\"password\" maxlength=\"63\"> "
+              "<button>log in to change values</button></form>");
+    }
     o.add("<table><tr><th>board</th><th>state</th><th>signal</th></tr>");
     for (size_t i = 0; i < s.n_boards; ++i) {
         const Board& b = s.boards[i];
@@ -83,7 +96,8 @@ size_t render_html(const Snapshot& s, char* out, size_t cap) {
     }
     o.add("</table>");
     if (s.n_items > 0) {
-        o.add("<h3>values</h3><table><tr><th>resource</th><th>value</th><th>quality</th><th>age</th></tr>");
+        o.add("<h3>values</h3><table><tr><th>resource</th><th>value</th><th>quality</th><th>age</th>%s</tr>",
+              v.logged_in ? "<th>set</th>" : "");
         for (size_t i = 0; i < s.n_items; ++i) {
             const Item& it = s.items[i];
             o.add("<tr><td>");
@@ -102,7 +116,19 @@ size_t render_html(const Snapshot& s, char* out, size_t cap) {
             o.text(it.quality, false);
             o.add("</td><td>");
             ago(o, it.age_ms / 1000);
-            o.add("</td></tr>");
+            o.add("</td>");
+            if (v.logged_in) {
+                o.add("<td>");
+                if (it.writable) {
+                    o.add("<form method=\"post\" action=\"/write\"><input type=\"hidden\" name=\"name\" value=\"");
+                    o.text(it.name, false);
+                    o.add("\"><input type=\"hidden\" name=\"csrf\" value=\"");
+                    o.text(v.csrf, false);
+                    o.add("\"><input name=\"value\" size=\"6\" maxlength=\"20\"> <button>set</button></form>");
+                }
+                o.add("</td>");
+            }
+            o.add("</tr>");
         }
         o.add("</table>");
     }
@@ -115,7 +141,16 @@ size_t render_html(const Snapshot& s, char* out, size_t cap) {
     }
     o.add("<br>cell ");
     o.text(s.cell_id, false);
-    o.add(" &middot; read-only: this page changes nothing</small></p></body></html>");
+    if (!v.writes_on) {
+        o.add(" &middot; read-only: this page changes nothing</small></p></body></html>");
+    } else if (!v.logged_in) {
+        o.add(" &middot; changes need the login</small></p></body></html>");
+    } else {
+        o.add(" &middot; logged in</small></p><form method=\"post\" action=\"/logout\"><input type=\"hidden\" "
+              "name=\"csrf\" value=\"");
+        o.text(v.csrf, false);
+        o.add("\"><button>log out</button></form></body></html>");
+    }
     return o.done();
 }
 
@@ -152,7 +187,7 @@ size_t render_json(const Snapshot& s, char* out, size_t cap) {
         o.text(it.unit, true);
         o.add("\",\"quality\":\"");
         o.text(it.quality, true);
-        o.add("\",\"age_ms\":%" PRIu32 "}", it.age_ms);
+        o.add("\",\"age_ms\":%" PRIu32 ",\"writable\":%s}", it.age_ms, it.writable ? "true" : "false");
     }
     o.add("]}");
     return o.done();

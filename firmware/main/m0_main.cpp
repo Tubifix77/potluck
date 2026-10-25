@@ -63,6 +63,7 @@
 #include "pot/trust_store.hpp"
 #include "pot/present.hpp"
 #include "pot/pocket.hpp"
+#include "pot/pocket_auth.hpp"
 #include "nvs.h"
 #include <sys/time.h>
 #include "driver/gpio.h"
@@ -105,6 +106,7 @@ alignas(Node) uint8_t g_node_storage[sizeof(Node)];
 Node* g_node = nullptr;
 // M13.1, defined with the board services below: the pocket page's snapshot, and the cell id it shows.
 const pocket::Snapshot& pocket_snapshot(uint32_t now);
+const char* pocket_apply_write(const pocket::PendingWrite& w, uint32_t now);
 const char* cell_id(void*);
 
 #if CONFIG_POT_RECONCILER
@@ -2059,6 +2061,16 @@ void link_task(void*) {
             xSemaphoreGive(g_mutex);
             pocket::publish(snap);  // only this task writes it
         }
+        if (pocket::active()) {
+            // M26: a logged-in phone's writes, queued by the page's server -- applied here, the node's own task
+            pocket::PendingWrite pw;
+            while (pocket::take_write(&pw)) {
+                xSemaphoreTake(g_mutex, portMAX_DELAY);
+                const char* result = pocket_apply_write(pw, nt);
+                xSemaphoreGive(g_mutex);
+                pocket::write_result(pw.name, result);
+            }
+        }
 #endif
         if (static_cast<int32_t>(nt - next_assess_ms) >= 0) {
             next_assess_ms = nt + status_led::kUpdateMs;
@@ -3757,8 +3769,41 @@ const pocket::Snapshot& pocket_snapshot(uint32_t now) {
         const char* u = unit_str(r.unit);
         std::snprintf(it.unit, sizeof(it.unit), "%s", u != nullptr ? u : "");
         it.age_ms = r.age_ms;
+        it.writable = (o.flags & kOutsideWritable) != 0 && (o.flags & kOutsideSafety) == 0;  // M26
     }
     return s;
+}
+
+// M26: a pocket page write, on the link task with the node's lock held: the outside section must let it be written
+// (and it is not safety-relevant); this board's own resource is written here, another board's is passed to its owner as
+// an outside write -- which that board checks again by its own package. The result, for the page.
+const char* pocket_apply_write(const pocket::PendingWrite& w, uint32_t now) {
+    const deploy_rt::OutsideName* rule = nullptr;
+    for (size_t i = 0; i < deploy_rt::g_outside_n; ++i) {
+        const deploy_rt::OutsideName& o = deploy_rt::g_outside[i];
+        if (std::strlen(w.name) == o.len && std::memcmp(w.name, o.name, o.len) == 0) rule = &o;
+    }
+    if (rule == nullptr || (rule->flags & kOutsideWritable) == 0 || (rule->flags & kOutsideSafety) != 0) {
+        return "refused: not writable from outside";
+    }
+    const NsEntry* e = g_node->ns().find(rule->hash);
+    if (e == nullptr) return "refused: not on this board";
+    ValueType type = e->value.type;
+    if (type == ValueType::None) {  // not read yet: what the text says (a word, a whole number, a decimal)
+        Value probe;
+        type = pocket::parse_value(ValueType::Bool, w.value, probe)  ? ValueType::Bool
+               : pocket::parse_value(ValueType::U32, w.value, probe) ? ValueType::U32
+                                                                      : ValueType::F32;
+    }
+    Value v;
+    if (!pocket::parse_value(type, w.value, v)) return "refused: not a value of its type";
+    const uint16_t self = g_node->config().node_id;
+    if (e->is_local(self)) {
+        const NsError st = g_node->ns().write_outside(rule->hash, v, now);
+        return st == NsError::Ok ? "applied" : ns_error_str(st);
+    }
+    return g_node->request_write(e->owner_node, rule->hash, v, /*from_outside=*/true) != 0 ? "sent to its board"
+                                                                                       : "its board is not reachable";
 }
 
 // M13: what the presenting role asks the board (pot/actor.hpp).

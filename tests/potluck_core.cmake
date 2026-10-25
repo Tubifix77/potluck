@@ -71,6 +71,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_wasm/src/guest.cpp"
   "${POT_FIRMWARE}/components/pot_present/src/present_core.cpp"
   "${POT_FIRMWARE}/components/pot_pocket/src/pocket_core.cpp"
+  "${POT_FIRMWARE}/components/pot_pocket/src/pocket_auth.cpp"
 )
 target_link_libraries(pot_portable PUBLIC monocypher wasm3)
 target_include_directories(pot_portable PUBLIC

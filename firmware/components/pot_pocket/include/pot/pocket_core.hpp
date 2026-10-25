@@ -6,8 +6,8 @@
 // exposed resource with its value, quality and age (section 4: never a number without its age), the package, the radio
 // channel, and frames from boards outside this cell (another cell sharing the channel).
 //
-// Read-only by construction: this file renders a snapshot; nothing here, and nothing behind the page, writes or
-// deploys (section 8.4's one exception). The snapshot is filled on the link task (pot/pocket.hpp), the page rendered on
+// Read-only unless the owner turns writes on (M26, pot/pocket_auth.hpp): this file renders a snapshot, and with a
+// PageView that is logged in, a form for each value the package lets the outside write. Nothing here deploys. The snapshot is filled on the link task (pot/pocket.hpp), the page rendered on
 // the HTTP server's task from a copy -- the server never touches the node.
 
 #pragma once
@@ -34,6 +34,7 @@ struct Item {
     char quality[12] = {};  // GOOD, STALE, UNAVAILABLE, NO_DATA, FAULTY
     char unit[8] = {};
     uint32_t age_ms = 0;
+    bool writable = false;  // M26: the outside section lets it be written, and it is not safety-relevant
 };
 
 struct Snapshot {
@@ -51,12 +52,22 @@ struct Snapshot {
     Item items[kMaxValues];
 };
 
-// The page (HTML, refreshing itself every 5 s) and the same as JSON (/status.json). Each returns the length written,
-// NUL-terminated; 0 if `cap` is short -- never a cut page.
-size_t render_html(const Snapshot& s, char* out, size_t cap);
+// M26: what the page offers the phone asking: writes on (the owner set a login), and whether this phone is logged in --
+// then its session's form token goes in every form -- and the last write's result, if any.
+struct PageView {
+    bool writes_on = false;
+    bool logged_in = false;
+    char csrf[33] = {};  // the session's token, hex
+    char note[80] = {};  // e.g. "node-7368/led/on: applied"
+};
+
+// The page (HTML, refreshing itself every 5 s while no one is logged in) and the same as JSON (/status.json). Each
+// returns the length written, NUL-terminated; 0 if `cap` is short -- never a cut page.
+size_t render_html(const Snapshot& s, const PageView& v, char* out, size_t cap);
+size_t render_html(const Snapshot& s, char* out, size_t cap);  // read-only: no login, no forms
 size_t render_json(const Snapshot& s, char* out, size_t cap);
 
 // The worst `cap` the two need for a full snapshot, for the board's buffer.
-constexpr size_t kPageMax = 12288;
+constexpr size_t kPageMax = 20480;  // M26: with a form beside each writable value (PSRAM on the board)
 
 }  // namespace pot::pocket

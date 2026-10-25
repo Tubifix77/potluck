@@ -80,6 +80,7 @@ add_executable(pot_tests
   test_position.cpp
   test_foreman.cpp
   test_pocket.cpp
+  test_pocket_auth.cpp
   # DEVELOPING-APPS.md's worked example, compiled from its own directory as an app's component would be.
   "${POT_FIRMWARE}/../examples/apps/pot_hello/src/hello.cpp"
 )
