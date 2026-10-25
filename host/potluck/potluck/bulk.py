@@ -20,8 +20,10 @@ WINDOW = 3  # in flight at a time: the cabled board passes on four CALLs at most
 RESEND_S = 0.15  # as an input batch's (potluck.events): ~5 x the median answer through the cabled board
 GIVE_UP_S = 15.0
 #: Chunks a second, all transfers together: the channel's share for files. 2026-10-25 on the bench, unpaced (~78/s, 64 KB
-#: in 4.5 s) cost every radio link 1.2-2.0 points of heartbeat loss -- M25's line is one. At 30/s 64 KB takes ~12 s.
-RATE = 30.0
+#: in 4.5 s) cost every radio link 1.2-2.0 points of heartbeat loss -- M25's line is one; at 30/s A's view of C still lost
+#: 1.78; at 15/s (64 KB in ~23 s) every link stayed within 0.82, and M25 was accepted there. The cluster file's bulk.rate
+#: overrides it per transfer.
+RATE = 15.0
 
 
 def chunk_args(xfer: int, offset: int, data: bytes) -> bytes:

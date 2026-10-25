@@ -1258,7 +1258,7 @@ service reads "gone".
 with it. *Acceptance:* 20 key events a second from the PC reach a board's app in order, none lost, the 99th
 percentile under 150 ms through the relay. *Kill:* order cannot be held under 300 ms at the 99th percentile.
 
-**M25 — a bulk channel for files on the PC.** A folder the owner offers, read-only; a board's app reads a file by name
+**M25 — a bulk channel for files on the PC.** *(Accepted 2026-10-26: 64 KB read by C four times, every SHA-512 matching, ~23 s each, heartbeat loss up 0.82 points at most. As built: SHA-512 in place of SHA-256 (the hash the firmware already carries); the hub pushes the chunks through the board on the cable, paced to 15 a second -- unpaced a read cost up to 2 points.)* A folder the owner offers, read-only; a board's app reads a file by name
 in windowed chunks over the existing frames (no new transport, ADR-001); `cell.bulk` = `{folder, files, reads: [{board,
 file, bytes, kbps}]}`. *Acceptance:* a board reads a 64 KB file through the hub intact (its SHA-256 matches) in under
 30 s, its links' heartbeat loss rising at most one point. *Kill:* a 64 KB read costs more than two points of heartbeat

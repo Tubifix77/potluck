@@ -573,11 +573,11 @@ def load_cluster(path: str) -> Cluster:
     cl.pc_services = tuple(svcs)
     bulk = doc.get("bulk")  # M25: {"folder": ...} -- what the PC's `file` service offers, read-only
     if bulk is not None:
-        rate = bulk.get("rate", 30) if isinstance(bulk, dict) else None
+        rate = bulk.get("rate", 15) if isinstance(bulk, dict) else None
         if (not isinstance(bulk, dict) or not set(bulk) <= {"folder", "rate"} or not isinstance(bulk.get("folder"), str)
                 or isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 1 <= rate <= 200):
             raise ApplyError('bulk: {"folder": "<a folder this PC offers the cell, read-only>", "rate"?: <chunks a '
-                             'second, 1..200, default 30>}')
+                             'second, 1..200, default 15>}')
         folder = Path(bulk["folder"])
         if not folder.is_absolute():
             folder = p.parent / folder
