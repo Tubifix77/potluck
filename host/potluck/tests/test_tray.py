@@ -138,6 +138,8 @@ class Hostnode(unittest.TestCase):
                 self.assertIn("--broker-login", tray.hostnode_plan(model)[0])
                 self.assertIsNone(tray.hostnode_plan(None))  # no hub to go through
                 self.assertIsNone(tray.hostnode_plan({"cell": {"package": 104}}))  # that package was applied elsewhere
+                # a hub that has not heard the cell's package yet: the newest this PC signed (2026-10-25)
+                self.assertEqual(tray.hostnode_plan({"cell": {"package": None}})[1], 103)
                 (c.parent / "host-00fe.id").unlink()
                 self.assertIsNone(tray.hostnode_plan(model))  # the PC is not enrolled
                 self.cell(d, hub=False)

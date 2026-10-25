@@ -174,13 +174,25 @@ def hostnode_plan(model: dict | None) -> tuple[list[str], int] | None:
     if model is None or tray_config().get("hostnode") is False:
         return None
     cluster = cell_file()
-    counter = (model.get("cell") or {}).get("package")
-    if cluster is None or not isinstance(counter, int):
+    if cluster is None:
         return None
     try:
         doc = json.loads(cluster.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
+    counter = (model.get("cell") or {}).get("package")
+    if not isinstance(counter, int):
+        # The hub has not heard the cell's package yet. 2026-10-25, twice after an install: the cabled board still held
+        # 0x00fe from the PC's last node and answered nothing the new hub asked, so the hub never learned the package and
+        # no node was started -- until one was, whose signed HELLO took 0x00fe over again. So the newest package this PC
+        # signed for the cell (an Apply from here keeps it); a different one in the model later restarts the node.
+        system = str(doc.get("system", "lab"))
+        names = [p.name[len(system) + 1:-len(".pkg.json")]
+                 for p in (potluck_dir() / "cache" / "packages").glob(f"{system}-*.pkg.json")]
+        found = [int(n) for n in names if n.isdigit()]
+        if not found:
+            return None
+        counter = max(found)
     if not isinstance(doc.get("present"), dict) or not doc["present"].get("hub"):
         return None
     identity = cluster.parent / "host-00fe.id"
