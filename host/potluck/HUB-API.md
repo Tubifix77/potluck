@@ -316,7 +316,7 @@ an app's descriptor `"takes"`): `{"app": "echo", "events": [{"kind": "key", "cod
 "8160"}`. `code` is a USB HID usage (page 7: 4 is A), `down` true or false (default true); `dx`, `dy` -32768..32767,
 `buttons` bit 0 left, 1 right, 2 middle. The hub numbers the events (16 bits, wrapping; `first` is the first one's)
 and delivers them in order to the app's board, in batches of up to 24, one batch at a time, sending one again when its
-answer is over 0.5 s late (the board drops what it already took). The same login right as `POST /api/write`, with a
+answer is over 150 ms late (the board drops what it already took). The same login right as `POST /api/write`, with a
 share of its own (50 requests a second, bursts of 100: a keyboard sends a request a key). Answers:
 400 a bad request (the first bad event named, or a kind the app does not take), 404 no such app, 409 an app that takes
 no events or is not pinned, 429 over 512 events already waiting for it. How delivery goes is in `cell.inputs`.

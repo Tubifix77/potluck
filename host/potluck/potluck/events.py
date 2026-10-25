@@ -17,7 +17,7 @@ KINDS = {"key": 1, "pointer": 2}  # pot/input.hpp's kInputKey, kInputPointer
 VERSION = 1
 BATCH_MAX = 24  # pot/input.hpp's kInputBatchMax
 QUEUE_MAX = 512  # events waiting per app; beyond it a POST is refused (429), never silently dropped
-RESEND_S = 0.5  # 2.5 x the host link's own p99 (200 ms: the cabled board's probe of the PC's node, 2026-10-25)
+RESEND_S = 0.15  # ~5 x the median answer through the cabled board (32 ms, 2026-10-25); a late answer after it is harmless
 #: built-in modules that take events, as an external module says it with "takes" in its descriptor
 BUILTIN_TAKES = {"builtin:key_echo": ("key", "pointer")}
 

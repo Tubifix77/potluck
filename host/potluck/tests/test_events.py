@@ -43,7 +43,7 @@ class Queue(unittest.TestCase):
         self.assertEqual(q.put([(1, 1, 4, 0)] * 30, 0.0), 1)
         first = q.due(0.0)
         self.assertEqual(first[1], ev.BATCH_MAX)
-        self.assertIsNone(q.due(0.04))  # one batch out at a time
+        self.assertIsNone(q.due(ev.RESEND_S / 4))  # one batch out at a time
         self.assertEqual(q.ack(ev.BATCH_MAX, 0.05), ev.BATCH_MAX)
         second = q.due(0.06)
         self.assertEqual((second[1], struct.unpack_from("<H", second, 2)[0]), (6, ev.BATCH_MAX + 1))
@@ -56,10 +56,10 @@ class Queue(unittest.TestCase):
         q = self.q()
         q.put([(1, 1, 4, 0)] * 3, 0.0)
         a = q.due(0.0)
-        self.assertIsNone(q.due(0.25))
-        self.assertEqual(q.due(0.5), a)  # the same numbers again
-        q.ack(2, 0.6)  # part of it answered: the rest goes again at once
-        self.assertEqual(q.due(0.6)[1], 1)
+        self.assertIsNone(q.due(ev.RESEND_S / 2))
+        self.assertEqual(q.due(ev.RESEND_S), a)  # the same numbers again
+        q.ack(2, ev.RESEND_S + 0.01)  # part of it answered: the rest goes again at once
+        self.assertEqual(q.due(ev.RESEND_S + 0.01)[1], 1)
         self.assertEqual(q.snapshot()["resent"], 1)
 
     def test_numbers_wrap_and_a_refused_batch_is_dropped_and_counted(self) -> None:
