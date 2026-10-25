@@ -1455,6 +1455,8 @@ def actor_reads(m, a, boards: list[int]) -> tuple[str, list[str]]:
             reads.append(dp.die_temp_path(m.system, node))
         if a.module == "builtin:led_switch":
             reads.append(dp.led_switch_path(m.system, node))
+        if a.module == "builtin:key_echo":  # M24: what it took
+            reads += list(dp.key_echo_paths(m.system, a.name))
         if a.module == "builtin:speak":  # M23: its result and its request
             reads += list(reversed(dp.speak_paths(m.system, a.name)))
         if a.module == "builtin:mc_job":  # M9's result; M22's control, when it has one

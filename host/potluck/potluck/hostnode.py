@@ -55,16 +55,27 @@ REPORT_NAME = "presenting (MQTT, this PC)"
 def reply_record(frame: bytes) -> str | None:
     """M23: a REPLY the hub owes a member for one of the PC's services, handed down this link marked as the host node's
     own (src 00fe): the node must send it, under the end-to-end key the member checks. As a control record --
-    "reply <dst> <msg_id> <payload, base64>" -- for pot_hostnode's reply_call. None for any other frame."""
+    "reply <dst> <msg_id> <payload, base64>" -- for pot_hostnode's reply_call. M24: a CALL marked the same way (a batch
+    of events for an app) -- "call <dst> <path hash> <args, base64>" -- for its request_call. None for any other frame."""
     from . import frame as fr
     from .bridge import HOST_NODE_ID
     try:
         f = fr.parse(frame)
     except fr.FrameError:
         return None
-    if f.opcode != fr.Op.REPLY or f.src != HOST_NODE_ID or f.dst == HOST_NODE_ID:
+    if f.src != HOST_NODE_ID or f.dst == HOST_NODE_ID:
         return None
-    return f"reply {f.dst:04x} {f.msg_id:04x} {base64.b64encode(bytes(f.payload)).decode()}"
+    if f.opcode == fr.Op.REPLY:
+        return f"reply {f.dst:04x} {f.msg_id:04x} {base64.b64encode(bytes(f.payload)).decode()}"
+    if f.opcode == fr.Op.CALL:
+        # M24: a batch of events for an app's input (potluck.events), CALLed by the node for the same reason.
+        from .ns_payloads import Call
+        try:
+            call = Call.parse(bytes(f.payload))
+        except ValueError:
+            return None
+        return f"call {f.dst:04x} {call.path_hash:08x} {base64.b64encode(bytes(call.args)).decode()}"
+    return None
 
 
 def report_state(link, broker: tuple[str, int] | None) -> tuple[str, str]:

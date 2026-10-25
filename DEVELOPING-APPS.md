@@ -293,6 +293,14 @@ hub's `cell.pins`: the frame link, CAN when built in, the status LED, the button
 which pins a board leaves free beyond that (flash, PSRAM, USB) is its datasheet's to say. The hub lists each app's
 parts with their GPIOs (`apps[].parts`), for a wiring view.
 
+A module whose actor takes **key or pointer events from the PC** says so in **takes**: `"takes": ["key"]`,
+`["pointer"]` or both (M24). A program gives the hub events for the app (`POST /api/input`, HUB-API.md); the hub
+numbers them and delivers them in order as CALLs of `act/<actor>/in`, one batch at a time, sending a batch again when
+its answer is late. Your actor implements `on_call`: for that path, read the batch with `parse_input` and keep order
+with `InputOrder` (both in `pot/input.hpp`, which documents the 8-byte event), act on each event `take()` returns true
+for, and answer at once with `node().reply_call(from, msg_id, path, Value::of_u32(order.last))` -- the hub sends the
+next batch only after that answer. Pin the actor: events go to one board. `builtin:key_echo` is the worked example.
+
 An actor that knows where something is declares seven outputs under one prefix, and the dashboard's floor plan
 draws it: `act/<name>/state` (u32: 0 nobody, 1 present but not placed, 2 placed), `x`, `y` (f32, Unit::Metre,
 plan coordinates as above), `a`, `b` (f32, Unit::Metre, the semi-axes of the zone), `theta` (f32, Unit::Radian,
@@ -365,7 +373,8 @@ the smaller figures in brackets.
               "peers": {"nearest": K}, "per_room": true,
               "panel": {"kind": "room|value", "output": "act/{actor}/<output>", "label": "...", "on": "...", "off": "..."},
               "parts": [{"part": "...", "bus": "i2c|spi|uart|adc|onewire|gpio", "pins": {"<role>": "<config field>"},
-                         "guide": "..."}]}]}
+                         "guide": "..."}],
+              "takes": ["key", "pointer"]}]}
 ```
 
 `component`, `types` and a non-empty `modules` are required; in each module, `module` (starting `ext:`), `type`
@@ -454,6 +463,7 @@ others into the owner's one package (below):
   | `builtin:led` | pinned | `r` `g` `b` 0-255, `blink`, `period_ms` 200-10000 | nothing shown: a healthy board is always green (GETTING-STARTED.md's LED table); kept so older packages still deploy |
   | `builtin:led_switch` | pinned | `r` `g` `b` 0-255, `blink_ms` 0 or 200-25500 | `node-<id>/led/on`, a writable bool: the status LED shows the colour in green's place while it is true (blue or cyan; any other colour is shown blue; purple, yellow and red still win) |
   | `builtin:inbox` | pinned | `outputs`: `"<name>:<type>[:<unit>] ..."`, 1-12, type `bool` `i32` `u32` `f32` `i64` `u64` `f64`, unit a `potluck.value.Unit` name; `stale_ms` (10000; 0 never stale) | `act/<actor>/<name>`, writable: values a program outside the cell writes through the hub (INTEGRATIONS.md, step 7); NO_DATA until written, STALE past `stale_ms` |
+  | `builtin:key_echo` | pinned | M24's test app: takes key and pointer events from the PC on `act/<name>/in` (`POST /api/input`), in order, and echoes them; no config | `act/<name>/key` (the last key: code \| down << 16), `act/<name>/count` (events taken), `act/<name>/gaps` (events missed -- 0 unless something is wrong) |
   | `builtin:speak` | pinned | asks the PC to say its phrase (`text`, 1..120 bytes) when `act/<name>/say` is written; binds one `svc/<name>` path in `needs` (the PC's `speech`) | `act/<name>/say` (a u32, written to ask -- every write is one request), `act/<name>/result` (0 not asked, 1 done, 2 refused, 3 gone) |
   | `builtin:mc_lender` / `builtin:mc_job` | pinned | a demonstration job on borrowed idle cores (`slots`; `units`, `samples`, `seed`, `lend`, `start_after_ms`, `control`) | `node-<id>/job/mc/pi`; with `"control": true` also `node-<id>/job/mc/run`, a u32 written to run with lending (1), alone (2), or stop (3) |
   | `builtin:fault` | pinned | `panic_after_ms` | nothing: it crashes the node on purpose, to test reverts |

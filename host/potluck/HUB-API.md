@@ -150,6 +150,9 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   `pi` is the last finished run's result; `speedup` is measured -- the board's last run alone over its last run with
   lending, both finished with their last unit -- or `null` until both have run. Empty when no board runs a job.
   `boards[].telemetry.lend`: M9's lender on that board -- `{accepted, refused, served, unit_ms}` -- or `null`.
+  `cell.inputs` (M24, 2026-10-25): per app given events, `{app, board, takes, queued, waiting, batches, taken, resent,
+  refused, p50_ms, p99_ms, last_answer_at}` -- `taken` the events the board answered for, `p50_ms`/`p99_ms` from a
+  POST to the board's answer over the last 2,000 events. `apps[].takes`: the events an app takes, `[]` for most.
   `cell.services` (M23, 2026-10-24): the named services the hub's PC offers the cell (the cluster file's
   `pc_services`), answered by the hub itself -- `[{name, description, path, state, calls, errors, last_call_at,
   callers}]`: `state` `serving` while a call is being answered, else `ready`; `errors` the calls answered "not done"
@@ -304,6 +307,18 @@ The stream takes no `since`: every reconnect sends up to the last 200 events aga
 `seq`. No `retry:` field is sent. What the dashboard does, and a client should: treat a stream that sends no model for
 three pull periods (at least 10 s) as dead; on a drop, poll `GET /api/model` and `GET /api/events?since=<next>` every
 2 s, and try the stream again every 15 s.
+
+## POST /api/input
+
+M24 (2026-10-25). Key and pointer events for an app whose module takes them (`apps[].takes`; `builtin:key_echo`, or
+an app's descriptor `"takes"`): `{"app": "echo", "events": [{"kind": "key", "code": 4, "down": true},
+{"kind": "pointer", "dx": -3, "dy": 7, "buttons": 1}]}` -> 202 `{"ok": true, "first": 41, "count": 2, "board":
+"8160"}`. `code` is a USB HID usage (page 7: 4 is A), `down` true or false (default true); `dx`, `dy` -32768..32767,
+`buttons` bit 0 left, 1 right, 2 middle. The hub numbers the events (16 bits, wrapping; `first` is the first one's)
+and delivers them in order to the app's board, in batches of up to 24, one batch at a time, sending one again when its
+answer is over 1 s late (the board drops what it already took). The same login right as `POST /api/write`. Answers:
+400 a bad request (the first bad event named, or a kind the app does not take), 404 no such app, 409 an app that takes
+no events or is not pinned, 429 over 512 events already waiting for it. How delivery goes is in `cell.inputs`.
 
 ## POST /api/write
 

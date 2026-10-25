@@ -341,6 +341,12 @@ int main(int argc, char** argv) {
     std::thread rd(reader);
     rd.detach();
     uint32_t next_stats = now_ms() + 2000;
+    // M24: the input batches CALLed for the hub, so one whose answer was lost does not hold a call slot for good.
+    struct InputCall {
+        uint16_t id;
+        uint32_t at;
+    };
+    InputCall input_calls[8] = {};
     while (!g_eof) {
         for (;;) {
             std::vector<uint8_t> f;
@@ -371,6 +377,21 @@ int main(int argc, char** argv) {
                 const uint32_t hash = static_cast<uint32_t>(std::strtoul(c.substr(4, 8).c_str(), nullptr, 16));
                 const std::vector<uint8_t> p = unb64(c.substr(13));
                 hostpresent::on_command(hash, reinterpret_cast<const char*>(p.data()), p.size());
+            } else if (c.compare(0, 5, "call ") == 0 && c.size() > 19) {
+                // M24: a batch of the PC's key and pointer events for an app (potluck.hostnode's call record), CALLed
+                // from here for the same reason as a reply below. The hub hears the answer itself, on the cable.
+                const uint16_t dst = static_cast<uint16_t>(std::strtoul(c.substr(5, 4).c_str(), nullptr, 16));
+                const uint32_t path = static_cast<uint32_t>(std::strtoul(c.substr(10, 8).c_str(), nullptr, 16));
+                const std::vector<uint8_t> a = unb64(c.substr(19));
+                const uint16_t call_id = node.request_call(dst, path, a.data(), static_cast<uint16_t>(a.size()));
+                if (call_id != 0) {
+                    for (auto& slot : input_calls) {
+                        if (slot.id == 0) {
+                            slot = {call_id, now_ms()};
+                            break;
+                        }
+                    }
+                }
             } else if (c.compare(0, 6, "reply ") == 0 && c.size() > 16) {
                 // M23: the hub's answer to a member's CALL of one of the PC's services (potluck.hostnode's
                 // reply_record). Sent from here because a board off the cable checks the end-to-end tag on what
@@ -389,6 +410,12 @@ int main(int argc, char** argv) {
             }
         }
         const uint32_t t = now_ms();
+        for (auto& slot : input_calls) {
+            if (slot.id != 0 && t - slot.at >= 2000) {
+                node.cancel_call(slot.id);  // answered long ago or never: free its slot either way (a no-op if answered)
+                slot.id = 0;
+            }
+        }
         node.tick(t);
         rec.tick(t);
         Event e{};

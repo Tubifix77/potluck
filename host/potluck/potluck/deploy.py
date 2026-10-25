@@ -73,6 +73,7 @@ ACTOR_POSITION = 12  # M20: where a board sits on the cell's floor plan, node-<i
 ACTOR_FOREMAN = 13  # M19: a cell's foreman role -- portable among its foreman-eligible boards (pot/foreman.hpp)
 ACTOR_INBOX = 14  # 2026-10-20: values a program outside the cell writes, act/<actor>/<name> (pot/inbox.hpp)
 ACTOR_SPEAK = 15  # M23: asks the PC to speak a phrase when act/<actor>/say is written (pot/speak.hpp)
+ACTOR_KEY_ECHO = 16  # M24: takes key and pointer events from the PC on act/<actor>/in, echoes them (pot/key_echo.hpp)
 CLUSTER_NAME_MAX = 31
 OUTSIDE_NAME_MAX = 40  # M13: deploy.hpp's kMaxOutsideName
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
@@ -82,7 +83,7 @@ BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:tic
             "builtin:mc_lender": ACTOR_MC_LENDER, "builtin:mc_job": ACTOR_MC_JOB,
             "builtin:present": ACTOR_PRESENT, "builtin:led_switch": ACTOR_LED_SWITCH,
             "builtin:position": ACTOR_POSITION, "builtin:foreman": ACTOR_FOREMAN, "builtin:inbox": ACTOR_INBOX,
-            "builtin:speak": ACTOR_SPEAK}
+            "builtin:speak": ACTOR_SPEAK, "builtin:key_echo": ACTOR_KEY_ECHO}
 
 
 def mc_job_path(system: str, node_id: int) -> str:
@@ -271,6 +272,26 @@ def inbox_outputs(a, where: str = "inbox") -> list[tuple[str, int, int]]:
 def speak_paths(system: str, actor: str) -> tuple[str, str]:
     """M23. A speak actor's two resources: (act/<actor>/say -- written to ask, act/<actor>/result -- how it went)."""
     return f"potluck://{system}/act/{actor}/say", f"potluck://{system}/act/{actor}/result"
+
+
+def input_path(system: str, actor: str) -> str:
+    """M24. Where an app that takes events from the PC is CALLed with them (pot/input.hpp): act/<actor>/in."""
+    return f"potluck://{system}/act/{actor}/in"
+
+
+def key_echo_paths(system: str, actor: str) -> tuple[str, str, str]:
+    """M24. The key-echo test app's three resources: (act/<actor>/key, act/<actor>/count, act/<actor>/gaps)."""
+    return tuple(f"potluck://{system}/act/{actor}/{n}" for n in ("key", "count", "gaps"))  # type: ignore[return-value]
+
+
+def _key_echo_config(m: Manifest, a, where: str) -> bytes:
+    """M24. No settings: its input and its three resources are named after it."""
+    if a.config:
+        raise DeployError(f"{where}: key_echo takes no config (got {sorted(a.config)})")
+    if a.pin is None:
+        raise DeployError(f"{where}: a key_echo actor is pinned to the board it echoes on")
+    return struct.pack("<IIII", path_hash(input_path(m.system, a.name)),
+                       *(path_hash(p) for p in key_echo_paths(m.system, a.name)))
 
 
 #: pot/deploy.hpp's kSpeakTextMax: the phrase a board may ask the PC to say.
@@ -714,6 +735,11 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
             raise DeployError(f"{where}: placed on '{spec.label}', a host: built-in actors run on firmware")
         if a.module == "builtin:led_switch":
             cfg = _led_switch_config(m, a, where)
+            body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+            count += 1
+            continue
+        if a.module == "builtin:key_echo":
+            cfg = _key_echo_config(m, a, where)
             body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
             count += 1
             continue

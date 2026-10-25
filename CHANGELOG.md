@@ -5,6 +5,11 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **Keyboard and mouse into the cell (M24).** `POST /api/input` gives an app key and pointer events; the hub numbers
+  them and delivers them in order to the app's board as CALLs of `act/<actor>/in` (through the PC's node, so a board
+  off the cable takes them), one batch at a time, again when an answer is late; `cell.inputs` shows the delivery and
+  its latency. A module says `"takes": ["key", "pointer"]`; `pot/input.hpp` has the event format and the order
+  keeping; `builtin:key_echo` (firmware type 16) is the test app.
 - **The PC's services in the model, and speech (M23).** The hub answers the cell's calls of the services the cluster
   file's `pc_services` names -- `time`, and new, `speech`: a board's text said aloud with the PC's own voice
   (System.Speech on Windows, the text on its stdin) -- and lists them in `cell.services` with their calls, errors

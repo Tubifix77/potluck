@@ -143,6 +143,14 @@ bool check_decl(const ActorDecl& a, const char*& w) {
             }
             break;
         }
+        case ActorType::KeyEcho: {
+            KeyEchoConfig ke{};
+            if (a.node_id == kPortableNode || a.node_id == kEveryNode || !key_echo_config(a, ke)) {
+                w = "key_echo must be pinned, with its input and three distinct resources";
+                return false;
+            }
+            break;
+        }
         case ActorType::Speak: {
             SpeakConfig sk{};
             if (a.node_id == kPortableNode || a.node_id == kEveryNode || !speak_config(a, sk)) {
@@ -599,6 +607,22 @@ bool speak_config(const ActorDecl& a, SpeakConfig& out) {
     if (out.text_len == 0 || out.text_len > kSpeakTextMax || a.cfg_len != kSpeakCfgFixed + out.text_len) return false;
     std::memcpy(out.text, a.cfg + kSpeakCfgFixed, out.text_len);
     return out.svc_hash != 0 && out.ctl_hash != 0 && out.out_hash != 0 && out.ctl_hash != out.out_hash;
+}
+
+bool key_echo_config(const ActorDecl& a, KeyEchoConfig& out) {
+    if (a.type != ActorType::KeyEcho || a.cfg == nullptr || a.cfg_len != kKeyEchoCfgLen) return false;
+    out.in_hash = rd32(a.cfg);
+    out.key_hash = rd32(a.cfg + 4);
+    out.count_hash = rd32(a.cfg + 8);
+    out.gaps_hash = rd32(a.cfg + 12);
+    const uint32_t h[4] = {out.in_hash, out.key_hash, out.count_hash, out.gaps_hash};
+    for (int i = 0; i < 4; ++i) {
+        if (h[i] == 0) return false;
+        for (int j = 0; j < i; ++j) {
+            if (h[i] == h[j]) return false;
+        }
+    }
+    return true;
 }
 
 bool portable_header(const ActorDecl& a, TickerConfig& out, size_t& len) {

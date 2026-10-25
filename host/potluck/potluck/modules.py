@@ -91,6 +91,9 @@ class ModuleSpec:
     #: carries the GPIO, so the wiring guide and the firmware read one number: the actor's config, else the field's
     #: default. `apply --plan` refuses two parts, or a part and the firmware (potluck.pins), on one GPIO of a board.
     parts: tuple["Part", ...] = ()
+    #: M24: "takes" -- the events from the PC an actor of this module takes on act/<actor>/in (pot/input.hpp): "key",
+    #: "pointer", or both. The hub delivers POST /api/input's events to it, in order; the actor implements on_call.
+    takes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -255,8 +258,12 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
             raise ModuleError(f"{w}: 'per_room' is true or false, and only for a portable module")
         panel = check_panel(m["panel"], outs, per_room, w) if "panel" in m else ()
         parts = check_parts(m["parts"], fields, w) if "parts" in m else ()
+        takes = m.get("takes", [])
+        if (not isinstance(takes, list) or len(set(takes)) != len(takes) or
+                any(t not in ("key", "pointer") for t in takes)):
+            raise ModuleError(f"{w}: 'takes' lists the events it takes from the PC: \"key\", \"pointer\" or both")
         out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req), "outputs" in m, k,
-                              per_room, panel, parts))
+                              per_room, panel, parts, tuple(takes)))
     return out
 
 

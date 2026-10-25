@@ -119,6 +119,7 @@ enum class ActorType : uint8_t {
     Foreman = 13,   // M19: a cell's foreman role -- portable among its foreman-eligible boards (pot/foreman.hpp)
     Inbox = 14,     // 2026-10-20: values a program outside the cell writes, act/<actor>/<name> (pot/inbox.hpp)
     Speak = 15,     // M23: asks the PC to speak a phrase (its svc/speech) when act/<actor>/say is written (pot/speak.hpp)
+    KeyEcho = 16,   // M24: takes key and pointer events from the PC (act/<actor>/in) and echoes them (pot/key_echo.hpp)
 };
 
 // M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an
@@ -352,6 +353,21 @@ struct SpeakConfig {
     uint8_t text[kSpeakTextMax];
 };
 bool speak_config(const ActorDecl& a, SpeakConfig& out);
+
+// KeyEcho (M24, 2026-10-25): the test app for events from the PC. The hub CALLs `in_hash` (act/<actor>/in) with a batch
+// of numbered key and pointer events (pot/input.hpp); the actor takes them in order, drops a resent duplicate, counts a
+// gap, answers with the last number it took, and publishes the last key (`key_hash`, a u32: code | down << 16), the
+// events taken (`count_hash`) and the events missed (`gaps_hash`). Pinned.
+//
+//   in_hash u32, key_hash u32, count_hash u32, gaps_hash u32
+constexpr uint8_t kKeyEchoCfgLen = 16;
+struct KeyEchoConfig {
+    uint32_t in_hash;
+    uint32_t key_hash;
+    uint32_t count_hash;
+    uint32_t gaps_hash;
+};
+bool key_echo_config(const ActorDecl& a, KeyEchoConfig& out);
 
 // ---------------------------------------------------------------------------------------------
 // The A/B state machine, persisted in NVS.

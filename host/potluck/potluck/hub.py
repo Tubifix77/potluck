@@ -153,6 +153,8 @@ class Hub(Bridge):
         self._clients_lock = threading.Lock()
         self.node_client: _Client | None = None  # M10's placement host, while attached
         self.services_for = lambda: None  # M23: the PC's named services (potluck.services.PcServices), from the model
+        from .events import Inputs
+        self.inputs = Inputs(self._send_input)  # M24: key and pointer events on their way to apps
         self._node_window_s = 6.0  # its declared death window (HELLO), for the silence after it goes
         self._quiet_until = 0.0     # after it went: say nothing as 0x00fe until the cell has declared it dead
         self.relay_counts = {"clients": 0, "requests": 0, "replies": 0, "unmatched": 0, "fanned_out": 0,
@@ -201,6 +203,8 @@ class Hub(Bridge):
         except fr.FrameError:
             super()._on_raw_frame(raw)
             return
+        if f.opcode == fr.Op.REPLY:
+            self._input_reply(f)  # M24: an app's answer to a batch of events -- noted, and passed on as before
         if f.opcode == fr.Op.REPLY and f.msg_id != 0:
             with self._lock:
                 r = self._relayed.pop(f.msg_id, None)
@@ -228,6 +232,35 @@ class Hub(Bridge):
                 # The cell asks the PC (an agent's service, M8): every tool hears it; the one offering it answers.
                 self._fan_out(raw)
         super()._on_raw_frame(raw)
+
+    def _send_input(self, owner: int, path_hash: int, args: bytes) -> bool:
+        """M24: one batch of events CALLed to an app's input. Through the PC's node when it is attached (a board off the
+        cable takes only what that node tags -- potluck.hostnode makes the frame a "call" record); to the cabled board
+        directly otherwise. False: no way to reach that board now."""
+        payload = Call(path_hash=path_hash, args=args).encode()
+        node = self.node_client
+        if node is not None and node.alive:
+            node.send_raw(fr.encode(src=HOST_NODE_ID, dst=owner, opcode=fr.Op.CALL, lclass=4, payload=payload))
+            return True
+        if owner == self.peer_node_id:
+            self.send_frame(fr.Op.CALL, payload, dst=owner, msg_id=self._next_msg_id(), lclass=4)
+            return True
+        return False
+
+    def _input_reply(self, f: fr.Frame) -> None:
+        try:
+            rep = Reply.parse(bytes(f.payload))
+        except ValueError:
+            return
+        if rep.reply_to != fr.Op.CALL:
+            return
+        q = self.inputs.by_reply(f.src, rep.path_hash)
+        if q is None:
+            return
+        if rep.status == int(NsError.OK):
+            q.ack(int.from_bytes(bytes(rep.value.raw[:4]), "little") & 0xFFFF, time.time())
+        else:
+            q.refuse()
 
     def _serve_call(self, f: fr.Frame) -> bool:
         """M23: a board's CALL of one of the PC's named services (the cluster file's `pc_services`): answered here.
@@ -1087,6 +1120,8 @@ class Model:
                 "presenter": presenter,
                 "jobs": self._jobs_json(),
                 "services": self.pc_services().snapshot() if self.pc_services() is not None else [],
+                "inputs": (self.hub.inputs.snapshot()  # M24
+                           if getattr(getattr(self, "hub", None), "inputs", None) is not None else []),
                 "plan": getattr(self.cluster, "plan", None) if self.cluster is not None else None}
 
     def pc_services(self):
@@ -1240,7 +1275,7 @@ class Model:
             out.append({"name": a.name, "module": a.module,
                         "placement": "portable" if portable else ("every" if every else "pinned"),
                         "nodes": nodes, "running_on": running, "working": ok, "detail": why, "outputs": outs,
-                        "parts": parts})
+                        "parts": parts, "takes": list(takes_of(a.module))})
         return out
 
     def _integrations_json(self, boards: list[dict], resources: list[dict]) -> list[dict]:
@@ -2106,7 +2141,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 self._json(200, {"ok": True, "accepted": accepted, "refused": refused,
                                  "ttl_s": min(max(float(ttl), lo), hi)})
                 return
-            if self.path != "/api/write":
+            if self.path not in ("/api/write", "/api/input"):
                 self._json(404, {"error": "not found"})
                 return
             who = self._who()
@@ -2118,6 +2153,13 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                 self._json(403, {"ok": False, "result": "this login may look, not write"})
                 return
             if not self._fair("write"):
+                return
+            if self.path == "/api/input":
+                try:
+                    req = self._body()
+                except ValueError:
+                    req = None
+                self._json(*input_events(model, req))  # M24
                 return
             try:
                 req = self._body()
@@ -2135,6 +2177,45 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
     srv.daemon_threads = True
     threading.Thread(target=srv.serve_forever, name="potluck-hub-api", daemon=True).start()
     return srv
+
+
+def takes_of(module: str) -> tuple[str, ...]:
+    """M24: the events an app of this module takes -- a built-in's own, or an external module's "takes"."""
+    from . import events as ev
+    from . import modules as mods
+    if module in ev.BUILTIN_TAKES:
+        return ev.BUILTIN_TAKES[module]
+    spec = mods.get(module)
+    return tuple(getattr(spec, "takes", ()) or ())
+
+
+def input_events(model, req) -> tuple[int, dict]:
+    """M24: POST /api/input {"app", "events": [...]} -- queued for the app's input, numbered, and delivered in order
+    (potluck.events). 202 with the first event's number; 400 a bad request, 404 no such app, 409 an app that takes no
+    events or has no board, 429 too many waiting."""
+    from . import deploy as dp
+    from . import events as ev
+    if not isinstance(req, dict) or not isinstance(req.get("app"), str) or "events" not in req:
+        return 400, {"ok": False, "result": 'expected {"app": ..., "events": [...]}'}
+    pkg = getattr(model, "package", None)
+    m = pkg.manifest if pkg is not None else None
+    a = next((x for x in (m.actors if m is not None else []) if x.name == req["app"]), None)
+    if a is None:
+        return 404, {"ok": False, "result": "no such app in this cell's package"}
+    takes = takes_of(a.module)
+    if not takes:
+        return 409, {"ok": False, "result": "this app takes no events (its module does not say \"takes\")"}
+    owner = m.placement_of(a)
+    if owner is None:
+        return 409, {"ok": False, "result": "this app has no fixed board to deliver to (pin it)"}
+    try:
+        evs = ev.check_events(req["events"], takes)
+        q = model.hub.inputs.queue(a.name, owner, path_hash(dp.input_path(m.system, a.name)), takes)
+        first = q.put(evs, time.time())
+    except ev.InputError as exc:
+        code = 429 if "already waiting" in str(exc) else 400
+        return code, {"ok": False, "result": str(exc)}
+    return 202, {"ok": True, "first": first, "count": len(evs), "board": f"{owner:04x}"}
 
 
 _TYPE_NAMES = {1: "bool", 2: "i32", 3: "u32", 4: "f32", 5: "i64", 6: "u64", 7: "f64", 8: "bytes"}
