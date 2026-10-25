@@ -73,6 +73,21 @@ TEST(pocket_auth, five_wrong_passwords_lock_the_login_for_a_minute) {
     CHECK(a.login("", 0, 70000 + kLockMs, &counting_random, &s) == LoginResult::Wrong);  // empty is never right
 }
 
+TEST(pocket_auth, each_lockout_after_the_first_is_twice_as_long_until_a_right_password) {
+    // Security review 2026-10-26: a stranger guessing five a minute kept the owner out for good and guessed ~7,200 a day.
+    Auth a = with_login("ship-ahoy-ship");
+    const Session* s = nullptr;
+    uint32_t t = 1000;
+    for (int i = 0; i < 5; ++i) a.login("wrong", 5, t, &counting_random, &s);
+    t += kLockMs + 1;  // the first lockout, a minute, is over
+    for (int i = 0; i < 5; ++i) a.login("wrong", 5, t, &counting_random, &s);
+    CHECK(a.login("ship-ahoy-ship", 14, t + kLockMs + 1, &counting_random, &s) == LoginResult::Locked);  // two now
+    CHECK(a.login("ship-ahoy-ship", 14, t + 2 * kLockMs + 1, &counting_random, &s) == LoginResult::Ok);
+    t += 2 * kLockMs + 10;
+    for (int i = 0; i < 5; ++i) a.login("wrong", 5, t, &counting_random, &s);
+    CHECK(a.login("ship-ahoy-ship", 14, t + kLockMs + 1, &counting_random, &s) == LoginResult::Ok);  // reset to one
+}
+
 TEST(pocket_auth, a_session_ends_after_fifteen_idle_minutes_and_the_oldest_gives_way) {
     Auth a = with_login("pw");
     const Session* s = nullptr;

@@ -4,7 +4,8 @@
 // login <password>`), and only a hash of it is kept (BLAKE2b keyed with a random salt, Monocypher). A phone
 // that logs in gets a session: a random id in a cookie (HttpOnly, SameSite=Strict) and a separate random token in the
 // page's forms; a write must carry both (the token is what a cross-site form cannot know). Five wrong passwords lock the
-// login for a minute; a session ends after 15 minutes without a request. Writes share the hub's limit: 2 a second, bursts
+// login for a minute, and each lockout after that twice as long (up to 16 minutes) until a right password; a session
+// ends after 15 minutes without a request. Writes share the hub's limit: 2 a second, bursts
 // of 4. Which resources may be written is the package's outside section (writable, never safety-relevant), checked again
 // by the board that owns the resource, as every outside write is.
 //
@@ -27,7 +28,9 @@ constexpr size_t kHashBytes = 32;
 constexpr size_t kMaxSessions = 4;
 constexpr uint32_t kSessionIdleMs = 15u * 60u * 1000u;
 constexpr uint32_t kLockAfter = 5;
-constexpr uint32_t kLockMs = 60000;
+constexpr uint32_t kLockMs = 60000;      // the first lockout; each one after it doubles, to kLockMaxMs
+constexpr uint32_t kLockMaxMs = 16u * 60u * 1000u;
+constexpr size_t kLoginMin = 12;  // security review 2026-10-26: guessable at the lockout's pace below this
 constexpr size_t kLoginMax = 63;
 
 using RandomFn = void (*)(uint8_t* out, size_t n);
@@ -71,7 +74,7 @@ class Auth {
     uint8_t salt_[kSaltBytes] = {};
     uint8_t hash_[kHashBytes] = {};
     Session sessions_[kMaxSessions];
-    uint32_t fails_ = 0, locked_until_ = 0;
+    uint32_t fails_ = 0, locked_until_ = 0, lock_ms_ = kLockMs;
     float tokens_ = 4.0f;
     uint32_t bucket_ms_ = 0;
     bool bucket_started_ = false;

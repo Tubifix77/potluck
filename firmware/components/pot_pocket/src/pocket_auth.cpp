@@ -62,17 +62,21 @@ LoginResult Auth::login(const char* password, size_t len, uint32_t now_ms, Rando
         ++counters_.locked;
         return LoginResult::Locked;
     }
-    if (fails_ >= kLockAfter) fails_ = 0;  // the minute is over
+    if (fails_ >= kLockAfter) fails_ = 0;  // the lockout is over -- the next one will be longer
     uint8_t h[kHashBytes];
     hash_login(salt_, password, len > kLoginMax ? kLoginMax : len, h);
     const bool ok = len >= 1 && len <= kLoginMax && crypto_verify32(h, hash_) == 0;
     crypto_wipe(h, sizeof(h));
     if (!ok) {
         ++counters_.bad_passwords;
-        if (++fails_ >= kLockAfter) locked_until_ = now_ms + kLockMs;
+        if (++fails_ >= kLockAfter) {
+            locked_until_ = now_ms + lock_ms_;
+            lock_ms_ = lock_ms_ * 2 > kLockMaxMs ? kLockMaxMs : lock_ms_ * 2;  // a stranger guessing gets slower and slower
+        }
         return LoginResult::Wrong;
     }
     fails_ = 0;
+    lock_ms_ = kLockMs;
     Session* slot = &sessions_[0];
     for (Session& s : sessions_) {
         if (!s.used) {

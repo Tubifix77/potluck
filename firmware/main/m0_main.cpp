@@ -3788,15 +3788,11 @@ const char* pocket_apply_write(const pocket::PendingWrite& w, uint32_t now) {
     }
     const NsEntry* e = g_node->ns().find(rule->hash);
     if (e == nullptr) return "refused: not on this board";
-    ValueType type = e->value.type;
-    if (type == ValueType::None) {  // not read yet: what the text says (a word, a whole number, a decimal)
-        Value probe;
-        type = pocket::parse_value(ValueType::Bool, w.value, probe)  ? ValueType::Bool
-               : pocket::parse_value(ValueType::U32, w.value, probe) ? ValueType::U32
-                                                                      : ValueType::F32;
-    }
+    // Its type from its value: one never read has none, and is refused rather than guessed (security review
+    // 2026-10-26: "1" became a bool for a whole-number resource).
+    if (e->value.type == ValueType::None) return "refused: no value yet to know its type";
     Value v;
-    if (!pocket::parse_value(type, w.value, v)) return "refused: not a value of its type";
+    if (!pocket::parse_value(e->value.type, w.value, v)) return "refused: not a value of its type";
     const uint16_t self = g_node->config().node_id;
     if (e->is_local(self)) {
         const NsError st = g_node->ns().write_outside(rule->hash, v, now);

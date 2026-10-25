@@ -65,15 +65,30 @@ struct Lock {
     }
 };
 
-void set_note(const char* text) {
-    Lock l;
-    std::snprintf(g_note, sizeof(g_note), "%s", text);
+char g_host[20] = "192.168.4.1";  // the access point's own address, set at start: the only Host this page answers
+
+// A request header into buf: 1 read, 0 absent, -1 longer than buf (refused -- never taken as absent: security review
+// 2026-10-26, a long Origin was read as none and the check let it through).
+int header(httpd_req_t* req, const char* name, char* buf, size_t cap) {
+    const size_t n = httpd_req_get_hdr_value_len(req, name);
+    if (n == 0) return 0;
+    if (n >= cap) return -1;
+    return httpd_req_get_hdr_value_str(req, name, buf, cap) == ESP_OK ? 1 : -1;
+}
+
+// Host names this board itself (with or without :80): a page from elsewhere rebinding a name to it is refused.
+bool host_ok(httpd_req_t* req) {
+    char host[32] = {};
+    if (header(req, "Host", host, sizeof(host)) != 1) return false;
+    char with_port[28];
+    std::snprintf(with_port, sizeof(with_port), "%s:80", g_host);
+    return std::strcmp(host, g_host) == 0 || std::strcmp(host, with_port) == 0;
 }
 
 // The session the request's cookie names (s=<32 hex>), or nullptr. Call under g_mu.
 const Session* request_session(httpd_req_t* req) {
     char cookie[160] = {};
-    if (httpd_req_get_hdr_value_str(req, "Cookie", cookie, sizeof(cookie)) != ESP_OK) return nullptr;
+    if (header(req, "Cookie", cookie, sizeof(cookie)) != 1) return nullptr;
     const char* at = cookie;
     while ((at = std::strstr(at, "s=")) != nullptr) {
         if (at == cookie || at[-1] == ' ' || at[-1] == ';') break;
@@ -86,16 +101,18 @@ const Session* request_session(httpd_req_t* req) {
     return g_auth.session(at, n, now_ms());
 }
 
-// A form posted from this page, not from another site: Origin (or, without it, Referer) names this board's address.
+// A form posted from this page, not from another site: Host is this board, and Origin (or, without it, Referer) names it.
 bool same_origin(httpd_req_t* req) {
-    char host[64] = {}, origin[96] = {};
-    if (httpd_req_get_hdr_value_str(req, "Host", host, sizeof(host)) != ESP_OK) return false;
-    char want[80];
-    std::snprintf(want, sizeof(want), "http://%s", host);
-    if (httpd_req_get_hdr_value_str(req, "Origin", origin, sizeof(origin)) == ESP_OK) return std::strcmp(origin, want) == 0;
-    if (httpd_req_get_hdr_value_str(req, "Referer", origin, sizeof(origin)) == ESP_OK) {
+    if (!host_ok(req)) return false;
+    char origin[96] = {};
+    char want[32];
+    std::snprintf(want, sizeof(want), "http://%s", g_host);
+    const int o = header(req, "Origin", origin, sizeof(origin));
+    if (o != 0) return o == 1 && std::strcmp(origin, want) == 0;
+    const int r = header(req, "Referer", origin, sizeof(origin));
+    if (r != 0) {
         const size_t wl = std::strlen(want);
-        return std::strncmp(origin, want, wl) == 0 && (origin[wl] == '/' || origin[wl] == '\0');
+        return r == 1 && std::strncmp(origin, want, wl) == 0 && (origin[wl] == '/' || origin[wl] == '\0');
     }
     return true;  // neither (an old browser): the SameSite=Strict cookie and the form token still stand
 }
@@ -113,9 +130,15 @@ bool read_body(httpd_req_t* req, char* buf, size_t cap) {
     return true;
 }
 
-esp_err_t back_home(httpd_req_t* req) {
+void no_framing(httpd_req_t* req) {
+    httpd_resp_set_hdr(req, "X-Frame-Options", "DENY");
+    httpd_resp_set_hdr(req, "Content-Security-Policy", "frame-ancestors 'none'");
+}
+
+esp_err_t back_home(httpd_req_t* req, const char* where = "/") {
     httpd_resp_set_status(req, "303 See Other");
-    httpd_resp_set_hdr(req, "Location", "/");
+    httpd_resp_set_hdr(req, "Location", where);
+    no_framing(req);
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     return httpd_resp_send(req, nullptr, 0);
 }
@@ -135,8 +158,10 @@ size_t take_copy() {
 }
 
 esp_err_t serve(httpd_req_t* req, bool json) {
+    if (!host_ok(req)) return forbid(req, "this page answers at its own address only");
     take_copy();
     PageView v;
+    char cookie[96] = {};
     {
         Lock l;
         v.writes_on = g_auth.enabled();
@@ -144,9 +169,25 @@ esp_err_t serve(httpd_req_t* req, bool json) {
         if (s != nullptr) {
             v.logged_in = true;
             to_hex(s->csrf, kTokenBytes, v.csrf);
+            char id[kTokenHex + 1];
+            to_hex(s->id, kTokenBytes, id);
+            std::snprintf(cookie, sizeof(cookie), "s=%s; HttpOnly; SameSite=Strict; Path=/; Max-Age=900", id);
+            std::snprintf(v.note, sizeof(v.note), "%s", g_note);  // the last write's result: a logged-in phone's only
         }
-        std::snprintf(v.note, sizeof(v.note), "%s", g_note);
     }
+    char query[16] = {}, r[4] = {};
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "r", r, sizeof(r)) == ESP_OK) {
+        const char* said = std::strcmp(r, "in") == 0    ? "logged in"
+                           : std::strcmp(r, "out") == 0 ? "logged out"
+                           : std::strcmp(r, "w") == 0   ? "wrong password"
+                           : std::strcmp(r, "l") == 0   ? "too many wrong passwords: try again later"
+                           : std::strcmp(r, "o") == 0   ? "writes are off on this board"
+                                                        : "";
+        if (said[0] != '\0') std::snprintf(v.note, sizeof(v.note), "%s", said);  // fixed words, never the query's
+    }
+    if (cookie[0] != '\0') httpd_resp_set_hdr(req, "Set-Cookie", cookie);  // in use: the 15 minutes start again
+    no_framing(req);
     const size_t n =
         json ? render_json(g_render, g_page, sizeof(g_page)) : render_html(g_render, v, g_page, sizeof(g_page));
     if (n == 0) {
@@ -164,7 +205,7 @@ esp_err_t get_json(httpd_req_t* req) { return serve(req, true); }
 
 // M26: POST /login {password}. A right one sets the session cookie; any answer goes back to the page, which says how.
 esp_err_t post_login(httpd_req_t* req) {
-    char body[128], pw[kLoginMax + 1];
+    char body[256], pw[kLoginMax + 1];
     if (!same_origin(req)) {
         {
             Lock l;
@@ -190,14 +231,10 @@ esp_err_t post_login(httpd_req_t* req) {
     std::memset(pw, 0, sizeof(pw));
     std::memset(body, 0, sizeof(body));
     if (r == LoginResult::Ok) {
-        set_note("logged in");
         httpd_resp_set_hdr(req, "Set-Cookie", cookie);
-    } else {
-        set_note(r == LoginResult::Locked ? "too many wrong passwords: try again in a minute"
-                 : r == LoginResult::Off  ? "writes are off on this board"
-                                          : "wrong password");
+        return back_home(req, "/?r=in");
     }
-    return back_home(req);
+    return back_home(req, r == LoginResult::Locked ? "/?r=l" : r == LoginResult::Off ? "/?r=o" : "/?r=w");
 }
 
 // M26: POST /write {name, value, csrf}: a logged-in phone's change, checked here and queued for the link task.
@@ -220,27 +257,41 @@ esp_err_t post_write(httpd_req_t* req) {
     for (size_t i = 0; i < g_render.n_items; ++i) {
         if (std::strcmp(g_render.items[i].name, name) == 0) writable = g_render.items[i].writable;
     }
-    Lock l;
-    const Session* s = request_session(req);
-    if (s == nullptr) {
-        ++g_auth.counters().bad_session;
-        return forbid(req, "log in first");
+    enum class Verdict { Queued, NoSession, BadCsrf, NotWritable, Slow, Busy } verdict = Verdict::Queued;
+    {
+        Lock l;  // deciding only: every reply is sent after the lock is given back
+        const Session* s = request_session(req);
+        if (s == nullptr) {
+            ++g_auth.counters().bad_session;
+            verdict = Verdict::NoSession;
+        } else if (!g_auth.csrf_ok(*s, csrf, std::strlen(csrf))) {
+            verdict = Verdict::BadCsrf;
+        } else if (!writable) {
+            verdict = Verdict::NotWritable;
+        } else if (!g_auth.take_write(now_ms())) {
+            verdict = Verdict::Slow;
+        } else if (g_pending_n >= kPendingMax) {
+            verdict = Verdict::Busy;
+        } else {
+            PendingWrite& w = g_pending[g_pending_n++];
+            std::snprintf(w.name, sizeof(w.name), "%s", name);
+            std::snprintf(w.value, sizeof(w.value), "%s", value);
+            std::snprintf(g_note, sizeof(g_note), "%s: sent", name);
+        }
     }
-    if (!g_auth.csrf_ok(*s, csrf, std::strlen(csrf))) return forbid(req, "not from this page");
-    if (!writable) return forbid(req, "not writable from outside");
-    if (!g_auth.take_write(now_ms())) {
-        httpd_resp_set_status(req, "429 Too Many Requests");
-        httpd_resp_set_hdr(req, "Retry-After", "1");
-        return httpd_resp_send(req, "slow down", HTTPD_RESP_USE_STRLEN);
+    switch (verdict) {
+        case Verdict::NoSession: return forbid(req, "log in first");
+        case Verdict::BadCsrf: return forbid(req, "not from this page");
+        case Verdict::NotWritable: return forbid(req, "not writable from outside");
+        case Verdict::Slow:
+            httpd_resp_set_status(req, "429 Too Many Requests");
+            httpd_resp_set_hdr(req, "Retry-After", "1");
+            return httpd_resp_send(req, "slow down", HTTPD_RESP_USE_STRLEN);
+        case Verdict::Busy:
+            httpd_resp_set_status(req, "503 Service Unavailable");
+            return httpd_resp_send(req, "busy", HTTPD_RESP_USE_STRLEN);
+        case Verdict::Queued: break;
     }
-    if (g_pending_n >= kPendingMax) {
-        httpd_resp_set_status(req, "503 Service Unavailable");
-        return httpd_resp_send(req, "busy", HTTPD_RESP_USE_STRLEN);
-    }
-    PendingWrite& w = g_pending[g_pending_n++];
-    std::snprintf(w.name, sizeof(w.name), "%s", name);
-    std::snprintf(w.value, sizeof(w.value), "%s", value);
-    std::snprintf(g_note, sizeof(g_note), "%s: sent", name);
     return back_home(req);
 }
 
@@ -255,8 +306,7 @@ esp_err_t post_logout(httpd_req_t* req) {
         const Session* s = request_session(req);
         if (s != nullptr && g_auth.csrf_ok(*s, csrf, std::strlen(csrf))) g_auth.logout(s);
     }
-    set_note("logged out");
-    return back_home(req);
+    return back_home(req, "/?r=out");
 }
 
 bool load_login() {
@@ -324,6 +374,11 @@ bool start(bool other_ap) {
         return false;
     }
     load_login();  // M26: writes on only with a saved login
+    esp_netif_t* ap_if = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+    esp_netif_ip_info_t ip{};
+    if (ap_if != nullptr && esp_netif_get_ip_info(ap_if, &ip) == ESP_OK && ip.ip.addr != 0) {
+        std::snprintf(g_host, sizeof(g_host), IPSTR, IP2STR(&ip.ip));
+    }
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.max_uri_handlers = 16;  // 2 paths x (GET + 4 refused methods), and M26's three POSTs
     cfg.max_open_sockets = 3;
@@ -370,17 +425,21 @@ int idle_reason() { return g_reason; }
 
 bool take_write(PendingWrite* out) {
     if (!g_active || g_mu == nullptr) return false;
-    Lock l;
-    if (g_pending_n == 0) return false;
-    *out = g_pending[0];
-    for (size_t i = 1; i < g_pending_n; ++i) g_pending[i - 1] = g_pending[i];
-    --g_pending_n;
-    return true;
+    if (xSemaphoreTake(g_mu, 0) != pdTRUE) return false;  // the page holds it: the next pass -- the link task never waits
+    const bool any = g_pending_n > 0;
+    if (any) {
+        *out = g_pending[0];
+        for (size_t i = 1; i < g_pending_n; ++i) g_pending[i - 1] = g_pending[i];
+        --g_pending_n;
+    }
+    xSemaphoreGive(g_mu);
+    return any;
 }
 
 void write_result(const char* name, const char* result) {
-    Lock l;
+    if (g_mu == nullptr || xSemaphoreTake(g_mu, 0) != pdTRUE) return;  // never wait for the page: the note can be missed
     std::snprintf(g_note, sizeof(g_note), "%s: %s", name, result);
+    xSemaphoreGive(g_mu);
 }
 
 void publish(const Snapshot& s) {
@@ -458,8 +517,8 @@ bool handle_console(const char* line, size_t len) {
     } else if (std::strncmp(buf, "login ", 6) == 0) {
         const char* pw = buf + 6;
         const size_t pl = std::strlen(pw);
-        if (pl < 1 || pl > kLoginMax) {
-            result = "refused_length";
+        if (pl < kLoginMin || pl > kLoginMax) {
+            result = "refused_length";  // 12-63 characters
         } else {
             uint8_t blob[kSaltBytes + kHashBytes];
             esp_fill_random(blob, kSaltBytes);

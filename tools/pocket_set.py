@@ -3,6 +3,8 @@
 
     <IDF python> tools/pocket_set.py COM3 <path to your file>
     <IDF python> tools/pocket_set.py COM3 --forget
+    <IDF python> tools/pocket_set.py COM3 --login <path to a file with the page's login password>
+    <IDF python> tools/pocket_set.py COM3 --login-off
 
 The file holds two lines: the access point's name (1-32 bytes, no spaces), then its password (8-63 characters, WPA2).
 Make both up: this is the board's own network for a phone, not the house Wi-Fi.
@@ -12,6 +14,12 @@ console, waits for the board's result line, and restarts the board once so the a
 the name or the password, nor the board's output around them -- only whether the board said "saved". It writes nothing
 to disk; delete the file yourself when you are done. On an extender whose hotspot is up the module stays idle (the
 extender owns the access point), so give it to a board that is not the extender.
+
+M26: --login turns the page's writes on behind a login: the file holds one line, the password (12-63 characters; only
+its hash is kept on the board, and it takes effect at once, no restart). --login-off turns writes off again (the
+default). A logged-in phone can then change the values the package marks writable from outside -- never a
+safety-relevant one. The login guards the page, not the network: anyone who knows the access point's own password can
+read what crosses it (plain HTTP over WPA2), so keep that password to yourself too.
 
 Close any monitor on the port first: only one program can hold it.
 """
@@ -24,7 +32,7 @@ import time
 import serial
 
 
-def send(port: str, line: str, saved: str) -> int:
+def send(port: str, line: str, saved: str, restart: bool = True) -> int:
     s = serial.Serial()
     s.port, s.baudrate, s.timeout = port, 115200, 0.05
     s.dtr = False
@@ -48,10 +56,11 @@ def send(port: str, line: str, saved: str) -> int:
         else:
             print("board: no answer within 5 s -- does its firmware carry the pocket module, and is a monitor open?")
             return 1
-        s.rts = True
-        time.sleep(0.15)
-        s.rts = False
-        print("board: restarting to use it")
+        if restart:
+            s.rts = True
+            time.sleep(0.15)
+            s.rts = False
+            print("board: restarting to use it")
         return 0
     finally:
         reply = b""
@@ -60,10 +69,19 @@ def send(port: str, line: str, saved: str) -> int:
 
 def main() -> int:
     args = sys.argv[1:]
+    if len(args) == 3 and args[1] == "--login":
+        with open(args[2], encoding="utf-8-sig") as f:
+            lines = [l.rstrip("\r\n") for l in f.readlines() if l.strip("\r\n") != ""]
+        if len(lines) != 1 or not 12 <= len(lines[0]) <= 63:
+            print("the file must hold one line, the login password, 12-63 characters")
+            return 2
+        return send(args[0], "login " + lines[0], "writes_on", restart=False)
     if len(args) != 2:
         print(__doc__.strip().splitlines()[2])
         return 2
     port, what = args
+    if what == "--login-off":
+        return send(port, "login off", "writes_off", restart=False)
     if what == "--forget":
         return send(port, "forget", "forgotten")
     with open(what, encoding="utf-8-sig") as f:

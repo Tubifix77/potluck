@@ -799,6 +799,22 @@ every other path 404. Without a name and password there is no access point; on a
 module stays idle (the extender owns the access point). The board prints `{"t":"pocket",...}`: phones on it, pages
 served, requests refused, its internal heap.
 
+**M26: writes from the pocket page.** Off by default. The owner turns them on per board with
+`<IDF python> tools/pocket_set.py <port> --login <file>` (one line, the page's login password, 12-63 characters; only a
+keyed BLAKE2b hash is kept, it takes effect at once) and off with `--login-off`. A phone that logs in gets a session
+(an HttpOnly, SameSite=Strict cookie) and a separate form token; then each value the package marks writable from
+outside -- never a safety-relevant one -- has a small form. The board writes its own resource and passes another
+board's to its owner as an outside write, checked again there. Refused: no session, a wrong token, a Host or Origin that
+is not the board's own address, a value with no reading yet, more than 2 writes a second (bursts of 4). Five wrong
+passwords lock the login for a minute, each lockout after that twice as long (to 16 minutes) until a right one; a
+session ends after 15 idle minutes. **The limit, plainly:** the page is plain HTTP over the access point's WPA2, so
+anyone who knows the access point's password can read what crosses it -- the login password and the cookie included;
+keep that password as private as the login. `{"t":"pocket",...}` adds writes_on, logins, bad passwords, lockouts,
+bad sessions, tokens and origins, rate-limited and applied writes, and the auth state's bytes (about 450; M26's kill
+line is 4 KB). A security review before it shipped found and closed: replies sent while holding the page's lock (the
+node's task could stall), a long Origin read as none, a shared note, guessed value types, and a short-password and
+lockout weakness.
+
 ## 17. M16: the dashboard, and the mock
 
 The dashboard is three static files in `host/potluck/potluck/dashboard/` (`index.html`, `app.js`, `style.css`; no
