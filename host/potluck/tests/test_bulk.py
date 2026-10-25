@@ -55,7 +55,8 @@ class FileService(unittest.TestCase):
 class Transfers(unittest.TestCase):
     def make(self, size: int, reachable=True):
         sent, now = [], [0.0]
-        b = bk.Bulk(lambda board, h, args: reachable and not sent.append((board, h, args)), clock=lambda: now[0])
+        b = bk.Bulk(lambda board, h, args: reachable and not sent.append((board, h, args)), clock=lambda: now[0],
+                    rate=None)  # unpaced here; the pacing has its own test
         b._thread = object()  # no sender thread: the test pumps by hand
         t = b.start(0x8160, 0xAB, "f", bytes(i % 251 for i in range(size)))
         return b, t, sent, now
@@ -86,6 +87,17 @@ class Transfers(unittest.TestCase):
         now[0] += bk.GIVE_UP_S
         b.pump()
         self.assertEqual(t.state, "failed")
+
+    def test_chunks_are_paced_to_the_rate(self) -> None:
+        sent, now = [], [0.0]
+        b = bk.Bulk(lambda board, h, args: not sent.append(args), clock=lambda: now[0], rate=10.0)
+        b._thread = object()
+        t = b.start(0x8160, 0xAB, "f", bytes(5000))
+        for step in range(10):  # one second, a pass every 100 ms, the app answering at once
+            b.pump()
+            b.ack(t, t.sent)
+            now[0] += 0.1
+        self.assertEqual(len(sent), 10)  # ten a second, however open the window
 
     def test_an_unreachable_board_keeps_the_chunk_for_the_next_pass(self) -> None:
         b, t, sent, now = self.make(500, reachable=False)
