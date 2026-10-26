@@ -54,6 +54,7 @@ class SpeakActor : public Actor {
     uint16_t cancelling_ = 0;
     uint32_t in_flight_since_ = 0;
     uint32_t now_ = 0;
+    uint32_t published_at_ = 0;
 };
 
 bool speak_check(const ActorDecl& d, const ActorEnv& env, const char** why);

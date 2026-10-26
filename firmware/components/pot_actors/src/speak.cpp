@@ -25,6 +25,9 @@ NsDecl speak_out_decl(const SpeakConfig& c, uint16_t node) {
     NsDecl d = speak_ctl_decl(c, node);
     d.path_hash = c.out_hash;
     d.access = Access::Read;
+    // Published at least every 2 s (tick): a copy on another board is read again past this. With no bound the
+    // copies kept their first value for good (found 2026-10-25, as key_echo's were).
+    d.staleness_bound_ms = 10000;
     return d;
 }
 }  // namespace
@@ -37,6 +40,7 @@ bool SpeakActor::start(uint32_t now_ms) {
     if (ctl != nullptr && !ctl->has_data()) node_.ns().publish(cfg_.ctl_hash, Value::of_u32(0), now_ms);
     if (ctl != nullptr) ctl_count_ = ctl->update_count;  // a write before this start is not a request
     node_.ns().publish(cfg_.out_hash, Value::of_u32(result_), now_ms);
+    published_at_ = now_ms;
     now_ = now_ms;
     return true;
 }
@@ -47,6 +51,7 @@ void SpeakActor::finish(uint32_t result, uint32_t now_ms) {
     if (result == kSpeakRefused) ++stats_.refused;
     if (result == kSpeakGone) ++stats_.gone;
     node_.ns().publish(cfg_.out_hash, Value::of_u32(result), now_ms);
+    published_at_ = now_ms;
 }
 
 void SpeakActor::tick(uint32_t now) {
@@ -61,6 +66,10 @@ void SpeakActor::tick(uint32_t now) {
             in_flight_ = 0;
             finish(kSpeakGone, now);
         }
+    }
+    if (now - published_at_ >= 2000) {  // fresh between results, so copies elsewhere are read again
+        node_.ns().publish(cfg_.out_hash, Value::of_u32(result_), now);
+        published_at_ = now;
     }
     const NsEntry* ctl = node_.ns().find(cfg_.ctl_hash);
     if (ctl == nullptr || ctl->update_count == ctl_count_) return;

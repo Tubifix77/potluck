@@ -157,6 +157,20 @@ TEST(speak, a_write_makes_the_pc_say_the_phrase_and_the_result_is_done) {
     CHECK_EQ(c.actor->stats().done, 2u);
 }
 
+TEST(speak, the_result_is_republished_so_copies_on_other_boards_are_read_again) {
+    // Found 2026-10-25: declared with no staleness bound and published only on a change, a copy of the result on
+    // another board was never read again and kept its first value.
+    KCell c;
+    c.run(3000);
+    const NsEntry* e = c.n[0].node->ns().find(kOut);
+    CHECK(e != nullptr);
+    CHECK_EQ(e->staleness_bound_ms, 10000u);
+    const uint32_t before = e->update_count;
+    c.run(5000);  // nothing asked: still published every 2 s
+    CHECK(e->update_count >= before + 2);
+    CHECK_EQ(c.result(), kSpeakNotYet);
+}
+
 TEST(speak, a_service_that_says_no_or_does_not_serve_the_path_is_refused) {
     KCell c;
     c.run(3000);
