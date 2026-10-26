@@ -1278,15 +1278,18 @@ board is borrowed from the cell for the run. *Measured:* frames a second deliver
 delivery with and without the stream, in one session. *Kill:* the board's links lose more than two points of heartbeat
 -- then an emulator never shares a board with Potluck.
 
-*M27's licence and port check (2026-10-26, the ledger):* every MSX emulator found on the ESP32-S3 is fMSX -- S3-MSX-PC
-(MSX2+ on this very module, fMSX 6.0 in a retro-go fork, ESP-IDF 5.4.4, both cores, VGA) and esp-box-emu's MSX
-component. fMSX may be used for non-profit purposes with credit; commercial use needs the author's licence; S3-MSX-PC
-adds GPL-3.0 (retro-go) and calls itself source-available. So **no emulator code enters this repository**, which is
-Apache-2.0: the experiment's emulator is an external app component (the way private apps join, `-AppComponents`) in a
-folder of its own, built on the bench PC for the run and never published; this repository keeps only the measurement.
-The system ROMs are copyrighted: the run uses C-BIOS (2-clause BSD, an MSX2+ version exists) or a ROM the owner may
-lawfully use. Nothing here deviates from section 0.1: an emulator is an app, and the question M27 answers is the
-radio's.
+*M27's licence and port check (2026-10-26, the ledger) -- the Amiga 500, not the MSX2+:* every MSX emulator found on
+the ESP32-S3 is fMSX -- S3-MSX-PC (MSX2+ on this very module, fMSX 6.0 in a retro-go fork, ESP-IDF 5.4.4, both cores,
+VGA) and esp-box-emu's MSX component. fMSX may be used for non-profit purposes only; S3-MSX-PC adds GPL-3.0 (retro-go)
+and calls itself source-available: none of it could be published beside this Apache-2.0 repository. An Amiga 500
+emulator does run on this module -- amiga500-esp32 (Kickstart 1.3 and Workbench 1.3 at ~31 fps, a Musashi 68000 and an
+OCS chipset written from scratch, PSRAM for its RAM), every part MIT, public-domain or SoftFloat-2 terms, all of which
+allow publishing a derivative with its notices. So the plan's "Amiga 500 only if one runs on the S3" fires and M27
+runs the Amiga: the emulator joins as an external app component (`-AppComponents`) whose notices go with it, its
+emulation on core 1 where the original runs it, without the original's display, audio and cabinet pins. The Kickstart
+ROM is copyrighted and never enters a repository: the owner supplies one he may lawfully use (his own Amiga's, or
+Cloanto's Amiga Forever). Nothing here deviates from section 0.1: an emulator is an app, and the question M27 answers
+is the radio's.
 
 ## 14. Risk register
 
