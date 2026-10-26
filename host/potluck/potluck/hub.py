@@ -2400,7 +2400,8 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
     name = path.split("/", 3)[3]
     owner = int(name[5:9], 16) if name.startswith("node-") else _inbox_owner(model, path)
     if owner is None:
-        return 400, {"ok": False, "result": "only a board's own resource or an inbox's value can be written from outside"}
+        return 400, {"ok": False, "result": "only a board's own resource, an inbox's value, a speak actor's say or a file "
+                                            "reader's go can be written from outside"}
     h = path_hash(path)
     try:
         # To the cabled board, which passes a write for another board's resource to its owner and returns the owner's
