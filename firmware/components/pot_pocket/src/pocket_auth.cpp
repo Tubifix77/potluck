@@ -144,8 +144,21 @@ bool Auth::take_write(uint32_t now_ms) {
     return true;
 }
 
-bool parse_value(ValueType type, const char* text, Value& out) {
-    if (text == nullptr || text[0] == '\0') return false;
+bool parse_value(ValueType type, const char* raw, Value& out) {
+    // Spaces around it dropped and the words read in any case: a phone's keyboard sends "On" or "on " (the owner's
+    // phone, 2026-10-26: "on" and "off" were refused, "1" and "0" worked).
+    if (raw == nullptr) return false;
+    while (*raw == ' ') ++raw;
+    char text[kValueMax + 1];
+    size_t n = 0;
+    for (; raw[n] != '\0'; ++n) {
+        if (n >= kValueMax) return false;  // longer than any value the page takes: refused, never cut
+        const char c = raw[n];
+        text[n] = (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+    }
+    while (n > 0 && text[n - 1] == ' ') --n;
+    text[n] = '\0';
+    if (text[0] == '\0') return false;
     char* end = nullptr;
     switch (type) {
         case ValueType::Bool:

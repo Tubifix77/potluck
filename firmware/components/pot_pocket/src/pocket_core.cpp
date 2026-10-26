@@ -127,7 +127,9 @@ size_t render_html(const Snapshot& s, const PageView& v, char* out, size_t cap) 
                     o.text(it.name, false);
                     o.add("\"><input type=\"hidden\" name=\"csrf\" value=\"");
                     o.text(v.csrf, false);
-                    o.add("\"><input name=\"value\" size=\"6\" maxlength=\"20\"> <button>set</button></form>");
+                    // A phone's keyboard capitalises and corrects a field's first word: "On" (2026-10-26).
+                    o.add("\"><input name=\"value\" size=\"6\" maxlength=\"20\" autocapitalize=\"off\" autocorrect=\"off\" "
+                          "autocomplete=\"off\" spellcheck=\"false\"> <button>set</button></form>");
                 }
                 o.add("</td>");
             }

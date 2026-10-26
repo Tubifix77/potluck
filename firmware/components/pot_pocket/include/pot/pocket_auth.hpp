@@ -86,8 +86,9 @@ void hash_login(const uint8_t salt[kSaltBytes], const char* password, size_t len
 // Bytes to lowercase hex (out holds 2n + 1) and back (false on a bad digit or length).
 void to_hex(const uint8_t* in, size_t n, char* out);
 bool from_hex(const char* hex, size_t len, uint8_t* out, size_t n);
-// A form's value for a resource of `type`: bool as on/off/true/false/1/0, whole numbers, decimals. False if it is not
-// one of those for that type.
+// A form's value for a resource of `type`: bool as on/off/true/false/1/0 in any case, whole numbers, decimals; spaces
+// around it ignored. False if it is not one of those for that type, or longer than kValueMax.
+constexpr size_t kValueMax = 23;  // the page's value field (PendingWrite::value holds 24 with the NUL)
 bool parse_value(ValueType type, const char* text, Value& out);
 // One field of an application/x-www-form-urlencoded body, decoded (+ and %XX), into out (cap includes the NUL).
 bool form_field(const char* body, size_t len, const char* name, char* out, size_t cap);

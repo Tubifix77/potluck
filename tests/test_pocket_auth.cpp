@@ -128,8 +128,15 @@ TEST(pocket_auth, values_are_parsed_by_their_type_and_form_fields_decoded) {
     CHECK(v.as_bool(b) && b);
     CHECK(parse_value(ValueType::Bool, "0", v) && v.as_bool(b) && !b);
     CHECK(!parse_value(ValueType::Bool, "maybe", v));
+    CHECK(parse_value(ValueType::Bool, "On", v) && v.as_bool(b) && b);  // a phone's keyboard capitalises it
+    CHECK(parse_value(ValueType::Bool, " OFF ", v) && v.as_bool(b) && !b);
+    CHECK(parse_value(ValueType::Bool, "True", v) && v.as_bool(b) && b);
+    CHECK(!parse_value(ValueType::Bool, "o n", v));
+    CHECK(!parse_value(ValueType::Bool, "   ", v));
+    CHECK(!parse_value(ValueType::Bool, "onnnnnnnnnnnnnnnnnnnnnnnnnnnn", v));  // past kValueMax: refused
     uint32_t u = 0;
     CHECK(parse_value(ValueType::U32, "42", v) && v.as_u32(u) && u == 42);
+    CHECK(parse_value(ValueType::U32, " 7 ", v) && v.as_u32(u) && u == 7);
     CHECK(!parse_value(ValueType::U32, "-1", v));
     CHECK(!parse_value(ValueType::U32, "4x", v));
     float f = 0;
@@ -176,4 +183,5 @@ TEST(pocket_auth, the_page_offers_a_login_then_forms_only_for_writable_values) {
     CHECK(std::strstr(first + 1, "action=\"/write\"") == nullptr);  // one form: the LED, not the temperature
     CHECK(std::strstr(page, "0123456789abcdef0123456789abcdef") != nullptr);
     CHECK(std::strstr(page, "http-equiv=\"refresh\"") == nullptr);  // a form being typed into is not reloaded
+    CHECK(std::strstr(page, "autocapitalize=\"off\"") != nullptr);  // "On" from a phone's keyboard, 2026-10-26
 }

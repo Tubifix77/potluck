@@ -23,6 +23,7 @@
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "nvs.h"
 #endif
 
@@ -291,6 +292,14 @@ esp_err_t post_write(httpd_req_t* req) {
             httpd_resp_set_status(req, "503 Service Unavailable");
             return httpd_resp_send(req, "busy", HTTPD_RESP_USE_STRLEN);
         case Verdict::Queued: break;
+    }
+    // Up to 1.5 s for the link task's answer, so the page it returns to shows it rather than "sent": a page with forms
+    // does not reload itself, and a refused "On" was never seen on the owner's phone (2026-10-26).
+    for (int i = 0; i < 30; ++i) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+        Lock l;
+        const size_t n = std::strlen(g_note);
+        if (n < 6 || std::strcmp(g_note + n - 6, ": sent") != 0) break;
     }
     return back_home(req);
 }
