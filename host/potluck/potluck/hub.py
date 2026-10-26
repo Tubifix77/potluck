@@ -1020,6 +1020,9 @@ class Model:
                 "roles": st.role_names(),
                 "modules": [{"name": m, "state": s, "reason": r} for m, s, r in st.modules],
                 "actors": list(st.actors),
+                # the board cut its list of names short (64 bytes): every running actor has one name in a whole list
+                "actors_cut": len(st.actors) < st.pinned_running + st.portable_here,
+                "pinned_running": st.pinned_running,
                 "up_ms": st.uptime_s * 1000,
                 "reset": b.get("reset"),
                 "cluster": st.cluster,
@@ -1245,7 +1248,8 @@ class Model:
         running_here = {b["node"]: set(b.get("actors", [])) for b in boards if b["state"] == "alive"}
         out = []
         m = self.package.manifest
-        for a in m.actors:
+
+        def placed(a) -> tuple[bool, bool, str]:  # (portable, every, the kind name NODE_STATUS lists it by)
             spec = mods.get(a.module)
             portable = a.module.startswith("guest:") or a.module in ("builtin:ticker", "builtin:present") or (
                 spec is not None and spec.placement == "portable")
@@ -1254,6 +1258,23 @@ class Model:
             kind = {"die_temp": "die_temp", "overheat_alarm": "guest"}.get(kind, kind)
             if a.module.startswith("guest:"):
                 kind = "guest"
+            return portable, every, kind
+
+        # A board's list of actor names is cut at 64 bytes (pot/node_status.hpp: "may be cut short"). Found 2026-10-26:
+        # C's eight pinned actors filled it with seven names, and pos_8160 read "not running on 8160" while its
+        # position actor ran. A cut list whose board runs as many pinned actors as the package pins there names them all.
+        from .apply import expected
+        want = expected(m, [int(n, 16) for n in running_here], verify=False)[0]
+        for b in boards:
+            n = b["node"]
+            if n in running_here and b.get("actors_cut") and b.get("pinned_running", 0) >= want.get(int(n, 16), 0):
+                for a in m.actors:
+                    portable, every, kind = placed(a)
+                    if not portable and (every or m.placement_of(a) == int(n, 16)):
+                        running_here[n].add(kind)
+        for a in m.actors:
+            spec = mods.get(a.module)
+            portable, every, kind = placed(a)
             pin = m.placement_of(a)
             nodes = [f"{pin:04x}"] if pin is not None and not portable else [b["node"] for b in boards]
             running = [n for n, acts in running_here.items() if kind in acts and (portable or every or n in nodes)]
@@ -1330,7 +1351,8 @@ class Model:
         now = time.monotonic()
         errors = sum(1 for t in self.errors if now - t < 60)
         alive = [b for b in boards if b.get("actors") is not None]
-        slots = max((len(b.get("actors", [])) / 8 for b in alive), default=None)
+        # pinned actors against pot/actor.hpp's 8 slots (the list of names may be cut short, and names portable ones too)
+        slots = max((b.get("pinned_running", len(b.get("actors", []))) / 8 for b in alive), default=None)
         # M15: the worst board's internal heap used at its low-water mark, from telemetry.
         ram = [1 - b["heap"]["internal_min"] / (b["heap"]["internal_total_kib"] * 1024) for b in boards
                if b.get("heap") and b["heap"].get("internal_total_kib")]

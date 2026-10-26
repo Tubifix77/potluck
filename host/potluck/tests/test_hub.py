@@ -665,6 +665,58 @@ class UpdateStatus(unittest.TestCase):
                 self.assertEqual(model._update_json("x")["available"], None)  # a hub run from source carries none
 
 
+class CutActorList(unittest.TestCase):
+    """2026-10-26: C runs eight pinned actors; their names filled NODE_STATUS's 64 bytes with seven, and the hub read
+    pos_8160 as "not running on 8160" while C's console printed its position every period."""
+
+    def manifest(self):
+        from potluck import manifest as mf
+        actors = [{"name": f"die_{i}", "module": "builtin:die_temp", "latency_class": 4, "pin": 0x8160}
+                  for i in range(7)]
+        actors.append({"name": "pos_8160", "module": "builtin:position", "latency_class": 4, "pin": 0x8160,
+                       "config": {}})
+        return mf.parse({"schema": 1, "system": "lab", "min_core_version": 1,
+                         "nodes": [{"node_id": 0x8160, "label": "C"}], "actors": actors})
+
+    def test_a_board_with_every_pinned_actor_running_runs_the_one_its_list_has_no_room_for(self) -> None:
+        from types import SimpleNamespace as NS
+        import test_apply as tap
+        from potluck import apply as ap
+        model = hb.Model(NS(record=None), package=NS(manifest=self.manifest()))
+        names = b"die_temp," * 6 + b"die_temp"  # the board's add() drops ",position": no room left
+        st = ap.parse_node_status(tap.status_bytes(node=0x8160, pinned=8, ptotal=0, phere=0, actors=names))
+        board = model._board_json(0x8160, {"status": st, "state": "alive", "since_at": 0})
+        self.assertEqual((board["actors_cut"], board["pinned_running"]), (True, 8))
+        apps = {a["name"]: a for a in model._apps_json([board], [])}
+        self.assertEqual((apps["pos_8160"]["working"], apps["pos_8160"]["detail"]), (True, ""))
+        # one of the eight not running: the list cannot say which, so the one it does not name is not proven to run
+        st = ap.parse_node_status(tap.status_bytes(node=0x8160, pinned=7, ptotal=0, phere=0, actors=names))
+        board = model._board_json(0x8160, {"status": st, "state": "alive", "since_at": 0})
+        apps = {a["name"]: a for a in model._apps_json([board], [])}
+        self.assertEqual((apps["pos_8160"]["working"], apps["pos_8160"]["detail"]), (False, "not running on 8160"))
+        self.assertTrue(apps["die_0"]["working"])
+        # a whole list is not cut, and a name it lacks is an actor that does not run
+        st = ap.parse_node_status(tap.status_bytes(node=0x8160, pinned=1, ptotal=0, phere=0, actors=b"die_temp"))
+        board = model._board_json(0x8160, {"status": st, "state": "alive", "since_at": 0})
+        self.assertFalse(board["actors_cut"])
+        self.assertFalse({a["name"]: a for a in model._apps_json([board], [])}["pos_8160"]["working"])
+
+    def test_apply_refuses_more_pinned_actors_than_a_board_runs(self) -> None:
+        from potluck import apply as ap
+        m = self.manifest()
+        want = ap.expected(m, [0x8160])[0]
+        self.assertEqual(want, {0x8160: 8})
+        ap.check_pinned(want)  # eight fit
+        with self.assertRaises(ap.ApplyError) as cm:
+            ap.check_pinned({0x8160: 9, 0x6300: 3})
+        self.assertIn("0x8160 has 9", str(cm.exception))
+        self.assertNotIn("0x6300", str(cm.exception))
+        with open(os.path.join(os.path.dirname(__file__), "../../../firmware/components/pot_actors/include/pot/actor.hpp"),
+                  encoding="utf-8") as f:
+            hpp = f.read()
+        self.assertIn(f"constexpr size_t kMaxPinnedActors = {ap.MAX_PINNED};", hpp)
+
+
 class AppParts(unittest.TestCase):
     def test_an_app_lists_what_it_needs_wired_with_its_gpios(self) -> None:
         """2026-10-20, the Potluck Desk's Wiring window: apps[].parts from the module's descriptor and the actor's

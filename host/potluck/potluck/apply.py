@@ -1499,6 +1499,17 @@ def actor_reads(m, a, boards: list[int]) -> tuple[str, list[str]]:
     return "pinned", reads
 
 
+MAX_PINNED = 8  # pot/actor.hpp's kMaxPinnedActors: a board refuses an image with more on it, and then runs none
+
+
+def check_pinned(pinned: dict[int, int]) -> None:
+    """ApplyError naming every board the package pins more actors on than it can run (expected()'s first part)."""
+    over = [f"0x{n:04x} has {k}" for n, k in sorted(pinned.items()) if k > MAX_PINNED]
+    if over:
+        raise ApplyError(f"more pinned actors than a board runs ({MAX_PINNED}, every-board ones included): "
+                         + ", ".join(over) + " -- make one portable, or pin it to another board")
+
+
 def expected(m, boards: list[int], verify: bool = True) -> tuple[dict[int, int], int, list[str]]:
     """(pinned actors per board, portable actors in the cell, output paths to read back)."""
     pinned = {n: 0 for n in boards}
@@ -1873,6 +1884,7 @@ def apply(c: Cluster, port: str, *, plan_only: bool, cache: Path, partial: bool 
                                                                  if n.kind != "host" and n.node_id not in c.stubs]
         if pkg is not None:
             pinned_want, portable_want, reads = expected(pkg.manifest, boards)
+            check_pinned(pinned_want)
             pc_may_run = pc_runnable(pkg.manifest)
             portable_by, here_want = {n: portable_want for n in boards}, portable_want
             if c.cells:  # M19: each board keeps its cells' portable actors, and reads what its cells hold

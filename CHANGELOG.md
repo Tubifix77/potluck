@@ -5,6 +5,12 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **An app on a board with eight pinned actors no longer reads "not running".** A board's list of actor names in its
+  status reply is cut at 64 bytes; the hub read a name cut from it as an actor that does not run (C's position, the
+  eighth of eight). `boards[].actors_cut` and `boards[].pinned_running` say so, and the hub counts every pinned actor of
+  the package as running on a board with a cut list that runs as many as the package pins there. `actor_slots` counts
+  pinned actors. `potluck apply` refuses a package that pins more than eight actors on one board (every-board ones
+  included) before anything is built -- such a board refuses the whole package and runs none of them.
 - **An emulator beside Potluck (M27, an experiment).** An Amiga 500 emulator ran as an external app on one board's
   second core, its ROM read from the PC over the bulk channel and its frames streamed to the PC over the board's
   Wi-Fi: alone it left the cell's links as they were; streaming every frame (~4.8 Mbit/s) cost the worst link up to

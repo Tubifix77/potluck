@@ -90,7 +90,7 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
      "roles": ["sandbox", "reconciler", "enrolled"],
      "modules": [{"name": "present", "state": "active", "reason": ""},
                  {"name": "wifi", "state": "idle", "reason": "another module is the connection"}],
-     "actors": ["die_temp", "led_switch", "present"],
+     "actors": ["die_temp", "led_switch", "present"], "actors_cut": false, "pinned_running": 2,
      "up_ms": 9540000, "reset": "power-on", "cluster": "lab",
      "heap": {"internal_free": 152831, "internal_min": 141379, "internal_largest": 77824, "internal_total_kib": null,
               "psram_free": 8100000, "psram_min": 8050000},
@@ -166,7 +166,11 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   by node id. Empty when the PC offers none. With the PC off there is no hub to ask: a board's caller says so itself
   (a speak actor's result 3, "gone").
   `signals.saturation.peers` is the boards the hub knows against 21 (a board and the 20 peers it can hold);
-  `actor_slots` the busiest board's actors against 8.
+  `actor_slots` the busiest board's pinned actors against 8.
+- `boards[].actors` (2026-10-26): the kinds of the actors running on the board, from its status reply, which holds 64
+  bytes of names: a longer list is cut, and `actors_cut` is then true (fewer names than actors running). An app's
+  `working` does not take a name missing from a cut list as an actor that does not run: `pinned_running` (the pinned
+  actors running there, every-board ones included) equal to what the package pins on the board means all of them run.
 - `last_event_seq`: the newest event's `seq` (0 before the first), so a client knows where `GET /api/events` stands.
 - `board.state`: `alive` | `dead` | `asleep` (it declared a long window: expected back) | `unknown` (not heard since the
   hub started). A board is `asleep`, not `dead`, when it stops answering after its telemetry said `long_window`; it
