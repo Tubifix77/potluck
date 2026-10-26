@@ -338,7 +338,10 @@ take turns, the last caller winning (on the owner's cell an LED switch and a pre
 gives an app a slot of its own: its `off` clears only that slot, and the LED shows the most recent `on` that has not
 lapsed. The built-in LED switch uses slot 1. `bg_submit(work, arg)` runs a computation on a background worker below
 everything the node does, refused when all workers are busy; `bg_yield` must be called every ~50 ms inside
-it (the task watchdog watches the idle task: a core kept from it for 5 s resets the chip).
+it (the task watchdog watches the idle task: a core kept from it for 5 s resets the chip). `receiving_image()`
+(null on firmware before 2026-10-26) is true while a firmware or package image is arriving at the board: an app that
+loads the radio or the board's own Wi-Fi heavily -- a stream -- pauses while it is, or the update may not get through
+(M27: a 4.7 Mbit/s stream from a board kept a rollout from reaching it).
 
 ### Limits
 

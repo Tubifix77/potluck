@@ -77,6 +77,11 @@ struct BoardServices {
     // most recent "on" among the slots that have not lapsed. Null on a host and on firmware before 2026-10-19.
     void (*led_claim)(void* ctx, uint8_t slot, bool on, uint8_t r, uint8_t g, uint8_t b,
                       uint16_t blink_period_ms) = nullptr;
+    // True while a firmware or package image is arriving at this board (the status LED's purple). An app that loads
+    // the radio or the board's own Wi-Fi heavily -- a stream -- pauses while it is true, or the image may not get
+    // through (M27, 2026-10-26: a 4.7 Mbit/s stream from a board kept a firmware rollout from reaching it). Any task
+    // may call it; null on a host and on firmware before 2026-10-26.
+    bool (*receiving_image)(void* ctx) = nullptr;
 };
 
 // What the runtime gives an actor.

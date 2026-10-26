@@ -3847,8 +3847,11 @@ uint64_t unix_ms(void*) {
     return static_cast<uint64_t>(tv.tv_sec) * 1000u + static_cast<uint64_t>(tv.tv_usec / 1000);
 }
 
+bool receiving_image(void*) { return fw_rt::receiving() || deploy_rt::g_rx.in_progress(); }
+
 const BoardServices g_board_services{nullptr,     &led_app, &bg::submit,  &bg::yield, bg::kWorkers,
-                                     &outside_at, &cell_id, &system_name, &unix_ms, &broker_ca, &led_claim};
+                                     &outside_at, &cell_id, &system_name, &unix_ms, &broker_ca, &led_claim,
+                                     &receiving_image};
 
 // M12: the inventory record (pot/node_status.hpp). With g_mutex held (on_deploy).
 size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {
