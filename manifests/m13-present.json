@@ -17,7 +17,7 @@
       "latency_class": 3,
       "pin": 29544,
       "on_host_loss": "hold",
-      "config": {"r": 0, "g": 0, "b": 255}
+      "config": {"r": 0, "g": 255, "b": 255}
     }
   ]
 }
