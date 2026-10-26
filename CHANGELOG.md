@@ -5,6 +5,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **An emulator beside Potluck (M27, an experiment).** An Amiga 500 emulator ran as an external app on one board's
+  second core, its ROM read from the PC over the bulk channel and its frames streamed to the PC over the board's
+  Wi-Fi: alone it left the cell's links as they were; streaming every frame (~4.8 Mbit/s) cost the worst link up to
+  1.5 points of heartbeat loss. No Potluck code changed for it; the type block 0x90-0x9F is recorded for the app.
 - **Writes from the pocket page (M26).** Off by default: `tools/pocket_set.py <port> --login <file>` gives a board's
   pocket page a login (12-63 characters, kept as a keyed BLAKE2b hash). A logged-in phone gets a session cookie and a
   form token, and a small form for each value the package marks writable from outside (never a safety-relevant one); a

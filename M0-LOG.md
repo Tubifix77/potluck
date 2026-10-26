@@ -6121,3 +6121,18 @@ Each milestone's evidence and caveats are its STATUS.md row; this records what t
 
 Open: the owner's 24 h and hand power-cut evidence as listed in STATUS; the cable's ~1 in 60 unanswered requests
 (M24); speak's outputs reading staleness 0; the extender's channel rule lacking the -70 dBm floor; M27 next.
+
+**M27, the same evening** (an experiment; accepted with caveats). The licence check came first: every ESP32-S3 MSX
+emulator found is fMSX (non-profit use only, and S3-MSX-PC adds GPL-3.0), so the plan's second choice ran -- an Amiga
+500, amiga500-esp32, MIT throughout. The owner owns no Kickstart and wanted no copyright crossed, so the board boots the
+app's own 68000 test ROM, encoded by hand (no 68000 assembler on the PC) and checked first on a PC build of the same
+emulator sources; the owner's point that the original keeps its ROMs on an SD card led to the ROM coming from the PC's
+bulk folder (M25). Built as an external app component in a repository of its own: the chipset and Musashi unchanged
+except the 68000's two tables (768 KB) moved to the heap, its static data in PSRAM by a linker fragment, the frame loop
+on a priority-1 task on core 1 that sleeps a tick every frame. Found on the way: the published PC path depends on its
+author's unpublished main.cpp; a frame took 160 ms built -Os on the 160 MHz boards, 41 ms with -O2; an actor's console
+hook gets the whole "POT! ..." line. Measured (STATUS): the emulator alone changes nothing on the links; streaming
+every frame costs up to 1.5 points; once C's radio jammed for 60 s while streaming (not reproduced in 20 minutes), and
+a firmware rollout could not reach C while it streamed 4.7 Mbit/s -- it went through with the stream off. A board
+that streams over its own station should pause the stream for a rollout; recorded, not built. The cell is back on its
+everyday package (`keys/home.json.pre-m27` restored); `keys/home-m27.json` brings the emulator back.

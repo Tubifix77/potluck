@@ -1271,7 +1271,7 @@ bursts of 4), and a separate security review before it ships. Advised only where
 safety-relevant and a read-only resource are each refused. *Kill:* the login and CSRF state need more than 4 KB of a
 board's internal heap.
 
-**M27 — an emulator beside Potluck (an experiment).** An existing open-source emulator (an MSX2+ first; a 386 PC or an
+**M27 — an emulator beside Potluck (an experiment).** *(Accepted 2026-10-26: an Amiga 500 on C's core 1 -- 27-28 frames a second alone, the links' loss unchanged; streaming every frame over C's Wi-Fi, 7.3 a second and ~4.8 Mbit/s, the worst link up 1.50 and 1.42 points in two runs, kill line not crossed. Caveats: one 60 s radio jam on C in ~45 min of streaming, not reproduced in a 20-minute stream and not shown to be the stream's; a firmware rollout could not reach C while it streamed. As built: the Amiga, not the MSX2+ (licences, below); the app's own test ROM, no Kickstart; the ROM read from the PC over the bulk channel.)* An existing open-source emulator (an MSX2+ first; a 386 PC or an
 Amiga 500 only if one runs on the S3) on core 1 of one of the three boards, beside Potluck on core 0, its frames sent
 over Wi-Fi to the PC. First the emulator's licence and its S3 port are checked (the ledger), before any code. The
 board is borrowed from the cell for the run. *Measured:* frames a second delivered, and that board's heartbeat loss and
