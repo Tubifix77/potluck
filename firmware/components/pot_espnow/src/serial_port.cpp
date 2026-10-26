@@ -30,9 +30,11 @@ struct SerialRxSlot {
     uint8_t data[kEspNowV2LinkMtu];
 };
 
-// Four slots. A host is a far slower talker than a radio full of peers, and §6 has no line for this
-// ring — it is M2 instrumentation, sized to the smallest number that cannot lose a burst.
-constexpr size_t kSerialRxSlots = 4;
+// Sixteen slots, in PSRAM (below). Four were "the smallest number that cannot lose a burst" while the host was one
+// tool; since M14 the hub, the PC's host node and the tools behind the hub's relay share the cable, and the hub reads
+// the cell in a burst every 2 s -- with four, ~1 in 120 of the PC's reads was dropped here unanswered (2026-10-26,
+// rx_queue_dropped, printed nowhere until then).
+constexpr size_t kSerialRxSlots = 16;
 
 // M6: buffers only tasks touch, at the host cable's speed, live in PSRAM when the build has it
 // (EXT_RAM_BSS_ATTR is empty otherwise). Never one an ISR touches: the cache, and with it PSRAM, is

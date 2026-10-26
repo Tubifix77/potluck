@@ -2395,6 +2395,17 @@ void stats_task(void*) {
                         static_cast<unsigned>(ac.replayed), static_cast<unsigned>(ac.untagged),
                         static_cast<unsigned>(ac.bcast_dropped), static_cast<unsigned>(ac.beacon_epoch_ignored),
                         static_cast<unsigned>(ac.tag_us_max));
+#if CONFIG_POT_SERIAL_LINK
+            // The PC's cable: a frame dropped or a bad CRC here is a request the PC never had answered (2026-10-26: ~1 in
+            // 120 reads lost to a full 4-slot queue, counted here and printed nowhere).
+            const SerialPortStats ss = serial_port_stats();
+            std::printf("{\"t\":\"serial\",\"node\":%u,\"frames_ok\":%u,\"bad_crc\":%u,\"cobs_invalid\":%u,"
+                        "\"too_long\":%u,\"rx_queue_dropped\":%u,\"tx_frames\":%u,\"tx_errors\":%u}\n",
+                        static_cast<unsigned>(node_id), static_cast<unsigned>(ss.framing.frames_ok),
+                        static_cast<unsigned>(ss.framing.bad_crc), static_cast<unsigned>(ss.framing.cobs_invalid),
+                        static_cast<unsigned>(ss.framing.too_long), static_cast<unsigned>(ss.rx_queue_dropped),
+                        static_cast<unsigned>(ss.tx_frames), static_cast<unsigned>(ss.tx_errors));
+#endif
             Reading sp;
             unsigned served = 0;
             xSemaphoreTake(g_mutex, portMAX_DELAY);
