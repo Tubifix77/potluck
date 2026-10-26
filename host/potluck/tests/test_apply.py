@@ -712,5 +712,44 @@ class PackagedRelease(unittest.TestCase):
                     os.environ["POTLUCK_FIRMWARE_DIR"] = old
 
 
+class ExportTwiceAtOnce(unittest.TestCase):
+    """2026-10-26: the hub's apply and a session's plan exported one commit at the same moment, shared one ".tmp" and
+    both failed. Each export now unpacks into a folder of its own and the later one uses the first's."""
+
+    def test_two_exports_of_one_commit_at_once_both_succeed(self):
+        import subprocess
+        import threading
+        with tempfile.TemporaryDirectory() as d:
+            repo = Path(d) / "repo"
+            repo.mkdir()
+            for i in range(200):
+                (repo / f"f{i}.txt").write_text("x" * 2000, encoding="ascii")
+            git = ["git", "-c", "user.name=t", "-c", "user.email=t@t"]
+            subprocess.run(git + ["init", "-q", str(repo)], check=True)
+            subprocess.run(git + ["-C", str(repo), "add", "-A"], check=True)
+            subprocess.run(git + ["-C", str(repo), "commit", "-q", "-m", "x"], check=True)
+            src = ap.Source(name="t", git=str(repo), rev="HEAD")
+            cache = Path(d) / "cache"
+            out, errors = [], []
+
+            def run():
+                try:
+                    out.append(ap.export(src, cache))
+                except Exception as e:  # noqa: BLE001 -- the test reports it
+                    errors.append(e)
+
+            threads = [threading.Thread(target=run) for _ in range(4)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            self.assertEqual(errors, [])
+            self.assertEqual(len({p for p, _ in out}), 1)
+            dest = out[0][0]
+            self.assertTrue((dest / ".potluck-export").exists())
+            self.assertEqual(len(list(dest.glob("f*.txt"))), 200)
+            self.assertEqual([p.name for p in dest.parent.iterdir() if ".tmp" in p.name], [])
+
+
 if __name__ == "__main__":
     unittest.main()

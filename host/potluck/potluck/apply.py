@@ -51,6 +51,7 @@ import hashlib
 import io
 import json
 import os
+import secrets
 import shutil
 import struct
 import subprocess
@@ -685,15 +686,23 @@ def export(src: Source, cache: Path) -> tuple[Path, str]:
     repo, sha = resolve(src, cache)
     dest = cache / "src" / f"{src.name}-{sha[:12]}"
     if not (dest / ".potluck-export").exists():
-        tmp = dest.with_name(dest.name + ".tmp")
+        # A temporary folder of this process's own: two applies of one commit at once (the hub's and a session's plan,
+        # 2026-10-26) shared one ".tmp", deleted each other's, and both failed. Whoever finishes second uses the first's.
+        tmp = dest.with_name(f"{dest.name}.tmp-{os.getpid()}-{secrets.token_hex(4)}")
         shutil.rmtree(tmp, ignore_errors=True)
         tmp.mkdir(parents=True)
         data = _git(["archive", "--format=tar", sha], cwd=repo, binary=True)
         with tarfile.open(fileobj=io.BytesIO(data)) as t:
             t.extractall(tmp, filter="data")
         (tmp / ".potluck-export").write_text(sha + "\n", encoding="ascii")
-        shutil.rmtree(dest, ignore_errors=True)
-        tmp.rename(dest)
+        if not (dest / ".potluck-export").exists():
+            shutil.rmtree(dest, ignore_errors=True)
+            try:
+                tmp.rename(dest)
+            except OSError:
+                if not (dest / ".potluck-export").exists():
+                    raise
+        shutil.rmtree(tmp, ignore_errors=True)
     return dest, sha
 
 
