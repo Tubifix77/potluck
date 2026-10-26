@@ -162,10 +162,12 @@ TEST(pocket_auth, the_page_offers_a_login_then_forms_only_for_writable_values) {
     CHECK(render_html(s, v, page, sizeof(page)) > 0);
     CHECK(std::strstr(page, "read-only") != nullptr);  // writes off: no login, no forms
     CHECK(std::strstr(page, "/login") == nullptr);
+    CHECK(std::strstr(page, "http-equiv=\"refresh\"") != nullptr);  // no form: it keeps itself fresh
     v.writes_on = true;
     CHECK(render_html(s, v, page, sizeof(page)) > 0);
     CHECK(std::strstr(page, "action=\"/login\"") != nullptr);
     CHECK(std::strstr(page, "action=\"/write\"") == nullptr);  // not logged in: no write forms
+    CHECK(std::strstr(page, "http-equiv=\"refresh\"") == nullptr);  // the login box is never wiped mid-password
     v.logged_in = true;
     std::strcpy(v.csrf, "0123456789abcdef0123456789abcdef");
     CHECK(render_html(s, v, page, sizeof(page)) > 0);

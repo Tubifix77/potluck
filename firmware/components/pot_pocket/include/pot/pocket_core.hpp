@@ -61,7 +61,7 @@ struct PageView {
     char note[80] = {};  // e.g. "node-7368/led/on: applied"
 };
 
-// The page (HTML, refreshing itself every 5 s while no one is logged in) and the same as JSON (/status.json). Each
+// The page (HTML, refreshing itself every 5 s while writes are off -- with writes on it shows forms and a refresh link) and the same as JSON (/status.json). Each
 // returns the length written, NUL-terminated; 0 if `cap` is short -- never a cut page.
 size_t render_html(const Snapshot& s, const PageView& v, char* out, size_t cap);
 size_t render_html(const Snapshot& s, char* out, size_t cap);  // read-only: no login, no forms

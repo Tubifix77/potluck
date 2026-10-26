@@ -62,7 +62,9 @@ size_t render_html(const Snapshot& s, const PageView& v, char* out, size_t cap) 
     size_t alive = 0;
     for (size_t i = 0; i < s.n_boards; ++i) alive += s.boards[i].alive ? 1 : 0;
     o.add("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\">");
-    if (!v.logged_in) o.add("<meta http-equiv=\"refresh\" content=\"5\">");  // a form being typed into is never reloaded
+    // Reloads itself only when it shows no form: a password or value being typed is never wiped (found on the owner's
+    // phone 2026-10-26 -- a long login could not be typed inside the 5 s between reloads).
+    if (!v.writes_on) o.add("<meta http-equiv=\"refresh\" content=\"5\">");
     o.add("<title>");
     o.text(s.system, false);
     o.add(" cell</title><style>body{font-family:sans-serif;margin:16px;max-width:520px}td,th{padding:4px 8px;"
@@ -70,6 +72,7 @@ size_t render_html(const Snapshot& s, const PageView& v, char* out, size_t cap) 
           "small{color:#666}</style></head><body><h2>");
     o.text(s.system, false);
     o.add(" cell &middot; %u of %u alive</h2>", static_cast<unsigned>(alive), static_cast<unsigned>(s.n_boards));
+    if (v.writes_on) o.add("<p><a href=\"/\">refresh</a></p>");
     if (v.note[0] != '\0') {
         o.add("<p><b>");
         o.text(v.note, false);
