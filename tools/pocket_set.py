@@ -56,15 +56,26 @@ def send(port: str, line: str, saved: str, restart: bool = True) -> int:
         else:
             print("board: no answer within 5 s -- does its firmware carry the pocket module, and is a monitor open?")
             return 1
-        if restart:
-            s.rts = True
-            time.sleep(0.15)
-            s.rts = False
-            print("board: restarting to use it")
-        return 0
+        if not restart:
+            return 0
     finally:
         reply = b""
         s.close()
+    # The restart from a port opened afresh, as the hub's board reset does (potluck/setup.py reset): toggling RTS on the
+    # port the command went through left the board running (found 2026-10-26).
+    r = serial.Serial()
+    r.port, r.baudrate = port, 115200
+    r.dtr = False
+    r.rts = False
+    r.open()
+    try:
+        r.rts = True
+        time.sleep(0.1)
+        r.rts = False
+    finally:
+        r.close()
+    print("board: restarting to use it")
+    return 0
 
 
 def main() -> int:
