@@ -1644,10 +1644,12 @@ void Node::handle_read(PeerLink* p, const Frame& f) {
 
     // Refresh the replica for the next read. The answer above is what we knew -- NoData the first
     // time, or the cached value with its age -- and is never held back waiting on the owner, so a
-    // dead owner cannot stall the requester. Skipped when the requester owns the resource itself.
+    // dead owner cannot stall the requester. Also when the requester is the owner's id: on the PC the hub and the
+    // PC's node share 0x00fe, and the hub reading a copy of what the PC's node owns is not the owner asking (until
+    // 2026-10-26 this was skipped, and act/present/out stayed NO_DATA on every board while the PC presented).
     if (st == NsError::Ok && !local) {
         const NsEntry* e = ns_.find(req.path_hash);
-        if (e != nullptr && e->owner_node != p->node_id && e->owner_node != 0) {
+        if (e != nullptr && e->owner_node != 0) {
             request_read(e->owner_node, req.path_hash);
         }
     }

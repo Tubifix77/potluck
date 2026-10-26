@@ -507,6 +507,31 @@ TEST(m1, a_host_on_one_board_reads_another_boards_builtin_resource) {
     CHECK_EQ(static_cast<int>(c.replies_to_0.back().quality), static_cast<int>(Quality::Unavailable));
 }
 
+TEST(m1, a_board_refreshes_its_copy_of_a_value_the_pc_owns_when_the_pc_reads_it) {
+    // 2026-10-26: on the PC the hub and the PC's node share one node id (0x00fe). The PC's node owns act/present/out
+    // while it presents; the hub reads the cabled board's copy -- and the board skipped its refresh because "the
+    // requester owns it", so the copy stayed NO_DATA for good. Here slot 0 plays both: it owns the value and reads it.
+    Cell2 c;
+    c.build(2);
+    c.start();
+    c.advance_ms(300);
+    Node& pc = *c.slots[0].node;
+    Node& a = *c.slots[1].node;
+    declare_both(c, pc.config().node_id, 10000);
+    CHECK_EQ(static_cast<int>(pc.publish(kAdc0, Value::of_f32(7.5f))), static_cast<int>(NsError::Ok));
+
+    CHECK(pc.request_read(a.config().node_id, kAdc0) != 0);  // A's copy: nothing yet -- and A asks the owner
+    c.advance_ms(50);
+    CHECK_EQ(static_cast<int>(c.replies_to_0.back().quality), static_cast<int>(Quality::NoData));
+    CHECK(pc.request_read(a.config().node_id, kAdc0) != 0);
+    c.advance_ms(50);
+    const ReplyPayload got = c.replies_to_0.back();
+    CHECK_EQ(static_cast<int>(got.quality), static_cast<int>(Quality::Good));
+    float v = 0;
+    CHECK(value_from_wire(got.value_type, got.value_len, got.value_raw).as_f32(v));
+    CHECK(v > 7.4f && v < 7.6f);
+}
+
 TEST(m1, a_host_reads_an_extender_boards_router_figures_through_another_board) {
     // 2026-10-18: B's sys/ext/* read UNAVAILABLE through A -- A adopted only the seven built-ins every board has.
     Cell2 c;
