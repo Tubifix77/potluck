@@ -6093,3 +6093,31 @@ session answered what that use found. In order of landing:
 
 Open: the owner's install of the package at `276e4c0` (the PC presenting starts with it), the CAN bus-off bench test,
 the phone inbox at the owner's word.
+
+## Session 49 -- 2026-10-21/26: M20 accepted, the Desk's seven (M21-M27) planned, M21-M26 accepted
+
+Each milestone's evidence and caveats are its STATUS.md row; this records what the runs found.
+
+- **The PC's presenting flapped twice** before it held: a 600 ms link window behind the hub (`aa1df5f`), then
+  `pot_hostnode`'s 32-bit microsecond clock wrapping every 71.6 minutes (`05cb57b`; ~18,000 role changes since the
+  install). After the fix, ~24 h and ~20 wraps with the PC presenting throughout.
+- **M20 by reinstalling C** (the owner's call in place of a blind test): the first run found four wizard faults (an
+  erased board a stranger to the registry, Wi-Fi hidden, a room read as a board name, the large-setup step for one
+  board), fixed in `74a1297`; the session then wiped C and ran Add boards itself. Accepted with caveats; the owner
+  then named seven things a desktop client waits for, planned as M21-M27 (`efaf374`).
+- **M21** (chip in the model), **M22** (borrowed cores visible, 2.98x with B and C lending, B reset mid-run), **M23**
+  (PC services and speech; the hub's reply crossed the relay untagged until the PC's node sent it, `9da46fb`),
+  **M24** (keyboard and mouse, 1,200 keys none lost; the cable reader held every short frame 50 ms, `5a6a726`, and a
+  restarted hub's batch numbers were taken as old, `ef9dadc`), **M25** (a bulk channel; paced to 15 chunks a second,
+  since unpaced reads cost up to 2 points of heartbeat loss).
+- **M26**, writes from the pocket page: built, then a separate security review (seven findings, all closed before it
+  shipped: replies sent under the page's lock, a long Origin read as none, a global fixed lockout, guessed value types,
+  a shared note, a 63-character password overflowing the body, no framing), then the owner's phone. The phone found
+  two faults no host test had: the page's 5 s reload wiped a long password mid-typing (`fae55aa`), and the keyboard's
+  capital made `On` a refused value whose refusal never showed (`6c10c05`). B's LED switch now draws cyan, apart from
+  the presence app's blue (`4a09ab5`). `pocket_set.py` printed "restarting" and left the board running (`55b3633`).
+- A package change restarts B's LED switch with its setting off, and the presence app relearns its baseline with
+  whoever is in the room: both seen during M26's test, neither fixed.
+
+Open: the owner's 24 h and hand power-cut evidence as listed in STATUS; the cable's ~1 in 60 unanswered requests
+(M24); speak's outputs reading staleness 0; the extender's channel rule lacking the -70 dBm floor; M27 next.

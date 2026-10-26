@@ -813,7 +813,8 @@ keep that password as private as the login. `{"t":"pocket",...}` adds writes_on,
 bad sessions, tokens and origins, rate-limited and applied writes, and the auth state's bytes (about 450; M26's kill
 line is 4 KB). A security review before it shipped found and closed: replies sent while holding the page's lock (the
 node's task could stall), a long Origin read as none, a shared note, guessed value types, and a short-password and
-lockout weakness.
+lockout weakness. A switch takes on/off, true/false or 1/0 in any case (a phone's keyboard capitalises the first
+word); after **set** the page shows the board's answer -- `applied`, `sent to its board`, or why it was refused.
 
 ## 17. M16: the dashboard, and the mock
 

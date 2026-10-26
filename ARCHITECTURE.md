@@ -1264,7 +1264,7 @@ file, bytes, kbps}]}`. *Acceptance:* a board reads a 64 KB file through the hub 
 30 s, its links' heartbeat loss rising at most one point. *Kill:* a 64 KB read costs more than two points of heartbeat
 loss or takes over 60 s -- then the channel uses a board's own Wi-Fi station and stays off ESP-NOW.
 
-**M26 — the pocket page accepts writes.** Off by default. A login per board (a password the owner sets), a CSRF token
+**M26 — the pocket page accepts writes.** *(Accepted 2026-10-26: the owner's phone, logged in on A's pocket network, switched B's LED seven times, every write applied on B; the auth state 478 B. Caveats: the forged request, the wrong password and the safety-relevant resource are refused in host tests and the security review, not from a phone; the page is plain HTTP over WPA2. As built: the page stops reloading itself while it shows forms, and a value's words are read in any case.)* Off by default. A login per board (a password the owner sets), a CSRF token
 per session, only `outside` read_write resources that are not safety-relevant, the hub's write limits (2 a second,
 bursts of 4), and a separate security review before it ships. Advised only where a write is needed with no PC around.
 *Acceptance:* a phone on a board's pocket network switches B's LED; a forged cross-site request, a wrong password, a

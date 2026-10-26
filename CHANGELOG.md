@@ -5,6 +5,13 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **Writes from the pocket page (M26).** Off by default: `tools/pocket_set.py <port> --login <file>` gives a board's
+  pocket page a login (12-63 characters, kept as a keyed BLAKE2b hash). A logged-in phone gets a session cookie and a
+  form token, and a small form for each value the package marks writable from outside (never a safety-relevant one); a
+  write to another board's value goes to its owner as an outside write. The hub's limits (2 a second, bursts of 4),
+  lockouts doubling to 16 minutes, Host and Origin checked; a switch takes on/off, true/false or 1/0 in any case. The
+  page is plain HTTP over the access point's WPA2: its password protects what crosses it. `pocket_set.py` now really
+  restarts the board after `ap` and `forget`.
 - **A bulk channel for files on the PC (M25).** The cluster file's `bulk.folder` and `pc_services: ["file"]` let a
   board's app read a file by name: the hub answers with its size and pushes it to the app's input in chunks through
   the board on the cable (go-back-N on the app's cumulative answers); `cell.bulk` shows the folder, its files and the
