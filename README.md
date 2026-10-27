@@ -73,7 +73,8 @@ Everything below runs on real ESP32-S3 boards and has passed a test written befo
 roadmap (a *milestone*) has one, and a criterion that would have killed it. All 33 milestones through M27 are
 accepted, some with caveats -- the friendly way in (M20: a setup wizard, a library of apps, a floor plan,
 boards added from the dashboard over their own USB cable) on a reinstall of a known board rather than a
-newcomer's first cell. [STATUS.md](STATUS.md) lists every
+newcomer's first cell. The next, M28, is planned: sound across the cell, a buzzer on each board that any app's
+alarm can play in its own room. [STATUS.md](STATUS.md) lists every
 milestone with its measurements and caveats.
 
 - **Boards that find each other and know when one is gone.** Over the radio, a missing board is declared dead
