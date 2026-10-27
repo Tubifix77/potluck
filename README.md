@@ -16,6 +16,10 @@ the full one.
 twenty -- to a working cluster in about an hour; [DEVELOPING-APPS.md](DEVELOPING-APPS.md) then takes you to apps
 of your own.
 
+**The whole cell in one picture:** [the overview](https://tubifix77.github.io/potluck/overview.html) -- what every
+board brings and shares, how the cell presents itself to the house network and to other programs, and M0 to M28 at a
+glance.
+
 ---
 
 ## The idea
