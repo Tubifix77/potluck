@@ -123,12 +123,40 @@
 <main>
   <h1>Potluck: the cell presented</h1>
   <p class="lede">The original idea -- Kubernetes for compute <em>and</em> attached hardware. Every board brings its sensors,
-  cores and memory; the cell presents them all as one machine, on the house network, by itself; an integration layer lets
-  any program see them the way it usually sees resources. A PC is welcome, never required. This began on 2026-10-11 as a
-  discussion draft (<a href="BEYOND-M12.md">BEYOND-M12.md</a>). <b>M13 to M27 are now built and accepted on the test
-  cell, most with caveats</b> (<a href="STATUS.md">STATUS.md</a> has each one); <b>M28 is planned</b>. Updated 2026-10-27.</p>
+  cores and memory; the cell shares them, survives a board's death and presents them all as one machine, on the house
+  network, by itself; an integration layer lets any program see them the way it usually sees resources. A PC is welcome,
+  never required. <b>M0 to M12 built the cell; M13 to M27 present it and bring the PC's side in. All are accepted on the
+  test cell, many with caveats</b> (<a href="STATUS.md">STATUS.md</a> has each one); <b>M28 is planned</b>. The picture
+  began on 2026-10-11 as the draft for M13 on (<a href="BEYOND-M12.md">BEYOND-M12.md</a>). Updated 2026-10-27.</p>
 
-  <div class="road" aria-label="The milestones since M12">
+  <div class="road" aria-label="The milestones, M0 to M28">
+    <div class="group">
+      <h2>The cell itself</h2>
+      <ul>
+        <li class="done"><b>M0</b>two boards, one heartbeat</li>
+        <li class="done"><b>M1</b>one remote read</li>
+        <li class="done"><b>M2</b>the PC in the loop, replay</li>
+        <li class="done"><b>M3</b>deploy and detach</li>
+        <li class="done"><b>M4</b>hardware loops stay put</li>
+        <li class="done"><b>M5</b>signed everything</li>
+        <li class="done"><b>M5.1</b>sharing the radio</li>
+        <li class="done"><b>M6</b>apps leave a dead board</li>
+        <li class="done"><b>M6.1</b>the app owns the radio</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h2>Apps, hardware and the PC</h2>
+      <ul>
+        <li class="done"><b>M7</b>sandboxed guest apps</li>
+        <li class="done"><b>M8</b>the PC's services</li>
+        <li class="done"><b>M8.1</b>attached hardware</li>
+        <li class="done"><b>M8.2</b>presence from the radio</li>
+        <li class="done"><b>M9</b>borrowing an idle core</li>
+        <li class="done"><b>M10</b>the PC as a placement node</li>
+        <li class="done"><b>M11</b>firmware over the cell</li>
+        <li class="done"><b>M12</b>one command, any mix</li>
+      </ul>
+    </div>
     <div class="group">
       <h2>Presenting the cell</h2>
       <ul>
@@ -188,24 +216,24 @@
             <li>its cores, PSRAM and flash -- on the tested S3, 2 cores · 240 MHz · 8 MB PSRAM · 16 MB flash
             <span class="m">M21</span></li>
             <li>its pins and what is wired to them: sensors, an LED, a buzzer <span class="m">M28</span></li>
-            <li>its radio: room presence, read from the links</li>
+            <li>its radio: room presence, read from the links <span class="m">M8.2</span></li>
           </ul>
           <span class="small">Every board runs the same image. The owner's package says what runs where -- one line per
-          app, changed in seconds.</span>
+          app, changed in seconds <span class="m">M3 · M11 · M12</span>.</span>
         </div>
         <div class="card">
           <h3>The cell shares</h3>
           <ul class="small">
-            <li><b>values</b> -- any board's readings, read from any board or from outside</li>
+            <li><b>values</b> -- any board's readings, read from any board or from outside <span class="m">M1 · M2</span></li>
             <li><b>cores</b> -- lent to jobs that split into pieces <span class="m">M9 · M22</span>; an app runs on one board</li>
-            <li><b>hardware</b> -- a part on one board used from any board; its actor stays on that board</li>
-            <li><b>survival</b> -- a portable app moves, with its checkpoint, when its board dies</li>
+            <li><b>hardware</b> -- a part on one board used from any board; its actor stays on that board <span class="m">M4 · M8.1</span></li>
+            <li><b>survival</b> -- a portable app moves, with its checkpoint, when its board dies <span class="m">M6</span></li>
           </ul>
           <span class="small">Memory is not pooled: each board's RAM stays its own.</span>
         </div>
         <div class="card">
           <h3>Roles any board can take</h3>
-          <span class="sensor">the PC's cable</span><span class="sensor">presenting <span class="m">M13</span></span><span class="sensor">Wi-Fi extender</span><span class="sensor">pocket page <span class="m">M13.1 · M26</span></span><span class="sensor">lending cores</span><span class="sensor">foreman <span class="m">M19</span></span>
+          <span class="sensor">the PC's cable <span class="m">M1</span></span><span class="sensor">presenting <span class="m">M13</span></span><span class="sensor">Wi-Fi extender <span class="m">M5.1 · M6.1</span></span><span class="sensor">pocket page <span class="m">M13.1 · M26</span></span><span class="sensor">lending cores <span class="m">M9</span></span><span class="sensor">foreman <span class="m">M19</span></span>
           <span class="small">Each goes to a board that can take it, and moves when that board goes.</span>
         </div>
       </div>
