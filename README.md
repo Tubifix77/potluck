@@ -5,12 +5,12 @@ dish — a sensor, some RAM, a radio — and the cluster eats together.
 
 *e(SP)luribus unum — out of many, one machine.*
 
-**Status: release 1.0.0, built and run on real hardware.** Since the first boards arrived on 2026-10-01, every
-feature below has been built and then run on three ESP32-S3 boards: a 24.5-hour unattended soak, a walk through a
-two-storey house, cables pulled and power cut by hand, and signed firmware and packages rolled out over the radio
-again and again (the test cell's counters stood at 58 firmware images and 91 packages at release). 25 of the 26
-milestones are accepted; [How it was tested](#how-it-was-tested) is the short version, [STATUS.md](STATUS.md)
-the full one.
+**Status: release 1.0.1, built and run on real hardware, and still being built on.** Since the first boards arrived
+on 2026-10-01, every feature below has been built and then run on three ESP32-S3 boards: a 24.5-hour unattended soak,
+a walk through a two-storey house, cables pulled and power cut by hand, and signed firmware and packages rolled out
+over the radio again and again (by 2026-10-26 the test cell's package counter stood at 124). All 33 milestones through M27
+are accepted, some with caveats, and M28 is planned; [How it was tested](#how-it-was-tested) is the short version,
+[STATUS.md](STATUS.md) the full one, and [CHANGELOG.md](CHANGELOG.md) lists what has changed since the release.
 
 **Start here:** [GETTING-STARTED.md](GETTING-STARTED.md) takes you from bare ESP32-S3 boards -- two of them or
 twenty -- to a working cluster in about an hour; [DEVELOPING-APPS.md](DEVELOPING-APPS.md) then takes you to apps
@@ -71,7 +71,8 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 
 ## What works today
 
-**Current release: 1.0.0** (2026-10-16; the first published release was v0.2.0, the same day).
+**Current release: 1.0.1** (2026-10-16; the first published release was v0.2.0, the same day). What has changed since
+is under *Unreleased* in [CHANGELOG.md](CHANGELOG.md).
 
 Everything below runs on real ESP32-S3 boards and has passed a test written before it was tried -- each step of the
 roadmap (a *milestone*) has one, and a criterion that would have killed it. All 33 milestones through M27 are
