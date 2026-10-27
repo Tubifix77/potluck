@@ -347,6 +347,7 @@ hub's API in full: [host/potluck/HUB-API.md](host/potluck/HUB-API.md).
 | [HOME-ASSISTANT.md](HOME-ASSISTANT.md) | **Your boards in Home Assistant:** through MQTT with no PC, and the hub's view through the Potluck integration (HACS), step by step |
 | [INTEGRATIONS.md](INTEGRATIONS.md) | How any other system uses the cell: the five things every integration does, a program on the hub's API step by step, the MQTT payload, a board module |
 | [host/potluck/HUB-API.md](host/potluck/HUB-API.md) | The hub's API, field by field: the model, events, the stream, writes, logins, pairing, shares |
+| [overview.html](https://tubifix77.github.io/potluck/overview.html) | The whole cell in one picture: what every board brings and shares, how the cell is presented to the house network and to other programs, and M0 to M28 at a glance (opens as a page) |
 | [STATUS.md](STATUS.md) | Every milestone, what it set out to prove, and exactly how far each claim has been measured -- the full ledger behind "What works today" |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | **The single source of truth.** Decision-closed v1: the namespace, the read contract, the wire format, memory budgets, the nine decision records, and milestones M0–M20 with accept/kill criteria |
 | [BEYOND-M12.md](BEYOND-M12.md) | Historical: the design discussion that led to the hub, the dashboard and the integrations. What was decided is in ARCHITECTURE.md; its milestone numbering differs |
