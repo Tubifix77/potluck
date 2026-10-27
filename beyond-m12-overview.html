@@ -58,10 +58,15 @@
   .m { font-size: .68rem; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
        padding: 0 6px; margin-left: 4px; vertical-align: 1px; white-space: nowrap; }
   .cell .card { border-left: 4px solid var(--cell); }
+  .cell .card > span.small { display: block; margin-top: 4px; }
   .cellbox { background: var(--cell-soft); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
   .radio { text-align: center; font-size: .75rem; color: var(--cell); }
   .sensor { display: inline-block; background: var(--cell); color: var(--panel); border-radius: 6px; padding: 1px 7px; font-size: .78rem; margin: 2px 4px 2px 0; }
-  .sensor.planned { background: transparent; color: var(--int); border: 1px dashed var(--int); }
+  .sensor .m { color: var(--panel); border-color: var(--panel); }
+  .boards { display: flex; gap: 6px; justify-content: center; }
+  .boards span { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 8px; background: var(--panel);
+                 border: 2px solid var(--cell); color: var(--cell); font-weight: 600; display: flex; align-items: center; justify-content: center; }
+  .boards span.more { border-style: dashed; }
   .hub .card { border-left: 4px solid var(--hub); }
   .present { background: var(--hub-soft); border: 2px solid var(--hub); border-radius: 12px; padding: 12px; }
   .present h3 { color: var(--hub); margin: 0 0 6px; }
@@ -171,38 +176,42 @@
   <div class="flow">
     <!-- 1. the cell -->
     <section class="col cell">
-      <h2>1 · The cell: ESP32-S3 boards</h2>
+      <h2>1 · The cell: n ESP32-S3 boards</h2>
       <div class="cellbox">
-        <div class="card">
-          <h3>Board A <span class="small">· the PC's cable</span></h3>
-          <span class="sensor">die temperature</span><span class="sensor">a phone's readings</span><span class="sensor planned">buzzer</span>
-          <ul class="small">
-            <li>2 cores · 240 MHz · 8 MB PSRAM · 16 MB flash</li>
-            <li>pocket page: its own Wi-Fi for a phone <span class="m">M13.1 · M26</span></li>
-          </ul>
+        <div class="boards" aria-label="boards 1 to n, linked by ESP-NOW">
+          <span>1</span><span>2</span><span>3</span><span class="more">…</span><span>n</span>
         </div>
-        <div class="radio">⇅ radio (ESP-NOW) ⇅</div>
+        <div class="radio">⇄ ESP-NOW between them all ⇄</div>
         <div class="card">
-          <h3>Board B <span class="small">· the house Wi-Fi's extender</span></h3>
-          <span class="sensor">status LED</span><span class="sensor">die temperature</span><span class="sensor">room presence</span><span class="sensor planned">buzzer</span>
+          <h3>Every board brings</h3>
           <ul class="small">
-            <li>2 cores, lent when idle <span class="m">M22</span></li>
-            <li>Wi-Fi extender app: a hotspot for phones</li>
+            <li>its cores, PSRAM and flash -- on the tested S3, 2 cores · 240 MHz · 8 MB PSRAM · 16 MB flash
+            <span class="m">M21</span></li>
+            <li>its pins and what is wired to them: sensors, an LED, a buzzer <span class="m">M28</span></li>
+            <li>its radio: room presence, read from the links</li>
           </ul>
+          <span class="small">Every board runs the same image. The owner's package says what runs where -- one line per
+          app, changed in seconds.</span>
         </div>
-        <div class="radio">⇅ radio (ESP-NOW) ⇅</div>
         <div class="card">
-          <h3>Board C <span class="small">· on the house Wi-Fi</span></h3>
-          <span class="sensor">die temperature</span><span class="sensor">room presence</span><span class="sensor planned">buzzer</span>
+          <h3>The cell shares</h3>
           <ul class="small">
-            <li>2 cores, lent when idle <span class="m">M22</span></li>
-            <li>presents the cell when no PC does <span class="m">M13</span></li>
-            <li>asks the PC to speak <span class="m">M23</span> · reads its files <span class="m">M25</span></li>
+            <li><b>values</b> -- any board's readings, read from any board or from outside</li>
+            <li><b>cores</b> -- lent to jobs that split into pieces <span class="m">M9 · M22</span>; an app runs on one board</li>
+            <li><b>hardware</b> -- a part on one board used from any board; its actor stays on that board</li>
+            <li><b>survival</b> -- a portable app moves, with its checkpoint, when its board dies</li>
           </ul>
+          <span class="small">Memory is not pooled: each board's RAM stays its own.</span>
+        </div>
+        <div class="card">
+          <h3>Roles any board can take</h3>
+          <span class="sensor">the PC's cable</span><span class="sensor">presenting <span class="m">M13</span></span><span class="sensor">Wi-Fi extender</span><span class="sensor">pocket page <span class="m">M13.1 · M26</span></span><span class="sensor">lending cores</span><span class="sensor">foreman <span class="m">M19</span></span>
+          <span class="small">Each goes to a board that can take it, and moves when that board goes.</span>
         </div>
       </div>
-      <p class="small">Up to 20 boards in a cell; past twenty, a foreman in each cell presents it to an upper cell of
-      foremen <span class="m">M19</span>. Each board's resources are reachable from every other board.</p>
+      <p class="small">One board is a cell; sharing starts at two. Up to 20 boards in a cell; past twenty, a foreman in each
+      cell presents it to an upper cell of foremen <span class="m">M19</span>. Tested on a three-board bench (A, B, C,
+      in <a href="STATUS.md">STATUS.md</a>): one layout of many.</p>
     </section>
 
     <div class="link"><div class="bar both"></div><span>cable or<br>Wi-Fi</span></div>
@@ -222,13 +231,13 @@
       </div>
       <div class="card">
         <h3>The PC's hub, when it runs <span class="tag">optional</span></h3>
-        <p class="small" style="margin:0">Cabled to board A, the hub holds the presentation and serves the dashboard,
+        <p class="small" style="margin:0">Cabled to any board, the hub holds the presentation and serves the dashboard,
         history and every program at once. With <code>present.hub</code> the PC presents the cell to MQTT too.</p>
       </div>
       <div class="card">
         <h3>The cell itself, when it does not <span class="m">M13</span></h3>
         <p class="small" style="margin:0">Presenting is a role: a board on the house Wi-Fi takes it when the PC goes,
-        and Home Assistant keeps switching B's LED with no PC anywhere. Another board with Wi-Fi is the standby.</p>
+        and Home Assistant keeps switching a board's LED with no PC anywhere. Another board with Wi-Fi is the standby.</p>
       </div>
     </section>
 
@@ -353,9 +362,8 @@
     programs read, and write only what the package allows.</div>
   </div>
 
-  <footer>Potluck -- S3 Edition. Board figures and roles are the test cell's (three ESP32-S3-DevKitC-1 N16R8 boards);
-  roles move -- presenting, lending and the foreman go to whichever board can take them. Dashed resources are planned
-  (M28); the boat is an example. Each milestone's measurements and caveats: <a href="STATUS.md">STATUS.md</a>.</footer>
+  <footer>Potluck -- S3 Edition. Board figures are the tested board's (ESP32-S3-DevKitC-1 N16R8); the test bench is three
+  of them, and nothing here needs three. Dashed items are planned (M28); the boat is an example. Each milestone's measurements and caveats: <a href="STATUS.md">STATUS.md</a>.</footer>
 </main>
 </body>
 </html>
