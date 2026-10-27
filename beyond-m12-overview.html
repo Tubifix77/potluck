@@ -3,31 +3,45 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Potluck: one presentation of the cell</title>
+<title>Potluck: the cell presented</title>
 <style>
   :root {
     --bg: #f7f6f2; --panel: #ffffff; --ink: #1d1d1b; --muted: #6a6a64; --line: #c9c7bd;
     --cell: #2f6f5e; --cell-soft: #e3f0eb; --hub: #7a4fb8; --hub-soft: #efe8f8;
     --int: #b8641f; --int-soft: #f8ecdf; --ha: #1d7fc4; --ha-soft: #e2f0fa; --idea: #8a8a82;
+    --dead: #c2412b;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #161614; --panel: #212120; --ink: #ecebe6; --muted: #a3a29b; --line: #45443f;
       --cell: #6cc3a8; --cell-soft: #1f3330; --hub: #b896ea; --hub-soft: #2c2438;
       --int: #e39a5c; --int-soft: #382a1d; --ha: #6bb7ee; --ha-soft: #1b2d3b; --idea: #8f8e87;
+      --dead: #ef7a62;
     }
   }
   :root[data-theme="dark"] {
     --bg: #161614; --panel: #212120; --ink: #ecebe6; --muted: #a3a29b; --line: #45443f;
     --cell: #6cc3a8; --cell-soft: #1f3330; --hub: #b896ea; --hub-soft: #2c2438;
     --int: #e39a5c; --int-soft: #382a1d; --ha: #6bb7ee; --ha-soft: #1b2d3b; --idea: #8f8e87;
+    --dead: #ef7a62;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink);
          font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   main { max-width: 1280px; margin: 0 auto; padding: 24px 16px 40px; }
   h1 { font-size: 1.5rem; margin: 0 0 4px; }
-  .lede { color: var(--muted); margin: 0 0 22px; max-width: 70ch; }
+  a { color: var(--hub); }
+  .lede { color: var(--muted); margin: 0 0 18px; max-width: 75ch; }
+  .lede b { color: var(--ink); }
+  .road { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 0 0 22px; }
+  .road .group { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .road h2 { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 6px; color: var(--muted); }
+  .road ul { list-style: none; margin: 0; padding: 0; font-size: .82rem; }
+  .road li { display: flex; gap: 6px; align-items: baseline; margin: 2px 0; }
+  .road li b { flex: 0 0 3.6em; font-variant-numeric: tabular-nums; }
+  .road li.done b { color: var(--cell); }
+  .road li.next b { color: var(--int); }
+  .road .group.next { border: 2px dashed var(--int); }
   .flow { display: flex; align-items: stretch; gap: 0; }
   .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
   .col > h2 { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 2px; color: var(--muted); }
@@ -41,10 +55,13 @@
   .card ul { margin: 0; padding-left: 18px; }
   .card li { margin: 1px 0; }
   .small { font-size: .82rem; color: var(--muted); }
+  .m { font-size: .68rem; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
+       padding: 0 6px; margin-left: 4px; vertical-align: 1px; white-space: nowrap; }
   .cell .card { border-left: 4px solid var(--cell); }
   .cellbox { background: var(--cell-soft); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
   .radio { text-align: center; font-size: .75rem; color: var(--cell); }
   .sensor { display: inline-block; background: var(--cell); color: var(--panel); border-radius: 6px; padding: 1px 7px; font-size: .78rem; margin: 2px 4px 2px 0; }
+  .sensor.planned { background: transparent; color: var(--int); border: 1px dashed var(--int); }
   .hub .card { border-left: 4px solid var(--hub); }
   .present { background: var(--hub-soft); border: 2px solid var(--hub); border-radius: 12px; padding: 12px; }
   .present h3 { color: var(--hub); margin: 0 0 6px; }
@@ -57,8 +74,17 @@
   .clients .card.ha h3 { color: var(--ha); }
   .clients .card.idea { border-left-color: var(--idea); border-style: dashed; border-left-style: solid; }
   .tag { font-size: .7rem; border-radius: 999px; padding: 0 7px; margin-left: 6px; border: 1px solid currentColor; vertical-align: 2px; }
-  .gateway { margin-top: 18px; border: 2px dashed var(--ha); border-radius: 12px; padding: 12px 14px; background: var(--panel); }
-  .gateway h3 { margin: 0 0 4px; color: var(--ha); font-size: .95rem; }
+  .band { margin-top: 18px; border-radius: 12px; padding: 12px 14px; background: var(--panel); }
+  .band h3 { margin: 0 0 6px; font-size: .95rem; }
+  .band.gateway { border: 2px dashed var(--ha); }
+  .band.gateway h3 { color: var(--ha); }
+  .band.inward { border: 2px solid var(--hub); }
+  .band.inward h3 { color: var(--hub); }
+  .band.next { border: 2px dashed var(--int); }
+  .band.next h3 { color: var(--int); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin-top: 8px; }
+  .tiles .card { font-size: .84rem; }
+  .tiles .card b { display: block; margin-bottom: 2px; }
   .boat { margin-top: 18px; border: 2px dashed var(--cell); border-radius: 12px; padding: 14px; background: var(--panel);
           display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
   .boat .text { flex: 1 1 320px; min-width: 0; }
@@ -66,13 +92,15 @@
   .boat .steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: .82rem; }
   .boat .steps span.step { background: var(--cell-soft); border-radius: 8px; padding: 3px 8px; }
   .boat .steps span.arrow { color: var(--muted); }
-  .phone { flex: 0 0 auto; width: 190px; border: 3px solid var(--ink); border-radius: 22px; padding: 14px 10px 16px;
+  .phone { flex: 0 0 auto; width: 200px; border: 3px solid var(--ink); border-radius: 22px; padding: 14px 10px 16px;
            background: var(--bg); font-size: .76rem; }
   .phone .bar2 { height: 4px; width: 50px; background: var(--line); border-radius: 4px; margin: 0 auto 10px; }
   .phone .title { font-weight: 600; margin-bottom: 6px; }
-  .phone .row { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding: 4px 0; }
+  .phone .row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding: 4px 0; }
   .phone .ok { color: var(--cell); font-weight: 600; }
-  .phone .dead { color: #c2412b; font-weight: 600; }
+  .phone .dead { color: var(--dead); font-weight: 600; }
+  .phone .sw { border: 1px solid var(--cell); color: var(--cell); border-radius: 999px; padding: 0 7px; font-weight: 600; }
+  .phone .note { color: var(--muted); font-size: .7rem; margin-top: 4px; }
   .rules { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
   .rules .card { font-size: .86rem; }
   footer { margin-top: 22px; font-size: .78rem; color: var(--muted); }
@@ -88,11 +116,57 @@
 </head>
 <body>
 <main>
-  <h1>Potluck: one presentation of the cell</h1>
+  <h1>Potluck: the cell presented</h1>
   <p class="lede">The original idea -- Kubernetes for compute <em>and</em> attached hardware. Every board brings its sensors,
   cores and memory; the cell presents them all as one machine, on the house network, by itself; an integration layer lets
-  any program see them the way it usually sees resources. A PC is welcome, never required. A discussion draft
-  (<a href="BEYOND-M12.md">BEYOND-M12.md</a>), not built yet.</p>
+  any program see them the way it usually sees resources. A PC is welcome, never required. This began on 2026-10-11 as a
+  discussion draft (<a href="BEYOND-M12.md">BEYOND-M12.md</a>). <b>M13 to M27 are now built and accepted on the test
+  cell, most with caveats</b> (<a href="STATUS.md">STATUS.md</a> has each one); <b>M28 is planned</b>. Updated 2026-10-27.</p>
+
+  <div class="road" aria-label="The milestones since M12">
+    <div class="group">
+      <h2>Presenting the cell</h2>
+      <ul>
+        <li class="done"><b>M13</b>the cell presents itself</li>
+        <li class="done"><b>M13.1</b>a phone, no network</li>
+        <li class="done"><b>M14</b>the hub</li>
+        <li class="done"><b>M15</b>telemetry over the radio</li>
+        <li class="done"><b>M16</b>the dashboard</li>
+        <li class="done"><b>M17</b>Home Assistant</li>
+        <li class="done"><b>M18</b>the integration layer</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h2>Bigger, and easier</h2>
+      <ul>
+        <li class="done"><b>M19</b>cells of cells</li>
+        <li class="done"><b>M20</b>Potluck for everyone</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h2>The PC's side, into the cell</h2>
+      <ul>
+        <li class="done"><b>M21</b>each board's chip</li>
+        <li class="done"><b>M22</b>borrowed cores, visible</li>
+        <li class="done"><b>M23</b>the PC's services, speech</li>
+        <li class="done"><b>M24</b>keyboard and mouse</li>
+        <li class="done"><b>M25</b>files from the PC</li>
+      </ul>
+    </div>
+    <div class="group">
+      <h2>Phones and an experiment</h2>
+      <ul>
+        <li class="done"><b>M26</b>the pocket page writes</li>
+        <li class="done"><b>M27</b>an emulator beside Potluck</li>
+      </ul>
+    </div>
+    <div class="group next">
+      <h2>Next</h2>
+      <ul>
+        <li class="next"><b>M28</b>sound across the cell -- planned</li>
+      </ul>
+    </div>
+  </div>
 
   <div class="flow">
     <!-- 1. the cell -->
@@ -100,55 +174,61 @@
       <h2>1 · The cell: ESP32-S3 boards</h2>
       <div class="cellbox">
         <div class="card">
-          <h3>Board A <span class="small">· a PC's cable, if there is one</span></h3>
-          <span class="sensor">sensor → temperature</span>
+          <h3>Board A <span class="small">· the PC's cable</span></h3>
+          <span class="sensor">die temperature</span><span class="sensor">a phone's readings</span><span class="sensor planned">buzzer</span>
           <ul class="small">
-            <li>2 cores · 240 MHz</li><li>8 MB PSRAM · 16 MB flash</li>
+            <li>2 cores · 240 MHz · 8 MB PSRAM · 16 MB flash</li>
+            <li>pocket page: its own Wi-Fi for a phone <span class="m">M13.1 · M26</span></li>
           </ul>
         </div>
         <div class="radio">⇅ radio (ESP-NOW) ⇅</div>
         <div class="card">
-          <h3>Board B <span class="small">· on the house Wi-Fi</span></h3>
-          <span class="sensor">lightbulb</span><span class="sensor">status LED</span><span class="sensor">room presence</span>
+          <h3>Board B <span class="small">· the house Wi-Fi's extender</span></h3>
+          <span class="sensor">status LED</span><span class="sensor">die temperature</span><span class="sensor">room presence</span><span class="sensor planned">buzzer</span>
           <ul class="small">
-            <li>2 cores · 8 MB PSRAM</li><li>Wi-Fi extender module</li><li>presenting module: presents the cell</li>
+            <li>2 cores, lent when idle <span class="m">M22</span></li>
+            <li>Wi-Fi extender app: a hotspot for phones</li>
           </ul>
         </div>
         <div class="radio">⇅ radio (ESP-NOW) ⇅</div>
         <div class="card">
-          <h3>Board C</h3>
-          <span class="sensor">room presence</span>
+          <h3>Board C <span class="small">· on the house Wi-Fi</span></h3>
+          <span class="sensor">die temperature</span><span class="sensor">room presence</span><span class="sensor planned">buzzer</span>
           <ul class="small">
-            <li>2 cores, lent when idle</li><li>8 MB PSRAM · 16 MB flash</li><li>pocket module: its own Wi-Fi for a phone</li>
+            <li>2 cores, lent when idle <span class="m">M22</span></li>
+            <li>presents the cell when no PC does <span class="m">M13</span></li>
+            <li>asks the PC to speak <span class="m">M23</span> · reads its files <span class="m">M25</span></li>
           </ul>
         </div>
       </div>
-      <p class="small">Up to 20 boards in a cell. Each board's resources are reachable from every other board.</p>
+      <p class="small">Up to 20 boards in a cell; past twenty, a foreman in each cell presents it to an upper cell of
+      foremen <span class="m">M19</span>. Each board's resources are reachable from every other board.</p>
     </section>
 
-    <div class="link"><div class="bar both"></div><span>Wi-Fi (board B)<br>or a PC's cable</span></div>
+    <div class="link"><div class="bar both"></div><span>cable or<br>Wi-Fi</span></div>
 
     <!-- 2. the presentation, on the house network -->
     <section class="col hub">
       <h2>2 · The house network</h2>
       <div class="present">
-        <h3>Resource presentation</h3>
-        <p class="small" style="margin:0 0 4px">The whole cell, seen as one machine -- what Kubernetes' API server is to a cluster.</p>
+        <h3>Resource presentation <span class="m">M14 · M15</span></h3>
+        <p class="small" style="margin:0 0 4px">The whole cell, seen as one machine -- what Kubernetes' API server is to a
+        cluster. One model, <code>GET /api/model</code>:</p>
         <div class="kinds">
-          <b>Nodes</b><b>Resources</b><b>Capacity</b><b>Apps</b><b>Actors</b><b>Modules</b><b>Integrations</b><b>Clients</b><b>Events</b>
+          <b>Boards</b><b>Chips</b><b>Links</b><b>Resources</b><b>Apps</b><b>Modules</b><b>Jobs</b><b>Services</b><b>Inputs</b><b>Files</b><b>Pins</b><b>Updates</b><b>Events</b>
         </div>
-        <p class="small" style="margin:0">Every value with its age and quality -- never a bare number. What is used, what is free,
-        what runs where, what talks to what.</p>
+        <p class="small" style="margin:0">Every value with its unit, age and quality -- never a bare number. What is used,
+        what is free, what runs where, what talks to what.</p>
       </div>
       <div class="card">
-        <h3>Presented by the cell itself</h3>
-        <p class="small" style="margin:0">Board B, on the Wi-Fi, presents every board's resources: Home Assistant switches the
-        lightbulb with no PC anywhere. Presenting is a role: give a second board Wi-Fi, and it takes over if B dies.</p>
+        <h3>The PC's hub, when it runs <span class="tag">optional</span></h3>
+        <p class="small" style="margin:0">Cabled to board A, the hub holds the presentation and serves the dashboard,
+        history and every program at once. With <code>present.hub</code> the PC presents the cell to MQTT too.</p>
       </div>
-      <div class="card" style="border-left-style:dashed">
-        <h3>A PC, if there is one <span class="tag">optional</span></h3>
-        <p class="small" style="margin:0">Cabled to a board, its hub adds what a small board cannot hold: the full dashboard,
-        history, your own programs. Switch it off and the cell, and Home Assistant's control of it, carry on.</p>
+      <div class="card">
+        <h3>The cell itself, when it does not <span class="m">M13</span></h3>
+        <p class="small" style="margin:0">Presenting is a role: a board on the house Wi-Fi takes it when the PC goes,
+        and Home Assistant keeps switching B's LED with no PC anywhere. Another board with Wi-Fi is the standby.</p>
       </div>
     </section>
 
@@ -158,14 +238,17 @@
     <section class="col">
       <h2>3 · Integration layer</h2>
       <div class="intlayer">
-        <h3>Adapters on the API</h3>
+        <h3>Adapters on the API <span class="m">M18</span></h3>
+        <p class="small" style="margin:0 0 4px">Five things every integration does (<a href="INTEGRATIONS.md">INTEGRATIONS.md</a>):</p>
         <ul class="small">
-          <li>each resource named in the other program's own terms</li>
-          <li>age and quality kept: "unavailable", not a stale number</li>
-          <li>writes only where the package allows; never a deploy</li>
-          <li>chosen per cell, like an app -- on the PC, or on a board when it must be</li>
-          <li>its own state shown on the dashboard</li>
+          <li>names each resource in the other program's own terms, keeping the cell's ids</li>
+          <li>carries unit, age and quality: "unavailable", not a stale number</li>
+          <li>shows what the owner exposes, writes only what the owner allows, never deploys</li>
+          <li>is a module the owner chooses: off until turned on</li>
+          <li>reports its own state, so the dashboard shows it connected or not</li>
         </ul>
+        <p class="small" style="margin:6px 0 0">A program on the hub's API costs the boards nothing; a board module
+        (presenting is one) is for what must work with no PC.</p>
       </div>
     </section>
 
@@ -175,34 +258,52 @@
     <section class="col clients">
       <h2>4 · Programs that use the cell</h2>
       <div class="card">
-        <h3>Dashboard <span class="tag">first</span></h3>
-        <span class="small">Monitor everything -- on a desk or a phone.</span>
+        <h3>Dashboard <span class="m">M16 · M20</span></h3>
+        <span class="small">Is anything broken first, then the details -- on a desk or a phone, behind a login. Setup
+        wizard, library of apps, store, floor plan.</span>
       </div>
       <div class="card ha">
-        <h3>Home Assistant <span class="tag">first integration</span></h3>
-        <span class="small">The LED is a light, the sensor a sensor, presence a binary sensor -- on its phone app too.</span>
+        <h3>Home Assistant <span class="m">M17</span></h3>
+        <span class="small">Installed from HACS: boards are devices, the LED a light, the sensors sensors -- on its phone
+        app too.</span>
       </div>
       <div class="card">
         <h3>MQTT tools</h3>
-        <span class="small">Every resource as a topic, for anything that speaks MQTT.</span>
+        <span class="small">Every exposed resource as a topic, for anything that speaks MQTT.</span>
+      </div>
+      <div class="card">
+        <h3>Node-RED <span class="m">M18</span></h3>
+        <span class="small">Nodes that wire the cell's resources into flows.</span>
       </div>
       <div class="card">
         <h3>Your own programs</h3>
-        <span class="small">Read, watch and write the cell from any language.</span>
+        <span class="small">Read, watch and write the cell from any language; a desktop client, a phone bridge.</span>
       </div>
-      <div class="card idea"><h3>Flow tools <span class="tag">idea</span></h3><span class="small">wire resources into automations</span></div>
-      <div class="card idea"><h3>Charts and data <span class="tag">idea</span></h3><span class="small">history of every resource</span></div>
-      <div class="card idea"><h3>Robots, workshops, labs <span class="tag">idea</span></h3><span class="small">controllers that use the boards' pins and sensors</span></div>
+      <div class="card idea"><h3>Robots, workshops, labs <span class="tag">idea</span></h3><span class="small">controllers that use the boards' pins and sensors -- never the only thing between a motor and a person</span></div>
       <div class="card idea"><h3>Cloud services <span class="tag">idea</span></h3><span class="small">reports out, never commands in</span></div>
     </section>
   </div>
 
-  <div class="gateway">
+  <div class="band inward">
+    <h3>The other way: what the PC brings into the cell</h3>
+    <span class="small">The presentation runs outward; these run inward, each with its shape in
+    <a href="host/potluck/HUB-API.md">HUB-API.md</a>.</span>
+    <div class="tiles">
+      <div class="card"><b>Each board's chip <span class="m">M21</span></b><span class="small">model, cores, flash and PSRAM, as the board reports it</span></div>
+      <div class="card"><b>Borrowed cores <span class="m">M22</span></b><span class="small">who lends, who borrows, pieces redone when a lender dies</span></div>
+      <div class="card"><b>The PC's services <span class="m">M23</span></b><span class="small">time and speech: a board's app makes the PC speak</span></div>
+      <div class="card"><b>Keyboard and mouse <span class="m">M24</span></b><span class="small">key and pointer events to a board's app, in order</span></div>
+      <div class="card"><b>Files <span class="m">M25</span></b><span class="small">a folder the owner offers, read in chunks over the radio</span></div>
+      <div class="card"><b>An emulator <span class="m">M27</span></b><span class="small">an experiment: an Amiga 500 on one board's second core, its cost to the cell measured</span></div>
+    </div>
+  </div>
+
+  <div class="band gateway">
     <h3>With a PC, and without one</h3>
-    <span class="small"><b>Without:</b> board B connects out to the house's MQTT broker and presents the whole cell -- every
-    board's lightbulb, LED and sensors -- to Home Assistant and any MQTT tool, read and controlled there. <b>With:</b> the PC's
-    hub presents the same devices under the same names, plus the full dashboard, history and your own programs. Either can
-    come and go; Home Assistant sees the same lightbulb throughout.</span>
+    <span class="small"><b>Without:</b> a board on the house Wi-Fi connects out to the house's MQTT broker and presents
+    the whole cell -- every board's LED and sensors -- to Home Assistant and any MQTT tool, read and controlled there.
+    <b>With:</b> the PC's hub presents the same devices under the same names, plus the dashboard, history and your own
+    programs. Either can come and go; Home Assistant sees the same LED throughout.</span>
   </div>
 
   <div class="boat">
@@ -210,8 +311,9 @@
       <h3>No network and no PC at all -- on a boat, in a field</h3>
       <span class="small">The boards keep doing their jobs and helping each other; Potluck is just how they talk. When one
       high in the mast takes salt water and dies, the captain takes out a phone, joins the nearest board's own Wi-Fi with
-      the owner's password, and sees which board is dead and since when. The page is read-only: it shows, it never writes
-      or deploys. It is the one place a board listens, so it is optional, like every other module here.</span>
+      the owner's password, and sees which board is dead and since when <span class="m">M13.1</span>. The page shows and
+      never deploys. The owner can also let it switch things, behind a login, off by default <span class="m">M26</span>.
+      It is the one place a board listens, so it is optional, like every other module here.</span>
       <div class="steps">
         <span class="step">phone</span><span class="arrow">→</span>
         <span class="step">nearest board's own Wi-Fi</span><span class="arrow">→</span>
@@ -227,21 +329,33 @@
       <div class="row"><span>Engine bay</span><span class="ok">alive</span></div>
       <div class="row"><span>Cabin</span><span class="ok">alive</span></div>
       <div class="row"><span>Autosteer app</span><span class="ok">working</span></div>
+      <div class="row"><span>Cabin light</span><span class="sw">Off</span></div>
+      <div class="note">the switch shows only with writes turned on</div>
     </div>
+  </div>
+
+  <div class="band next">
+    <h3>Next: M28 -- sound across the cell <span class="tag">planned</span></h3>
+    <span class="small">A built-in actor plays short patterns on a buzzer wired to its board. Any app's output chooses the
+    pattern -- an alarm, say -- or a write from outside does; a room's alarm sounds in that room and nowhere else, with
+    every PC off and a board unplugged. It needs a buzzer per board, chosen and checked before any code. A tone is a
+    notice, never anyone's only smoke, fire or gas alarm. The test and its kill line are in
+    <a href="ARCHITECTURE.md">ARCHITECTURE.md</a> section 13.</span>
   </div>
 
   <div class="rules">
     <div class="card"><b>One presentation, many viewers.</b> Ten phones and three integrations cost the boards what one hub costs:
     the hub asks the cell once and serves them all.</div>
-    <div class="card"><b>Basic, or added by choice.</b> Like the Wi-Fi extender app, the presenting module, the dashboard, phone access and
+    <div class="card"><b>Basic, or added by choice.</b> Like the Wi-Fi extender app, the presenting module, phone access and
     every integration are optional -- some cells would find them a security liability, others filler they never use. They
     are off until the owner adds them, and the dashboard shows each as on, idle or not there.</div>
     <div class="card"><b>The owner stays in charge.</b> Only the owner's signed package changes what the boards do. Other
     programs read, and write only what the package allows.</div>
   </div>
 
-  <footer>Potluck -- S3 Edition. Board figures are the test cell's (ESP32-S3-DevKitC-1 N16R8). Up to 20 boards in a radio
-  cell. Everything in columns 2-4 and below is planned (M13-M18, M13.1), not built; the lightbulb and the boat are examples.</footer>
+  <footer>Potluck -- S3 Edition. Board figures and roles are the test cell's (three ESP32-S3-DevKitC-1 N16R8 boards);
+  roles move -- presenting, lending and the foreman go to whichever board can take them. Dashed resources are planned
+  (M28); the boat is an example. Each milestone's measurements and caveats: <a href="STATUS.md">STATUS.md</a>.</footer>
 </main>
 </body>
 </html>
