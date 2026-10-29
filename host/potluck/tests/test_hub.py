@@ -216,6 +216,9 @@ class PlacementHost(HubFixture):
             self.assertIsNotNone(ack, "the cell's HELLO_ACK reaches the host node")
             self.assertEqual(self.node.hellos_seen, hellos + 1)
             self.assertIs(self.hub.node_client is not None, True)
+            hn = self.model.snapshot()["hub"]["host_node"]
+            self.assertEqual((hn["attached"], hn["epoch"]), (True, 1234))
+            self.assertIsNotNone(hn["since_at"])
             # Its own request, numbered below 0x8000, comes back to it with its own msg_id.
             uptime = next(p for p in sys_paths_for(0x1001) if p.endswith("sys/uptime"))
             from potluck.paths import path_hash
@@ -248,6 +251,8 @@ class PlacementHost(HubFixture):
         while time.time() < deadline and self.hub.node_client is not None:
             time.sleep(0.05)
         self.assertIsNone(self.hub.node_client)
+        hn = self.model.snapshot()["hub"]["host_node"]
+        self.assertEqual((hn["attached"], hn["epoch"]), (False, None))
 
     def test_the_hubs_msg_ids_stay_above_the_host_nodes(self) -> None:
         ids = [self.hub._next_msg_id() for _ in range(5)]

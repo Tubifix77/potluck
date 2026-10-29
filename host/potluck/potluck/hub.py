@@ -152,6 +152,8 @@ class Hub(Bridge):
         self._clients: list[_Client] = []
         self._clients_lock = threading.Lock()
         self.node_client: _Client | None = None  # M10's placement host, while attached
+        self.node_since_at: int | None = None  # when it last came or went (hub ms); None: not since the hub started
+        self.node_epoch: int | None = None     # its boot epoch, from its HELLO
         self.services_for = lambda: None  # M23: the PC's named services (potluck.services.PcServices), from the model
         from .bulk import Bulk
         from .events import Inputs
@@ -342,6 +344,7 @@ class Hub(Bridge):
                     pass
                 return
             self.node_client = c
+            self.node_since_at, self.node_epoch = _hub_ms(), _hello_epoch(f)
             try:
                 h = Hello.parse(bytes(f.payload))
                 self._node_window_s = max(1.0, h.hb_period_ms * h.hb_miss_limit / 1000.0)
@@ -419,6 +422,7 @@ class Hub(Bridge):
             # (and a margin), then speaks for the PC again.
             self._quiet_until = time.monotonic() + self._node_window_s + 1.0
             self.node_client = None
+            self.node_since_at = _hub_ms()
             self.record("host_node", None, {"client": c.name, "attached": False})
         with self._lock:
             for k in [k for k, v in self._relayed.items() if v.client is c]:
@@ -975,7 +979,7 @@ class Model:
                     "relay": dict(self.hub.relay_counts), "retention": self._retention_json(),
                     "pairing": self.pairing.pending() if self.pairing is not None else [],
                     "clients": self.fair.snapshot(), "tls_fp": self.tls_fp, "starting": starting,
-                    "interest": self._interest_json()},
+                    "interest": self._interest_json(), "host_node": self._host_node_json()},
             "cell": self._cell_json(boards),
             "boards": boards,
             "apps": apps,
@@ -986,6 +990,15 @@ class Model:
             "signals": self._signals_json(boards),
             "last_event_seq": events_tail[0]["seq"] if events_tail else 0,
         }
+
+    def _host_node_json(self) -> dict:
+        """2026-10-29: is the PC's own node (M10's pot_hostnode, 0x00fe) in the cell? With it attached the PC is a member
+        like a board -- it can hold the presenting role, run placed actors, serve its services; without it the hub still
+        answers the cell as 0x00fe for its tools, so the boards' links to 00fe read alive either way and cannot tell."""
+        h = getattr(self, "hub", None)
+        c = getattr(h, "node_client", None)
+        return {"attached": c is not None, "since_at": getattr(h, "node_since_at", None),
+                "epoch": getattr(h, "node_epoch", None) if c is not None else None}
 
     def _retention_json(self) -> dict:
         """M16: how much history this hub keeps -- events in memory, and its recording on disk if it keeps one."""

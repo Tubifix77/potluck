@@ -5,6 +5,8 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **The model says whether the PC's own node is in the cell** (`hub.host_node`: attached, since, epoch). With it,
+  a program can show the PC as a member beside the boards; what the PC does is already in the model.
 - **Sound across the cell (M28), on the PC's speakers.** `builtin:tone` asks the PC's new `sound` service (the cluster
   file's `pc_services`) to play one of eight built-in patterns of notes; its `act/<name>/play` follows any value the
   package names (`config.source`, with `config.pattern`) or is written from outside, and `act/<name>/result` says

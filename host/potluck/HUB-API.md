@@ -135,6 +135,14 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   `hub.relay`: counts for the PC's other tools that go through the hub, `{clients, requests, replies, unmatched,
   fanned_out, node_frames_out, node_frames_in}`. `hub.telemetry` counts `{pulls, replies, failures, events}`.
   `hub.interest`: the on-demand reads programs ask for (POST /api/interest), `{paths, clients, max, per_client}`.
+- `hub.host_node` (2026-10-29): `{"attached", "since_at", "epoch"}` -- whether the PC's own node (node `00fe`, M10)
+  is in the cell. Attached, the PC is a member like a board; what it does is elsewhere in the model:
+  `cell.presenter` `"00fe"` when it presents, `cell.services` for what it serves, `apps[].running_on` `["00fe"]` for
+  actors placed on it, an `integrations` entry with `where` `"00fe"` for its own report, and each board's
+  `links[]` entry with `peer` `"00fe"` for the cell's view of it. Not attached, the hub still answers the cell as
+  `00fe` for the PC's tools, so those links read alive either way: this field is what tells them apart. `since_at`:
+  when it last came or went (`null`: not since the hub started); `epoch`: its boot epoch while attached. The PC is
+  not in `boards`, which lists the cell file's boards (firmware, chip, resets are a board's).
 - `hub.starting`: `true` while the hub has not yet seen the whole cell once -- some board has not answered, or some
   resource is still `STARTING` (below) -- and never longer than 30 s after its first look at the cell (a hub restarted
   after being killed first waits out its old lease, up to a minute, serving nothing). Meanwhile an app not
