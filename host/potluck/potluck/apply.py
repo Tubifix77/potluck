@@ -1491,6 +1491,8 @@ def actor_reads(m, a, boards: list[int]) -> tuple[str, list[str]]:
             reads += [p[k] for k in ("bytes", "state", "digest", "ms", "go")]
         if a.module == "builtin:speak":  # M23: its result and its request
             reads += list(reversed(dp.speak_paths(m.system, a.name)))
+        if a.module == "builtin:tone":  # M28: its result and its request (and it reads the source it follows)
+            reads += list(reversed(dp.tone_paths(m.system, a.name)))
         if a.module == "builtin:mc_job":  # M9's result; M22's control, when it has one
             reads.append(dp.mc_job_path(m.system, node))
             if a.config.get("control"):
@@ -1715,6 +1717,8 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
                 package.update(dp.inbox_path(m.system, a.name, name) for name, *_ in dp.inbox_outputs(a, a.name))
             if a.module == "builtin:speak":  # M23 (counted from 2026-10-25: it declares both on its board)
                 package.update(dp.speak_paths(m.system, a.name))
+            if a.module == "builtin:tone":  # M28: both on its board
+                package.update(dp.tone_paths(m.system, a.name))
             if a.module == "builtin:key_echo":  # M24
                 package.update(dp.key_echo_paths(m.system, a.name))
             if a.module == "builtin:file_hash":  # M25: all but its input, which is a CALL path, not an entry
@@ -1750,6 +1754,9 @@ def ns_budget(m, boards: list[int], cabled: int | None = None, presenters: tuple
             extra |= {p for q in peers_of(n) for p in own_read[q]}
         if n in presenters:
             extra |= out_paths
+        for a in m.actors:  # M28: a tone actor keeps a replica of the resource it follows
+            if a.module == "builtin:tone" and m.placement_of(a) == n and dp.tone_source(m, a):
+                extra.add(dp.tone_source(m, a))
         extra -= held
         result[n] = {"fixed": len(fixed), "package": len(package - fixed), "own": len(own[n] - fixed - package),
                      "replicas": len(extra), "total": len(held | extra)}

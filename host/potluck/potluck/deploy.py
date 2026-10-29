@@ -75,6 +75,7 @@ ACTOR_INBOX = 14  # 2026-10-20: values a program outside the cell writes, act/<a
 ACTOR_SPEAK = 15  # M23: asks the PC to speak a phrase when act/<actor>/say is written (pot/speak.hpp)
 ACTOR_KEY_ECHO = 16  # M24: takes key and pointer events from the PC on act/<actor>/in, echoes them (pot/key_echo.hpp)
 ACTOR_FILE_HASH = 17  # M25: reads a file the PC offers (svc/file) and hashes it (pot/file_hash.hpp)
+ACTOR_TONE = 18  # M28: asks the PC to play a pattern of notes (svc/sound), written or following an output (pot/tone.hpp)
 CLUSTER_NAME_MAX = 31
 OUTSIDE_NAME_MAX = 40  # M13: deploy.hpp's kMaxOutsideName
 #: M8.2: pot/actor.hpp's kMaxActorCfg -- the most config bytes a node keeps for one actor.
@@ -85,7 +86,7 @@ BUILTINS = {"builtin:led": ACTOR_LED, "builtin:fault": ACTOR_FAULT, "builtin:tic
             "builtin:present": ACTOR_PRESENT, "builtin:led_switch": ACTOR_LED_SWITCH,
             "builtin:position": ACTOR_POSITION, "builtin:foreman": ACTOR_FOREMAN, "builtin:inbox": ACTOR_INBOX,
             "builtin:speak": ACTOR_SPEAK, "builtin:key_echo": ACTOR_KEY_ECHO,
-            "builtin:file_hash": ACTOR_FILE_HASH}
+            "builtin:file_hash": ACTOR_FILE_HASH, "builtin:tone": ACTOR_TONE}
 
 
 def mc_job_path(system: str, node_id: int) -> str:
@@ -327,6 +328,49 @@ def _file_hash_config(m: Manifest, a, where: str) -> bytes:
 
 #: pot/deploy.hpp's kSpeakTextMax: the phrase a board may ask the PC to say.
 SPEAK_TEXT_MAX = 120
+
+#: pot/deploy.hpp's kTonePatternMax: the hub's patterns (potluck.sound) are 1..8.
+TONE_PATTERN_MAX = 8
+
+
+def tone_paths(system: str, actor: str) -> tuple[str, str]:
+    """M28. A tone actor's two resources: (act/<actor>/play -- written to ask: 0 stops, 1..8 a pattern -- and
+    act/<actor>/result -- how it went)."""
+    return f"potluck://{system}/act/{actor}/play", f"potluck://{system}/act/{actor}/result"
+
+
+def tone_source(m: Manifest, a) -> str | None:
+    """M28. The resource a tone actor follows (its config's `source`, through the manifest's bindings), or None."""
+    src = a.config.get("source")
+    return m.bindings.get(src, src) if isinstance(src, str) and src else None
+
+
+def _tone_config(m: Manifest, a, where: str) -> bytes:
+    """M28. As a speak actor's: the service is the actor's one binding and the provider the node that owns it; plus
+    an optional `source` to follow (a path in this cell) and the `pattern` it plays while the source is non-zero (0: the
+    source's own value)."""
+    extra = set(a.config) - {"source", "pattern"}
+    if extra:
+        raise DeployError(f"{where}: unknown tone config key(s) {sorted(extra)}")
+    if a.pin is None:
+        raise DeployError(f"{where}: a tone actor is pinned to a board")
+    if len(a.needs) != 1 or "/svc/" not in a.needs[0]:
+        raise DeployError(f"{where}: a tone actor binds exactly one potluck://<cluster>/svc/<name> path")
+    provider = m.owner_of(a.needs[0])
+    if provider is None:
+        raise DeployError(f"{where}: no node in the package owns {a.needs[0]}")
+    pattern = a.config.get("pattern", 0)
+    if not isinstance(pattern, int) or isinstance(pattern, bool) or not 0 <= pattern <= TONE_PATTERN_MAX:
+        raise DeployError(f"{where}: pattern is 0..{TONE_PATTERN_MAX} (0: play the source's own value)")
+    src = tone_source(m, a)
+    if "source" in a.config and src is None:
+        raise DeployError(f"{where}: source names a resource of this cell, as a path")
+    play, result = tone_paths(m.system, a.name)
+    if src is not None and (not src.startswith(f"potluck://{m.system}/") or src in (play, result)):
+        raise DeployError(f"{where}: source is another resource of this cell (potluck://{m.system}/...)")
+    svc = path_hash(m.bindings.get(a.needs[0], a.needs[0]))
+    return struct.pack("<IHIIIB", svc, provider.node_id, path_hash(play), path_hash(result),
+                       path_hash(src) if src is not None else 0, pattern)
 
 
 def _speak_config(m: Manifest, a, where: str) -> bytes:
@@ -776,6 +820,11 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
             continue
         if a.module == "builtin:key_echo":
             cfg = _key_echo_config(m, a, where)
+            body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
+            count += 1
+            continue
+        if a.module == "builtin:tone":
+            cfg = _tone_config(m, a, where)
             body += struct.pack("<HBB", node, BUILTINS[a.module], len(cfg)) + cfg
             count += 1
             continue

@@ -164,7 +164,9 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   callers}]`: `state` `serving` while a call is being answered, else `ready`; `errors` the calls answered "not done"
   (speech: an empty, too long or control-character text, or no voice on this PC); `callers` the boards that called,
   by node id. Empty when the PC offers none. With the PC off there is no hub to ask: a board's caller says so itself
-  (a speak actor's result 3, "gone").
+  (a speak actor's result 3, "gone"). M28's `sound` plays one of the hub's eight patterns of notes (potluck.sound:
+  1 notice, 2 alarm, 3 rising, 4 falling, 5 three, 6 long, 7 chime, 8 low) on the PC's speakers when a board's
+  `builtin:tone` asks; its `errors` are patterns refused (an unknown number, or no sound on this PC).
   `signals.saturation.peers` is the boards the hub knows against 21 (a board and the 20 peers it can hold);
   `actor_slots` the busiest board's pinned actors against 8.
 - `boards[].actors` (2026-10-26): the kinds of the actors running on the board, from its status reply, which holds 64
@@ -337,7 +339,8 @@ no events or is not pinned, 429 over 512 events already waiting for it. How deli
 `outside_writable: true`, and only one of these: a board's own resource (`.../node-XXXX/...`); an inbox's value
 (`.../act/<actor>/<name>` of a pinned `builtin:inbox`, which holds values a program writes -- INTEGRATIONS.md step 7); a
 speak actor's request (`.../act/<actor>/say` of a pinned `builtin:speak`, M23 -- any u32 says its phrase); or a file
-reader's start (`.../act/<actor>/go` of a pinned `builtin:file_hash`, M25); or an app's output its module's
+reader's start (`.../act/<actor>/go` of a pinned `builtin:file_hash`, M25); a tone's request (`.../act/<actor>/play`
+of a pinned `builtin:tone`, M28 -- an i32: 0 stops, 1..8 a pattern); or an app's output its module's
 descriptor marks `writable` (DEVELOPING-APPS.md section 5: a `node-<id>/...` path, or `act/<actor>/...` of a pinned
 actor). Each lives on the one board its actor is
 pinned to. An actor's output that moves between boards cannot be written from outside. `value` is a JSON bool or number -- an integer is written as a 32-bit integer, a
@@ -352,7 +355,7 @@ timed out); the owner checks the package again and its answer comes back. Every 
 | status | result | why |
 |---|---|---|
 | 200 | `applied` | the owning board applied it |
-| 400 | `expected {"path": ..., "value": ...}` / `a bool or a number` / `only a board's own resource, an inbox's value, a speak actor's say, a file reader's go or an app's output marked writable can be written from outside` | the request |
+| 400 | `expected {"path": ..., "value": ...}` / `a bool or a number` / `only a board's own resource, an inbox's value, a speak actor's say, a file reader's go, a tone's play or an app's output marked writable can be written from outside` | the request |
 | 404 | `no such resource in this cell (...)` | not in the cell's package: an app that is off, or values not provisioned yet (an inbox before its Apply) |
 | 404 | `not_found` | in the package, but the owning board does not hold it yet: an Apply under way. Send it again |
 | 403 | `not writable from outside` | the cluster file's `outside` does not mark it `read_write`, or it is safety-relevant |

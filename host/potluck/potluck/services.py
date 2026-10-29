@@ -18,6 +18,9 @@ THE SERVICES:
            (pot/bulk.hpp: op 1, the app's input path hash, the name), the answer is its size (U32) or 4294967295 (no such
            file), and the hub then pushes it to the app's input in chunks (potluck.bulk). Only plain names (no folders,
            no leading dot), files up to 1 MiB.
+  sound    M28: plays one of the hub's patterns of notes on the PC's speakers (potluck.sound): the CALL's argument is an
+           i32 (4 bytes, little-endian; 0 stops, 1..8 a pattern); answers U32 1 (playing, or stopped) or 0 (no such
+           pattern, or no sound on this PC). It answers at once and plays on a thread of its own.
 """
 
 from __future__ import annotations
@@ -68,6 +71,15 @@ def speak_text(text: str, runner: Callable[[list[str], str], int] | None = None)
         _speech_lock.release()
 
 
+def svc_sound(args: bytes) -> tuple[Value, bool]:
+    """M28: a pattern number (an i32) for potluck.sound's player."""
+    from .sound import player
+    if len(args) != 4:
+        return Value.of_u32(0), False
+    took = player().play(struct.unpack("<i", args)[0])
+    return Value.of_u32(1 if took else 0), took
+
+
 def svc_speech(args: bytes) -> tuple[Value, bool]:
     try:
         text = args.decode("utf-8")
@@ -84,6 +96,8 @@ def svc_speech(args: bytes) -> tuple[Value, bool]:
 SERVICES: dict[str, tuple[str, Callable[[bytes], tuple[Value, bool]] | None, bool]] = {
     "time": ("Unix time in milliseconds (U64)", svc_time, False),
     "speech": ("says up to 200 bytes of text aloud with the PC's voice; answers 1 said, 0 not (U32)", svc_speech, True),
+    "sound": ("plays one of the hub's patterns of notes on the PC's speakers (an i32: 0 stops, 1..8 a pattern); answers "
+              "1 playing, 0 not (U32)", svc_sound, False),
     "file": ("a file from the folder this PC offers, pushed to the asking app in chunks; answers its size (U32), or "
              "4294967295 for none", None, False),  # served by PcServices itself: it needs the folder and the hub
 }

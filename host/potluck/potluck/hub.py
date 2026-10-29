@@ -2288,6 +2288,8 @@ def _inbox_type(model, path: str) -> int:
                 a.module == "builtin:file_hash" and path == dp.file_hash_paths(m.system, a.name)["go"]) or (
                 a.module == "builtin:mc_job" and node is not None and path == dp.mc_job_ctl_path(m.system, node)):
             return 3  # U32: M23's request and M22's job control, written before the hub has read them
+        if a.module == "builtin:tone" and path == dp.tone_paths(m.system, a.name)[0]:
+            return 2  # I32: M28's pattern number
         if a.module != "builtin:inbox":
             continue
         try:
@@ -2310,8 +2312,9 @@ def _inbox_owner(model, path: str) -> int | None:
     m = pkg.manifest
     for a in m.actors:
         if (a.module == "builtin:speak" and path == dp.speak_paths(m.system, a.name)[0]) or (
-                a.module == "builtin:file_hash" and path == dp.file_hash_paths(m.system, a.name)["go"]):
-            return m.placement_of(a)  # M23's say, M25's go -- a board's own resource too
+                a.module == "builtin:file_hash" and path == dp.file_hash_paths(m.system, a.name)["go"]) or (
+                a.module == "builtin:tone" and path == dp.tone_paths(m.system, a.name)[0]):
+            return m.placement_of(a)  # M23's say, M25's go, M28's play -- a board's own resource too
         if a.module.startswith("ext:"):
             from .manifest import external_writable
             if path in external_writable(m, a) and m.placement_of(a) is not None:
@@ -2405,7 +2408,8 @@ def write_outside(model: Model, path: str, value: Any, by: str | None = None) ->
     owner = int(name[5:9], 16) if name.startswith("node-") else _inbox_owner(model, path)
     if owner is None:
         return 400, {"ok": False, "result": "only a board's own resource, an inbox's value, a speak actor's say, a file "
-                                            "reader's go or an app's output marked writable can be written from outside"}
+                                            "reader's go, a tone's play or an app's output marked writable can be "
+                                            "written from outside"}
     h = path_hash(path)
     try:
         # To the cabled board, which passes a write for another board's resource to its owner and returns the owner's
