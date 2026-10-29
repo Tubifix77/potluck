@@ -5,6 +5,17 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **The PC's cable loses nothing.** About 1 in 120 of the PC's requests to the board on the cable went unanswered: the
+  board's main task slept up to 20 ms on the radio's queue before it looked at the cable's, and the hub's bursts
+  overflowed it. Both now wake the task at once, and the queue holds 16 frames: 1,800 reads with none lost, the median
+  3.4 ms (was 11). A board prints its cable counters as a `{"t":"serial"}` record.
+- **A board's copy of a value the PC owns is kept fresh** (`act/present/out` while the PC presents read "no data" for
+  good: the hub and the PC's node share one id, and the board took the hub's read for the owner's).
+- **A speak actor's result is republished** every 2 s, so copies on other boards no longer keep their first value.
+- **`BoardServices::receiving_image`**: an app can pause heavy work, such as a stream, while an update arrives.
+- **`potluck apply`**: two builds of one commit at once no longer break each other's unpacked sources.
+- **The extender's channel rule** takes the cell's channel when it hears it at -70 dBm or better (poor-mans-extender
+  CR-9), as Potluck's own Wi-Fi station does.
 - **An app on a board with eight pinned actors no longer reads "not running".** A board's list of actor names in its
   status reply is cut at 64 bytes; the hub read a name cut from it as an actor that does not run (C's position, the
   eighth of eight). `boards[].actors_cut` and `boards[].pinned_running` say so, and the hub counts every pinned actor of
