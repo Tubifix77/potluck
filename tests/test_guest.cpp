@@ -356,14 +356,14 @@ TEST(guest, a_vendors_alarm_runs_and_publishes_what_it_computes) {
     CHECK_EQ(r.i32(kAlarm), 0);
     CHECK_EQ(r.i32(kCount), 1);
     CHECK(r.actor->stats().fuel_last > 0u);
-    // Hot: the smoothed value climbs past 38 and the alarm rises; cool: it falls below 37 and clears.
-    r.temp(60.0f);
+    // Hot: the smoothed value climbs past 85 and the alarm rises; cool: it falls below 80 and clears.
+    r.temp(120.0f);
     r.run_ms(150);
-    CHECK_EQ(r.i32(kAlarm), 0);  // one hot tick: 30 -> 36, not over 38 yet
+    CHECK_EQ(r.i32(kAlarm), 0);  // one hot tick: 30 -> 48, not over 85 yet
     r.run_ms(1000);
     CHECK_EQ(r.i32(kAlarm), 1);
-    CHECK(r.f32(kOut) > 38.0f);
-    r.temp(37.5f);
+    CHECK(r.f32(kOut) > 85.0f);
+    r.temp(82.5f);
     r.run_ms(3000);
     CHECK_EQ(r.i32(kAlarm), 1);  // between the thresholds: hysteresis holds it
     r.temp(20.0f);
@@ -377,7 +377,7 @@ TEST(guest, a_vendors_alarm_runs_and_publishes_what_it_computes) {
 
 TEST(guest, a_new_activation_starts_a_fresh_instance_from_the_checkpoint) {
     Rig r(overheat_blob(Keys{}));
-    r.temp(45.0f);
+    r.temp(95.0f);
     r.start();
     r.run_ms(1000);
     const int32_t count = r.i32(kCount);

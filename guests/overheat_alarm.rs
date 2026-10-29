@@ -15,8 +15,11 @@
 #[path = "potluck_guest.rs"]
 mod potluck;
 
-const ON_ABOVE: f32 = 38.0;
-const OFF_BELOW: f32 = 37.0;
+// The die, not the air: the S3's sensor reads inside the chip, which runs above the room (about 20-25 C on the
+// reference boards). An N16R8 module is rated for 65 C ambient (ESP32-S3-WROOM-1 datasheet v1.8, Octal PSRAM
+// without ECC), so 85 C on the die is that limit with a small margin; 80 C clears it.
+const ON_ABOVE: f32 = 85.0;
+const OFF_BELOW: f32 = 80.0;
 const ALPHA: f32 = 0.2;
 
 static mut SMOOTHED: f32 = f32::NAN;
