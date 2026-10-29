@@ -181,5 +181,66 @@ class Hostnode(unittest.TestCase):
         self.assertFalse(started[2].alive)
 
 
+
+class ProgramsFromTrayJson(unittest.TestCase):
+    """2026-10-29: tray.json's "programs" -- other programs the tray keeps running beside the hub."""
+
+    def test_well_formed_entries_only(self):
+        cfg = {"programs": [
+            {"name": "phone", "cmd": ["pythonw.exe", "-u", "svc.py"], "cwd": "D:/x", "stop_codes": [2, "x"]},
+            {"name": "", "cmd": ["a"]}, {"name": "b"}, {"name": "c", "cmd": "not a list"}, "nonsense"]}
+        plans = tray.program_plans(cfg)
+        self.assertEqual([p["name"] for p in plans], ["phone"])
+        self.assertEqual(plans[0]["stop_codes"], [2])
+        self.assertEqual(tray.program_plans({}), [])
+
+    def test_kept_running_once_in_30_s_never_after_a_stop_code_and_restarted_when_changed(self):
+        class Child:
+            def __init__(self):
+                self.code = None
+
+            def poll(self):
+                return self.code
+
+            def terminate(self):
+                self.code = -1
+
+            def wait(self, timeout=None):
+                return self.code
+
+            def kill(self):
+                self.code = -9
+        plan = {"name": "phone", "cmd": ["svc"], "cwd": None, "stop_codes": [2]}
+        plans, now, started = [[plan]], [0.0], []
+        k = tray.ProgramKeeper(plans=lambda: plans[0], start=lambda p: started.append(Child()) or started[-1],
+                               clock=lambda: now[0])
+        saved = tray.note
+        tray.note = lambda line: None
+        try:
+            self.assertEqual(k.seen(), ["phone"])
+            self.assertEqual(k.seen(), [])  # running: left alone
+            started[-1].code = 1  # it died
+            now[0] += 10
+            self.assertEqual(k.seen(), [])  # not again within 30 s
+            now[0] += 30
+            self.assertEqual(k.seen(), ["phone"])
+            started[-1].code = 2  # "not paired": restarting will not help
+            now[0] += 60
+            self.assertEqual(k.seen(), [])
+            now[0] += 600
+            self.assertEqual(k.seen(), [])  # still not, however long
+            plans[0] = [dict(plan, cmd=["svc", "--hub", "x"])]  # its entry changed: tried again
+            self.assertEqual(k.seen(), ["phone"])
+            plans[0] = [dict(plan, cmd=["svc", "--hub", "y"])]  # changed while running: stopped and started anew
+            now[0] += 60
+            self.assertEqual(k.seen(), ["phone"])
+            self.assertEqual(started[-2].code, -1)
+            k.stop_all()  # the tray quits
+            self.assertEqual(started[-1].code, -1)
+            plans[0] = []
+            self.assertEqual(k.seen(), [])
+        finally:
+            tray.note = saved
+
 if __name__ == "__main__":
     unittest.main()

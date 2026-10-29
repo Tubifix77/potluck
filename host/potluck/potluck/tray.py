@@ -7,7 +7,8 @@ and every app working; an amber badge, something to look at (hover for what); a 
 the cell; the mark greyed, no hub runs. It asks the hub on the PC's own address (http://127.0.0.1:8470/) every 3 seconds, so it is right whoever started
 the hub. Its menu opens the dashboard or the setup wizard, and starts a hub when none runs: on the cell's cluster file
 (`tray.json`'s "cluster", else the one cell the setup wizard made under %LOCALAPPDATA%/potluck/cells), or with no cell
-at all, in setup mode, so the wizard can make one.
+at all, in setup mode, so the wizard can make one. Started at login, it also keeps the PC's host node and tray.json's
+"programs" running (ProgramKeeper).
 
 Windows only for now, through the Win32 calls Windows has (ctypes, no packages); a Linux panel would use what
 ha-tray uses (GTK). The tray never stops a hub it did not start.
@@ -268,6 +269,99 @@ class HostnodeKeeper:
         return True
 
 
+def program_plans(cfg: dict | None = None) -> list[dict]:
+    """tray.json's "programs": [{"name": ..., "cmd": [program, args...], "cwd": <folder>, "stop_codes": [codes]}] --
+    other programs the tray keeps running beside the hub (asked for 2026-10-29: a phone app's service, started whenever
+    Potluck is). `cwd` and `stop_codes` are optional; an exit with one of the stop codes (a program saying "restarting
+    will not help", e.g. not paired) is not restarted until tray.json changes. An entry that is not well formed is
+    skipped."""
+    out = []
+    for p in (tray_config() if cfg is None else cfg).get("programs") or []:
+        if not isinstance(p, dict) or not isinstance(p.get("name"), str) or not p["name"]:
+            continue
+        cmd = p.get("cmd")
+        if not isinstance(cmd, list) or not cmd or not all(isinstance(a, str) for a in cmd):
+            continue
+        codes = p.get("stop_codes") or []
+        out.append({"name": p["name"], "cmd": list(cmd), "cwd": str(p["cwd"]) if p.get("cwd") else None,
+                    "stop_codes": [c for c in codes if isinstance(c, int)]})
+    return out
+
+
+def start_program(plan: dict) -> subprocess.Popen:
+    logs = potluck_dir() / "logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    out = open(logs / f"program-{plan['name']}.log", "ab")
+    out.write(f"===== {time.strftime('%Y-%m-%d %H:%M:%S')} the tray starts {plan['name']}\n".encode())
+    out.flush()
+    return subprocess.Popen(plan["cmd"], stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                            cwd=plan["cwd"], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+
+
+class ProgramKeeper:
+    """Keeps tray.json's "programs" running (program_plans): each started when the tray starts, started again when it
+    exits -- at most once in BACKOFF_S, and not after an exit with one of its stop codes -- restarted when its entry
+    changes, and stopped when the tray quits. tray.json is read at every poll, so an entry added or removed takes effect
+    without a restart."""
+
+    BACKOFF_S = 30.0
+
+    def __init__(self, plans=None, start=None, clock=time.monotonic) -> None:
+        self._plans = plans or program_plans
+        self._start = start or start_program
+        self._clock = clock
+        self.running: dict[str, tuple[dict, object]] = {}  # name -> (the plan it was started with, its process)
+        self.last_start: dict[str, float] = {}
+        self.stopped: dict[str, tuple[dict, int]] = {}      # name -> (plan, the stop code it exited with)
+        self.starts = 0
+
+    def _end(self, name: str) -> None:
+        _, child = self.running.pop(name)
+        if child.poll() is None:
+            child.terminate()
+            try:
+                child.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                child.kill()
+
+    def seen(self) -> list[str]:
+        """One poll; the names it started."""
+        plans = {p["name"]: p for p in self._plans()}
+        started = []
+        for name in [n for n in self.running if n not in plans or self.running[n][0] != plans[n]]:
+            self._end(name)  # removed from tray.json, or changed: stopped (and started again below if changed)
+        for name, plan in plans.items():
+            if name in self.running:
+                code = self.running[name][1].poll()
+                if code is None:
+                    continue
+                del self.running[name]
+                if code in plan["stop_codes"]:
+                    self.stopped[name] = (plan, code)
+                    note(f"{name} exited with {code}, one of its stop codes: not restarted until tray.json changes")
+                    continue
+            if name in self.stopped:
+                if self.stopped[name][0] == plan:
+                    continue
+                del self.stopped[name]  # its entry changed: try again
+            last = self.last_start.get(name)
+            if last is not None and self._clock() - last < self.BACKOFF_S:
+                continue
+            self.last_start[name] = self._clock()
+            try:
+                self.running[name] = (plan, self._start(plan))
+            except OSError as exc:
+                note(f"{name} did not start: {exc}")
+                continue
+            self.starts += 1
+            started.append(name)
+        return started
+
+    def stop_all(self) -> None:
+        for name in list(self.running):
+            self._end(name)
+
+
 class HubKeeper:
     """A tray started at login keeps a hub running for as long as it runs. Found 2026-10-16 (M0-LOG session 46): the
     tray started a hub only when it started itself, and only if none answered -- so when the hub that was running then
@@ -350,8 +444,10 @@ CMD_OPEN, CMD_SETUP, CMD_START, CMD_DESK, CMD_QUIT = 1, 2, 3, 4, 9
 
 
 class Tray:
-    def __init__(self, keeper: HubKeeper | None = None, hostkeeper: HostnodeKeeper | None = None) -> None:
+    def __init__(self, keeper: HubKeeper | None = None, hostkeeper: HostnodeKeeper | None = None,
+                 programs: ProgramKeeper | None = None) -> None:
         self.hostkeeper = hostkeeper
+        self.programs = programs
         self.state, self.tip = "none", "Potluck"
         self.icons: dict[str, int] = {}
         self.child: subprocess.Popen | None = None
@@ -391,6 +487,9 @@ class Tray:
                     self.hostkeeper.seen(m)
                 except OSError as exc:
                     note(f"the PC's host node did not start: {exc}")
+            if self.programs is not None:
+                with self._lock:
+                    self.programs.seen()
         threading.Thread(target=run, daemon=True).start()
 
     def _show(self) -> None:
@@ -444,6 +543,9 @@ class Tray:
                 user32.DestroyWindow(hwnd)
             return 0
         if msg == WM_DESTROY:
+            if self.programs is not None:
+                with self._lock:
+                    self.programs.stop_all()  # tray.json's programs run while the tray does
             shell32.Shell_NotifyIconW(NIM_DELETE, ctypes.byref(self.nid))
             user32.PostQuitMessage(0)
             return 0
@@ -465,7 +567,8 @@ def main(argv: list[str] | None = None) -> int:
     if sys.platform != "win32":
         print("potluck-tray: the tray icon is Windows-only for now; the hub and dashboard work without it")
         return 2
-    return Tray(keeper, HostnodeKeeper() if keeper is not None else None).run()
+    return Tray(keeper, HostnodeKeeper() if keeper is not None else None,
+                ProgramKeeper() if keeper is not None else None).run()
 
 
 if __name__ == "__main__":
