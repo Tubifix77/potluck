@@ -14,6 +14,9 @@ Potluck's releases. The full record -- every milestone with its measurements and
 - **The tray keeps other programs running** beside the hub: tray.json's `"programs"` (started with the tray, again
   when they exit, stopped when it quits; `tools/tray_program.py` adds, removes or lists them).
 - A firmware image without WebAssembly guests builds again.
+- **The example overheat alarm trips at 85 C on the die** (clears at 80), not 38: 38 C sat below an ESP32-S3's
+  everyday die temperature, so it read 1 for good. An N16R8 module is rated for 65 C ambient (Octal PSRAM without
+  ECC) and the die runs above the room. The store's copy is updated too.
 - **The PC's cable loses nothing.** About 1 in 120 of the PC's requests to the board on the cable went unanswered: the
   board's main task slept up to 20 ms on the radio's queue before it looked at the cable's, and the hub's bursts
   overflowed it. Both now wake the task at once, and the queue holds 16 frames: 1,800 reads with none lost, the median

@@ -6160,5 +6160,13 @@ Paused by the owner on 2026-10-26 (his weekly budget), resumed 2026-10-29.
   B's switch (it follows its source once a second), and a request a second for 10 minutes cost 0.38 points of heartbeat
   loss at worst. The owner heard both.
 
-Open: the owner's 24 h and hand power-cut evidence as listed in STATUS; the overheat alarms' threshold (they always
-read 1); a buzzer for M28's second half.
+Then, at the owner's word ("read the manuals or specs for the board then set the overheat to actual critical
+level"): the example alarm's 38 C became 85 C on the die, clearing at 80 (`f4137eb`). The sources (the ledger): the
+WROOM-1 datasheet v1.8 rates an N16R8 for -40 ~ 65 C ambient (85 C only with PSRAM ECC, off in these builds); its
+temperature sensor reads inside the chip, generally above ambient; the chip datasheet v2.2 gives no die limit. The
+boards' dies read 47-58 C at the desk, so 85 C is the ambient limit at a ~20-25 C die-over-room offset -- that offset
+is the boards', not measured against a thermometer [MEASURE]. The store's copy was published again (potluck-store
+`7ea86e1`, the feed re-signed) and installed through the hub; package 129 VERIFIED (the guest header sits in the
+firmware tree, so the firmware key moved and the hub rolled out `f4137eb-df1f55` too). Both alarms now read 0.
+
+Open: the owner's 24 h and hand power-cut evidence as listed in STATUS; a buzzer for M28's second half.
