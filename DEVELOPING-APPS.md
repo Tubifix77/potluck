@@ -371,7 +371,7 @@ the smaller figures in brackets.
 ```json
 {"component": "<directory name>", "types": [first, last], "requires": ["sandbox"],
  "modules": [{"module": "ext:<app>/<actor>", "type": <n>, "placement": "pinned|every|portable",
-              "outputs": ["{node}/<app>/<output>"],
+              "outputs": ["{node}/<app>/<output>", "{node}/<app>/<input>"], "writable": ["{node}/<app>/<input>"],
               "config": [{"name": "...", "kind": "...", "default": ..., "min": ..., "max": ...}],
               "peers": {"nearest": K}, "per_room": true,
               "panel": {"kind": "room|value", "output": "act/{actor}/<output>", "label": "...", "on": "...", "off": "..."},
@@ -391,6 +391,13 @@ the smaller figures in brackets.
   table: a board holds 128 entries -- its built-ins, every output in the package, its own, and the replicas its
   role reads -- and `apply --plan` prints the count per board and refuses a package that would not fit. An output
   it is not told about it can neither check nor count.
+- **`writable`** (optional): which of the module's own `outputs` a program outside the cell -- the hub, a desktop
+  client, Home Assistant -- may be allowed to write (never a `{peer}` one). Your actor declares each ReadWrite on its
+  board and acts on writes (watch the entry's `update_count` in `tick()`, as the built-in LED switch does). Marking it
+  writable only makes it eligible: the owner's cluster file still has to say `"outside": {"<path>": "read_write"}`
+  for it, and the board checks that rule again on every outside write. The hub then routes `POST /api/write` for a
+  `{node}/...` path to that board, and for an `act/{actor}/...` path to the board the actor is pinned to. Writes
+  inside the cell need none of this.
 - **`requires`** (optional): Potluck's board modules your component needs in the same image -- `sandbox`,
   `extender`, `wifi`, `present`, `pocket`. `potluck apply` refuses a cluster file that builds your component
   without them, naming what to add to its `firmware.modules`.

@@ -103,6 +103,56 @@ class OutsideManifest(unittest.TestCase):
         self.assertIn(f"at most {MAX_OUTSIDE}", errors_of(doc))
 
 
+
+class WritableAppOutputs(unittest.TestCase):
+    """2026-10-29 (passive-sensor's D21): an app's descriptor marks which of its outputs may be written from outside."""
+
+    DESC = {"component": "pot_wtest", "types": [200, 201], "modules": [
+        {"module": "ext:wtest/link", "type": 200, "placement": "every", "config": [],
+         "outputs": ["{node}/rf/relearn", "{node}/rf/mean"], "writable": ["{node}/rf/relearn"]},
+        {"module": "ext:wtest/knob", "type": 201, "placement": "pinned", "config": [],
+         "outputs": ["act/{actor}/go", "act/{actor}/state"], "writable": ["act/{actor}/go"]}]}
+
+    def setUp(self) -> None:
+        from potluck import modules as mods
+        self.mods = mods
+        mods.register(mods.parse_descriptor(self.DESC, "test"))
+
+    def tearDown(self) -> None:
+        for name in ("ext:wtest/link", "ext:wtest/knob"):
+            self.mods._REGISTRY.pop(name, None)
+
+    def doc(self, outside: dict) -> dict:
+        d = manifest()
+        d["actors"] = [{"name": "lk", "module": "ext:wtest/link", "latency_class": 4, "config": {}},
+                       {"name": "kn", "module": "ext:wtest/knob", "latency_class": 4, "pin": 0x7368, "config": {}}]
+        d["outside"] = outside
+        return d
+
+    def test_a_marked_output_may_be_written_from_outside_on_every_board_and_an_unmarked_one_not(self) -> None:
+        relearn_b = "potluck://m3-test/node-7368/rf/relearn"
+        go = "potluck://m3-test/act/kn/go"
+        self.assertEqual(errors_of(self.doc({relearn_b: "read_write", go: "read_write"})), "")
+        self.assertIn("marks 'writable'", errors_of(self.doc({"potluck://m3-test/node-7368/rf/mean": "read_write"})))
+        self.assertIn("marks 'writable'", errors_of(self.doc({"potluck://m3-test/act/kn/state": "read_write"})))
+
+    def test_the_hub_routes_a_marked_act_path_to_the_actors_pin(self) -> None:
+        import types
+        from potluck.hub import _inbox_owner
+        m = parse(self.doc({}))
+        model = types.SimpleNamespace(package=types.SimpleNamespace(manifest=m))
+        self.assertEqual(_inbox_owner(model, "potluck://m3-test/act/kn/go"), 0x7368)
+        self.assertIsNone(_inbox_owner(model, "potluck://m3-test/act/kn/state"))
+
+    def test_a_descriptor_may_mark_only_its_own_outputs_and_none_per_link(self) -> None:
+        from potluck.modules import ModuleError
+        for writable in (["{node}/not/mine"], ["{node}/link/{peer}/x"], "nope"):
+            bad = {"component": "pot_wbad", "types": [202, 202], "modules": [
+                {"module": "ext:wbad/x", "type": 202, "placement": "every", "config": [],
+                 "outputs": ["{node}/a", "{node}/link/{peer}/x"], "writable": writable}]}
+            with self.assertRaises(ModuleError):
+                self.mods.parse_descriptor(bad, "test")
+
 class OutsideImage(unittest.TestCase):
     def test_the_outside_section_compiles_to_the_node_format(self) -> None:
         self.assertEqual(dp.compile_image(parse(manifest()), 4).hex(), GOLDEN)

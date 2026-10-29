@@ -94,6 +94,11 @@ class ModuleSpec:
     #: M24: "takes" -- the events from the PC an actor of this module takes on act/<actor>/in (pot/input.hpp): "key",
     #: "pointer", or both. The hub delivers POST /api/input's events to it, in order; the actor implements on_call.
     takes: tuple[str, ...] = ()
+    #: 2026-10-29 (passive-sensor's D21): "writable" -- which of the module's own outputs a program outside the cell may
+    #: be allowed to write (each one of its "outputs", never per link): the cluster file's `outside` may then mark them
+    #: read_write, as for a board's `owns` and the built-ins' requests. The actor declares them ReadWrite on its board,
+    #: which still decides every write.
+    writable: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -262,8 +267,14 @@ def parse_descriptor(doc: Any, where: str = "<descriptor>") -> list[ModuleSpec]:
         if (not isinstance(takes, list) or len(set(takes)) != len(takes) or
                 any(t not in ("key", "pointer") for t in takes)):
             raise ModuleError(f"{w}: 'takes' lists the events it takes from the PC: \"key\", \"pointer\" or both")
+        writable = m.get("writable", [])
+        plain = [o.lstrip("?") for o in outs]
+        if (not isinstance(writable, list) or not all(isinstance(x, str) for x in writable) or
+                any(x not in plain or "{peer}" in x for x in writable)):
+            raise ModuleError(f"{w}: 'writable' lists some of the module's own 'outputs' (not per-link ones) that a "
+                              f"program outside the cell may be allowed to write")
         out.append(ModuleSpec(name, typ, place, tuple(fields), comp, tuple(outs), tuple(req), "outputs" in m, k,
-                              per_room, panel, parts, tuple(takes)))
+                              per_room, panel, parts, tuple(takes), tuple(writable)))
     return out
 
 

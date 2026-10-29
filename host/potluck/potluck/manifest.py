@@ -847,8 +847,9 @@ def cross_check(m: Manifest, *, require_placement: bool = False) -> list[Manifes
             continue  # an inbox's output (2026-10-20), a speak actor's request (M23) -- writable by the actor itself
         if r is None:
             errors.append(ManifestError(where, "is writable from outside, so it must be a resource a node of this "
-                                               "manifest declares in 'owns', an inbox's output or a speak actor's "
-                                               "request"))
+                                               "manifest declares in 'owns', a built-in's request (an inbox's "
+                                               "output, a speak actor's say, a file reader's go) or an app's output "
+                                               "its descriptor marks 'writable'"))
         elif r.safety_relevant:
             errors.append(ManifestError(where, "is safety-relevant, and a safety-relevant resource is never "
                                                "writable from outside the cell (section 9.3)"))
@@ -897,6 +898,25 @@ def writable_actor_paths(m: Manifest) -> set[str]:
         elif a.module == "builtin:file_hash":  # M25: its request, act/<name>/go
             from .deploy import file_hash_paths
             out.add(file_hash_paths(m.system, a.name)["go"])
+        elif a.module.startswith("ext:"):
+            out |= set(external_writable(m, a))
+    return out
+
+
+def external_writable(m: Manifest, a) -> list[str]:
+    """An external module's outputs its descriptor marks "writable" (potluck.modules, 2026-10-29), as full paths:
+    {actor} filled in, and {node} once for each board the actor runs on (its pin, or every board for an every-node one)."""
+    from . import modules as mods
+    spec = mods.get(a.module)
+    if spec is None or not spec.writable:
+        return []
+    pin = m.placement_of(a)
+    boards = [pin] if pin is not None else [n.node_id for n in m.nodes if n.kind != "host"]
+    out = []
+    for t in spec.writable:
+        t = t.replace("{actor}", a.name)
+        for n in (boards if "{node}" in t else [None]):
+            out.append(f"potluck://{m.system}/" + (t.replace("{node}", f"node-{n:04x}") if n is not None else t))
     return out
 
 
