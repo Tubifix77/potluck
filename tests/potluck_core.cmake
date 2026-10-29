@@ -65,6 +65,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_actors/src/foreman.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/inbox.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/speak.cpp"
+  "${POT_FIRMWARE}/components/pot_actors/src/tone.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/key_echo.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/file_hash.cpp"
   "${POT_FIRMWARE}/components/pot_wasm/src/wasm_sandbox.cpp"

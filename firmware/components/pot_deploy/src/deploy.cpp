@@ -159,6 +159,14 @@ bool check_decl(const ActorDecl& a, const char*& w) {
             }
             break;
         }
+        case ActorType::Tone: {
+            ToneConfig tc{};
+            if (a.node_id == kPortableNode || a.node_id == kEveryNode || !tone_config(a, tc)) {
+                w = "tone must be pinned, with a service, a provider, its two resources and a pattern 0..8";
+                return false;
+            }
+            break;
+        }
         case ActorType::Speak: {
             SpeakConfig sk{};
             if (a.node_id == kPortableNode || a.node_id == kEveryNode || !speak_config(a, sk)) {
@@ -615,6 +623,19 @@ bool speak_config(const ActorDecl& a, SpeakConfig& out) {
     if (out.text_len == 0 || out.text_len > kSpeakTextMax || a.cfg_len != kSpeakCfgFixed + out.text_len) return false;
     std::memcpy(out.text, a.cfg + kSpeakCfgFixed, out.text_len);
     return out.svc_hash != 0 && out.ctl_hash != 0 && out.out_hash != 0 && out.ctl_hash != out.out_hash;
+}
+
+bool tone_config(const ActorDecl& a, ToneConfig& out) {
+    if (a.type != ActorType::Tone || a.cfg == nullptr || a.cfg_len != kToneCfgLen) return false;
+    out.svc_hash = rd32(a.cfg);
+    out.provider = rd16(a.cfg + 4);
+    out.play_hash = rd32(a.cfg + 6);
+    out.out_hash = rd32(a.cfg + 10);
+    out.source_hash = rd32(a.cfg + 14);
+    out.pattern = a.cfg[18];
+    return out.svc_hash != 0 && out.play_hash != 0 && out.out_hash != 0 && out.play_hash != out.out_hash &&
+           out.source_hash != out.play_hash && out.source_hash != out.out_hash &&
+           static_cast<int32_t>(out.pattern) <= kTonePatternMax;
 }
 
 bool file_hash_config(const ActorDecl& a, FileHashConfig& out) {

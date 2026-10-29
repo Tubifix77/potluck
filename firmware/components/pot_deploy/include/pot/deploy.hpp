@@ -121,6 +121,7 @@ enum class ActorType : uint8_t {
     Speak = 15,     // M23: asks the PC to speak a phrase (its svc/speech) when act/<actor>/say is written (pot/speak.hpp)
     KeyEcho = 16,   // M24: takes key and pointer events from the PC (act/<actor>/in) and echoes them (pot/key_echo.hpp)
     FileHash = 17,  // M25: reads a file the PC offers (svc/file) and hashes it, the bulk channel's test app (pot/file_hash.hpp)
+    Tone = 18,      // M28: asks the PC to play a pattern of notes (its svc/sound) -- written, or following an output (pot/tone.hpp)
 };
 
 // M8.2 (PS-1): 0x00-0x7F are Potluck's built-ins; 0x80-0xFF belong to external components (an
@@ -387,6 +388,26 @@ struct FileHashConfig {
     uint8_t name[kFileNameMax];
 };
 bool file_hash_config(const ActorDecl& a, FileHashConfig& out);
+
+// Tone (M28, 2026-10-29): when `play_hash` (an i32) is written, or when the value of `source_hash` changes, CALL the
+// service `svc_hash` on node `provider` -- the PC's svc/sound -- with a pattern number (an i32: 0 stops, 1..8 the hub's
+// patterns), and publish how it went to `out_hash` (a u32): 0 not asked, 1 playing, 2 refused (no such pattern, or the
+// service does not serve it), 3 gone (the provider not alive, dead with the call, or silent past 5 s). A request while
+// a call is out waits, and only the newest does. Following `source_hash` (0: none), its value 0 stops and any other
+// plays `pattern` (0: the source's own value). Pinned.
+//
+//   svc_hash u32, provider u16, play_hash u32, out_hash u32, source_hash u32, pattern u8
+constexpr uint8_t kToneCfgLen = 19;
+constexpr int32_t kTonePatternMax = 8;
+struct ToneConfig {
+    uint32_t svc_hash;
+    uint16_t provider;
+    uint32_t play_hash;
+    uint32_t out_hash;
+    uint32_t source_hash;
+    uint8_t pattern;
+};
+bool tone_config(const ActorDecl& a, ToneConfig& out);
 
 // ---------------------------------------------------------------------------------------------
 // The A/B state machine, persisted in NVS.

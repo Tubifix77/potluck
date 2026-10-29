@@ -75,6 +75,7 @@ add_executable(pot_tests
   test_led_switch.cpp
   test_inbox.cpp
   test_speak.cpp
+  test_tone.cpp
   test_key_echo.cpp
   test_file_hash.cpp
   test_position.cpp
