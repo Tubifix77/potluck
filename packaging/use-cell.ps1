@@ -39,5 +39,6 @@ if ($Listen) {
     $cfg.hub_args = @("--listen", $Listen, "--tls-cert", (Join-Path $tls "cert.pem"), "--tls-key", (Join-Path $tls "key.pem"))
 }
 # no BOM: Windows PowerShell's Set-Content -Encoding UTF8 writes one, and the tray read the file as no cell (2026-10-16)
-[IO.File]::WriteAllText((Join-Path $dst "tray.json"), ($cfg | ConvertTo-Json -Depth 3), (New-Object Text.UTF8Encoding $false))
+# -Depth 10: tray.json's "programs" nest a command list four levels down, which -Depth 3 wrote as "System.Object[]".
+[IO.File]::WriteAllText((Join-Path $dst "tray.json"), ($cfg | ConvertTo-Json -Depth 10), (New-Object Text.UTF8Encoding $false))
 Write-Host "the tray's hub will run $Cluster$(if ($Listen) { " and serve the dashboard on $Listen" })"
