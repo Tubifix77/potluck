@@ -39,9 +39,9 @@
 #include "pot/dram_probe.hpp"
 #include "pot/fw.hpp"
 #include "pot/fw_esp.hpp"
+#include "pot/mc.hpp"  // every image: M22's telemetry names the job and the lender (a build without WASM failed, 2026-10-29)
 #if CONFIG_POT_WASM
 #include "pot/guest.hpp"
-#include "pot/mc.hpp"
 #include "pot/wasm_modules.h"
 #include "pot/wasm_sandbox.hpp"
 #endif
