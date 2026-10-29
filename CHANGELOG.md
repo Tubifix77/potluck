@@ -5,6 +5,15 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **Sound across the cell (M28), on the PC's speakers.** `builtin:tone` asks the PC's new `sound` service (the cluster
+  file's `pc_services`) to play one of eight built-in patterns of notes; its `act/<name>/play` follows any value the
+  package names (`config.source`, with `config.pattern`) or is written from outside, and `act/<name>/result` says
+  playing, refused or gone. A buzzer on the board comes later.
+- **An app's descriptor marks its outside-writable outputs** (`"writable"`): the manifest accepts `outside`
+  read_write for them and the hub routes the write to the actor's board, so they no longer need declaring by hand.
+- **The tray keeps other programs running** beside the hub: tray.json's `"programs"` (started with the tray, again
+  when they exit, stopped when it quits; `tools/tray_program.py` adds, removes or lists them).
+- A firmware image without WebAssembly guests builds again.
 - **The PC's cable loses nothing.** About 1 in 120 of the PC's requests to the board on the cable went unanswered: the
   board's main task slept up to 20 ms on the radio's queue before it looked at the cable's, and the hub's bursts
   overflowed it. Both now wake the task at once, and the queue holds 16 frames: 1,800 reads with none lost, the median

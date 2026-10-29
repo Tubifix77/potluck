@@ -125,9 +125,9 @@
   <p class="lede">The original idea -- Kubernetes for compute <em>and</em> attached hardware. Every board brings its sensors,
   cores and memory; the cell shares them, survives a board's death and presents them all as one machine, on the house
   network, by itself; an integration layer lets any program see them the way it usually sees resources. A PC is welcome,
-  never required. <b>M0 to M12 built the cell; M13 to M27 present it and bring the PC's side in. All are accepted on the
-  test cell, many with caveats</b> (<a href="https://github.com/Tubifix77/potluck/blob/main/STATUS.md">STATUS.md</a> has each one); <b>M28 is planned</b>. The picture
-  began on 2026-10-11 as the draft for M13 on (<a href="https://github.com/Tubifix77/potluck/blob/main/BEYOND-M12.md">BEYOND-M12.md</a>). Updated 2026-10-27.</p>
+  never required. <b>M0 to M12 built the cell; M13 to M28 present it and bring the PC's side in. All are accepted on the
+  test cell, many with caveats</b> (<a href="https://github.com/Tubifix77/potluck/blob/main/STATUS.md">STATUS.md</a> has each one). The picture
+  began on 2026-10-11 as the draft for M13 on (<a href="https://github.com/Tubifix77/potluck/blob/main/BEYOND-M12.md">BEYOND-M12.md</a>). Updated 2026-10-29.</p>
 
   <div class="road" aria-label="The milestones, M0 to M28">
     <div class="group">
@@ -191,12 +191,13 @@
       <ul>
         <li class="done"><b>M26</b>the pocket page writes</li>
         <li class="done"><b>M27</b>an emulator beside Potluck</li>
+        <li class="done"><b>M28</b>sound across the cell, on the PC's speakers</li>
       </ul>
     </div>
     <div class="group next">
       <h2>Next</h2>
       <ul>
-        <li class="next"><b>M28</b>sound across the cell -- planned</li>
+        <li class="next"><b>M28</b>a buzzer at each board -- waits for a part</li>
       </ul>
     </div>
   </div>
@@ -372,10 +373,11 @@
   </div>
 
   <div class="band next">
-    <h3>Next: M28 -- sound across the cell <span class="tag">planned</span></h3>
-    <span class="small">A built-in actor plays short patterns on a buzzer wired to its board. Any app's output chooses the
-    pattern -- an alarm, say -- or a write from outside does; a room's alarm sounds in that room and nowhere else, with
-    every PC off and a board unplugged. It needs a buzzer per board, chosen and checked before any code. A tone is a
+    <h3>Next: M28's second half -- a buzzer at each board <span class="tag">waits for a part</span></h3>
+    <span class="small">A built-in actor asks for a short pattern of notes; any app's output chooses it -- an alarm, say --
+    or a write from outside does. The first half plays it on the PC's speakers (accepted 2026-10-29). With a buzzer
+    wired to each board, a room's alarm sounds in that room and nowhere else, with every PC off and a board unplugged.
+    The buzzer is chosen and checked before any code. A tone is a
     notice, never anyone's only smoke, fire or gas alarm. The test and its kill line are in
     <a href="https://github.com/Tubifix77/potluck/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> section 13.</span>
   </div>
@@ -391,7 +393,7 @@
   </div>
 
   <footer>Potluck -- S3 Edition. Board figures are the tested board's (ESP32-S3-DevKitC-1 N16R8); the test bench is three
-  of them, and nothing here needs three. Dashed items are planned (M28); the boat is an example. Each milestone's measurements and caveats: <a href="https://github.com/Tubifix77/potluck/blob/main/STATUS.md">STATUS.md</a>.</footer>
+  of them, and nothing here needs three. Dashed items wait for a part (M28's buzzer); the boat is an example. Each milestone's measurements and caveats: <a href="https://github.com/Tubifix77/potluck/blob/main/STATUS.md">STATUS.md</a>.</footer>
 </main>
 </body>
 </html>

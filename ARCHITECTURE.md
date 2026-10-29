@@ -1298,7 +1298,7 @@ package (section 0.1) and would need the deploy key on a board; a keyboard and a
 allows, gated on hardware the owner does not own. The tone generator is attached hardware used across the cell, which is
 section 0.1's own sentence, so it becomes a milestone. It is the first since M20 that needs a part bought.)*
 
-**M28 — sound across the cell.** *(Re-planned 2026-10-29 at the owner's word: no board has a buzzer and none is on
+**M28 — sound across the cell.** *(The PC's half accepted 2026-10-29: a tone actor on A written through the hub played, stopped on 0 and refused pattern 9; one on B following B's LED switch played 0.88 s after the switch and stopped 0.43 s after it; a request a second for 10 minutes raised the worst link's loss 0.38 points; +64 B static internal RAM. Caveats: the LED switch stood in for B's overheat alarm (it reads 1 at the boards' everyday temperature), two tone actors for two rooms, the PC off was shown in the host tests only, and the alarm guest's board reset was not run. As built: eight patterns, played with Windows' Beep (the ledger) on a thread that a new request or a stop interrupts at the next note; a request made while one is out waits, and the newest wins.)* *(Re-planned 2026-10-29 at the owner's word: no board has a buzzer and none is on
 hand, so the sound comes from the PC's speakers first; the buzzer stays the later half, below.)* A built-in actor,
 `builtin:tone`, takes a pattern number (`i32`: 0 silent, 1..N a fixed pattern of notes built into the hub -- no audio
 files, no streaming; speech stays M23's) and asks the PC to play it: a new PC service `sound` (the cluster file's

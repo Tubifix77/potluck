@@ -8,8 +8,8 @@ dish — a sensor, some RAM, a radio — and the cluster eats together.
 **Status: release 1.0.1, built and run on real hardware, and still being built on.** Since the first boards arrived
 on 2026-10-01, every feature below has been built and then run on three ESP32-S3 boards: a 24.5-hour unattended soak,
 a walk through a two-storey house, cables pulled and power cut by hand, and signed firmware and packages rolled out
-over the radio again and again (by 2026-10-26 the test cell's package counter stood at 124). All 33 milestones through M27
-are accepted, some with caveats, and M28 is planned; [How it was tested](#how-it-was-tested) is the short version,
+over the radio again and again (by 2026-10-29 the test cell's package counter stood at 128). All 34 milestones through M28
+are accepted, some with caveats; [How it was tested](#how-it-was-tested) is the short version,
 [STATUS.md](STATUS.md) the full one, and [CHANGELOG.md](CHANGELOG.md) lists what has changed since the release.
 
 **Start here:** [GETTING-STARTED.md](GETTING-STARTED.md) takes you from bare ESP32-S3 boards -- two of them or
@@ -75,11 +75,11 @@ in. (It is also why the ESP32 pun lives in the tagline and not in the project na
 is under *Unreleased* in [CHANGELOG.md](CHANGELOG.md).
 
 Everything below runs on real ESP32-S3 boards and has passed a test written before it was tried -- each step of the
-roadmap (a *milestone*) has one, and a criterion that would have killed it. All 33 milestones through M27 are
+roadmap (a *milestone*) has one, and a criterion that would have killed it. All 34 milestones through M28 are
 accepted, some with caveats -- the friendly way in (M20: a setup wizard, a library of apps, a floor plan,
 boards added from the dashboard over their own USB cable) on a reinstall of a known board rather than a
-newcomer's first cell. The next, M28, is planned: sound across the cell -- any app's alarm played as a pattern of notes,
-first on the PC's speakers, later on a buzzer at each board. [STATUS.md](STATUS.md) lists every
+newcomer's first cell. The latest, M28, is sound across the cell -- any app's alarm played as a pattern of notes on
+the PC's speakers; a buzzer at each board waits for a part. [STATUS.md](STATUS.md) lists every
 milestone with its measurements and caveats.
 
 - **Boards that find each other and know when one is gone.** Over the radio, a missing board is declared dead

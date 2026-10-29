@@ -6136,3 +6136,29 @@ every frame costs up to 1.5 points; once C's radio jammed for 60 s while streami
 a firmware rollout could not reach C while it streamed 4.7 Mbit/s -- it went through with the stream off. A board
 that streams over its own station should pause the stream for a rollout; recorded, not built. The cell is back on its
 everyday package (`keys/home.json.pre-m27` restored); `keys/home-m27.json` brings the emulator back.
+
+## Session 50 -- 2026-10-26/29: the loose ends, and M28 on the PC's speakers
+
+Paused by the owner on 2026-10-26 (his weekly budget), resumed 2026-10-29.
+
+- **The cable lost about 1 request in 120.** A's link task slept up to 20 ms on the radio's queue before it drained the
+  cable's, and the hub's bursts overflowed it (A's new `{"t":"serial"}` record: 89 of 5,584 frames dropped even at 16
+  slots). Both receive paths now wake the task (`f9c0f63`): 1,800 reads through the cable, none lost, median 3.4 ms
+  (was 11). Also on the boards: a board refreshes its copy of a value the PC owns (`act/present/out` read no data for
+  good while the PC presented), speak's result republished, `BoardServices::receiving_image` for an app that streams.
+- **The tray keeps other programs running** (`e413a35`, a phone app's session asked for its service): the owner added
+  it with `tools/tray_program.py` -- a session's direct edit of his tray.json was declined by the permission system.
+- **An app's descriptor marks its writable outputs** (`1d83bcf`, passive-sensor's request); **a no-WASM image builds
+  again** (`a01f5c1`: mc.hpp sat inside the WASM guard).
+- **M28 re-planned at the owner's word** (`9b61387`): no board has a buzzer and none is to hand, so the PC's speakers
+  first. Python's `winsound.Beep` (Win32 `Beep`, on the default sound device since Windows 7 -- the ledger) plays eight
+  patterns of short notes; no audio files. Built on both sides (`8aafdba`, `986d6a9`), the Desk built its controls from
+  the shapes it was sent, and the owner installed the hub. Package 128 through the hub: VERIFIED on all three boards.
+  Accepted the same evening with stand-ins (STATUS): B's LED switch for its overheat alarm, because both alarms read 1
+  at the boards' everyday temperature -- their threshold sits below it, a fault of the alarm's settings, not of M28;
+  two tone actors for two rooms. Measured: the bell played 15 ms after a write through the hub, the chime 0.88 s after
+  B's switch (it follows its source once a second), and a request a second for 10 minutes cost 0.38 points of heartbeat
+  loss at worst. The owner heard both.
+
+Open: the owner's 24 h and hand power-cut evidence as listed in STATUS; the overheat alarms' threshold (they always
+read 1); a buzzer for M28's second half.
