@@ -1298,27 +1298,32 @@ package (section 0.1) and would need the deploy key on a board; a keyboard and a
 allows, gated on hardware the owner does not own. The tone generator is attached hardware used across the cell, which is
 section 0.1's own sentence, so it becomes a milestone. It is the first since M20 that needs a part bought.)*
 
-**M28 — sound across the cell.** A built-in actor, `builtin:tone`, plays short patterns on a piezo buzzer wired to its
-board. It drives the buzzer from one of the S3's LED PWM (LEDC) channels, whose frequency can be changed while it runs
-(`ledc_set_freq`; the S3 has 8 channels and 4 timers -- ESP-IDF v6.0.2, `soc_caps.h` and the LEDC guide, the ledger).
-Its GPIO is a `parts` entry (bus `gpio`), so `apply --plan` refuses a pin another part or the firmware claims. Its input
-is a pattern number (`i32`: 0 silent, 1..N a fixed pattern of notes built into the firmware -- no audio files, no
-streaming, no speech, which stays the PC's (M23)). The input is wired in the package from any actor's output (the
-`alarm` guest's `alarm:i32`, the store's `overheat_alarm`), or is outside-writable like the LED, so the hub, Home
-Assistant and the pocket page can play a pattern. The actor is pinned to the board that has the buzzer: attached
-hardware never moves (ADR-006). New in `apply`: a `per_room` module's output can be wired to the tone actor in its own
-room, so a room's alarm sounds in that room and nowhere else. First the buzzer is chosen and its datasheet registered in
-the ledger (its drive current against a GPIO's, whether it needs a transistor), before any code, as M27 did with its
-licences. A tone is a notice, not a safety alarm: Potluck is never anyone's only smoke, fire or gas alarm (section 12).
-*Acceptance:* (1) B warmed as in M8.1 trips `overheat_alarm`, and B's buzzer sounds within 1 s (a budget) while A's and C's
-stay silent; (2) with two rooms in the cluster file, a room's alarm sounds only in that room; (3) a cell-wide alarm
-sounds on every board with every PC off, and keeps sounding on the others when one board is unplugged; (4) the alarm
-guest's board reset mid-alarm: the guest moves, and the tone resumes within the guest's failover time; (5) a write
+**M28 — sound across the cell.** *(Re-planned 2026-10-29 at the owner's word: no board has a buzzer and none is on
+hand, so the sound comes from the PC's speakers first; the buzzer stays the later half, below.)* A built-in actor,
+`builtin:tone`, takes a pattern number (`i32`: 0 silent, 1..N a fixed pattern of notes built into the hub -- no audio
+files, no streaming; speech stays M23's) and asks the PC to play it: a new PC service `sound` (the cluster file's
+`pc_services`, answered by the hub like `speech`, with the board named in `cell.services[].callers`). Its input is wired
+in the package from any actor's output (the `alarm` guest's `alarm:i32`, the store's `overheat_alarm`), or is
+outside-writable like the LED, so the hub, Home Assistant and the pocket page can play a pattern; its result says done,
+refused or gone (the PC off or silent), as speak's does. The actor is pinned to a board. How the PC makes the sound is
+checked in the ledger before any code. What this half cannot do, stated plainly: with every PC off nothing sounds (the
+result reads gone at once, and the alarm itself still shows where it always did -- the hub, Home Assistant, the LED), and
+one PC speaker cannot sound in one room only, so a room is told apart by its pattern, not by where the sound comes from.
+A tone is a notice, not a safety alarm: Potluck is never anyone's only smoke, fire or gas alarm (section 12).
+*Acceptance:* (1) B warmed as in M8.1 trips `overheat_alarm`, and the PC plays B's pattern within 1 s (a budget);
+(2) with two rooms in the cluster file, each room's alarm plays its own pattern; (3) with the PC off, the tone's result
+reads gone within 1 s, and the alarm is shown in the hub's model again when the PC is back; (4) the alarm guest's board
+reset mid-alarm: the guest moves, and the pattern is asked for again within the guest's failover time; (5) a write
 through the hub plays a pattern and a write of 0 silences it. *Bound:* at most 512 B of new static internal RAM (a
 budget; measured by `apply --plan`). *Kill:* playing a pattern every second for 10 minutes raises any link's heartbeat
-loss by more than one point -- then a tone plays only on a board that presents nothing and lends no core.
-(1), (3) and (4) together are the first half of the side-by-side with ESPHome, MQTT and Home Assistant that the
-external review asked for: the alarm sounds where it should with no PC and a board gone.
+loss by more than one point -- then a tone is asked for at most once in a few seconds.
+**The later half, when a board has a buzzer:** the same actor drives a piezo buzzer from one of the S3's LED PWM
+(LEDC) channels, whose frequency can be changed while it runs (`ledc_set_freq`; the S3 has 8 channels and 4 timers --
+ESP-IDF v6.0.2, `soc_caps.h` and the LEDC guide, the ledger), its GPIO a `parts` entry (bus `gpio`) so `apply --plan`
+refuses a pin another part or the firmware claims; the buzzer is chosen and its datasheet registered (its drive current
+against a GPIO's, whether it needs a transistor) before that code. Then a room's alarm sounds in that room only, with
+every PC off and a board gone -- the first half of the side-by-side with ESPHome, MQTT and Home Assistant that the
+external review asked for, which the PC's speakers cannot give.
 
 ## 14. Risk register
 
