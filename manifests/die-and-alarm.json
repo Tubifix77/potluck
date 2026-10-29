@@ -45,7 +45,7 @@
       ],
       "config": {
         "bundle": "keys/overheat_alarm.guest.json",
-        "sha256": "cb12c6e69b59e8144d0f937cef8a29d5e45598c4828aabf4a261edd81891b650",
+        "sha256": "a17d15de6dce655301c2bc91112a4167255b989edb186b377f1cd0600ce1a75e",
         "outputs": "out:f32 alarm:i32 count:i32",
         "fuel": 100000,
         "memory_kib": 64,
