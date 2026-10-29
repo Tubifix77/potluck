@@ -71,6 +71,10 @@ struct SerialPortStats {
 };
 SerialPortStats serial_port_stats();
 
+// The task to wake (a FreeRTOS task notification) whenever a frame from the host is queued: the link task, as for
+// the radio (espnow_set_rx_notify). A TaskHandle_t; null for none.
+void serial_port_set_rx_notify(void* task);
+
 // M20: the frame link on the console UART as well. The console task owns that UART's driver and reads it;
 // it calls attach once, then hands every byte it reads to feed, which passes text on to `on_text` (the
 // console's line reader) and frames to the same queue serial_port_rx_pop serves.

@@ -113,6 +113,11 @@ int32_t espnow_send(const uint8_t mac[kMacLen], const uint8_t* data, size_t len)
 // Blocking receive from the RX queue. `timeout_ms` of 0 polls. Returns false on timeout.
 bool espnow_rx_pop(RxSlot& out, uint32_t timeout_ms);
 
+// The task to wake (a FreeRTOS task notification) whenever a frame is queued: the link task, which sleeps on its
+// notification so that a frame from the PC's cable (serial_port_set_rx_notify) wakes it as promptly as one from the
+// radio. A TaskHandle_t; null for none.
+void espnow_set_rx_notify(void* task);
+
 // Non-blocking pop from the send-completion queue.
 bool espnow_tx_done_pop(TxDoneSlot& out);
 

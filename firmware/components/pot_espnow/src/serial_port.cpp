@@ -49,6 +49,7 @@ bool g_running = false;
 
 EXT_RAM_BSS_ATTR SerialReassembler g_reassembler;
 SerialPortStats g_stats{};
+void* g_rx_notify = nullptr;  // the link task (serial_port_set_rx_notify)
 
 // Scratch for the reader task. The task is the only writer, so one instance is enough and a 1470-byte
 // frame never lands on a stack.
@@ -83,6 +84,10 @@ void on_frame(void* ctx, const uint8_t* frame, size_t len) {
     // rather than a lost frame. A dropped frame is counted; lost bytes desynchronise the stream.
     if (xQueueSend(g_rx_queue, &slot, 0) != pdTRUE) {
         ++g_stats.rx_queue_dropped;
+    } else if (g_rx_notify != nullptr) {
+        // Wake the link task at once: it used to wait up to 20 ms on the radio's queue before it looked here, and a
+        // burst from the hub overflowed this queue meanwhile (2026-10-26: 89 of 5,584 frames dropped at 16 slots).
+        xTaskNotifyGive(static_cast<TaskHandle_t>(g_rx_notify));
     }
 }
 
@@ -256,5 +261,7 @@ bool serial_port_rx_pop(uint8_t* out, size_t cap, size_t& len, uint32_t& recv_us
 }
 
 SerialPortStats serial_port_stats() { return g_stats; }
+
+void serial_port_set_rx_notify(void* task) { g_rx_notify = task; }
 
 }  // namespace pot

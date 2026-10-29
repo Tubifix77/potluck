@@ -16,6 +16,7 @@
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/task.h"
 #include "nvs_flash.h"
 
 namespace pot {
@@ -32,6 +33,7 @@ const char* kTag = "pot.espnow";
 StaticQueue_t g_rx_queue_ctrl;
 uint8_t g_rx_queue_storage[kRxRingSlots * sizeof(RxSlot)];
 QueueHandle_t g_rx_queue = nullptr;
+void* g_rx_notify = nullptr;  // the link task (espnow_set_rx_notify)
 
 StaticQueue_t g_tx_done_queue_ctrl;
 uint8_t g_tx_done_queue_storage[kTxDoneRingSlots * sizeof(TxDoneSlot)];
@@ -98,6 +100,7 @@ void on_recv(const esp_now_recv_info_t* info, const uint8_t* data, int len) {
         ++g_queue_stats.rx_dropped_queue_full;
     } else {
         ++g_queue_stats.rx_queued;
+        if (g_rx_notify != nullptr) xTaskNotifyGive(static_cast<TaskHandle_t>(g_rx_notify));
     }
 }
 
@@ -424,6 +427,8 @@ int32_t espnow_send(const uint8_t mac[kMacLen], const uint8_t* data, size_t len)
     }
     return static_cast<int32_t>(esp_now_send(mac, data, len));
 }
+
+void espnow_set_rx_notify(void* task) { g_rx_notify = task; }
 
 bool espnow_rx_pop(RxSlot& out, uint32_t timeout_ms) {
     if (!g_espnow_up || g_rx_queue == nullptr) {

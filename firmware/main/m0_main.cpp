@@ -1752,6 +1752,12 @@ void print_stats() {
 // ---------------------------------------------------------------------------------------------
 
 void link_task(void*) {
+    // Both receive paths wake this task (a task notification) when they queue a frame, and it sleeps on that rather
+    // than on the radio's queue alone: frames from the PC's cable used to wait up to 20 ms (2026-10-26).
+    espnow_set_rx_notify(xTaskGetCurrentTaskHandle());
+#if CONFIG_POT_SERIAL_LINK
+    serial_port_set_rx_notify(xTaskGetCurrentTaskHandle());
+#endif
     g_node->start();
     if (g_rec != nullptr) {
         xSemaphoreTake(g_mutex, portMAX_DELAY);
@@ -1826,7 +1832,7 @@ void link_task(void*) {
             wait_ms = 20;
         }
 
-        // This loop's only sleep is inside espnow_rx_pop(), and on a node whose radio never came up
+        // This loop's only sleep was once inside espnow_rx_pop(), and on a node whose radio never came up
         // that function returns *immediately* rather than blocking — so the loop became a hard busy
         // spin at priority 6. Nothing crashed and nothing logged; the statistics task at priority 3
         // simply never ran again, which presents as a node that boots perfectly and then goes silent
@@ -1835,11 +1841,20 @@ void link_task(void*) {
         // task that reports anything is the opposite of that.
         //
         // So the sleep is now the loop's own responsibility rather than a side effect of whichever
-        // transport happens to exist. `blocked` says whether something already waited.
+        // transport happens to exist: a task-notification wait that every receive path ends (2026-10-26).
         const bool radio_can_block = espnow_up();
 
         RxSlot rx;
-        if (espnow_rx_pop(rx, wait_ms)) {
+        bool got = espnow_rx_pop(rx, 0);
+        if (!got) {
+            // Sleep until the radio or the PC's cable queues a frame (each notifies this task) or the next deadline.
+            // Waiting on the radio's queue alone left the cable's frames queued up to 20 ms, and a burst from the hub
+            // overflowed them: ~1 in 120 of the PC's reads unanswered (2026-10-26). A notification given since the
+            // last pass makes this return at once, so a frame queued just before it is not slept past.
+            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(wait_ms));
+            got = espnow_rx_pop(rx, 0);
+        }
+        if (got) {
             xSemaphoreTake(g_mutex, portMAX_DELAY);
             tee_frame("rx", rx.src_mac, rx.rssi, rx.data, rx.len);
 #if CONFIG_POT_RSSI_TEE
@@ -2100,12 +2115,11 @@ void link_task(void*) {
         fw_rt::catchup_tick(nt);  // M19
         xSemaphoreGive(g_mutex);
 
-        // Nothing above could have blocked, so yield explicitly. One tick minimum even when a
-        // deadline has already passed: this task must never be able to spin, whatever the transports
-        // below it are doing. At the 1 ms tick that still polls the serial link at 1 kHz, which is
-        // far faster than a host talks, while leaving the CPU to everything else.
-        if (!radio_can_block) {
-            vTaskDelay(wait_ms == 0 ? 1 : pdMS_TO_TICKS(wait_ms));
+        // The notification wait above is the loop's sleep, radio or none (it no longer returns at once on a node whose
+        // radio never started). Only a deadline already passed made it not sleep: then one tick, so this task can
+        // never spin on a radio-less node, whatever the transports below it are doing.
+        if (!radio_can_block && wait_ms == 0) {
+            vTaskDelay(1);
         }
     }
 }
