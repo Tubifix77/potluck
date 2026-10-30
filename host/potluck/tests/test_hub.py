@@ -574,7 +574,7 @@ class Settled(unittest.TestCase):
         me = NS(lock=threading.Lock(), resources={}, SETTLE_READS=hb.Model.SETTLE_READS,
                 STARTUP_S=hb.Model.STARTUP_S, _event_locked=lambda kind, n, d: events.append(d))
         hb.Model._record(me, "p", Reading(quality=int(Quality.STALE)))
-        self.assertEqual(hb.Model._resource_json(NS(cluster=None, _safety=lambda p: False), "p",
+        self.assertEqual(hb.Model._resource_json(NS(cluster=None, _safety=lambda p: False, _act_owner=lambda p: None), "p",
                                                  me.resources["p"])["settled_quality"], "STARTING")
         hb.Model._record(me, "p", Reading(quality=int(Quality.STALE)))
         # two STALE reads at start are the cabled board's old copies, not a verdict: still starting
@@ -1057,6 +1057,22 @@ class BridgedNode(HubFixture):
                     s.close()
         self.assertEqual(self.hub.bridged, {})
         self.assertEqual(sum(1 for e in self.model.events if e["kind"] == "bridged_refused"), 3)
+
+    def test_an_inbox_pinned_to_it_names_it_as_owner(self) -> None:
+        # found on the real cell: act/tablet/battery read owner null (only node-XXXX/ paths named one)
+        from potluck import manifest as mf
+        from potluck.apply import Package
+
+        doc = {"schema": 1, "system": "lab", "min_core_version": 1,
+               "nodes": [{"node_id": 0x6300, "label": "A"}, {"node_id": 0x00FD, "label": "tablet", "kind": "host"}],
+               "actors": [{"name": "tablet", "module": "builtin:inbox", "latency_class": 4, "pin": 0x00FD,
+                           "config": {"outputs": "battery:f32:percent", "stale_ms": 120000}},
+                          {"name": "phone", "module": "builtin:inbox", "latency_class": 4, "pin": 0x6300,
+                           "config": {"outputs": "steps:u32"}}]}
+        self.model.package = Package(mf.parse(doc), doc, b"")
+        self.assertEqual(self.model._act_owner("potluck://lab/act/tablet/battery"), "00fd")
+        self.assertEqual(self.model._act_owner("potluck://lab/act/phone/steps"), "6300")
+        self.assertIsNone(self.model._act_owner("potluck://lab/act/nobody/x"))
 
     def test_a_good_login_waits_for_the_cabled_boards_address(self) -> None:
         self.cable = None  # the hub has not read the cabled board's NODE_STATUS yet (or it runs older firmware)

@@ -265,8 +265,9 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   `STARTING` until a resource has read GOOD twice in a row since the hub started, or any quality once 30 s have passed
   (the first reads of another board's value come from the cabled board's copy as it was before the hub started, so they
   are STALE whatever the value is doing). Where it starts is not a change, so no `quality_changed` is logged for it.
-- `resource.owner`: the board whose resource it is, for a board's own resource (`node-XXXX/...`); `null` for an
-  actor's output (`act/...`), which can move between boards. `resource.type`: `bool` | `i32` | `u32` | `f32` | `i64` |
+- `resource.owner`: the node whose resource it is -- a board's own (`node-XXXX/...`), or the node an actor is pinned
+  to for its outputs (`act/...`: a phone's inbox on the board that holds it, a tablet's on `00fd`; 2026-10-30);
+  `null` for a portable actor's output, which can move between nodes (`apps[].running_on` says where it runs). `resource.type`: `bool` | `i32` | `u32` | `f32` | `i64` |
   `u64` | `f64` | `bytes` -- what it holds, `null` until it first has a value. A strict resource (its staleness policy
   says an old value must not be shown) that is not `GOOD` arrives with `value: null` -- the hub has already withheld
   the number; a client never needs to know which are strict. `resource.on_demand`: `true` for a resource the

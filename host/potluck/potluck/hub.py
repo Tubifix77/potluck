@@ -1166,11 +1166,33 @@ class Model:
             have = dict(self.resources)
         return any(have.get(p, {}).get("settled") is None for p in self.resource_paths())
 
+    def _act_owner(self, path: str) -> str | None:
+        """2026-10-30: the owner of an actor's output that names no node (act/<actor>/...) -- the node its actor is
+        pinned to, from the package: a phone's inbox on A, a tablet's on 00fd. None for a portable one, which moves
+        (apps[].running_on says where), and for anything else. Found by potluck-android: its battery read owner null."""
+        pkg = self.package
+        if pkg is None:
+            return None
+        cache = getattr(self, "_act_owners", None)
+        if cache is None or cache[0] is not pkg:
+            from .apply import actor_reads
+            m = pkg.manifest
+            owners: dict[str, str] = {}
+            for a in m.actors:
+                pin = m.placement_of(a)
+                if pin is None:
+                    continue
+                kind, outs = actor_reads(m, a, [pin])
+                if kind == "pinned":
+                    owners.update({p: f"{pin:04x}" for p in outs if "/act/" in p})
+            cache = self._act_owners = (pkg, owners)
+        return cache[1].get(path)
+
     def _resource_json(self, path: str, r: dict) -> dict:
         rd = r["reading"]
         name = path.split("/", 3)[3] if path.count("/") >= 3 else path
         outside = self.cluster.outside.get(path) if self.cluster is not None else None
-        owner = name[5:9] if name.startswith("node-") else None
+        owner = name[5:9] if name.startswith("node-") else self._act_owner(path)
         value: Any = None
         if rd.usable():
             value = rd.value.number()
