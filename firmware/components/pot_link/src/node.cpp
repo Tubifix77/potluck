@@ -421,7 +421,7 @@ void Node::tick_channel(uint32_t now) {
     size_t alive = 0;
     for (size_t i = 0; i < kMaxPeers; ++i) {
         const PeerLink& q = peers_.slot(i);
-        if (q.state == PeerState::Alive && !(is_trusted_link(q.mac) && !relayed_[i])) ++alive;
+        if (q.state == PeerState::Alive && !((is_trusted_link(q.mac) || is_wire_link(q.mac)) && !relayed_[i])) ++alive;
     }
 
     // M6.1: a sweep for the channel authority (see node.hpp). It ends when the authority is heard
@@ -741,6 +741,11 @@ bool Node::cable_end(const uint8_t mac[kMacLen]) const { return is_trusted_link(
 bool Node::is_trusted_link(const uint8_t mac[kMacLen]) const {
     const size_t n = cfg_.trusted_mac_len >= 1 && cfg_.trusted_mac_len <= kMacLen ? cfg_.trusted_mac_len : kMacLen;
     return cfg_.has_trusted_mac && std::memcmp(mac, cfg_.trusted_mac, n) == 0;
+}
+
+bool Node::is_wire_link(const uint8_t mac[kMacLen]) const {
+    const size_t n = cfg_.wire_mac_len >= 1 && cfg_.wire_mac_len <= kMacLen ? cfg_.wire_mac_len : kMacLen;
+    return cfg_.has_wire_mac && std::memcmp(mac, cfg_.wire_mac, n) == 0;
 }
 
 void Node::set_trust(const Identity* id, bool require) {

@@ -175,6 +175,12 @@ struct NodeConfig {
     // M19: how many leading bytes of trusted_mac make a MAC trusted -- 6, one link; 4, a family: the cable carries the
     // PC's node and the stub nodes the PC hosts (02:00:00:00:<id>), each a peer of its own.
     uint8_t trusted_mac_len = kMacLen;
+    // 2026-10-30: a family of addresses reached by wire but NOT trusted -- nodes the hub bridges from the house
+    // network (a tablet), 02:00:00:01:<id>. They sign their HELLO and tag their frames like a radio peer; they are on
+    // no channel, so they never count as the cell when this node follows its channel.
+    bool has_wire_mac = false;
+    uint8_t wire_mac[kMacLen] = {};
+    uint8_t wire_mac_len = kMacLen;
 
     // M5.1 CR-1: the channel, and finding the cell again. A node that has lost every peer for
     // `scan_after_ms` hops channel_lo..channel_hi, `scan_dwell_ms` on each, greeting on each, and stays
@@ -713,6 +719,7 @@ class Node {
                                    const HelloPayload& h, PeerAuth& out, bool cable = false);
     void refuse(uint16_t claimed_id, HelloAuthError e, CertError ce);
     bool is_trusted_link(const uint8_t mac[kMacLen]) const;
+    bool is_wire_link(const uint8_t mac[kMacLen]) const;  // the bridged family (NodeConfig::wire_mac), never trusted
     bool cable_end(const uint8_t mac[kMacLen]) const;  // M19: the trusted link's own end, not relayed through it
     uint16_t next_msg_id(PeerLink& p);  // 1..cfg_.msg_id_max, per peer
     void heavy(void (*fn)(void*), void* arg);

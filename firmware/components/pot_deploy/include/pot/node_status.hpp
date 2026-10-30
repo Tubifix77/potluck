@@ -17,7 +17,10 @@
 //   u8 module_count, module_count x (u8 id, u8 state, u8 reason)  -- Potluck's optional modules this image
 //   carries (ModuleId), each with what it is doing now. A module the image does not carry is not listed. App
 //   components are not listed: which an image carries follows from its ELF, and their actors are in `actors`.
-// Both versions are read; a board answers with version 2.
+// Version 3 (2026-10-30) adds, last:
+//   u8[6] mac  -- the board's own radio address. A node the hub bridges (a tablet) sees the cabled board at the
+//   cable's address, but the board signs its HELLO over this one (pot/hello_auth.hpp), so the hub tells it.
+// All three versions are read; a board answers with version 3.
 
 #pragma once
 
@@ -26,15 +29,17 @@
 
 namespace pot {
 
-constexpr uint8_t kNodeStatusVersion = 2;
+constexpr uint8_t kNodeStatusVersion = 3;
+constexpr uint8_t kNodeStatusVersion2 = 2;
 constexpr uint8_t kNodeStatusVersion1 = 1;
 constexpr size_t kNodeStatusVersionLen = 32;  // esp_app_desc_t::version
 constexpr size_t kNodeStatusFixedLen = 87;          // through portable_here
 constexpr size_t kNodeStatusMaxCluster = 31;
 constexpr size_t kNodeStatusMaxActors = 64;  // 88 in version 1; cut to leave room for the modules
 constexpr size_t kNodeStatusMaxModules = 8;
-constexpr size_t kNodeStatusMaxLen =
-    kNodeStatusFixedLen + 1 + kNodeStatusMaxCluster + 1 + kNodeStatusMaxActors + 1 + 3 * kNodeStatusMaxModules;  // 209
+constexpr size_t kNodeStatusMacLen = 6;  // version 3
+constexpr size_t kNodeStatusMaxLen = kNodeStatusFixedLen + 1 + kNodeStatusMaxCluster + 1 + kNodeStatusMaxActors + 1 +
+                                     3 * kNodeStatusMaxModules + kNodeStatusMacLen;  // 215
 
 enum NodeRole : uint8_t {
     kRoleExtenderBuild = 0x01,  // the image carries the extender
@@ -90,6 +95,7 @@ struct NodeStatus {
     char actors[kNodeStatusMaxActors + 1] = {};
     uint8_t module_count = 0;  // version 2
     ModuleStatus modules[kNodeStatusMaxModules] = {};
+    uint8_t mac[kNodeStatusMacLen] = {};  // version 3; all zero from an older board
 };
 
 // Returns the bytes written, 0 if `cap` is short. Strings longer than their field are cut.

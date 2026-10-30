@@ -55,6 +55,7 @@ from typing import Any
 
 from . import frame as fr
 from .bridge import HOST_NODE_ID, Bridge, BridgeError, RequestTimeout
+from .hub_bridge import BRIDGED_FIRST, BRIDGED_LAST
 from .payloads import HELLO_FLAG_WANT_ACK, Hello
 from .ns_payloads import CALL_FORWARD, Call, Reply, Write
 from .paths import path_hash
@@ -154,6 +155,8 @@ class Hub(Bridge):
         self.node_client: _Client | None = None  # M10's placement host, while attached
         self.node_since_at: int | None = None  # when it last came or went (hub ms); None: not since the hub started
         self.node_epoch: int | None = None     # its boot epoch, from its HELLO
+        self.bridged: dict[int, Any] = {}      # 2026-10-30: nodes on the node port (hub_bridge.Bridged), by id
+        self.bridged_left: dict[int, int] = {}  # when each last went (hub ms)
         self.services_for = lambda: None  # M23: the PC's named services (potluck.services.PcServices), from the model
         from .bulk import Bulk
         from .events import Inputs
@@ -207,6 +210,17 @@ class Hub(Bridge):
         except fr.FrameError:
             super()._on_raw_frame(raw)
             return
+        if BRIDGED_FIRST <= f.dst <= BRIDGED_LAST:
+            # 2026-10-30: for a node on the node port -- its own, whatever its msg_id; nothing of the hub's or the host
+            # node's (a bridged node numbers its requests up to 0xFFFF, so its replies must never meet _relayed).
+            b = self.bridged.get(f.dst)
+            if b is not None:
+                b.send_raw(raw)
+            return
+        if f.dst == fr.NODE_BROADCAST and self.bridged:
+            for nid, b in list(self.bridged.items()):
+                if f.src != nid:
+                    b.send_raw(raw)  # the cell's HELLOs, beacons, ... -- and on, below, to everyone else
         if f.opcode == fr.Op.REPLY:
             self._input_reply(f)  # M24: an app's answer to a batch of events -- noted, and passed on as before
         if f.opcode == fr.Op.REPLY and f.msg_id != 0:
@@ -387,6 +401,40 @@ class Hub(Bridge):
         # Anything else -- a tool answering the cell's request (REPLY), a CAST -- goes on as it is.
         self.send_frame(f.opcode, bytes(f.payload), dst=f.dst, msg_id=f.msg_id, ack_req=f.wants_ack,
                         lclass=f.lclass, priority=f.priority)
+
+    # -- frames from a node on the node port (2026-10-30, hub_bridge.py) ---------------------------------------------
+    def attach_bridged(self, b) -> None:
+        old = self.bridged.get(b.node_id)
+        self.bridged[b.node_id] = b
+        if old is not None:
+            old.close()  # the same node logged in again (its Wi-Fi dropped): the new connection is the one
+        self.record("bridged_node", None, {"node": f"{b.node_id:04x}", "attached": True, "from": b.address})
+
+    def drop_bridged(self, b) -> None:
+        if self.bridged.get(b.node_id) is b:
+            del self.bridged[b.node_id]
+            self.bridged_left[b.node_id] = _hub_ms()
+            self.record("bridged_node", None, {"node": f"{b.node_id:04x}", "attached": False, "from": b.address,
+                                               "dropped": dict(b.dropped)})
+
+    def from_bridged(self, b, raw: bytes) -> None:
+        """Onto the cable byte for byte -- its tags cover the header -- if it is the node's own and within its rate. The
+        cabled board gives it an untrusted address and checks it like a radio board (m0_main.cpp, kBridgedFirst)."""
+        try:
+            f = fr.parse(raw)
+        except fr.FrameError:
+            return
+        if f.src != b.node_id:
+            b.dropped["wrong_src"] += 1
+            return
+        if not b.take():
+            return
+        if f.opcode == fr.Op.HELLO:
+            b.epoch = _hello_epoch(f) or b.epoch
+        try:
+            self.send_raw(raw)
+        except BridgeError:
+            pass
 
     def say_hello(self) -> None:
         if not self._may_heartbeat():
@@ -979,7 +1027,8 @@ class Model:
                     "relay": dict(self.hub.relay_counts), "retention": self._retention_json(),
                     "pairing": self.pairing.pending() if self.pairing is not None else [],
                     "clients": self.fair.snapshot(), "tls_fp": self.tls_fp, "starting": starting,
-                    "interest": self._interest_json(), "host_node": self._host_node_json()},
+                    "interest": self._interest_json(), "host_node": self._host_node_json(),
+                    "bridged": self._bridged_json()},
             "cell": self._cell_json(boards),
             "boards": boards,
             "apps": apps,
@@ -999,6 +1048,29 @@ class Model:
         c = getattr(h, "node_client", None)
         return {"attached": c is not None, "since_at": getattr(h, "node_since_at", None),
                 "epoch": getattr(h, "node_epoch", None) if c is not None else None}
+
+    def cable_end(self) -> tuple[int, bytes] | None:
+        """2026-10-30: the cabled board's id and radio address, from its last NODE_STATUS (version 3) -- what a node on
+        the node port verifies that board's HELLO over -- or None while not known."""
+        n = self.hub.peer_node_id
+        with self.lock:
+            st = (self.boards.get(n) or {}).get("status") if n is not None else None
+        return (n, st.mac) if st is not None and len(st.mac) == 6 and any(st.mac) else None
+
+    def _bridged_json(self) -> list[dict]:
+        """2026-10-30: the cluster file's bridged nodes (a tablet), each attached to the node port or not -- members like
+        the PC's node, not boards. Its links are in the boards' links[] (peer = its id), its values in resources."""
+        h = getattr(self, "hub", None)
+        on = dict(getattr(h, "bridged", {}) or {})
+        left = getattr(h, "bridged_left", {}) or {}
+        labels = dict(getattr(self.cluster, "bridged", {}) or {}) if self.cluster is not None else {}
+        out = []
+        for nid in sorted(set(labels) | set(on) | set(left)):
+            b = on.get(nid)
+            out.append({"node": f"{nid:04x}", "label": labels.get(nid, f"node-{nid:04x}"), "attached": b is not None,
+                        "since_at": b.since_at if b is not None else left.get(nid),
+                        "epoch": b.epoch if b is not None else None, "from": b.address if b is not None else None})
+        return out
 
     def _retention_json(self) -> dict:
         """M16: how much history this hub keeps -- events in memory, and its recording on disk if it keeps one."""
@@ -1032,6 +1104,7 @@ class Model:
                             "live_applies": st.live_applies},
                 "roles": st.role_names(),
                 "modules": [{"name": m, "state": s, "reason": r} for m, s, r in st.modules],
+                "mac": st.mac.hex() if st.mac else None,  # 2026-10-30: its radio address (NODE_STATUS version 3)
                 "actors": list(st.actors),
                 # the board cut its list of names short (64 bytes): every running actor has one name in a whole list
                 "actors_cut": len(st.actors) < st.pinned_running + st.portable_here,
@@ -1291,6 +1364,11 @@ class Model:
             pin = m.placement_of(a)
             nodes = [f"{pin:04x}"] if pin is not None and not portable else [b["node"] for b in boards]
             running = [n for n, acts in running_here.items() if kind in acts and (portable or every or n in nodes)]
+            bridged_pin = pin is not None and not portable and BRIDGED_FIRST <= pin <= BRIDGED_LAST
+            if bridged_pin:
+                # 2026-10-30: held by a node on the hub's node port (a tablet's inbox), which no NODE_STATUS lists: it
+                # runs while that node is attached, and its outputs say whether it works.
+                running = [f"{pin:04x}"] if pin in (getattr(self.hub, "bridged", {}) or {}) else []
             if portable:
                 # The boards' reconcilers name each portable actor's owner by its output's key: by actor, not by kind.
                 # Found 2026-10-19: two guests of one module -- the store's overheat_alarm on A, the earlier alarm on
@@ -1318,6 +1396,9 @@ class Model:
                 want = nodes if not every else [b["node"] for b in boards if b["state"] == "alive"]
                 ok = all(n in running for n in want)
                 why = "" if ok else "not running on " + ", ".join(n for n in want if n not in running)
+                if bridged_pin and not ok:
+                    lab = (getattr(self.cluster, "bridged", {}) or {}).get(pin, f"node-{pin:04x}")
+                    why = f"{lab} ({pin:04x}) is not attached to the hub"
             if a.module == "builtin:present" and running == ["00fe"]:
                 # 2026-10-21: the PC's host node holds the role. Its output reaches the hub as NO_DATA (a board's replica
                 # of an output the PC owns is not refreshed -- open, M0-LOG session 48), so the host node's own report of
@@ -2598,6 +2679,21 @@ def main(argv: list[str] | None = None) -> int:
 
         model.recorder = Recorder(a.record, a.record_hours)
     relay = serve_relay(hub, a.relay)
+    node_port = None
+    if cluster is not None and cluster.bridged and not setup_mode:
+        # 2026-10-30: members from the house network (hub_bridge.py) -- on --listen's address, else this PC's only
+        from .hub_bridge import serve_node_port
+        from .signing import read_key
+
+        host = a.listen.rpartition(":")[0] if lan is not None else "127.0.0.1"
+        try:
+            ca = read_key(str(cluster.keys["ca"])).public
+            node_port = serve_node_port(hub, (host or "0.0.0.0", cluster.bridge_port), ca, dict(cluster.bridged),
+                                        lambda kind, d: model.record(kind, None, d), model.cable_end)
+            print(f"[hub] node port {host}:{cluster.bridge_port} for "
+                  + ", ".join(f"{lab} ({n:04x})" for n, lab in sorted(cluster.bridged.items())), flush=True)
+        except (OSError, ValueError, KeyError) as exc:
+            print(f"[hub] no node port: {exc}", flush=True)
     pairing = None
     announcer = None
     if lan is not None:
@@ -2688,6 +2784,8 @@ def main(argv: list[str] | None = None) -> int:
         if announcer is not None:
             announcer.stop()
         relay.shutdown()
+        if node_port is not None:
+            node_port.shutdown()
         api.shutdown()
         hub.close()
     return 0

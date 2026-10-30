@@ -483,6 +483,51 @@ TEST(auth, the_host_cable_is_trusted_without_a_signature_and_nothing_else_is) {
     CHECK(peer_by_id(*an.node, 0x0042) == nullptr);
 }
 
+TEST(auth, a_node_the_hub_bridges_comes_down_the_cable_but_must_sign_like_a_radio_peer) {
+    // 2026-10-30: a tablet on the house network reaches the cell through the hub and the cabled board, under
+    // 02:00:00:01:<id> -- the wire family, outside the trusted 02:00:00:00 one. An unsigned HELLO from it is refused;
+    // a signed one, over that MAC, is admitted and verified; the PC's own end of the cable stays trusted.
+    TestCa ca(1);
+    AuthCell c;
+    std::vector<std::unique_ptr<Identity>> ids;
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x100, 0x11)));
+    c.build(std::move(ids), true);
+    AuthNode& an = c.nodes[0];
+    delete an.node;
+    NodeConfig cfg;
+    cfg.node_id = 0x100;
+    cfg.boot_epoch = 1;
+    std::memcpy(cfg.mac, an.mac, kMacLen);
+    const uint8_t host_mac[6] = {0x02, 0, 0, 0, 0, 0xFE};
+    const uint8_t tablet_mac[6] = {0x02, 0, 0, 0x01, 0, 0xFD};
+    cfg.has_trusted_mac = true;
+    std::memcpy(cfg.trusted_mac, host_mac, 6);
+    cfg.trusted_mac_len = 4;
+    cfg.has_wire_mac = true;
+    std::memcpy(cfg.wire_mac, tablet_mac, 6);
+    cfg.wire_mac_len = 4;
+    an.node = new Node(cfg, an.hal);
+    an.node->set_trust(an.id.get(), true);
+    an.node->start();
+
+    uint8_t base[kHelloBaseLen], sh[kHelloSignedLen];
+    base_hello(0x00FD, 1, base);
+    inject_hello(*an.node, tablet_mac, 0x00FD, base, sizeof(base), c.now_us);  // unsigned: as from the radio
+    CHECK(peer_by_id(*an.node, 0x00FD) == nullptr);
+
+    Identity tablet = enrolled_identity(ca, 0x00FD, 0x44);
+    CHECK(hello_sign(tablet, tablet_mac, base, sh));
+    inject_hello(*an.node, tablet_mac, 0x00FD, sh, sizeof(sh), c.now_us);
+    const PeerLink* p = peer_by_id(*an.node, 0x00FD);
+    CHECK(p != nullptr);
+    const Node::PeerAuth* pa = an.node->peer_auth(p);
+    CHECK(pa != nullptr && pa->verified);
+
+    base_hello(0x00FE, 1, base);
+    inject_hello(*an.node, host_mac, 0x00FE, base, sizeof(base), c.now_us);  // the PC's node: trusted, unsigned
+    CHECK(peer_by_id(*an.node, 0x00FE) != nullptr);
+}
+
 TEST(auth, the_host_cable_carries_v2_sized_frames_and_an_unpinned_radio_peer_does_not) {
     // M11: a firmware chunk of ~1 KB arrives over the cable. Section 5.3's 226 B floor is for a radio
     // peer whose ESP-NOW version is unknown; the cable is serial and carries the v2 MTU.

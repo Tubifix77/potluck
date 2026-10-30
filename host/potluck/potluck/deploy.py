@@ -806,7 +806,11 @@ def compile_image(m: Manifest, counter: int, guest_root: str | None = None) -> b
         if node is None:
             raise DeployError(f"{where}: not placed -- pin it, or resolve placement first")
         spec = m.node(node)
-        if spec is not None and spec.kind == "host":
+        from .hub_bridge import BRIDGED_FIRST, BRIDGED_LAST
+        if spec is not None and spec.kind == "host" and not (a.module == "builtin:inbox" and
+                                                             BRIDGED_FIRST <= node <= BRIDGED_LAST):
+            # 2026-10-30: but an inbox on a node the hub bridges (a tablet) -- the boards declare its outputs from this
+            # entry, owned by that node, and the node publishes them itself; nothing of it runs on a board.
             raise DeployError(f"{where}: placed on '{spec.label}', a host: built-in actors run on firmware")
         if a.module == "builtin:led_switch":
             cfg = _led_switch_config(m, a, where)

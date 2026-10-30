@@ -5,6 +5,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **A node from the house network joins the cell through the hub** (the node port; the cluster file's `bridge`):
+  a tablet logs in with its own certificate and the hub forwards its frames to the cabled board, which gives it an
+  untrusted address -- it signs and tags like a radio board, and the hub vouches for nothing. `hub.bridged` in the
+  model; an inbox pinned to it holds its values. Firmware: the cabled board's bridged address family.
 - **What the tray starts ends with it** (the PC's host node and tray.json's programs, in a kill-on-close job object):
   an install or a crash no longer leaves a program running with no tray, and the next tray starting copies of it.
 - **The model says whether the PC's own node is in the cell** (`hub.host_node`: attached, since, epoch). With it,

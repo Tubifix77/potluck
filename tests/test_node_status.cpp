@@ -35,9 +35,11 @@ TEST(node_status, round_trips_every_field) {
     a.module_count = 2;
     a.modules[0] = ModuleStatus{ModuleId::Sandbox, ModuleState::Active, ModuleReason::None};
     a.modules[1] = ModuleStatus{ModuleId::Extender, ModuleState::Idle, ModuleReason::NoCredentials};
+    const uint8_t mac[6] = {0xb8, 0x1f, 0x3f, 0xda, 0x73, 0x68};
+    std::memcpy(a.mac, mac, 6);
     uint8_t wire[kNodeStatusMaxLen];
     const size_t n = store_node_status(a, wire, sizeof(wire));
-    CHECK_EQ(n, kNodeStatusFixedLen + 1 + 4 + 1 + std::strlen(a.actors) + 1 + 6);
+    CHECK_EQ(n, kNodeStatusFixedLen + 1 + 4 + 1 + std::strlen(a.actors) + 1 + 6 + kNodeStatusMacLen);
     NodeStatus b;
     CHECK(load_node_status(wire, n, b));
     CHECK_EQ(b.node, a.node);
@@ -65,7 +67,17 @@ TEST(node_status, round_trips_every_field) {
     CHECK_EQ(static_cast<int>(b.modules[1].id), static_cast<int>(ModuleId::Extender));
     CHECK_EQ(static_cast<int>(b.modules[1].state), static_cast<int>(ModuleState::Idle));
     CHECK_EQ(static_cast<int>(b.modules[1].reason), static_cast<int>(ModuleReason::NoCredentials));
+    CHECK_BYTES_EQ(b.mac, 6, mac, 6);
     CHECK(n <= 226);  // fits one ESP-NOW v1 frame's payload
+
+    // A board from before version 3 answers version 2: no MAC, read as all zero.
+    wire[0] = kNodeStatusVersion2;
+    NodeStatus c;
+    CHECK(load_node_status(wire, n - kNodeStatusMacLen, c));
+    CHECK_EQ(static_cast<int>(c.module_count), 2);
+    const uint8_t zero[6] = {};
+    CHECK_BYTES_EQ(c.mac, 6, zero, 6);
+    CHECK(!load_node_status(wire, n, c));  // version 2 with six bytes too many
 }
 
 TEST(node_status, the_longest_fits_a_v1_frame_and_bad_input_is_refused) {
@@ -81,7 +93,7 @@ TEST(node_status, the_longest_fits_a_v1_frame_and_bad_input_is_refused) {
     CHECK_EQ(store_node_status(a, wire, n - 1), static_cast<size_t>(0));
     NodeStatus b;
     CHECK(load_node_status(wire, n, b));
-    CHECK(!load_node_status(wire, n - 1, b));  // the modules cut short
+    CHECK(!load_node_status(wire, n - 1, b));  // the MAC cut short
     wire[0] = 0;  // "unreachable" and unknown versions are not a status
     CHECK(!load_node_status(wire, n, b));
     const uint8_t unreachable[3] = {0, 0x68, 0x73};
@@ -98,7 +110,7 @@ TEST(node_status, a_version_1_reply_still_reads_with_no_modules) {
     uint8_t wire[kNodeStatusMaxLen];
     size_t n = store_node_status(a, wire, sizeof(wire));
     wire[0] = kNodeStatusVersion1;
-    n -= 1 + 3;  // drop the module section
+    n -= 1 + 3 + kNodeStatusMacLen;  // drop the module section and the MAC after it
     NodeStatus b;
     CHECK(load_node_status(wire, n, b));
     CHECK_STR_EQ(static_cast<const char*>(b.actors), "die_temp");

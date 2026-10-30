@@ -143,6 +143,12 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   `00fe` for the PC's tools, so those links read alive either way: this field is what tells them apart. `since_at`:
   when it last came or went (`null`: not since the hub started); `epoch`: its boot epoch while attached. The PC is
   not in `boards`, which lists the cell file's boards (firmware, chip, resets are a board's).
+- `hub.bridged` (2026-10-30): the nodes the hub takes from the house network on its node port (below), one entry
+  for each of the cluster file's `bridge.nodes` and each seen since the hub started: `[{"node": "00fd", "label",
+  "attached", "since_at", "epoch", "from"}]` -- `since_at` when it last came or went, `epoch` its boot epoch
+  and `from` its address while attached. Like the PC's node it is a member, not a board: its link is each board's
+  `links[]` entry with its id as `peer`, its values are `resources` (an inbox pinned to it reads like any), and an
+  app pinned to it is `running_on` `["00fd"]` while it is attached.
 - `hub.starting`: `true` while the hub has not yet seen the whole cell once -- some board has not answered, or some
   resource is still `STARTING` (below) -- and never longer than 30 s after its first look at the cell (a hub restarted
   after being killed first waits out its old lease, up to a minute, serving nothing). Meanwhile an app not
@@ -308,6 +314,8 @@ Kinds, in three groups:
   `quality_changed` (`{path, from, to}`), `cabled_board_rebooted`, `deploy` (a `deploys` entry settled).
 - **The hub's own**, `board: "hub"`: `hub_started`, `hub_lease_lost`, `hub_package` (the cell's package changed and
   the hub planned it again from the cluster file: `{counter, actors}`, or `{counter, error}` while it keeps the old one), `relay_client`, `host_node`, `host_node_refused`,
+  `bridged_node` (`{node, attached, from}`, and `dropped {wrong_src, rate}` when it goes), `bridged_refused`
+  (`{from, why}`),
   `login` (`{name, from, result}`), `pair_request`, `pair_answer`, `integration_forgotten`, and outside writes
   (`outside_write`, detail `{resource, value, result}` -- `path` carries the same as `resource`, and a write refused for
   its login adds `by`; a write that reached a board is logged under that board's id).
@@ -489,6 +497,40 @@ cluster file gives `present.tls_ca` and 1883 without, unless the broker names a 
 broker login, and `--no-ha-entities` turns all of it off. They are available while the hub is (`potluck/<cell>/hub`,
 `online`/`offline`, its will `offline`): with the PC off they go unavailable and the boards' resources stay live
 through the cell's own presenter.
+
+## The node port: members from the house network
+
+A node with no radio of the cell's -- an Android tablet on the house Wi-Fi -- joins through the hub (2026-10-30,
+`potluck/hub_bridge.py`). The cluster file names it: `"bridge": {"port"?: 8472, "nodes": [{"node": "00fd",
+"label": "Tablet"}]}` (ids `00f0`..`00fd`, at most 4; each is one more peer on every board). The hub listens on
+`--listen`'s address at that port (this PC's own address without `--listen`). The node is enrolled like the PC's:
+its own key, a certificate from the cell's CA for its id (`python -m potluck.enrol --host-cert <file> --pub <hex>
+--node 0x00fd --ca-key keys/ca.key`).
+
+One TCP connection per node. First a login, lines of ASCII:
+
+```
+hub  -> node   potluck-node 1 <nonce: 64 hex>
+node -> hub    <certificate: 224 hex> <signature: 128 hex>          within 10 s, one line
+hub  -> node   ok 00fd 6300 b81f3fda6300                            or: refused <why>, and the hub closes
+```
+
+The signature is the node's Ed25519 key over `"potluck node port v1\0" || nonce || certificate` (the 32 raw nonce
+bytes, the 112 raw certificate bytes). `ok` names the node, then the cabled board's id and its radio MAC: that board
+signs its HELLO over that MAC, so the node hands the board's frames to its Node from that address (or the HELLO does
+not verify), and addresses the board there. The hub learns it from the board's NODE_STATUS (version 3, firmware from
+2026-10-30) and also shows it as `boards[].mac`. Refused: a certificate from another CA, an id the cluster file does
+not name, a signature that does not verify, no answer in time, frames sent before `ok`, or a cabled board whose MAC
+the hub does not know yet (try again). A second login for the same node replaces the first (a tablet whose Wi-Fi
+dropped comes back before the old connection times out).
+
+After `ok`, Potluck Frames both ways exactly as on the cable: each frame and its CRC-16/CCITT-FALSE (little-endian),
+COBS-encoded, then a 0x00. The hub forwards them byte for byte: the node's frames to the cabled board, the cell's
+frames addressed to the node and its broadcasts to the node. A frame whose source is not the logged-in node is
+dropped, and so are frames over 100 a second (bursts of 200). The hub vouches for nothing: the cabled board puts
+the node under an address outside the cable's trusted family (`02:00:00:01:<id>`), so its HELLO must be signed over
+that address and its frames tagged, as a radio board's are. Its own requests may use any msg_id: the cell's replies to
+it go to it alone. If the hub restarts on another cabled board, the node logs in again and learns the new one.
 
 ## Integrations report their state, and each program has a share
 

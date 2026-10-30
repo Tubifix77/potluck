@@ -944,5 +944,145 @@ class TwoGuests(unittest.TestCase):
         self.assertEqual(calls, [100])
 
 
+class BridgedNode(HubFixture):
+    """2026-10-30: a node from the house network (a tablet) on the hub's node port -- a login by its certificate, then
+    its frames to the cable unchanged and the cell's frames for it back, whatever their msg_id; nothing else of it."""
+
+    frames_until = PlacementHost.frames_until
+
+    def setUp(self) -> None:
+        super().setUp()
+        from potluck import ed25519_ref as ed
+        from potluck.enrol import build_cert
+        from potluck.hub_bridge import serve_node_port
+        from potluck.signing import generate
+
+        self.ca = generate("ca", "test-ca")
+        self.secret = os.urandom(32)
+        self.cert = build_cert(self.ca, 0x00FD, ed.public_key(self.secret))
+        self.port = free_port()
+        self.cable = (0x1001, bytes.fromhex("b81f3fda1001"))
+        self.np = serve_node_port(self.hub, ("127.0.0.1", self.port), self.ca.public, {0x00FD: "Tablet"},
+                                  lambda kind, d: self.model.record(kind, None, d), lambda: self.cable)
+
+    def tearDown(self) -> None:
+        self.np.shutdown()
+        self.np.server_close()
+        super().tearDown()
+
+    def login(self, cert: bytes | None = None, secret: bytes | None = None):
+        from potluck import ed25519_ref as ed
+        from potluck.hub_bridge import login_message
+
+        s = socket.create_connection(("127.0.0.1", self.port), timeout=2.0)
+        f = s.makefile("rb")
+        hello = f.readline().split()
+        self.assertEqual(hello[:2], [b"potluck-node", b"1"])
+        nonce = bytes.fromhex(hello[2].decode())
+        cert = cert if cert is not None else self.cert
+        sig = ed.sign(secret if secret is not None else self.secret, login_message(nonce, cert))
+        s.sendall(cert.hex().encode() + b" " + sig.hex().encode() + b"\n")
+        return s, f.readline().strip()
+
+    def test_a_logged_in_node_talks_to_the_cell_and_only_as_itself(self) -> None:
+        from potluck.ns_payloads import Read
+        from potluck.payloads import Hello
+        from potluck.paths import path_hash
+        from potluck.serial_framing import SerialReassembler, write_serial_frame
+
+        s, answer = self.login()
+        try:
+            self.assertEqual(answer, b"ok 00fd 1001 b81f3fda1001")
+            ra = SerialReassembler()
+            h = Hello(boot_epoch=1793400000, caps=0, node_id=0x00FD, espnow_version=2, hb_period_ms=250,
+                      hb_miss_limit=8, flags=0x01, pubkey_fp=b"")
+            s.sendall(write_serial_frame(fr.encode(src=0x00FD, dst=fr.NODE_BROADCAST, opcode=fr.Op.HELLO, seq=1,
+                                                   payload=h.encode())))
+            ack = self.frames_until(s, ra, lambda f: f.opcode == fr.Op.HELLO_ACK)
+            self.assertIsNotNone(ack, "the cell's HELLO_ACK reaches the bridged node")
+            self.assertEqual(ack.dst, 0x00FD)
+            self.assertIn(0x00FD, self.node.peers)
+            # Its request, numbered where the hub's own requests are (0x8000 up), comes back to it alone.
+            uptime = next(p for p in sys_paths_for(0x1001) if p.endswith("sys/uptime"))
+            s.sendall(write_serial_frame(fr.encode(src=0x00FD, dst=0x1001, opcode=fr.Op.READ, seq=2, msg_id=0x8001,
+                                                   payload=Read(path_hash=path_hash(uptime)).encode())))
+            rep = self.frames_until(s, ra, lambda f: f.opcode == fr.Op.REPLY)
+            self.assertIsNotNone(rep)
+            self.assertEqual((rep.msg_id, rep.dst), (0x8001, 0x00FD))
+            self.assertTrue(self.hub.read(uptime, timeout=2.0).usable(), "the hub reads beside it")
+            # A frame claiming another node never reaches the cable.
+            served = self.node.reads_served
+            s.sendall(write_serial_frame(fr.encode(src=0x00FE, dst=0x1001, opcode=fr.Op.READ, seq=3, msg_id=9,
+                                                   payload=Read(path_hash=path_hash(uptime)).encode())))
+            time.sleep(0.3)
+            self.assertEqual(self.node.reads_served, served)
+            self.assertEqual(self.hub.bridged[0x00FD].dropped["wrong_src"], 1)
+            b = self.model.snapshot()["hub"]["bridged"]
+            self.assertEqual([(x["node"], x["attached"], x["epoch"]) for x in b], [("00fd", True, 1793400000)])
+            # Logged in again (its Wi-Fi dropped): the new connection replaces the old one.
+            s2, answer2 = self.login()
+            try:
+                self.assertEqual(answer2, b"ok 00fd 1001 b81f3fda1001")
+                self.assertIsNone(self.frames_until(s, ra, lambda f: False, timeout=1.0))  # the old one is closed
+                self.assertEqual(len(self.hub.bridged), 1)
+            finally:
+                s2.close()
+            deadline = time.time() + 3
+            while time.time() < deadline and self.hub.bridged:
+                time.sleep(0.05)
+            b = self.model.snapshot()["hub"]["bridged"]
+            self.assertEqual([(x["node"], x["attached"]) for x in b], [("00fd", False)])
+            self.assertIsNotNone(b[0]["since_at"])
+        finally:
+            s.close()
+
+    def test_a_stranger_is_refused_at_the_door(self) -> None:
+        from potluck import ed25519_ref as ed
+        from potluck.enrol import build_cert
+        from potluck.signing import generate
+
+        other_ca = generate("ca", "other")
+        cases = {
+            "another CA": (build_cert(other_ca, 0x00FD, ed.public_key(self.secret)), None),
+            "not in bridge.nodes": (build_cert(self.ca, 0x00FC, ed.public_key(self.secret)), None),
+            "the wrong key": (None, os.urandom(32)),
+        }
+        for name, (cert, secret) in cases.items():
+            with self.subTest(name):
+                s, answer = self.login(cert, secret)
+                try:
+                    self.assertTrue(answer.startswith(b"refused "), answer)
+                    self.assertEqual(s.recv(100), b"", "and the hub closes")
+                finally:
+                    s.close()
+        self.assertEqual(self.hub.bridged, {})
+        self.assertEqual(sum(1 for e in self.model.events if e["kind"] == "bridged_refused"), 3)
+
+    def test_a_good_login_waits_for_the_cabled_boards_address(self) -> None:
+        self.cable = None  # the hub has not read the cabled board's NODE_STATUS yet (or it runs older firmware)
+        s, answer = self.login()
+        try:
+            self.assertTrue(answer.startswith(b"refused the cabled board's address"), answer)
+        finally:
+            s.close()
+        self.assertEqual(self.hub.bridged, {})
+
+    def test_the_cabled_boards_address_comes_from_its_node_status(self) -> None:
+        import struct
+
+        from potluck.apply import FIXED_LEN, parse_node_status
+
+        v2 = bytes([2]) + struct.pack("<H", 0x1001) + bytes(FIXED_LEN - 3) + b"\x00\x00\x00"  # no cluster, actors, modules
+        self.assertEqual(parse_node_status(v2).mac, b"")  # a board from before 2026-10-30
+        self.assertIsNone(parse_node_status(bytes([3]) + v2[1:]))  # version 3 without its MAC
+        st = parse_node_status(bytes([3]) + v2[1:] + bytes.fromhex("b81f3fda1001"))
+        self.assertEqual(st.mac, bytes.fromhex("b81f3fda1001"))
+        self.assertIsNone(self.model.cable_end())
+        with self.model.lock:
+            self.model.boards[0x1001] = {"state": "alive", "since_at": 0, "last_ok": None, "status": st}
+        self.assertEqual(self.model.cable_end(), (0x1001, bytes.fromhex("b81f3fda1001")))
+        self.assertEqual(self.model._board_json(0x1001, self.model.boards[0x1001])["mac"], "b81f3fda1001")
+
+
 if __name__ == "__main__":
     unittest.main()

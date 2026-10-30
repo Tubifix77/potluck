@@ -751,5 +751,39 @@ class ExportTwiceAtOnce(unittest.TestCase):
             self.assertEqual([p.name for p in dest.parent.iterdir() if ".tmp" in p.name], [])
 
 
+class Bridge(unittest.TestCase):
+    """2026-10-30: the cluster file's `bridge` -- the nodes the hub takes from the house network, and its port."""
+
+    BOARDS = [(0x6300, "A"), (0x7368, "B")]
+
+    def test_a_tablet_is_taken_with_the_default_port(self) -> None:
+        self.assertEqual(ap.check_bridge({"nodes": [{"node": "00fd", "label": "Tablet"}]}, self.BOARDS),
+                         ({0x00FD: "Tablet"}, ap.BRIDGE_PORT))
+        self.assertEqual(ap.check_bridge(None, self.BOARDS), ({}, None))
+
+    def test_what_is_refused(self) -> None:
+        bad = [
+            {"nodes": [{"node": "00fe", "label": "PC"}]},          # the PC's own id: not a bridged one
+            {"nodes": [{"node": "6301", "label": "T"}]},           # a board's range
+            {"nodes": [{"node": "00fd", "label": "A"}]},           # a board's label
+            {"nodes": [{"node": "00fd", "label": "T"}, {"node": "00fd", "label": "U"}]},
+            {"nodes": [{"node": f"{0xF0 + i:04x}", "label": f"T{i}"} for i in range(ap.BRIDGE_MAX + 1)]},
+            {"nodes": []},
+            {"port": 0, "nodes": [{"node": "00fd", "label": "T"}]},
+            {"nodes": [{"node": "00fd", "label": "T", "key": "x"}]},
+            {"nodes": [{"node": 253, "label": "T"}]},
+            {"port": 8472},
+        ]
+        for b in bad:
+            with self.subTest(b=b), self.assertRaises(ap.ApplyError):
+                ap.check_bridge(b, self.BOARDS)
+
+    def test_each_bridged_node_is_one_more_peer_on_every_board(self) -> None:
+        c = ap.Cluster.__new__(ap.Cluster)
+        c.boards, c.cells, c.foremen, c.parents, c.bridged = list(self.BOARDS), {}, [], {}, {0x00FD: "Tablet"}
+        budget = ap.peer_budget(c)
+        self.assertEqual({n: (u["peers"], u["host"]) for n, u in budget.items()}, {0x6300: (3, 2), 0x7368: (3, 2)})
+
+
 if __name__ == "__main__":
     unittest.main()

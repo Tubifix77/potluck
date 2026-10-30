@@ -328,6 +328,17 @@ constexpr uint16_t kStubFirst = 0xF000;
 constexpr uint16_t kStubLast = 0xFDFF;
 inline bool cable_mac(const uint8_t mac[kMacLen]) { return std::memcmp(mac, kHostMac, 4) == 0; }
 #endif
+// 2026-10-30: nodes the hub bridges from the house network (a tablet) come down the same cable, each under its own
+// 02:00:00:01:<id> -- outside the trusted 02:00:00:00 family, so such a node signs its HELLO and tags its frames as a
+// radio peer does, and the hub that forwards them is trusted with nothing. Ids kBridgedFirst..kBridgedLast (hosts').
+constexpr uint8_t kBridgedPrefix[4] = {0x02, 0x00, 0x00, 0x01};
+constexpr uint16_t kBridgedFirst = 0x00F0;
+constexpr uint16_t kBridgedLast = 0x00FD;
+inline bool bridged_mac(const uint8_t mac[kMacLen]) { return std::memcmp(mac, kBridgedPrefix, 4) == 0; }
+// Not a radio peer: the PC's node at the cable's end, or a node the hub bridges -- neither is on any channel.
+inline bool off_radio(const uint8_t mac[kMacLen]) {
+    return std::memcmp(mac, kHostMac, kMacLen) == 0 || bridged_mac(mac);
+}
 
 int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t len) {
     tee_frame("tx", mac, 0, data, len);
@@ -354,8 +365,8 @@ int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t 
     }
 #endif
 #if CONFIG_POT_SERIAL_LINK
-    if (cable_mac(mac)) {
-        return serial_port_send(data, len);  // the PC's node, or a stub it hosts (M19)
+    if (cable_mac(mac) || bridged_mac(mac)) {
+        return serial_port_send(data, len);  // the PC's node, a stub it hosts (M19), a node the hub bridges
     }
     if (std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0) {
         const uint32_t heard = g_host_heard_ms.load();
@@ -369,7 +380,7 @@ int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t 
 // M19: a reclaimed peer's radio entry. The bus and the cable keep no list.
 bool hal_del_peer(void*, const uint8_t mac[kMacLen]) {
 #if CONFIG_POT_SERIAL_LINK
-    if (cable_mac(mac)) return true;
+    if (cable_mac(mac) || bridged_mac(mac)) return true;
 #endif
 #if CONFIG_POT_CAN
     uint16_t can_node = 0;
@@ -388,7 +399,7 @@ bool hal_add_peer(void*, const uint8_t mac[kMacLen]) {
     }
 #endif
 #if CONFIG_POT_SERIAL_LINK
-    if (cable_mac(mac)) {
+    if (cable_mac(mac) || bridged_mac(mac)) {
         // The UART has no peer list to join; the link either exists or it does not.
         return serial_port_running();
     }
@@ -1032,7 +1043,10 @@ void keep_members(const DeployImage& img) {
     g_members_n = 0;
     for (uint8_t i = 0; i < img.actor_count; ++i) {
         const uint16_t n = img.actors[i].node_id;
-        if (n == 0 || n == g_node_id || n >= kPortableNode || (n >= kStubFirst && n <= kStubLast)) continue;
+        // Not a host (below kAssignedNodeIdMin): a node the hub bridges comes and goes with the PC, and its absence
+        // says nothing about the radio -- counted, a tablet switched off would send boards probing other channels.
+        if (n == 0 || n == g_node_id || n >= kPortableNode || n < kAssignedNodeIdMin ||
+            (n >= kStubFirst && n <= kStubLast)) continue;
         bool have = false;
         for (size_t k = 0; k < g_members_n; ++k) have = have || g_members[k] == n;
         if (!have && g_members_n < kMaxPeers) g_members[g_members_n++] = n;
@@ -1889,6 +1903,10 @@ void link_task(void*) {
                 if (parse(sbuf, slen, cf) == FrameError::Ok && cf.hdr.src >= kStubFirst && cf.hdr.src <= kStubLast) {
                     cmac[4] = static_cast<uint8_t>(cf.hdr.src >> 8);  // M19: a stub node the PC hosts
                     cmac[5] = static_cast<uint8_t>(cf.hdr.src & 0xFF);
+                } else if (cf.hdr.src >= kBridgedFirst && cf.hdr.src <= kBridgedLast) {
+                    std::memcpy(cmac, kBridgedPrefix, sizeof(kBridgedPrefix));  // a node the hub bridges: untrusted
+                    cmac[4] = static_cast<uint8_t>(cf.hdr.src >> 8);
+                    cmac[5] = static_cast<uint8_t>(cf.hdr.src & 0xFF);
                 }
                 tee_frame("rx", cmac, 0, sbuf, slen);
                 g_host_heard_ms.store(now_ms_() == 0 ? 1 : now_ms_());  // M10: broadcasts follow it down the cable
@@ -1964,7 +1982,7 @@ void link_task(void*) {
                 }
                 for (size_t i = 0; i < PeerTable::capacity(); ++i) {
                     const PeerLink& q = g_node->peers().slot(i);
-                    if (q.state == PeerState::Alive && std::memcmp(q.mac, kHostMac, kMacLen) != 0) ++alive;
+                    if (q.state == PeerState::Alive && !off_radio(q.mac)) ++alive;
                 }
                 const bool outranked = auth != 0 && auth == radio_ch;
                 xSemaphoreGive(g_mutex);
@@ -2006,7 +2024,7 @@ void link_task(void*) {
                 const uint8_t ch = g_node->channel();
                 for (size_t i = 0; i < kMaxPeers; ++i) {
                     const PeerLink& q = g_node->peers().slot(i);
-                    if (q.state != PeerState::Free && std::memcmp(q.mac, kHostMac, kMacLen) != 0) {
+                    if (q.state != PeerState::Free && !off_radio(q.mac)) {
                         std::memcpy(macs[n++], q.mac, kMacLen);
                     }
                 }
@@ -2304,7 +2322,7 @@ void stats_task(void*) {
             size_t radio_alive = 0;  // a host on the cable is on no channel, so it does not count
             for (size_t i = 0; i < PeerTable::capacity(); ++i) {
                 const PeerLink& q = g_node->peers().slot(i);
-                if (q.state == PeerState::Alive && std::memcmp(q.mac, kHostMac, kMacLen) != 0) ++radio_alive;
+                if (q.state == PeerState::Alive && !off_radio(q.mac)) ++radio_alive;
             }
             xSemaphoreGive(g_mutex);
             chan_store::save_if_with_cell(ch, radio_alive);
@@ -3768,7 +3786,7 @@ const pocket::Snapshot& pocket_snapshot(uint32_t now) {
     s.boards[s.n_boards++] = pocket::Board{s.self, true, true, 0, 0};
     for (size_t i = 0; i < PeerTable::capacity() && s.n_boards < pocket::kMaxBoards; ++i) {
         const PeerLink& p = g_node->peers().slot(i);
-        if (p.state == PeerState::Free || p.node_id == 0 || std::memcmp(p.mac, kHostMac, kMacLen) == 0) continue;
+        if (p.state == PeerState::Free || p.node_id == 0 || off_radio(p.mac)) continue;
         const bool alive = p.state == PeerState::Alive;
         s.boards[s.n_boards++] =
             pocket::Board{p.node_id, false, alive, alive ? 0u : (now - p.last_rx_ms) / 1000u, p.last_rssi};
@@ -3969,6 +3987,7 @@ size_t deploy_rt::build_node_status(uint8_t* out, size_t cap, bool cabled) {
     }
 #endif
     (void)module;
+    std::memcpy(st.mac, g_node->config().mac, kNodeStatusMacLen);  // version 3: what its HELLO is signed over
     return store_node_status(st, out, cap);
 }
 
@@ -4119,6 +4138,9 @@ extern "C" void app_main(void) {
     cfg.has_trusted_mac = true;
     std::memcpy(cfg.trusted_mac, kHostMac, kMacLen);
     cfg.trusted_mac_len = 4;  // M19: the PC's node and the stubs it hosts (cable_mac)
+    cfg.has_wire_mac = true;  // 2026-10-30: nodes the hub bridges -- on the cable, never trusted (bridged_mac)
+    std::memcpy(cfg.wire_mac, kBridgedPrefix, sizeof(kBridgedPrefix));
+    cfg.wire_mac_len = sizeof(kBridgedPrefix);
 #endif
     // Polarity is "opt in to the bad one", because the knob is a plain bool rather than the Kconfig
     // `choice` it wants to be — a choice member cannot be set from an sdkconfig.defaults overlay and

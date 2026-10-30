@@ -139,6 +139,8 @@ class NodeStatus:
     actors: list[str]
     #: M13 (version 2): (module, state, reason) for each of Potluck's optional modules the image carries.
     modules: list[tuple[str, str, str]] = field(default_factory=list)
+    #: version 3 (2026-10-30): the board's own radio address -- what its HELLO is signed over; b"" from an older board.
+    mac: bytes = b""
 
     def module_words(self) -> str:
         return ",".join(f"{m}:{s}" + (f" ({r})" if r else "") for m, s, r in self.modules) or "-"
@@ -165,10 +167,11 @@ FIXED_LEN = 87
 
 
 def parse_node_status(raw: bytes) -> NodeStatus | None:
-    """pot/node_status.hpp's reply, version 1 or 2; None for 'unreachable' ({0, target}) or anything else."""
-    if len(raw) < FIXED_LEN + 2 or raw[0] not in (1, 2):
+    """pot/node_status.hpp's reply, version 1, 2 or 3; None for 'unreachable' ({0, target}) or anything else."""
+    if len(raw) < FIXED_LEN + 2 or raw[0] not in (1, 2, 3):
         return None
-    v2 = raw[0] == 2
+    v2 = raw[0] >= 2  # the modules; from version 3 the board's MAC after them
+    tail = 6 if raw[0] >= 3 else 0
     node, fw_run, fw_floor, fw_state = struct.unpack_from("<HIIB", raw, 1)
     version = raw[12:44].split(b"\0", 1)[0].decode("ascii", "replace")
     elf = raw[44:52]
@@ -193,7 +196,7 @@ def parse_node_status(raw: bytes) -> NodeStatus | None:
             return None
         mc = raw[at]
         at += 1
-        if at + 3 * mc != len(raw):
+        if at + 3 * mc + tail != len(raw):
             return None
         for i in range(mc):
             mid, ms, mr = raw[at + 3 * i:at + 3 * i + 3]
@@ -203,7 +206,7 @@ def parse_node_status(raw: bytes) -> NodeStatus | None:
         return None
     return NodeStatus(node, fw_run, fw_floor, FW_STATES.get(fw_state, str(fw_state)), version, elf, slot, pending,
                       trial, pkg, pkg_floor, digest, roles, live, ck, up, pinned, ptotal, phere, cluster,
-                      [a for a in actors.split(",") if a], modules)
+                      [a for a in actors.split(",") if a], modules, bytes(raw[len(raw) - tail:]) if tail else b"")
 
 
 def node_status(b, target: int, *, timeout: float = 3.0, tries: int = 2) -> NodeStatus | None:
@@ -289,6 +292,10 @@ class Cluster:
     #: M23: the named services the hub's PC offers the cell (potluck.services: "time", "speech") -- the PC user's choice.
     pc_services: tuple[str, ...] = ()
     bulk_folder: str | None = None  # M25: the folder the PC's `file` service offers (cluster file bulk.folder)
+    #: 2026-10-30: nodes the hub bridges from the house network (a tablet) -- id -> label -- and the port it takes them
+    #: on (cluster file `bridge`). Each is a member like the PC's node: not a board, one more peer on every board.
+    bridged: dict[int, str] = field(default_factory=dict)
+    bridge_port: int | None = None
     #: M19: the cells (groups) each board belongs to, by name -- one, or two for a foreman. A cluster file with none
     #: is one cell as before; with cells, a board admits only boards of its own cells.
     cells: dict[int, tuple[str, ...]] = field(default_factory=dict)
@@ -317,6 +324,8 @@ class Cluster:
 PEER_CAP = 19
 #: M19: the node ids a stub board may have (m0_main.cpp's kStubFirst..kStubLast: the cable gives each its own address).
 STUB_FIRST, STUB_LAST = 0xF000, 0xFDFF
+#: 2026-10-30: nodes the hub bridges from the house network -- their ids, how many, the port (hub_bridge.py).
+from .hub_bridge import BRIDGE_MAX, BRIDGE_PORT, BRIDGED_FIRST, BRIDGED_LAST  # noqa: E402
 #: M19: a foreman's summary period, ms, unless the cell says (cells.<name>.period_ms).
 FOREMAN_PERIOD_MS = 2000
 #: M19: pot/foreman.hpp's limits -- the boards a foreman's config names, its exports besides `alive`.
@@ -396,7 +405,7 @@ def load_cluster(path: str) -> Cluster:
     if not isinstance(doc, dict) or doc.get("schema") != SCHEMA:
         raise ApplyError(f"{path}: not a cluster file (\"schema\": \"{SCHEMA}\")")
     allowed = {"schema", "system", "port", "baud", "boards", "keys", "firmware", "apps", "package", "verify",
-               "comment", "outside", "present", "plan", "cells", "pc_services", "bulk"}
+               "comment", "outside", "present", "plan", "cells", "pc_services", "bulk", "bridge"}
     extra = set(doc) - allowed
     if extra:
         raise ApplyError(f"{path}: unknown key(s) {sorted(extra)}")
@@ -585,6 +594,10 @@ def load_cluster(path: str) -> Cluster:
         if not folder.is_dir():
             raise ApplyError(f"bulk.folder: {folder} is not a folder")
         cl.bulk_folder = str(folder)
+    cl.bridged, cl.bridge_port = check_bridge(doc.get("bridge"), cl.boards)
+    if not cells and cl.bridged and len(cl.boards) + len(cl.bridged) > PEER_CAP:
+        raise ApplyError(f"bridge: {len(cl.boards) - 1} other boards, the PC and {len(cl.bridged)} bridged node(s) are "
+                         f"more than the {PEER_CAP} peers a board holds")
     if "file" in cl.pc_services and cl.bulk_folder is None:
         raise ApplyError('pc_services names "file", so the cluster file says which folder it offers: "bulk": {"folder"}')
     cl.cells = cells
@@ -1058,6 +1071,39 @@ def foreman_cells(c: Cluster) -> dict[str, list[int]]:
     return {name: sorted(n for n in c.foremen if c.cells.get(n) == (name,)) for name in c.parents}
 
 
+def check_bridge(br: Any, boards: list[tuple[int, str]]) -> tuple[dict[int, str], int | None]:
+    """2026-10-30: the cluster file's `bridge` -- {"port"?: <tcp port>, "nodes": [{"node": "00fd", "label": "Tablet"}]}:
+    the members the hub takes from the house network on its node port (hub_bridge.py), each enrolled with its own
+    certificate (potluck.enrol --host-cert). Returns (id -> label, port); ({}, None) without one."""
+    if br is None:
+        return {}, None
+    usage = ('bridge: {"port"?: <1..65535, default %d>, "nodes": [{"node": "<hex id, %04x..%04x>", "label": "..."}, '
+             '...]} -- at most %d' % (BRIDGE_PORT, BRIDGED_FIRST, BRIDGED_LAST, BRIDGE_MAX))
+    port = br.get("port", BRIDGE_PORT) if isinstance(br, dict) else None
+    nodes = br.get("nodes") if isinstance(br, dict) else None
+    if (not isinstance(br, dict) or not set(br) <= {"port", "nodes"} or isinstance(port, bool) or
+            not isinstance(port, int) or not 1 <= port <= 65535 or not isinstance(nodes, list) or
+            not 1 <= len(nodes) <= BRIDGE_MAX):
+        raise ApplyError(usage)
+    out: dict[int, str] = {}
+    taken = {lab for _, lab in boards}
+    for i, nd in enumerate(nodes):
+        try:
+            nid = int(nd["node"], 16) if isinstance(nd["node"], str) else -1
+        except (TypeError, KeyError, ValueError):
+            raise ApplyError(usage) from None
+        lab = nd.get("label") if isinstance(nd, dict) else None
+        if not isinstance(nd, dict) or not set(nd) <= {"node", "label"} or not BRIDGED_FIRST <= nid <= BRIDGED_LAST:
+            raise ApplyError(f"bridge.nodes[{i}]: " + usage)
+        if not isinstance(lab, str) or not 1 <= len(lab) <= 40 or not lab.isprintable():
+            raise ApplyError(f"bridge.nodes[{i}].label: 1..40 printable characters")
+        if nid in out or lab in taken:
+            raise ApplyError(f"bridge.nodes[{i}]: node {nid:04x} or label '{lab}' appears twice (boards included)")
+        out[nid] = lab
+        taken.add(lab)
+    return out, port
+
+
 def peer_budget(c: Cluster, cabled: int | None = None) -> dict[int, dict[str, Any]]:
     """M19 (Review of M19 #6): every board's unicast peers at worst, against PEER_CAP. A board's peers are the
     boards of every cell it can be in -- its own, and the parent of its cell when it may hold the foreman role --
@@ -1078,7 +1124,7 @@ def peer_budget(c: Cluster, cabled: int | None = None) -> dict[int, dict[str, An
         own = tuple(c.cells.get(n, ()))
         mine = list(own) + ([c.parents[own[0]]] if n in c.foremen else [])
         if not mine:  # admitted by every board, and admits every board
-            out[n] = {"peers": len(boards) - 1 + 1, "cells": {}, "host": 1}
+            out[n] = {"peers": len(boards) - 1 + 1 + len(c.bridged), "cells": {}, "host": 1 + len(c.bridged)}
             continue
         peers = set(loose)
         seats = 0
@@ -1089,7 +1135,8 @@ def peer_budget(c: Cluster, cabled: int | None = None) -> dict[int, dict[str, An
             seats += kids
             per[name] = len(static.get(name, set()) - {n}) + kids
         peers.discard(n)
-        host = int(cabled_cells is None or n == cabled or bool(cabled_cells & set(own)))
+        # the PC, and each node the hub bridges (2026-10-30), reached the same way
+        host = int(cabled_cells is None or n == cabled or bool(cabled_cells & set(own))) * (1 + len(c.bridged))
         out[n] = {"peers": len(peers) + seats + host, "cells": per, "host": host}
     return out
 
@@ -1113,7 +1160,8 @@ def check_peers(c: Cluster, cabled: int | None = None) -> list[str]:
     budget = peer_budget(c, cabled)
     lines, over = [], []
     for n, u in budget.items():
-        parts = [f"{k} {v}" for k, v in u["cells"].items()] + (["the PC 1"] if u["host"] else [])
+        parts = [f"{k} {v}" for k, v in u["cells"].items()] + (["the PC 1"] if u["host"] else []) + (
+            [f"bridged {len(c.bridged)}"] if u["host"] and c.bridged else [])
         lines.append(f"plan: peers {labels[n]} (0x{n:04x}): {u['peers']} of {PEER_CAP} ({', '.join(parts)})")
         if u["peers"] > PEER_CAP:
             over.append((-u["peers"], n, f"{labels[n]} (0x{n:04x}) would need {u['peers']} unicast peers"))
