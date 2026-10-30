@@ -528,7 +528,8 @@ dropped comes back before the old connection times out).
 After `ok`, Potluck Frames both ways exactly as on the cable: each frame and its CRC-16/CCITT-FALSE (little-endian),
 COBS-encoded, then a 0x00. The hub forwards them byte for byte: the node's frames to the cabled board, the cell's
 frames addressed to the node and its broadcasts to the node. A frame whose source is not the logged-in node is
-dropped, and so are frames over 100 a second (bursts of 200). The hub vouches for nothing: the cabled board puts
+dropped, and so are frames over 100 a second (bursts of 200). A node that sends nothing for 15 s is dropped (its
+Wi-Fi went with no close; it beats every 250 ms, and the cell has declared it dead long before). The hub vouches for nothing: the cabled board puts
 the node under an address outside the cable's trusted family (`02:00:00:01:<id>`), so its HELLO must be signed over
 that address and its frames tagged, as a radio board's are. Its own requests may use any msg_id: the cell's replies to
 it go to it alone. If the hub restarts on another cabled board, the node logs in again and learns the new one.

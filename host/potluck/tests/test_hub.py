@@ -1074,6 +1074,27 @@ class BridgedNode(HubFixture):
         self.assertEqual(self.model._act_owner("potluck://lab/act/phone/steps"), "6300")
         self.assertIsNone(self.model._act_owner("potluck://lab/act/nobody/x"))
 
+    def test_a_node_that_falls_silent_is_dropped(self) -> None:
+        # Wi-Fi gone with no close: the socket stays up, so silence is what tells (hub_bridge.IDLE_S)
+        from unittest import mock
+
+        from potluck import hub_bridge
+
+        with mock.patch.object(hub_bridge, "IDLE_S", 0.6), mock.patch.object(hb._Client, "SEND_TIMEOUT_S", 0.2):
+            s, answer = self.login()
+            try:
+                self.assertTrue(answer.startswith(b"ok 00fd"))
+                deadline = time.time() + 1.0
+                while time.time() < deadline and 0x00FD not in self.hub.bridged:
+                    time.sleep(0.02)
+                self.assertIn(0x00FD, self.hub.bridged)
+                deadline = time.time() + 3.0
+                while time.time() < deadline and self.hub.bridged:
+                    time.sleep(0.05)
+                self.assertEqual(self.hub.bridged, {}, "dropped after its silence")
+            finally:
+                s.close()
+
     def test_a_good_login_waits_for_the_cabled_boards_address(self) -> None:
         self.cable = None  # the hub has not read the cabled board's NODE_STATUS yet (or it runs older firmware)
         s, answer = self.login()

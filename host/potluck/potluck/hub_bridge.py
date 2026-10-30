@@ -49,6 +49,9 @@ LINE_MAX = 600
 #: the cable (921600 baud) carries the whole cell, so one node may not fill it.
 RATE_PER_S = 100.0
 RATE_BURST = 200.0
+#: A logged-in node that sends nothing this long is gone (its Wi-Fi dropped with no close, so the socket stays up until
+#: a send to it times out): it beats every 250 ms, and the cell has declared it dead long before this.
+IDLE_S = 15.0
 
 
 def login_message(nonce: bytes, cert: bytes) -> bytes:
@@ -166,14 +169,18 @@ def serve_node_port(hub, addr: tuple[str, int], ca_public: bytes, allowed: dict[
             b = Bridged(sock, node, address, _Client)
             hub.attach_bridged(b)
             ra = SerialReassembler()
+            heard = time.monotonic()
             try:
                 while b.client.alive:
                     try:
                         data = sock.recv(4096)
                     except socket.timeout:
+                        if time.monotonic() - heard > IDLE_S:
+                            break  # silent: gone without a close
                         continue  # a quiet node (the timeout is for sends to it)
                     if not data:
                         break
+                    heard = time.monotonic()
                     for raw in ra.feed(data):
                         hub.from_bridged(b, raw)
             except OSError:
