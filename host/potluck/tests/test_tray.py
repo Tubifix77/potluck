@@ -242,5 +242,46 @@ class ProgramsFromTrayJson(unittest.TestCase):
         finally:
             tray.note = saved
 
+@unittest.skipUnless(sys.platform == "win32", "job objects are Windows'")
+class ProgramsEndWithTheTray(unittest.TestCase):
+    """2026-10-30: a tray killed (an install's Stop-Process) left the program it kept running orphaned. Now a stand-in
+    tray starts a program the way the tray does (start_program, into its job) and is killed: the program ends too."""
+
+    def test_a_killed_tray_takes_its_program_with_it(self):
+        import ctypes
+        import subprocess
+        import time
+        with tempfile.TemporaryDirectory() as tmp:
+            parent = (
+                "import sys, time\n"
+                "from potluck import tray\n"
+                "c = tray.start_program({'name': 'sleeper', 'cmd': [sys.executable, '-c', 'import time; time.sleep(60)'],"
+                " 'cwd': None, 'stop_codes': []})\n"
+                "print(c.pid, flush=True)\n"
+                "time.sleep(60)\n")
+            env = {**os.environ, "LOCALAPPDATA": tmp,
+                   "PYTHONPATH": str(Path(__file__).resolve().parents[1]) + os.pathsep + os.environ.get("PYTHONPATH", "")}
+            p = subprocess.Popen([sys.executable, "-c", parent], stdout=subprocess.PIPE, env=env)
+            try:
+                pid = int(p.stdout.readline())
+                k32 = ctypes.WinDLL("kernel32")
+                k32.OpenProcess.restype = ctypes.c_void_p
+                h = k32.OpenProcess(0x00100000, False, pid)  # SYNCHRONIZE
+                self.assertTrue(h, "the program runs")
+                try:
+                    self.assertEqual(k32.WaitForSingleObject(ctypes.c_void_p(h), 0), 0x102)  # still running
+                    p.kill()  # TerminateProcess, as Stop-Process -Force does
+                    p.wait(timeout=10)
+                    self.assertEqual(k32.WaitForSingleObject(ctypes.c_void_p(h), 10000), 0, "it ended with the tray")
+                finally:
+                    k32.CloseHandle(ctypes.c_void_p(h))
+                self.assertIn("the tray starts sleeper", (Path(tmp) / "potluck" / "logs" / "program-sleeper.log")
+                              .read_text(encoding="utf-8", errors="replace"))
+            finally:
+                if p.poll() is None:
+                    p.kill()
+                p.stdout.close()
+
+
 if __name__ == "__main__":
     unittest.main()

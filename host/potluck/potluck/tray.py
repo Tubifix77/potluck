@@ -11,7 +11,8 @@ at all, in setup mode, so the wizard can make one. Started at login, it also kee
 "programs" running (ProgramKeeper).
 
 Windows only for now, through the Win32 calls Windows has (ctypes, no packages); a Linux panel would use what
-ha-tray uses (GTK). The tray never stops a hub it did not start.
+ha-tray uses (GTK). The tray never stops a hub it did not start, and leaves the hub it started running when it ends
+(the next tray finds it answering); the host node and the programs it starts end with it (contain).
 """
 
 from __future__ import annotations
@@ -94,6 +95,56 @@ def note(line: str) -> None:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + line + "\n")
     except OSError:
         pass
+
+
+# ---- what the tray starts dies with it ----------------------------------------------------------------------------
+
+_JOB: list = []  # [handle] once made; [None] when Windows would not make one
+
+
+def _job():
+    """One kill-on-close job object for the tray's whole life: Windows ends every process in it when the tray's handle
+    closes, however the tray ends -- quit, crash, or killed. Found 2026-10-30 by the phone app's session: an install
+    stopped the tray (Stop-Process) and left the program it kept running orphaned; the new tray then started a copy
+    every 30 s for 14 h, each refused by the program's single-instance lock, and "remove" stopped nothing it owned."""
+    if not _JOB:
+        _JOB.append(None)
+        if sys.platform == "win32":
+            class BASIC(ctypes.Structure):
+                _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
+                            ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                            ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                            ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD),
+                            ("SchedulingClass", wintypes.DWORD)]
+
+            class EXTENDED(ctypes.Structure):
+                _fields_ = [("BasicLimitInformation", BASIC), ("IoInfo", ctypes.c_uint64 * 6),
+                            ("ProcessMemoryLimit", ctypes.c_size_t), ("JobMemoryLimit", ctypes.c_size_t),
+                            ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t)]
+
+            k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            k32.CreateJobObjectW.restype = wintypes.HANDLE
+            k32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+            job = k32.CreateJobObjectW(None, None)
+            info = EXTENDED()
+            info.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            if job and k32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info)):  # extended limits
+                _JOB[0] = job
+            else:
+                note(f"no job object for the tray's programs (error {ctypes.get_last_error()}): they outlive the tray")
+    return _JOB[0]
+
+
+def contain(child: subprocess.Popen) -> subprocess.Popen:
+    """Put a child the tray started into its job (_job), so it ends with the tray; its own children follow it in. A
+    child that cannot be put there still runs, as it did before, with a line in tray.log."""
+    job = _job()
+    if job is not None:
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        if not k32.AssignProcessToJobObject(job, int(child._handle)):
+            note(f"pid {child.pid} not put in the tray's job (error {ctypes.get_last_error()}): it outlives the tray")
+    return child
 
 
 def cell_file() -> Path | None:
@@ -219,8 +270,8 @@ def start_hostnode(cmd: list[str], cwd: Path) -> subprocess.Popen:
     out = open(logs / "hostnode.log", "ab")
     out.write(f"===== {time.strftime('%Y-%m-%d %H:%M:%S')} the tray starts the PC's host node\n".encode())
     out.flush()
-    return subprocess.Popen(cmd, stdout=out, stderr=subprocess.STDOUT, cwd=str(cwd),
-                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    return contain(subprocess.Popen(cmd, stdout=out, stderr=subprocess.STDOUT, cwd=str(cwd),
+                                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)))
 
 
 class HostnodeKeeper:
@@ -294,8 +345,8 @@ def start_program(plan: dict) -> subprocess.Popen:
     out = open(logs / f"program-{plan['name']}.log", "ab")
     out.write(f"===== {time.strftime('%Y-%m-%d %H:%M:%S')} the tray starts {plan['name']}\n".encode())
     out.flush()
-    return subprocess.Popen(plan["cmd"], stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                            cwd=plan["cwd"], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    return contain(subprocess.Popen(plan["cmd"], stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                    cwd=plan["cwd"], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)))
 
 
 class ProgramKeeper:

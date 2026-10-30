@@ -904,7 +904,9 @@ Everything here is on the hub's own address, http://127.0.0.1:8470/ -- never on 
   minute. Unpackaged: `python -m potluck.tray --start-hub`. It keeps the PC's host node running too, and any other
   program tray.json lists under `"programs": [{"name", "cmd": [program, args...], "cwd", "stop_codes": [codes]}]` --
   started with the tray, again when it exits (at most once in 30 s; never after an exit with one of its stop codes, until
-  its entry changes), stopped when the tray quits; its output in `logs\program-<name>.log`.
+  its entry changes), stopped when the tray quits; its output in `logs\program-<name>.log`. The host node and these
+  programs sit in the tray's kill-on-close job object, so they end with the tray however it ends (quit, crash, an install
+  stopping it); the hub does not, and the next tray finds it answering.
 - **esptool in the package** is `Potluck\esptool\esptool.exe`, a program of its own (GPLv2+, with its `LICENSE` and
   `SOURCE.txt`), never imported by the Apache-2.0 hub: `potluck.setup` runs it (`python -m esptool` from source,
   `POTLUCK_ESPTOOL` to name another).

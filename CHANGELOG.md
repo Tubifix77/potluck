@@ -5,6 +5,8 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **What the tray starts ends with it** (the PC's host node and tray.json's programs, in a kill-on-close job object):
+  an install or a crash no longer leaves a program running with no tray, and the next tray starting copies of it.
 - **The model says whether the PC's own node is in the cell** (`hub.host_node`: attached, since, epoch). With it,
   a program can show the PC as a member beside the boards; what the PC does is already in the model.
 - **Sound across the cell (M28), on the PC's speakers.** `builtin:tone` asks the PC's new `sound` service (the cluster
