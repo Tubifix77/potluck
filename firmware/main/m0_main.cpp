@@ -3592,6 +3592,7 @@ void catchup_tick(uint32_t now) {
         const PeerLink& q = g_node->peers().slot(i);
         if (q.state != PeerState::Alive) continue;
         if (cfg.has_trusted_mac && std::memcmp(q.mac, cfg.trusted_mac, cfg.trusted_mac_len) == 0) continue;  // the PC
+        if (cfg.has_wire_mac && std::memcmp(q.mac, cfg.wire_mac, cfg.wire_mac_len) == 0) continue;  // a bridged node
         g_node->cast(q.node_id, kFwPath, ann, sizeof ann);
     }
 }
@@ -3622,6 +3623,9 @@ void tick(uint32_t now) {
         const PeerLink& q = g_node->peers().slot(i);
         if (q.state != PeerState::Alive) continue;
         if (cfg.has_trusted_mac && std::memcmp(q.mac, cfg.trusted_mac, cfg.trusted_mac_len) == 0) continue;  // the cable
+        // 2026-10-31: nor a node the hub bridges -- it reaches this board over the cable too, so its heartbeats say
+        // nothing about this image's radio, and a trial on the cabled board must not pass on them alone
+        if (cfg.has_wire_mac && std::memcmp(q.mac, cfg.wire_mac, cfg.wire_mac_len) == 0) continue;
         ++radio_peers;
     }
     if (radio_peers > 0 && g_node->tx_tally().beacons >= deploy_rt::kTrialHeartbeats) {
