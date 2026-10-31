@@ -15,6 +15,7 @@
 #include <deque>
 #include <new>
 #include <string>
+#include <vector>
 
 #include "pot/node.hpp"
 #include "pot/present_core.hpp"
@@ -381,8 +382,10 @@ class HostPresentActor : public Actor {
     size_t entities_ = 0;
     unsigned long configs_ = 0, states_ = 0;
     uint32_t now_ms_ = 0;
-    uint32_t asked_[kMaxOutside] = {};
-    unsigned tries_[kMaxOutside] = {};
+    // On the PC's heap, not in the actor slot: as arrays they were 8 B a rule, and kMaxOutside's move to 64 (2026-10-31)
+    // put this actor past kActorSlotBytes -- every PC node then crashed a few seconds after taking the role.
+    std::vector<uint32_t> asked_ = std::vector<uint32_t>(kMaxOutside, 0);
+    std::vector<unsigned> tries_ = std::vector<unsigned>(kMaxOutside, 0);
     uint32_t status_ms_ = 0;
     unsigned long describes_ = 0, describe_fail_ = 0;
 
@@ -419,6 +422,8 @@ bool check(const ActorDecl& d, const ActorEnv&, const char** why) {
 }
 
 Actor* create(void* mem, const ActorDecl& d, const ActorEnv& env) {
+    // As the board's PresentActor checks (present.cpp): the reconciler builds it in a slot of this size.
+    static_assert(sizeof(HostPresentActor) <= kActorSlotBytes, "HostPresentActor outgrew its actor slot");
     PresentConfig c{};
     if (env.node == nullptr || !present_config(d, c)) return nullptr;
     return new (mem) HostPresentActor(*env.node, c);
