@@ -37,6 +37,7 @@ SYS_LABELS: dict[str, str] = {
     "sys/pocket/phones": "pocket page: phones on its access point",
     "sys/pocket/pages": "pocket page: pages served since boot",
     "sys/pocket/refused": "pocket page: requests refused since boot",
+    "sys/nodeport": "node port on its station: (IPv4 << 16) | TCP port",
 }
 
 #: An extender board's own (pot/sys_resources.hpp ExtenderResource, 2026-10-18): declared only on a board whose
