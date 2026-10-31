@@ -1,6 +1,8 @@
 #include "node_port_server.hpp"
 
 #include <atomic>
+#include <cerrno>
+#include <cstdio>
 #include <cstring>
 
 #include "esp_attr.h"
