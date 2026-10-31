@@ -58,6 +58,7 @@
 #include "pot/stats_json.hpp"
 #include "pot/led_slots.hpp"
 #include "pot/split_probe.hpp"
+#include "pot/radio_watch.hpp"
 #include "pot/sys_resources.hpp"
 #include "pot/trust.hpp"
 #include "pot/trust_store.hpp"
@@ -1779,6 +1780,7 @@ void link_task(void*) {
         xSemaphoreGive(g_mutex);
     }
     uint32_t next_button_poll_ms = now_ms_();
+    uint32_t next_radio_watch_ms = now_ms_();
     uint32_t next_led_ms = now_ms_() + status_led::kRenderMs;
 #if CONFIG_POT_EXTENDER || CONFIG_POT_WIFI
     uint32_t next_hunt_poll_ms = now_ms_();
@@ -1987,7 +1989,8 @@ void link_task(void*) {
                 const bool outranked = auth != 0 && auth == radio_ch;
                 xSemaphoreGive(g_mutex);
                 const SplitProbe::Act act = deploy_rt::g_split.tick(SplitProbe::Inputs{
-                    nt, assoc, radio_ch, uplink::seen_channels(), missing, alive, outranked});
+                    nt, assoc, radio_ch, uplink::seen_channels(), missing, static_cast<uint8_t>(deploy_rt::g_members_n),
+                    alive, outranked});
                 if (act != SplitProbe::Act::None && uplink::join_channel(deploy_rt::g_split.target())) {
                     std::printf("{\"t\":\"split\",\"act\":\"%s\",\"from\":%u,\"to\":%u,\"missing\":%u,\"alive\":%u}\n",
                                 act == SplitProbe::Act::Probe ? "probe" : "return", static_cast<unsigned>(radio_ch),
@@ -2064,6 +2067,31 @@ void link_task(void*) {
             esp_restart();
         }
 #endif
+        // A power-on that left the radio sending but hardly heard (pot/radio_watch.hpp; B, 2026-10-31): restart once.
+        if (espnow_up() && static_cast<int32_t>(nt - next_radio_watch_ms) >= 0) {
+            next_radio_watch_ms = nt + 1000;
+            static RadioWatch watch(esp_reset_reason() == ESP_RST_POWERON);
+            uint32_t ok = 0, fail = 0;
+            xSemaphoreTake(g_mutex, portMAX_DELAY);
+            for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+                const PeerLink& q = g_node->peers().slot(i);
+                if (q.state != PeerState::Free && !off_radio(q.mac)) {
+                    ok += q.tx_cb_ok;
+                    fail += q.tx_cb_fail;
+                }
+            }
+            xSemaphoreGive(g_mutex);
+            if (watch.tick(nt, ok, fail)) {
+                std::printf("{\"t\":\"radio_poor\",\"node\":%u,\"up_ms\":%lu,\"acked\":%lu,\"failed\":%lu,"
+                            "\"action\":\"restart\"}
+",
+                            static_cast<unsigned>(g_node->config().node_id), static_cast<unsigned long>(nt),
+                            static_cast<unsigned long>(watch.last_ok()), static_cast<unsigned long>(watch.last_fail()));
+                std::fflush(stdout);
+                vTaskDelay(pdMS_TO_TICKS(100));
+                esp_restart();
+            }
+        }
         xSemaphoreTake(g_mutex, portMAX_DELAY);
         g_node->tick(nt);
         if (g_rec != nullptr) g_rec->tick(nt);

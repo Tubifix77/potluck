@@ -11,6 +11,11 @@
 // found more of the cell there than it left, or a station that outranks it (whose channel the cell follows anyway);
 // otherwise it goes back, and probes again after a backoff that doubles to kMaxBackoffMs -- a presenting board drops
 // its broker session for a few seconds each time, so not often. Pure logic: the caller does the Wi-Fi and the counting.
+//
+// Only the side missing most of the named members probes (2026-10-31, the owner's cell): with B unplugged, C -- still
+// with A -- probed for B every few minutes and, each time, left A, the PC and the tablet for half a minute; every board
+// read C dead and back. A board powered off and a split look alike from one side, but a split always leaves one side
+// with fewer of the cell, and that side finding the rest heals it.
 
 #pragma once
 
@@ -34,6 +39,7 @@ class SplitProbe {
         uint8_t channel;         // its radio's channel now (1..14)
         uint16_t seen;           // bit c: the network was heard on channel c in the station's scans
         uint8_t missing;         // members the package names, not this board, not alive now
+        uint8_t members;         // members the package names, not this board
         uint8_t alive;           // radio peers alive now
         bool outranked_here;     // a lower-id station is alive on this channel (Node::outranking_channel() == channel)
     };
@@ -104,8 +110,8 @@ inline SplitProbe::Act SplitProbe::tick(const Inputs& in) {
         target_ = origin_;
         return Act::Return;
     }
-    if (!in.associated || in.missing == 0) {
-        split_since_ = 0;
+    if (!in.associated || in.missing == 0 || 2u * in.missing <= in.members) {
+        split_since_ = 0;  // nobody missing, or most of the cell here: a board gone, not a split to look for
         if (in.missing == 0) backoff_ms_ = kFirstBackoffMs;
         return Act::None;
     }
