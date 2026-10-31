@@ -148,6 +148,7 @@ class McJobActor : public Actor {
         uint16_t answered = 0;   // this run
         uint32_t until_ms = 0;   // backed off until (refused, lost)
         uint32_t compute_ms = 0; // its measured unit time, net of the round trip; 0 until measured
+        uint8_t overdue = 0;     // this run's units it let pass their deadline
         bool not_a_lender = false;
     };
     bool next_unit(uint16_t& unit);

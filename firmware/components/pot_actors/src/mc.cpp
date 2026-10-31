@@ -384,6 +384,9 @@ void McJobActor::cancel_overdue(uint32_t now) {
         const uint32_t deadline = 4u * (compute + rtt_ms(r.peer)) + 1000u;
         if (now - r.sent_ms <= deadline) continue;
         ++cur_.overdue;
+        // A peer that has answered nothing this run and lets units run out is no lender, whatever it accepts: the
+        // PC's node (2026-10-31), whose hub passes an unknown CALL on and nobody answers. Not asked again this run.
+        if (l != nullptr && l->answered == 0 && ++l->overdue >= 2) l->not_a_lender = true;
         // The node answers this with Unavailable, synchronously, through on_call_result: the unit is
         // requeued there, and a late REPLY from the peer then finds no pending call and is dropped.
         if (!node_.cancel_call(r.msg)) {

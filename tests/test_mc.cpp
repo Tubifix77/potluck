@@ -39,6 +39,7 @@ struct MNode {
     uint32_t epoch = 1;
     bool down = false;
     bool lends = true;
+    bool swallows_calls = false;  // takes every CALL and never answers: the PC's node, whose hub passes it on
     Node* node = nullptr;
     NodeHal hal{};
     Exec exec;
@@ -68,6 +69,7 @@ struct MCell {
     }
     static bool on_call(void* ctx, uint16_t from, uint16_t msg, uint32_t path, const uint8_t* a, uint16_t len) {
         MNode* t = static_cast<MNode*>(ctx);
+        if (t->swallows_calls) return true;
         if (t->lender == nullptr) return false;
         return t->lender->on_call(from, msg, path, a, len) == Actor::kCallAccepted;
     }
@@ -292,6 +294,19 @@ TEST(mc, a_unit_whose_answer_never_comes_is_cancelled_at_its_deadline_and_run_ag
     CHECK_EQ(static_cast<unsigned>(r.local_units + r.lent_units), 60u);
 }
 
+
+TEST(mc, a_peer_that_never_answers_is_left_alone_after_two_overdue_units) {
+    // Found on the real cell (2026-10-31): every run sent units to the PC's node, which runs no lender and whose
+    // hub answers nothing, so each went overdue and was redone -- 4 a run, each a deadline's wait. Node 1 here takes
+    // every unit and never answers, from the start of a long run: after two overdue it gets no more.
+    MCell c(960);
+    c.run(3000);
+    c.n[1].swallows_calls = true;
+    c.run_job(true, 300000);
+    const McJobActor::Result r = c.job->last();
+    CHECK_EQ(static_cast<unsigned>(r.overdue), 2u);  // the two it held when the first deadline passed, and no more
+    CHECK_EQ(r.hits, expected_hits(960));
+}
 
 TEST(mc, the_control_resource_starts_and_stops_a_run_and_a_stopped_runs_units_are_not_counted) {
     // M22: the hub starts and stops the demo job by writing node-<id>/job/mc/run (1 lend, 2 alone, 3 stop).
