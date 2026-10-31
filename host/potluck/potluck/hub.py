@@ -1421,7 +1421,12 @@ class Model:
             if bridged_pin:
                 # 2026-10-30: held by a node on the hub's node port (a tablet's inbox), which no NODE_STATUS lists: it
                 # runs while that node is attached, and its outputs say whether it works.
-                running = [f"{pin:04x}"] if pin in (getattr(self.hub, "bridged", {}) or {}) else []
+                # M29: or logged in to a board's own node port instead -- then the hub does not hold it, and its outputs
+                # arriving fresh through the cell say it is there.
+                via_hub = pin in (getattr(self.hub, "bridged", {}) or {})
+                via_board = any(quality.get(p) == "GOOD" for b in m.actors if m.placement_of(b) == pin
+                                for p in actor_reads(m, b, [pin])[1])  # any of its apps: a lender has no outputs
+                running = [f"{pin:04x}"] if (via_hub or via_board) else []
             if portable:
                 # The boards' reconcilers name each portable actor's owner by its output's key: by actor, not by kind.
                 # Found 2026-10-19: two guests of one module -- the store's overheat_alarm on A, the earlier alarm on
@@ -1455,7 +1460,7 @@ class Model:
                 why = "" if ok else "not running on " + ", ".join(n for n in want if n not in running)
                 if bridged_pin and not ok:
                     lab = (getattr(self.cluster, "bridged", {}) or {}).get(pin, f"node-{pin:04x}")
-                    why = f"{lab} ({pin:04x}) is not attached to the hub"
+                    why = f"{lab} ({pin:04x}) is in the cell neither through the hub nor through a board"
             if a.module == "builtin:present" and running == ["00fe"]:
                 # 2026-10-21: the PC's host node holds the role. Its output reaches the hub as NO_DATA (a board's replica
                 # of an output the PC owns is not refreshed -- open, M0-LOG session 48), so the host node's own report of

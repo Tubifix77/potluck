@@ -2169,8 +2169,10 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         // only, so its frames have one path and no loop. Known by the HELLO's appended MAC, then by the peer entry.
         // And an off-radio member itself (our own address in the wire family) hears the cell only through its board.
         bool wire = is_wire_link(cfg_.mac);
+        const bool hello_wire = f.hdr.opcode == kOpHello && f.payload_len >= kRelayMacTrailer &&
+                                is_wire_link(f.payload + f.payload_len - kRelayMacTrailer);
         if (!wire && f.hdr.opcode == kOpHello && f.payload_len >= kRelayMacTrailer) {
-            wire = is_wire_link(f.payload + f.payload_len - kRelayMacTrailer);
+            wire = hello_wire;
         } else if (!wire) {
             const PeerLink* w = relayed_peer(f.hdr.src);
             wire = w != nullptr && wire_member_[peers_.index_of(w)] && std::memcmp(w->mac, hop->mac, kMacLen) == 0;
@@ -2185,12 +2187,22 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
                 ++relay_counters_.relay_dup;  // we hear this member directly: the direct path wins
                 return;
             }
-            // Its direct path has died; from here on it is reached through the relay.
+            // Its direct path has died; from here on it is reached through the relay -- or, for an off-radio
+            // member, through the board it is logged in to now (M29: the tablet left this board's cable for C's
+            // node port, and this board, the relay, refused its frames for want of the mark).
+            wire_member_[peers_.index_of(d)] = is_wire_link(d->mac);
             std::memcpy(d->mac, hop->mac, kMacLen);
             relayed_[peers_.index_of(d)] = true;
             ++relay_counters_.path_changes;
         }
         p = relayed_peer(f.hdr.src);
+        if (p != nullptr && hello_wire && (std::memcmp(p->mac, hop->mac, kMacLen) != 0 || !wire_member_[peers_.index_of(p)])) {
+            // M29: an off-radio member's HELLO, passed on by another board than before: it moved (B's node port
+            // instead of A's cable or C's). Its next hop is the board that passes it on now.
+            std::memcpy(p->mac, hop->mac, kMacLen);
+            wire_member_[peers_.index_of(p)] = true;
+            ++relay_counters_.path_changes;
+        }
         rx_via_relay_ = true;
     } else if (hop == nullptr && f.hdr.opcode == kOpHello &&
                (f.payload_len == kHelloSignedLen + kRelayMacTrailer || f.payload_len == kHelloBaseLen + kRelayMacTrailer)) {

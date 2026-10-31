@@ -1095,6 +1095,28 @@ class BridgedNode(HubFixture):
         self.assertEqual(self.model._act_owner("potluck://lab/act/phone/steps"), "6300")
         self.assertIsNone(self.model._act_owner("potluck://lab/act/nobody/x"))
 
+    def test_a_tablet_on_a_boards_node_port_runs_its_apps_when_its_values_are_fresh(self) -> None:
+        # M29 on the real cell (2026-11-01): the tablet moved to B's node port, and its five apps read "not attached to
+        # the hub" while its values arrived GOOD through B. Fresh values from any of its apps say it is in the cell.
+        from potluck import manifest as mf
+        from potluck.apply import Package
+
+        doc = {"schema": 1, "system": "lab", "min_core_version": 1,
+               "nodes": [{"node_id": 0x6300, "label": "A"}, {"node_id": 0x00FD, "label": "tablet", "kind": "host"}],
+               "actors": [{"name": "tablet", "module": "builtin:inbox", "latency_class": 4, "pin": 0x00FD,
+                           "config": {"outputs": "battery:f32:percent", "stale_ms": 120000}},
+                          {"name": "lend_tablet", "module": "builtin:mc_lender", "latency_class": 4, "pin": 0x00FD,
+                           "config": {"slots": 2}}]}
+        self.model.package = Package(mf.parse(doc), doc, b"")
+        boards = [{"node": "6300", "state": "alive", "actors": [], "telemetry": None}]
+        fresh = [{"path": "potluck://lab/act/tablet/battery", "quality": "GOOD", "settled_quality": "GOOD"}]
+        stale = [{"path": "potluck://lab/act/tablet/battery", "quality": "STALE", "settled_quality": "STALE"}]
+        apps = {a["name"]: a for a in self.model._apps_json(boards, fresh)}
+        self.assertEqual((apps["tablet"]["running_on"], apps["lend_tablet"]["running_on"]), (["00fd"], ["00fd"]))
+        apps = {a["name"]: a for a in self.model._apps_json(boards, stale)}
+        self.assertEqual(apps["lend_tablet"]["running_on"], [])
+        self.assertIn("neither through the hub nor through a board", apps["lend_tablet"]["detail"])
+
     def test_a_node_that_falls_silent_is_dropped(self) -> None:
         # Wi-Fi gone with no close: the socket stays up, so silence is what tells (hub_bridge.IDLE_S)
         from unittest import mock
