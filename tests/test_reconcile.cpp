@@ -75,6 +75,7 @@ struct RCell {
     size_t drop_from = SIZE_MAX, drop_to = SIZE_MAX;
     uint8_t drop_op = 0;
     uint32_t drop_until_us = 0;
+    uint32_t drop_path = 0;  // with drop_op kOpCast: only casts of this path (0: any)
 
     bool deaf_pair(size_t a, size_t b) const {
         for (const auto& d : deaf) {
@@ -276,8 +277,10 @@ struct RCell {
             const bool blocked = hello && now_us < hello_blocked_until_us &&
                                  (f.from == hello_blocked || f.to == hello_blocked);
             // One direction, one opcode, for a while: a lossy relay that loses a claim while heartbeats get through.
+            uint32_t path = 0;
+            if (f.data.size() >= kHeaderSize + 4) std::memcpy(&path, f.data.data() + kHeaderSize, 4);
             const bool dropped = f.from == drop_from && f.to == drop_to && f.data.size() > 6 && f.data[6] == drop_op &&
-                                 now_us < drop_until_us;
+                                 now_us < drop_until_us && (drop_path == 0 || path == drop_path);
             const bool heard = !to.down && to.node != nullptr && !deaf_pair(f.from, f.to) && !blocked && !dropped;
             if (heard) to.node->on_rx(from.mac, f.data.data(), f.data.size(), now_us, -50);
             if (!f.bcast && !from.down && from.node != nullptr) from.node->on_tx_done(to.mac, heard, now_us);
@@ -698,6 +701,43 @@ TEST(reconcile, a_node_that_comes_back_and_takes_the_actor_over_resumes_from_the
     CHECK_EQ(c.runner(), 1);  // back where it wants to be
     CHECK(g_ck_had[1]);       // and it resumed instead of starting over
     CHECK_EQ(g_ck_loaded[1], g_ck_last_saved[0]);
+    g_ck_save_once = false;
+}
+
+TEST(reconcile, a_holder_hands_its_checkpoint_over_with_the_actor_even_if_the_first_copy_was_lost) {
+    // Found on the real cell (2026-10-31): the tablet held a guest while B was off; B came back, and the
+    // checkpoint the tablet sent when it first saw B was lost -- B had not admitted the tablet yet (its HELLO comes
+    // through A's relay) -- so B took the actor over from its own flash copy, minutes old. The release now carries
+    // the checkpoint too: the node it releases to has sent a settled claim set, so it hears the holder.
+    std::memset(g_ck_had, 0, sizeof(g_ck_had));
+    std::memset(g_ck_last_saved, 0, sizeof(g_ck_last_saved));
+    g_ck_save_once = true;
+    RCell c;
+    saver_specs(c, 2);
+    c.specs[0].place.gravity[0] = 1;
+    c.specs[0].place.gravity[1] = 9;
+    c.build(2, {});
+    c.run(8000);
+    c.kill(1);
+    c.run(6000);
+    CHECK_EQ(c.runner(), 0);
+    CHECK(g_ck_last_saved[0] > 0);
+    const uint32_t released_before = c.nodes[0].rec->view(0).released;
+    c.drop_from = 0;
+    c.drop_to = 1;
+    c.drop_op = kOpCast;
+    c.drop_path = kCheckpointPath;
+    c.drop_until_us = UINT32_MAX;  // every checkpoint from the holder is lost -- until it releases
+    c.revive(1);
+    g_ck_had[1] = false;
+    c.run(10000, [&] {
+        if (c.drop_until_us == UINT32_MAX && c.nodes[0].rec->view(0).released > released_before) c.drop_until_us = c.now_us;
+    });
+    CHECK(c.drop_until_us != UINT32_MAX);  // it released
+    CHECK_EQ(c.runner(), 1);
+    CHECK(g_ck_had[1]);
+    CHECK_EQ(g_ck_loaded[1], g_ck_last_saved[0]);
+    c.drop_path = 0;
     g_ck_save_once = false;
 }
 

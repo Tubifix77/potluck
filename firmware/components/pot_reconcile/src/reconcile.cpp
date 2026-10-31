@@ -677,6 +677,11 @@ void Reconciler::decide(size_t i, uint32_t now) {
             // handover follows; it starts again under a fresh term.
             const PeerClaims* c = claims_of(ranked[0]);
             if (c != nullptr && c->settled && c->term[i] == 0) {
+                // The checkpoint goes with the actor: the copy sent when this node appeared may have been lost
+                // before it admitted us (found 2026-10-31: the tablet's, through A's relay, so B resumed from its
+                // own minutes-old flash copy). Its settled claim set says it hears us now; this cast goes ahead
+                // of the claim set that releases the actor.
+                if (s.ck_have) ck_send(s, ranked[0]);
                 stop(i, 2);
                 s.released_to = ranked[0];
                 ++s.released;
