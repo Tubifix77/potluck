@@ -2083,8 +2083,7 @@ void link_task(void*) {
             xSemaphoreGive(g_mutex);
             if (watch.tick(nt, ok, fail)) {
                 std::printf("{\"t\":\"radio_poor\",\"node\":%u,\"up_ms\":%lu,\"acked\":%lu,\"failed\":%lu,"
-                            "\"action\":\"restart\"}
-",
+                            "\"action\":\"restart\"}\n",
                             static_cast<unsigned>(g_node->config().node_id), static_cast<unsigned long>(nt),
                             static_cast<unsigned long>(watch.last_ok()), static_cast<unsigned long>(watch.last_fail()));
                 std::fflush(stdout);
