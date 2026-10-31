@@ -803,9 +803,16 @@ class Bridge(unittest.TestCase):
                          {"node_id": 0x00FD, "label": "tablet", "kind": "host", "placement": True},
                          {"node_id": 0x00FE, "label": "pc", "kind": "host", "placement": True}],
                "actors": [{"name": "t", "module": "guest:overheat_alarm", "latency_class": 4,
-                           "needs": ["potluck://lab/node-8160/hw/die_temp"], "config": {}}]}
+                           "nodes": [0x8160, 0x00FD, 0x00FE],
+                           "needs": ["potluck://lab/node-8160/hw/die_temp"], "config": {}},
+                          {"name": "u", "module": "guest:overheat_alarm", "latency_class": 4,
+                           "needs": ["potluck://lab/node-8160/hw/die_temp"], "config": {}},
+                          {"name": "p", "module": "builtin:present", "latency_class": 4,
+                           "config": {"broker": "192.168.0.77:8883", "hub": True}}]}
         m = mf.parse(doc)
         self.assertEqual(rc.eligible(m, m.actors[0]), [(0x8160, 2), (0x00FD, 1)])  # C first (its input), the tablet next
+        self.assertEqual(rc.eligible(m, m.actors[1]), [(0x8160, 2)])  # a guest that does not name the tablet: never on it
+        self.assertEqual(rc.eligible(m, m.actors[2]), [(0x8160, 1), (0x00FE, 255)])  # the presenter: never the tablet
         doc["nodes"][1]["placement"] = False
         m = mf.parse(doc)
         self.assertEqual(rc.eligible(m, m.actors[0]), [(0x8160, 2)])  # a tablet that does not opt in runs none

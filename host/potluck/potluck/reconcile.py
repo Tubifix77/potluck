@@ -96,11 +96,14 @@ def eligible(m: Manifest, a: ActorSpec) -> list[tuple[int, int]]:
             continue  # M20: placed only among its own nodes (one per room)
         if n.kind == "host" and not n.placement:
             continue  # M8: a host that only offers named services; M10's placement hosts opt in
-        hub_presents = a.module == "builtin:present" and bool(a.config.get("hub"))
+        bridged = n.kind == "host" and BRIDGED_FIRST <= n.node_id <= BRIDGED_LAST
+        # Only the PC's node has a presenter row: a bridged node listed for it refuses the whole portable part
+        # (2026-10-31, the tablet -- as pot_hostnode did in M14)
+        hub_presents = a.module == "builtin:present" and bool(a.config.get("hub")) and not bridged
         # 2026-10-31: a node the hub bridges (a tablet) runs guests in its own copy of the boards' sandbox, from the
-        # same source, when it opts in to placement -- unlike the PC's node, which has no sandbox
-        bridged_guest = (a.module.startswith("guest:") and n.kind == "host" and n.placement and
-                         BRIDGED_FIRST <= n.node_id <= BRIDGED_LAST)
+        # same source, when it opts in to placement -- unlike the PC's node, which has no sandbox. Only a guest whose
+        # own `nodes` names it: one opt-in would otherwise list it for every guest at the boards' gravity
+        bridged_guest = bridged and a.module.startswith("guest:") and n.placement and n.node_id in a.nodes
         if n.kind == "host" and a.module not in HOST_MODULES and not hub_presents and not bridged_guest:
             # A placement host runs only what pot_hostnode has a row for. M7 already kept guests (the boards'
             # sandbox) off it; M14 found the rest on the bench: an app's external actors and the presenter listed the
