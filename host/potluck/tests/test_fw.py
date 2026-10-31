@@ -101,5 +101,36 @@ class Targets(unittest.TestCase):
             fw.resolve_targets(None, None, 0x2A10, rollout=True)
 
 
+class PassedOnUnreachable(unittest.TestCase):
+    """2026-10-31: the board passing a step on answers "unreachable" now and then (its radio would not take it just
+    then); a BEGIN or a CHUNK is sent again, a few times, rather than stopping the rollout."""
+
+    @staticmethod
+    def reply(status: int) -> bytes:
+        return struct.pack("<HHIIIB", status, 0x7368, 0, 93, 93, 1) + bytes(32)
+
+    def bridge(self, answers):
+        sent = []
+
+        class B:
+            def deploy_step(self, op, payload, timeout):
+                sent.append(op)
+                return answers.pop(0)
+        return B(), sent
+
+    def test_a_chunk_is_sent_again_and_a_lasting_one_is_reported(self):
+        from unittest import mock
+        with mock.patch.object(fw, "UNREACHABLE_WAIT_S", 0.0):
+            b, sent = self.bridge([self.reply(10), self.reply(10), self.reply(0)])
+            r = fw._step(b, fw.fr.Op.FW_CHUNK, b"")
+            self.assertEqual((r["status"], len(sent)), ("ok", 3))
+            b, sent = self.bridge([self.reply(10)] * (fw.UNREACHABLE_RETRIES + 1))
+            r = fw._step(b, fw.fr.Op.FW_CHUNK, b"")
+            self.assertEqual((r["status"], len(sent)), ("unreachable", fw.UNREACHABLE_RETRIES + 1))
+            b, sent = self.bridge([self.reply(10)])  # a commit is not repeated: the board may be checking it still
+            self.assertEqual(fw._step(b, fw.fr.Op.FW_COMMIT, b"", tries=1)["status"], "unreachable")
+            self.assertEqual(len(sent), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

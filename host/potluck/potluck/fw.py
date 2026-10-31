@@ -82,16 +82,32 @@ def parse_reply(raw: bytes) -> dict:
             "floor": floor, "state": STATE.get(state, str(state)), "version": version}
 
 
+#: 2026-10-31: how often a BEGIN or a CHUNK is sent again when the board passing it on answers "unreachable", and how
+#: long apart. That answer is the forwarding board's own: its radio would not take the step just then (a full send
+#: queue, its request slots in use) -- found when every rollout to B stopped hundreds of chunks in, with the cell healthy.
+#: A board takes a repeat of its last chunk as the retransmission it is (FwReceiver::chunk), so sending again is safe.
+UNREACHABLE_RETRIES, UNREACHABLE_WAIT_S = 5, 0.2
+
+
 def _step(b, op: int, payload: bytes, timeout: float = 3.0, tries: int = 3) -> dict:
     from .bridge import RequestTimeout
 
-    for k in range(tries):
+    passed_on = 0
+    k = 0
+    while True:
         try:
-            return parse_reply(b.deploy_step(op, payload, timeout=timeout))
+            r = parse_reply(b.deploy_step(op, payload, timeout=timeout))
         except RequestTimeout:
-            if k == tries - 1:
+            k += 1
+            if k >= tries:
                 raise
-    raise FwError("unreachable")
+            continue
+        if (r["status"] == "unreachable" and op in (fr.Op.FW_BEGIN, fr.Op.FW_CHUNK)
+                and passed_on < UNREACHABLE_RETRIES):
+            passed_on += 1
+            time.sleep(UNREACHABLE_WAIT_S * passed_on)
+            continue
+        return r
 
 
 def status(b, target: int) -> dict:
