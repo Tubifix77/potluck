@@ -18,7 +18,7 @@
 namespace pot::pocket {
 
 constexpr size_t kMaxBoards = 21;  // this board and kMaxPeers (20)
-constexpr size_t kMaxValues = 32;  // the outside section's limit (pot/namespace.hpp kMaxOutside)
+constexpr size_t kMaxValues = 64;  // the outside section's limit (pot/namespace.hpp kMaxOutside)
 
 struct Board {
     uint16_t node = 0;
@@ -68,6 +68,6 @@ size_t render_html(const Snapshot& s, char* out, size_t cap);  // read-only: no 
 size_t render_json(const Snapshot& s, char* out, size_t cap);
 
 // The worst `cap` the two need for a full snapshot, for the board's buffer.
-constexpr size_t kPageMax = 20480;  // M26: with a form beside each writable value (PSRAM on the board)
+constexpr size_t kPageMax = 40960;  // M26: with a form beside each writable value (PSRAM on the board); 64 values
 
 }  // namespace pot::pocket

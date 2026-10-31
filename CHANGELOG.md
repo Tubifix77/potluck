@@ -5,6 +5,9 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **A package may name 64 resources in its outside section** (was 32): the owner's cell needed 34 -- a phone's
+  values, its steering values and the boards' own. Firmware and hub both: a board on older firmware refuses a
+  package with more than 32, so the boards update first (apply does so).
 - **A node from the house network joins the cell through the hub** (the node port; the cluster file's `bridge`):
   a tablet logs in with its own certificate and the hub forwards its frames to the cabled board, which gives it an
   untrusted address -- it signs and tags like a radio board, and the hub vouches for nothing. `hub.bridged` in the

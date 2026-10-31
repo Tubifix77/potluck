@@ -110,8 +110,9 @@ constexpr uint8_t kOutsideExposed = 1u << 0;   // readable from outside
 constexpr uint8_t kOutsideWritable = 1u << 1;  // writable from outside; implies exposed
 constexpr uint8_t kOutsideSafety = 1u << 2;    // safety-relevant: never writable from outside (section 9.3)
 constexpr uint8_t kOutsideMask = kOutsideExposed | kOutsideWritable | kOutsideSafety;
-// The most resources one package can name in its outside section.
-constexpr size_t kMaxOutside = 32;
+// The most resources one package can name in its outside section. 32 until 2026-10-31, when the owner's cell needed
+// 34 (a phone's twelve values, its eight steering values, the boards' own): 5 B of internal RAM per rule.
+constexpr size_t kMaxOutside = 64;
 
 // A valid set of outside flags: no unknown bit, writable only if exposed, never writable and safety-relevant.
 constexpr bool outside_flags_valid(uint8_t f) {

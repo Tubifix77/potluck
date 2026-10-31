@@ -78,7 +78,7 @@ ACCESS_MODES = ("read", "write", "read_write")
 #: M13: what the package lets a system outside the cell do with a resource (the `outside` map).
 OUTSIDE_MODES = ("read", "read_write")
 #: M13: pot/namespace.hpp's kMaxOutside -- the most resources one package's outside section can name.
-MAX_OUTSIDE = 32
+MAX_OUTSIDE = 64
 
 #: M8: what a node is. A `host` (a PC or a Pi running potluck-agent, section 7.1) offers named
 #: services and runs no firmware, so no built-in actor can be placed or pinned on it.
