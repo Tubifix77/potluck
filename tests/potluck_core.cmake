@@ -53,6 +53,7 @@ add_library(pot_portable STATIC
   "${POT_FIRMWARE}/components/pot_trust/src/trust.cpp"
   "${POT_FIRMWARE}/components/pot_trust/src/hello_auth.cpp"
   "${POT_FIRMWARE}/components/pot_trust/src/frame_auth.cpp"
+  "${POT_FIRMWARE}/components/pot_trust/src/node_port.cpp"
   "${POT_FIRMWARE}/components/pot_reconcile/src/reconcile.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/svc_client.cpp"
   "${POT_FIRMWARE}/components/pot_actors/src/actor_runtime.cpp"

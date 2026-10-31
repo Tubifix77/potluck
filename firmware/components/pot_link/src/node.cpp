@@ -378,6 +378,7 @@ bool Node::reclaim_dead_peer() {
     q.reset();
     auth_[victim] = PeerAuth{};
     relayed_[victim] = false;
+    wire_member_[victim] = false;
     peer_groups_[victim] = 0;
     move_rx_last_[victim] = 0;
     peer_caps_[victim] = 0;
@@ -595,7 +596,7 @@ void Node::set_relay(bool on) {
     announce_change();  // the RELAY bit is in HELLO
 }
 
-void Node::relay_hello(const Frame& f, const uint8_t orig_mac[kMacLen]) {
+void Node::relay_hello(const Frame& f, const uint8_t orig_mac[kMacLen], const uint8_t* to) {
     // The original HELLO, header fields unchanged, with the sender's MAC appended (ADR-009).
     uint8_t payload[kHelloSignedLen + kRelayMacTrailer];
     if (f.payload_len > kHelloSignedLen) return;
@@ -612,7 +613,22 @@ void Node::relay_hello(const Frame& f, const uint8_t orig_mac[kMacLen]) {
         FrameError::Ok) {
         return;
     }
-    if (hal_.send != nullptr && hal_.send(hal_.ctx, kBroadcastMacAddr, tx_, n) == 0) ++relay_counters_.hello_forwarded;
+    if (hal_.send != nullptr && hal_.send(hal_.ctx, to != nullptr ? to : kBroadcastMacAddr, tx_, n) == 0) {
+        ++relay_counters_.hello_forwarded;
+    }
+}
+
+void Node::pass_down(const Frame& f, const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len) {
+    if (relay_ || hal_.send == nullptr || is_wire_link(src_mac)) return;
+    for (size_t i = 0; i < PeerTable::capacity(); ++i) {
+        const PeerLink& q = peers_.slot(i);
+        if (q.state != PeerState::Alive || relayed_[i] || !is_wire_link(q.mac)) continue;
+        if (f.hdr.opcode == kOpHello) {
+            relay_hello(f, src_mac, q.mac);  // with the sender's MAC, which its signature covers
+        } else if (hal_.send(hal_.ctx, q.mac, data, len) == 0) {
+            ++relay_counters_.broadcast_forwarded;
+        }
+    }
 }
 
 void Node::announce_change() {
@@ -1151,6 +1167,7 @@ void Node::handle_hello(PeerLink* p, const uint8_t src_mac[kMacLen], const Frame
         }
         auth_[peers_.index_of(p)] = PeerAuth{};  // a reused slot must not inherit its last tenant's key
         relayed_[peers_.index_of(p)] = rx_via_relay_;
+        wire_member_[peers_.index_of(p)] = rx_via_relay_ && is_wire_link(rx_orig_mac_);
         peer_groups_[peers_.index_of(p)] = h.groups;
         emit(EventKind::PeerDiscovered, p, h.boot_epoch);
         // on_rx only accounts a frame against a peer it already knew, so the HELLO that creates the
@@ -2141,8 +2158,18 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
     }
     PeerLink* const hop = p;
     if (hop != nullptr && f.hdr.src != hop->node_id) {
-        // Forwarded by `hop`. Only a declared relay forwards, and a relay never takes a relayed frame.
-        if (relay_ || (peer_caps_[peers_.index_of(hop)] & kHelloCapRelay) == 0) {
+        // Forwarded by `hop`. Only a declared relay forwards, and a relay never takes a relayed frame -- except a
+        // board passing on its own off-radio member (M29, ADR-009 amended): that member is reached through that board
+        // only, so its frames have one path and no loop. Known by the HELLO's appended MAC, then by the peer entry.
+        // And an off-radio member itself (our own address in the wire family) hears the cell only through its board.
+        bool wire = is_wire_link(cfg_.mac);
+        if (!wire && f.hdr.opcode == kOpHello && f.payload_len >= kRelayMacTrailer) {
+            wire = is_wire_link(f.payload + f.payload_len - kRelayMacTrailer);
+        } else if (!wire) {
+            const PeerLink* w = relayed_peer(f.hdr.src);
+            wire = w != nullptr && wire_member_[peers_.index_of(w)] && std::memcmp(w->mac, hop->mac, kMacLen) == 0;
+        }
+        if (!wire && (relay_ || (peer_caps_[peers_.index_of(hop)] & kHelloCapRelay) == 0)) {
             ++relay_counters_.refused;
             return;
         }
@@ -2164,10 +2191,15 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         ++relay_counters_.refused;  // a relayed HELLO from a relay we have not admitted yet
         return;
     }
-    if (relay_ && hop != nullptr && !rx_via_relay_ && !was_broadcast && f.hdr.dst != cfg_.node_id) {
+    PeerLink* const fwd_to = (hop != nullptr && !rx_via_relay_ && !was_broadcast && f.hdr.dst != cfg_.node_id)
+                                 ? any_peer(f.hdr.dst) : nullptr;
+    // M29: our own off-radio member's unicast to the cell, and the cell's to it, go through us relay or not.
+    const bool own_wire = is_wire_link(src_mac) || (fwd_to != nullptr && is_wire_link(fwd_to->mac) &&
+                                                    !relayed_[peers_.index_of(fwd_to)]);
+    if ((relay_ || own_wire) && hop != nullptr && !rx_via_relay_ && !was_broadcast && f.hdr.dst != cfg_.node_id) {
         // Unicast between two members through us: forward it unchanged. Not authenticated here -- the
         // tag is under the two ends' key, which the relay does not hold, and verifies end to end.
-        PeerLink* to = any_peer(f.hdr.dst);
+        PeerLink* to = fwd_to;
         if (to != nullptr && to != hop && !relayed_[peers_.index_of(to)] && hal_.send != nullptr &&
             hal_.send(hal_.ctx, to->mac, data, len) == 0) {
             ++relay_counters_.unicast_forwarded;
@@ -2176,7 +2208,7 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
         }
         return;
     }
-    const bool rebroadcast = relay_ && hop != nullptr && !rx_via_relay_ && was_broadcast &&
+    const bool rebroadcast = (relay_ || is_wire_link(src_mac)) && hop != nullptr && !rx_via_relay_ && was_broadcast &&
                              (f.hdr.opcode == kOpHeartbeat || f.hdr.opcode == kOpSafeState ||
                               f.hdr.opcode == kOpChannel);
 
@@ -2259,12 +2291,21 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
                 std::memcpy(rx_orig_mac_, src_mac, kMacLen);
             }
             handle_hello(p, src_mac, fh, rssi);
-            if (relay_ && !rx_via_relay_) {
-                // Forward a member's HELLO only once we have admitted (and, if required, verified) it.
+            if ((relay_ || is_wire_link(src_mac)) && !rx_via_relay_) {
+                // Forward a member's HELLO only once we have admitted (and, if required, verified) it -- the
+                // relay's members, or our own off-radio member (M29).
                 PeerLink* q = direct_peer(src_mac);
                 const PeerAuth* qa = peer_auth(q);
                 if (q != nullptr && q->node_id == f.hdr.src && (!trust_required() || (qa != nullptr && qa->verified))) {
                     relay_hello(f, src_mac);
+                }
+            }
+            if (!rx_via_relay_) {
+                // M29: a verified radio member's HELLO, with its MAC, to the off-radio members we serve.
+                PeerLink* q = direct_peer(src_mac);
+                const PeerAuth* qa = peer_auth(q);
+                if (q != nullptr && q->node_id == f.hdr.src && (!trust_required() || (qa != nullptr && qa->verified))) {
+                    pass_down(f, src_mac, data, len);
                 }
             }
             break;
@@ -2300,6 +2341,10 @@ void Node::on_rx(const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len
     }
     if (rebroadcast && hal_.send != nullptr && hal_.send(hal_.ctx, kBroadcastMacAddr, data, len) == 0) {
         ++relay_counters_.broadcast_forwarded;  // unchanged, after our own processing of it
+    }
+    if (hop != nullptr && !rx_via_relay_ && was_broadcast &&
+        (f.hdr.opcode == kOpHeartbeat || f.hdr.opcode == kOpSafeState || f.hdr.opcode == kOpChannel)) {
+        pass_down(f, src_mac, data, len);  // M29: the cell's beacons to the off-radio members we serve
     }
 }
 

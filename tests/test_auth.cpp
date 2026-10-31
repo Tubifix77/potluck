@@ -958,6 +958,60 @@ TEST(auth, through_the_relay_admission_is_verified_end_to_end_and_a_write_lands)
     CHECK(g.auth_counters().tags_ok > 0u);
 }
 
+TEST(auth, a_board_passes_on_its_own_off_radio_member_with_no_relay_in_the_cell) {
+    // M29: a tablet logged in to C's node port (or the PC's node on A's cable) is reached through that board only.
+    // Each board passes on its own off-radio members -- their HELLO with its MAC, their beacons, unicast both ways --
+    // with no cell relay: one path per member, so nothing can arrive twice (ADR-009, amended 2026-10-31). Here nobody
+    // has the relay role; A and B hear the tablet only through C, verify it end to end, and a write lands on it.
+    TestCa ca(1);
+    AuthCell c;
+    std::vector<std::unique_ptr<Identity>> ids;
+    for (uint16_t i = 0; i < 3; ++i) {
+        ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, static_cast<uint16_t>(0x100 + i),
+                                                                   static_cast<uint8_t>(0x11 * (i + 1)))));
+    }
+    ids.push_back(std::make_unique<Identity>(enrolled_identity(ca, 0x00FD, 0x77)));
+    c.build(std::move(ids), true);
+    const uint8_t wire_prefix[4] = {0x02, 0x00, 0x00, 0x01};
+    for (size_t i = 0; i < 4; ++i) {  // every board knows the untrusted family, as m0_main configures it
+        AuthNode& t = c.nodes[i];
+        delete t.node;
+        if (i == 3) {
+            const uint8_t tablet_mac[6] = {0x02, 0x00, 0x00, 0x01, 0x00, 0xFD};
+            std::memcpy(t.mac, tablet_mac, 6);
+        }
+        NodeConfig cfg;
+        cfg.node_id = i == 3 ? static_cast<uint16_t>(0x00FD) : static_cast<uint16_t>(0x100 + i);
+        cfg.boot_epoch = 1;
+        std::memcpy(cfg.mac, t.mac, kMacLen);
+        cfg.hello_interval_ms = 500;
+        cfg.has_wire_mac = true;
+        std::memcpy(cfg.wire_mac, wire_prefix, 4);
+        cfg.wire_mac_len = 4;
+        t.node = new Node(cfg, t.hal);
+        t.node->set_trust(t.id.get(), true);
+    }
+    c.deaf.push_back({0, 3});
+    c.deaf.push_back({1, 3});
+    declare_setpoint(*c.nodes[3].node, 0x00FD);
+    c.start_all();
+    c.advance_ms(6000);
+    for (size_t i = 0; i < 3; ++i) CHECK(!c.nodes[i].node->relay());
+    for (size_t i = 0; i < 2; ++i) {
+        Node& n = *c.nodes[i].node;
+        const PeerLink* pt = peer_by_id(n, 0x00FD);
+        CHECK(pt != nullptr && pt->state == PeerState::Alive && n.peer_relayed(pt));
+        const Node::PeerAuth* pa = n.peer_auth(pt);
+        CHECK(pa != nullptr && pa->verified);
+    }
+    const PeerLink* tc = peer_by_id(*c.nodes[3].node, 0x100);
+    CHECK(tc != nullptr && tc->state == PeerState::Alive);
+    c.nodes[0].node->request_write(0x00FD, kSetpoint, Value::of_i32(55));
+    c.advance_ms(100);
+    CHECK_EQ(setpoint_of(*c.nodes[3].node), 55);
+    CHECK_EQ(c.nodes[3].node->auth_counters().bad_tag, 0u);
+}
+
 TEST(auth, a_board_erased_and_re_enrolled_is_admitted_again_though_its_epoch_restarted) {
     // Found on the bench (M0-LOG session 27): board B's flash was erased for M6.1's step 0 and B was
     // re-enrolled. The erase took its boot-epoch counter too, so B came back at a LOWER epoch than A

@@ -728,6 +728,7 @@ Each ADR is a closed decision with the observation that would reopen it.
 - **Capture and replay are unchanged:** the host taps frames at its own board, where relayed frames arrive as ordinary frames, so a relayed session replays to the same digest.
 *Rationale:* A second hop is the honest answer to a range cliff, rather than a stronger antenna; a star needs no hop count, so loops cannot form and the header does not change. Multi-hop would need a TTL — a wire-format change — and a routing protocol, which is the scope expansion §14 warns about.
 *Revisit when:* A named system needs a member **two** hops from the cell, or more than one relay in a cell. At that point design the routed profile §5.3 names — not a second relay hop.
+*Amended 2026-10-31 (M29, when its revisit trigger fired: a tablet logged in to C's own station while the PC's node is cabled to A needs two boards forwarding at once).* A second, narrower forwarding beside the relay, still star-only and one hop: **every board passes on its own off-radio members** -- the nodes reached through it alone, over its cable or its node port, whose addresses are in the untrusted wire family (`02:00:00:01:<id>`) -- whether or not it is the cell's relay: their `HELLO` (with their MAC appended, as a relay does), their beacons, and unicast both ways; and it copies the cell's verified `HELLO`s and beacons down to them when it is not the relay (whose re-broadcast reaches them anyway). A receiver takes such a forwarded frame from that board alone (the `HELLO`'s appended MAC is in the wire family; afterwards the peer entry remembers it), and an off-radio member takes what its board passes on. Why it is not a second relay: each such member has exactly one path, through the board it is logged in to, so nothing can arrive twice and no loop can form; radio members are never forwarded this way, and a board never forwards a forwarded frame. The relay, the two-relays rule and the routed profile's trigger for radio members are unchanged.
 
 ---
 
@@ -1327,6 +1328,29 @@ against a GPIO's, whether it needs a transistor) before that code. Then a room's
 every PC off and a board gone -- the first half of the side-by-side with ESPHome, MQTT and Home Assistant that the
 external review asked for, which the PC's speakers cannot give.
 
+
+**M29 — a member with no PC: the node port on a board's own station.** *(Planned 2026-10-31 at the owner's word,
+from potluck-android: "why does the tablet depend on the PC when a weaker board stands alone?")* A tablet cannot send
+ESP-NOW (no unrooted Android can), so today it joins through the hub's node port, and the cell's tablet goes when the PC
+does. Section 5.3's routed Wi-Fi profile is not needed for that: a board whose own station is on the house network (C,
+the `wifi` module) serves **the same node port** on its station's address -- TCP, COBS + CRC-16 Potluck Frames, the same
+login (the node's certificate from the cell's CA and its signature over a challenge, `hub_bridge.py`), the same answer
+`ok <node> <board> <board MAC>`, and the same untrusted address family (`02:00:00:01:<id>`), so the node signs and tags as
+a radio board does and every member checks it. The board stands where the hub and the cabled board stand now; nothing
+above the transport changes, and the tablet dials a board first and the hub second. Which nodes may log in: a host
+certificate from the cell's CA with an id in `00f0`..`00fd` (the cluster file's `bridge.nodes`, as the hub has it, would
+need the package to carry them -- the certificate is the cell's word already). A board serves the port only while its
+station is associated on the cell's channel and has an address, and publishes the address as `node-<id>/sys/nodeport`
+(the hub shows it), so the node finds a board from the cell itself. What this cannot do, stated plainly: a board's
+station and its ESP-NOW share one radio on one channel, so the port is only where the house network's access point is
+on the cell's channel (the cell follows its channel authority, M13); a board with no station serves nothing; and the
+node's frames cost the serving board's radio what they cost the cabled board's today. *Acceptance:* (1) with the PC's
+hub stopped, the tablet logs in to C, every board admits it, its inbox values read GOOD on A and B; (2) it lends cores
+to a job on A and takes a guest when its board goes, as through the hub; (3) C's station dropped: the tablet falls back
+to the hub within its window plus 15 s; (4) 30 minutes with the tablet on C raise no link's heartbeat loss by more than
+one point. *Bound:* at most 512 B of new static internal RAM (the server's task and buffers in PSRAM; 2.0 KB are left).
+*Kill:* if serving the port wedges C's radio (NO_MEM, tx_dead) more than once in a day that it would not have otherwise
+-- then the tablet stays on the hub and the PC-free member waits for a board with a second radio.
 ## 14. Risk register
 
 | Risk | Likelihood | Impact | Mitigation |

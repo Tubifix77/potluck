@@ -59,6 +59,7 @@ add_executable(pot_tests
   test_trust.cpp
   test_auth.cpp
   test_frame_auth.cpp
+  test_node_port.cpp
   test_reconcile.cpp
   test_svc_client.cpp
   test_actor_runtime.cpp

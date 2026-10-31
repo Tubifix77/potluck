@@ -731,9 +731,15 @@ class Node {
     PeerLink* direct_peer(const uint8_t mac[kMacLen]);
     PeerLink* relayed_peer(uint16_t node_id);
     PeerLink* any_peer(uint16_t node_id);
-    void relay_hello(const Frame& f, const uint8_t orig_mac[kMacLen]);
+    void relay_hello(const Frame& f, const uint8_t orig_mac[kMacLen], const uint8_t* to = nullptr);
+    // M29: a copy of a radio member's broadcast to each off-radio member we serve, when we are not the relay (whose
+    // re-broadcast reaches them anyway).
+    void pass_down(const Frame& f, const uint8_t src_mac[kMacLen], const uint8_t* data, size_t len);
     bool relay_ = false;
     bool relayed_[kMaxPeers]{};
+    // M29 (ADR-009 amended 2026-10-31): a relayed peer whose own address is in the untrusted wire family -- a node
+    // from the house network, passed on by the board it is logged in to, which need not be the cell's relay.
+    bool wire_member_[kMaxPeers]{};
     uint16_t groups_ = 0;                  // M19: ours, low byte first -- the package's, then a role's
     uint8_t base_groups_[2]{};             // M19: the package's (set_groups)
     uint32_t base_window_ms_[2]{};
