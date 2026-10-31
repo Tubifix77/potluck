@@ -148,7 +148,10 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   "attached", "since_at", "epoch", "from"}]` -- `since_at` when it last came or went, `epoch` its boot epoch
   and `from` its address while attached. Like the PC's node it is a member, not a board: its link is each board's
   `links[]` entry with its id as `peer`, its values are `resources` (an inbox pinned to it reads like any), and an
-  app pinned to it is `running_on` `["00fd"]` while it is attached.
+  app pinned to it is `running_on` `["00fd"]` while it is attached. `lend` (2026-10-31): its lender's counters,
+  `{accepted, refused, served, unit_ms}` as a board's `telemetry.lend`, or `null` -- asked (TELEMETRY's compute
+  section, passed on by the cabled board) only while it is attached and the package pins a `builtin:mc_lender` to
+  it; in `cell.jobs[].lenders[]` it appears by its id and the cluster file's label.
 - `hub.starting`: `true` while the hub has not yet seen the whole cell once -- some board has not answered, or some
   resource is still `STARTING` (below) -- and never longer than 30 s after its first look at the cell (a hub restarted
   after being killed first waits out its old lease, up to a minute, serving nothing). Meanwhile an app not

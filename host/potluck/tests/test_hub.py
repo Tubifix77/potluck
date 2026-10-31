@@ -1095,6 +1095,37 @@ class BridgedNode(HubFixture):
             finally:
                 s.close()
 
+    def test_a_lending_tablet_has_its_counters_and_its_label(self) -> None:
+        # 2026-10-31: only a bridged node the package pins a lender to is asked; its counters go on its entry
+        import types
+
+        from potluck import manifest as mf
+        from potluck.apply import Package
+
+        doc = {"schema": 1, "system": "lab", "min_core_version": 1,
+               "nodes": [{"node_id": 0x6300, "label": "A"}, {"node_id": 0x00FD, "label": "tablet", "kind": "host"}],
+               "actors": [{"name": "lend_tablet", "module": "builtin:mc_lender", "latency_class": 4, "pin": 0x00FD,
+                           "config": {"slots": 2}}]}
+        self.model.package = Package(mf.parse(doc), doc, b"")
+        self.model.cluster = types.SimpleNamespace(boards=[(0x6300, "A")], bridged={0x00FD: "Tablet"})
+        self.assertEqual(self.model._lending_bridged(), {0x00FD})
+        self.assertEqual(self.model.label_of(0x00FD), "Tablet")
+        s, answer = self.login()
+        try:
+            deadline = time.time() + 2
+            while time.time() < deadline and 0x00FD not in self.hub.bridged:
+                time.sleep(0.02)
+            self.model.bridged_compute[0x00FD] = {"lender": {"accepted": 7, "refused": 1, "served": 6, "unit_ms": 250},
+                                                  "job": None}
+            b = self.model._bridged_json()
+            self.assertEqual(b[0]["lend"], {"accepted": 7, "refused": 1, "served": 6, "unit_ms": 250})
+        finally:
+            s.close()
+        deadline = time.time() + 3
+        while time.time() < deadline and self.hub.bridged:
+            time.sleep(0.05)
+        self.assertIsNone(self.model._bridged_json()[0]["lend"])  # detached: no counters shown as current
+
     def test_a_good_login_waits_for_the_cabled_boards_address(self) -> None:
         self.cable = None  # the hub has not read the cabled board's NODE_STATUS yet (or it runs older firmware)
         s, answer = self.login()

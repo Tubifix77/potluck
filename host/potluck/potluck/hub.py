@@ -558,6 +558,7 @@ class Model:
         self.telemetry_period_ms = telemetry_period_ms
         self._telemetry_due = 0.0
         self.telemetry_counts = {"pulls": 0, "replies": 0, "failures": 0, "events": 0}
+        self.bridged_compute: dict[int, dict | None] = {}  # 2026-10-31: a lending bridged node's compute section
         self.job_times: dict[int, dict[str, tuple[int, int]]] = {}  # M22: a board's last finished run of each kind
         self._services = None  # M23: (system, names, PcServices) -- kept while the cluster file names the same ones
         hub.services_for = self.pc_services
@@ -598,6 +599,9 @@ class Model:
             for n, lab in self.cluster.boards:
                 if n == node:
                     return lab
+            lab = (getattr(self.cluster, "bridged", {}) or {}).get(node)  # 2026-10-31: a node the hub bridges
+            if lab is not None:
+                return lab
         return f"node-{node:04x}"
 
     def room_of(self, node: int) -> str | None:
@@ -934,6 +938,31 @@ class Model:
                                        {"peer": f"{e.node:04x}", "a": e.a, "b": e.b, "board_ms": e.at_ms,
                                         "board_seq": e.seq},
                                        at=now_ms - max(0, up_ms - e.at_ms) if earlier else None, earlier=earlier)
+        self._pull_bridged_compute(tm)
+
+    def _lending_bridged(self) -> set[int]:
+        """2026-10-31: the bridged nodes the package pins a lender to (builtin:mc_lender) -- only those are asked."""
+        m = getattr(self.package, "manifest", None)
+        if m is None:
+            return set()
+        out = set()
+        for a in m.actors:
+            pin = m.placement_of(a)
+            if a.module == "builtin:mc_lender" and pin is not None and BRIDGED_FIRST <= pin <= BRIDGED_LAST:
+                out.add(pin)
+        return out
+
+    def _pull_bridged_compute(self, tm) -> None:
+        """2026-10-31: a node on the node port that lends its cores (a tablet) has no NODE_STATUS, but answers the
+        compute section of TELEMETRY, which the cabled board passes on to it as to any board: its lender's counters go
+        on its hub.bridged entry (`lend`), as a board's on boards[].telemetry.lend."""
+        for nid in sorted(self._lending_bridged() & set(getattr(self.hub, "bridged", {}) or {})):
+            try:
+                c = tm.compute(self.hub, nid)
+            except (BridgeError, tm.TelemetryError):
+                c = None  # no answer this time, or a node that does not keep the section
+            with self.lock:
+                self.bridged_compute[nid] = c
 
     def _read_reset(self, n: int) -> str | None:
         """Why board n last started (its sys/reset), by name; None from firmware before 2026-10-16 or no answer. Read
@@ -1067,9 +1096,11 @@ class Model:
         out = []
         for nid in sorted(set(labels) | set(on) | set(left)):
             b = on.get(nid)
+            lend = ((getattr(self, "bridged_compute", {}) or {}).get(nid) or {}).get("lender") if b is not None else None
             out.append({"node": f"{nid:04x}", "label": labels.get(nid, f"node-{nid:04x}"), "attached": b is not None,
                         "since_at": b.since_at if b is not None else left.get(nid),
-                        "epoch": b.epoch if b is not None else None, "from": b.address if b is not None else None})
+                        "epoch": b.epoch if b is not None else None, "from": b.address if b is not None else None,
+                        "lend": lend})
         return out
 
     def _retention_json(self) -> dict:

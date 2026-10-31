@@ -5,6 +5,8 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **A bridged node may lend its cores**: a package may pin `builtin:mc_lender` to it, and the hub shows its
+  lender's counters on its `hub.bridged` entry (`lend`) and its label in a job's lenders.
 - **A package may name 64 resources in its outside section** (was 32): the owner's cell needed 34 -- a phone's
   values, its steering values and the boards' own. Firmware and hub both: a board on older firmware refuses a
   package with more than 32, so the boards update first (apply does so).

@@ -778,6 +778,20 @@ class Bridge(unittest.TestCase):
             with self.subTest(b=b), self.assertRaises(ap.ApplyError):
                 ap.check_bridge(b, self.BOARDS)
 
+    def test_an_inbox_or_a_lender_may_be_pinned_to_a_bridged_node_and_nothing_else_to_a_host(self) -> None:
+        from potluck import manifest as mf
+
+        def doc(module, cfg, node):
+            return {"schema": 1, "system": "lab", "min_core_version": 1,
+                    "nodes": [{"node_id": 0x6300, "label": "A"}, {"node_id": node, "label": "h", "kind": "host"}],
+                    "actors": [{"name": "x", "module": module, "latency_class": 4, "pin": node, "config": cfg}]}
+        for module, cfg in (("builtin:inbox", {"outputs": "battery:f32:percent"}), ("builtin:mc_lender", {"slots": 2})):
+            dp.compile_image(mf.parse(doc(module, cfg, 0x00FD)), 1, ".")  # a bridged node: allowed
+            with self.assertRaises(dp.DeployError):
+                dp.compile_image(mf.parse(doc(module, cfg, 0x00FE)), 1, ".")  # the PC's node: firmware runs built-ins
+        with self.assertRaises(dp.DeployError):
+            dp.compile_image(mf.parse(doc("builtin:die_temp", {}, 0x00FD)), 1, ".")
+
     def test_each_bridged_node_is_one_more_peer_on_every_board(self) -> None:
         c = ap.Cluster.__new__(ap.Cluster)
         c.boards, c.cells, c.foremen, c.parents, c.bridged = list(self.BOARDS), {}, [], {}, {0x00FD: "Tablet"}
