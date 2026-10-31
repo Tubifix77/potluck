@@ -99,4 +99,11 @@ uint32_t pocket_resource_hash(uint16_t node_id, PocketResource r);
 NsDecl pocket_resource_decl(uint16_t node_id, PocketResource r);
 size_t declare_pocket_resources(Namespace& ns, uint16_t node_id);
 
+// M29: where a board serves the node port on its own station -- `sys/nodeport`, U64 (IPv4 address << 16) | TCP port,
+// published only while it serves, so a node from the house network finds a board from the cell itself, with no PC.
+// Declared only on a board whose station started, as the extender's and the pocket page's are.
+uint32_t nodeport_resource_hash(uint16_t node_id);
+NsDecl nodeport_resource_decl(uint16_t node_id);
+size_t declare_nodeport_resource(Namespace& ns, uint16_t node_id);
+
 }  // namespace pot

@@ -1701,6 +1701,12 @@ bool Node::adopt_peer_sys_resource(uint32_t path_hash) {
                 return true;
             }
         }
+        // A board's sys/nodeport (M29), likewise: NO_DATA from a peer that serves no node port.
+        if (nodeport_resource_hash(q.node_id) == path_hash) {
+            if (ns_.declare(nodeport_resource_decl(q.node_id)) != NsError::Ok) return false;
+            ns_.mark_adopted(path_hash, hal_.now_ms ? hal_.now_ms(hal_.ctx) : 0);
+            return true;
+        }
         // A pocket page's sys/pocket/* (2026-10-19), likewise: NO_DATA from a peer whose access point is not up.
         for (size_t k = 0; k < kPocketResourceCount; ++k) {
             const PocketResource which = static_cast<PocketResource>(k);

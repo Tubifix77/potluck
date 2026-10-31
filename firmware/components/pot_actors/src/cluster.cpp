@@ -37,6 +37,7 @@ size_t rename_cluster(Node& node, const char* name) {
     const uint16_t me = node.config().node_id;
     const bool extender = node.ns().find(extender_resource_hash(me, ExtenderResource::Clients)) != nullptr;
     const bool pocket = node.ns().find(pocket_resource_hash(me, PocketResource::Phones)) != nullptr;
+    const bool nodeport = node.ns().find(nodeport_resource_hash(me)) != nullptr;
     for (size_t k = 0; k < n; ++k) {
         for (size_t r = 0; r < kSysResourceCount; ++r) {
             node.ns().remove(sys_resource_hash(ids[k], static_cast<SysResource>(r)));
@@ -47,11 +48,13 @@ size_t rename_cluster(Node& node, const char* name) {
         for (size_t r = 0; r < kPocketResourceCount; ++r) {  // a pocket page's sys/pocket/*, its own or a replica
             node.ns().remove(pocket_resource_hash(ids[k], static_cast<PocketResource>(r)));
         }
+        node.ns().remove(nodeport_resource_hash(ids[k]));  // M29
     }
     set_sys_system(name);
     size_t declared = declare_sys_resources(node.ns(), me);
     if (extender) declared += declare_extender_resources(node.ns(), me);  // declared at boot only where it started
     if (pocket) declared += declare_pocket_resources(node.ns(), me);
+    if (nodeport) declared += declare_nodeport_resource(node.ns(), me);
     return declared;
 }
 

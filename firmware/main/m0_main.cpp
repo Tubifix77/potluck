@@ -29,6 +29,7 @@
 #include "extender.hpp"
 #include "pot/wifi.hpp"
 #include "uplink.hpp"
+#include "node_port_server.hpp"
 #include "pot/boot_epoch.hpp"
 #if CONFIG_POT_CAN
 #include "pot/can_port.hpp"
@@ -367,11 +368,16 @@ int32_t hal_send(void*, const uint8_t mac[kMacLen], const uint8_t* data, size_t 
 #endif
 #if CONFIG_POT_SERIAL_LINK
     if (cable_mac(mac) || bridged_mac(mac)) {
+        // M29: a node logged in to this board's own node port is reached over its socket, not the cable.
+        if (bridged_mac(mac) && nodeport::serves(static_cast<uint16_t>((mac[4] << 8) | mac[5]))) {
+            return nodeport::send_to(static_cast<uint16_t>((mac[4] << 8) | mac[5]), data, len);
+        }
         return serial_port_send(data, len);  // the PC's node, a stub it hosts (M19), a node the hub bridges
     }
     if (std::memcmp(mac, kBroadcastMacAddr, kMacLen) == 0) {
         const uint32_t heard = g_host_heard_ms.load();
         if (heard != 0 && now_ms_() - heard < kHostQuietMs) serial_port_send(data, len);
+        if (nodeport::any()) nodeport::send_all(data, len);  // M29: and to a node on the node port
     }
 #endif
     return radio_send(mac, data, len);
@@ -401,8 +407,10 @@ bool hal_add_peer(void*, const uint8_t mac[kMacLen]) {
 #endif
 #if CONFIG_POT_SERIAL_LINK
     if (cable_mac(mac) || bridged_mac(mac)) {
-        // The UART has no peer list to join; the link either exists or it does not.
-        return serial_port_running();
+        // The UART has no peer list to join; the link either exists or it does not -- and a node on this board's own
+        // node port (M29) has its socket.
+        return serial_port_running() ||
+               (bridged_mac(mac) && nodeport::serves(static_cast<uint16_t>((mac[4] << 8) | mac[5])));
     }
 #endif
     // Channel 0: "use the current channel" (esp_now.h), so peers follow a cell that moves (M5.1).
@@ -1772,6 +1780,7 @@ void link_task(void*) {
     espnow_set_rx_notify(xTaskGetCurrentTaskHandle());
 #if CONFIG_POT_SERIAL_LINK
     serial_port_set_rx_notify(xTaskGetCurrentTaskHandle());
+    nodeport::set_rx_notify(xTaskGetCurrentTaskHandle());
 #endif
     g_node->start();
     if (g_rec != nullptr) {
@@ -1913,6 +1922,18 @@ void link_task(void*) {
                 tee_frame("rx", cmac, 0, sbuf, slen);
                 g_host_heard_ms.store(now_ms_() == 0 ? 1 : now_ms_());  // M10: broadcasts follow it down the cable
                 g_node->on_rx(cmac, sbuf, slen, srecv, 0);
+                xSemaphoreGive(g_mutex);
+            }
+            // M29: frames from a node on this board's own node port, from its wire-family address as the cable's.
+            uint16_t pnode = 0;
+            while (nodeport::rx_pop(sbuf, sizeof(sbuf), slen, pnode)) {
+                uint8_t pmac[kMacLen];
+                std::memcpy(pmac, kBridgedPrefix, sizeof(kBridgedPrefix));
+                pmac[4] = static_cast<uint8_t>(pnode >> 8);
+                pmac[5] = static_cast<uint8_t>(pnode & 0xFF);
+                xSemaphoreTake(g_mutex, portMAX_DELAY);
+                tee_frame("rx", pmac, 0, sbuf, slen);
+                g_node->on_rx(pmac, sbuf, slen, now_us_(), 0);
                 xSemaphoreGive(g_mutex);
             }
         }
@@ -2261,6 +2282,10 @@ void refresh_sys_resources() {
         g_node->publish(pocket_resource_hash(me, PocketResource::Pages), Value::of_u32(pages));
         g_node->publish(pocket_resource_hash(me, PocketResource::Refused), Value::of_u32(refused));
     }
+#if CONFIG_POT_SERIAL_LINK
+    // M29: where this board serves the node port -- published only while it does.
+    if (const uint64_t at = nodeport::published(); at != 0) g_node->publish(nodeport_resource_hash(me), Value::of_u64(at));
+#endif
 }
 
 // One line per namespace entry, so a capture shows what this node offers and what it currently
@@ -4405,6 +4430,17 @@ extern "C" void app_main(void) {
             ESP_LOGE(kTag, "could not add the broadcast peer");
         }
     }
+#if CONFIG_POT_SERIAL_LINK
+    // M29: the node port on this board's own station, for a node from the house network with no PC between.
+    if (espnow_up() && uplink::active() && trust_rt::g_id_boot.enrolled) {
+        nodeport::Hooks nh{};
+        nh.ca_pub = trust_rt::g_id_boot.ca_pub;
+        nh.board_id = cfg.node_id;
+        std::memcpy(nh.board_mac, cfg.mac, kMacLen);
+        nh.run_heavy = &trust_rt::run_heavy;
+        if (nodeport::start(nh)) declare_nodeport_resource(g_node->ns(), cfg.node_id);
+    }
+#endif
 #if CONFIG_POT_POCKET
     // M13.1: the pocket page, after the radio: it adds an access point beside the station ESP-NOW rides on.
     if (espnow_up() && pocket::start(extender::active())) {

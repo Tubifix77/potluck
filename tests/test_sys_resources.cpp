@@ -60,6 +60,8 @@ TEST(sysres, an_extenders_figures_are_its_own_read_only_and_spelled_as_the_host_
 TEST(sysres, a_pocket_pages_figures_are_its_own_read_only_counts_spelled_as_the_host_spells_them) {
     // host/potluck/tests/test_sys_paths.py expects exactly these strings.
     CHECK_EQ(pocket_resource_hash(0x1a2b, PocketResource::Phones), path_hash("potluck://lab/node-1a2b/sys/pocket/phones"));
+    CHECK_EQ(nodeport_resource_hash(0x8160), path_hash("potluck://lab/node-8160/sys/nodeport"));  // M29
+    CHECK(nodeport_resource_decl(0x8160).type == ValueType::U64);
     CHECK_EQ(pocket_resource_hash(0x1a2b, PocketResource::Pages), path_hash("potluck://lab/node-1a2b/sys/pocket/pages"));
     CHECK_EQ(pocket_resource_hash(0x1a2b, PocketResource::Refused),
              path_hash("potluck://lab/node-1a2b/sys/pocket/refused"));

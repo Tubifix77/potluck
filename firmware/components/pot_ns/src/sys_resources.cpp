@@ -196,4 +196,27 @@ size_t declare_pocket_resources(Namespace& ns, uint16_t node_id) {
     return n;
 }
 
+uint32_t nodeport_resource_hash(uint16_t node_id) {
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "potluck://%s/node-%04x/sys/nodeport", g_system, static_cast<unsigned>(node_id));
+    return path_hash(buf);
+}
+
+NsDecl nodeport_resource_decl(uint16_t node_id) {
+    NsDecl d;
+    d.path_hash = nodeport_resource_hash(node_id);
+    d.owner_node = node_id;
+    d.kind = ResourceKind::Sampled;
+    d.access = Access::Read;
+    d.latency_class = kClassL4;
+    d.staleness_policy = StalenessPolicy::Informative;
+    d.staleness_bound_ms = 30000;  // refreshed with the built-ins
+    d.type = ValueType::U64;
+    return d;
+}
+
+size_t declare_nodeport_resource(Namespace& ns, uint16_t node_id) {
+    return ns.declare(nodeport_resource_decl(node_id)) == NsError::Ok ? 1 : 0;
+}
+
 }  // namespace pot
