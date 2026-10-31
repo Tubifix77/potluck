@@ -1428,8 +1428,8 @@ class Model:
                 # B -- read as one app "running on 2 nodes", and the other was not listed at all.
                 from . import reconcile as rc
                 key = f"{path_hash(rc.output_path(m, a)):08x}"
-                seen = [(b["node"], t) for b in boards for t in (b.get("telemetry") or {}).get("actors", [])
-                        if t.get("key") == key]
+                seen = [(b["node"], t) for b in boards if b["state"] == "alive"
+                        for t in (b.get("telemetry") or {}).get("actors", []) if t.get("key") == key]
                 if seen:
                     running = sorted({n for n, t in seen if t.get("running_here") and n in running_here})
             if portable and not running:
@@ -1437,8 +1437,10 @@ class Model:
                 # owner its reconciler accepts (found on the bench: "running on 0 boards" while the PC ran the ticker).
                 from . import reconcile as rc
                 key = f"{path_hash(rc.output_path(m, a)):08x}"
-                owners = {t["owner"] for b in boards for t in (b.get("telemetry") or {}).get("actors", [])
-                          if t["key"] == key}
+                # Only boards alive now: a dead one's last telemetry still names the owner it had (found 2026-10-31: B
+                # powered off kept naming itself, so a tablet running the guest read "running on 0 nodes")
+                owners = {t["owner"] for b in boards if b["state"] == "alive"
+                          for t in (b.get("telemetry") or {}).get("actors", []) if t["key"] == key}
                 if owners == {"00fe"}:
                     running = ["00fe"]
                 elif len(owners) == 1 and BRIDGED_FIRST <= int(next(iter(owners)), 16) <= BRIDGED_LAST:

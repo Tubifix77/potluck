@@ -927,6 +927,27 @@ class TwoGuests(unittest.TestCase):
             b["telemetry"] = None
         self.assertEqual(model._apps_json(boards, [])[0]["running_on"], ["6300", "7368"])
 
+    def test_a_dead_boards_last_telemetry_does_not_hide_a_tablet_running_the_guest(self) -> None:
+        """2026-10-31: B powered off, the tablet took its guest; B's last telemetry still named B, so the hub said
+        "running on 0 nodes"."""
+        from types import SimpleNamespace as NS
+        from potluck import manifest as mf
+        cfg = {"bundle": "x.guest.json", "sha256": "00" * 32, "outputs": "out:f32 alarm:i32 count:i32",
+               "fuel": 100000, "memory_kib": 64, "period_ms": 1000}
+        m = mf.parse({"schema": 1, "system": "lab", "min_core_version": 1,
+                      "nodes": [{"node_id": 0x6300, "label": "A"}, {"node_id": 0x7368, "label": "B"},
+                                {"node_id": 0x00FD, "label": "tablet", "kind": "host", "placement": True}],
+                      "actors": [{"name": "t", "module": "guest:overheat_alarm", "latency_class": 4,
+                                  "nodes": [0x7368, 0x00FD], "config": cfg}]})
+        model = hb.Model(NS(record=None), package=NS(manifest=m))
+        key = f"{hb.path_hash('potluck://lab/act/t/out'):08x}"
+        boards = [{"node": "6300", "state": "alive", "actors": [],
+                   "telemetry": {"actors": [{"key": key, "owner": "00fd", "running_here": False}]}},
+                  {"node": "7368", "state": "dead", "actors": ["guest"],
+                   "telemetry": {"actors": [{"key": key, "owner": "7368", "running_here": True}]}}]
+        [app] = model._apps_json(boards, [])
+        self.assertEqual((app["running_on"], app["working"]), (["00fd"], True))
+
     def test_a_new_package_on_the_boards_is_planned_again(self) -> None:
         from types import SimpleNamespace as NS
         model = hb.Model(NS(record=None), cluster=NS(path="cell.json", boards=[(0x6300, "A")], system="lab"))
