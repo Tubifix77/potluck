@@ -361,6 +361,23 @@ class Library(unittest.TestCase):
         with self.assertRaises(st.SetupError):
             st.set_app(self.p, "nope", True)
 
+    def test_an_actor_is_switched_off_by_name_unless_another_reads_it(self):
+        """2026-10-31, the Desk: no way to remove an actor a fragment declares (the store's had one, nothing else)."""
+        from potluck import apply as ap
+        from types import SimpleNamespace as NS
+        m = NS(system="home", bindings={}, actors=[NS(name="src", needs=()),
+                                                    NS(name="use", needs=("potluck://home/act/src/out",)),
+                                                    NS(name="lone", needs=())])  # the package the cell runs
+        with self.assertRaises(st.SetupError) as cm:
+            st.set_actor_off(self.p, "src", True, m)
+        self.assertIn("use reads src", str(cm.exception))
+        with self.assertRaises(st.SetupError):
+            st.set_actor_off(self.p, "nope", True, m)
+        self.assertEqual(st.set_actor_off(self.p, "lone", True, m), ["lone"])
+        self.assertEqual(ap.load_cluster(str(self.p)).off, ("lone",))
+        self.assertEqual(st.set_actor_off(self.p, "lone", False, m), [])
+        self.assertNotIn("package", json.loads(self.p.read_text(encoding="utf-8")))  # nothing left behind
+
     def test_what_the_outside_may_see_and_control_in_either_path_form(self):
         out = st.set_outside(self.p, {"potluck://home/act/rf_fusion/out": "read"})
         self.assertEqual(out["act/rf_fusion/out"], "read")

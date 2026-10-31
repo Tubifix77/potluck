@@ -480,6 +480,41 @@ def set_app(cluster: str | Path, name: str, enabled: bool) -> None:
     _write_cluster(p, doc)
 
 
+def set_actor_off(cluster: str | Path, name: str, off: bool, manifest=None) -> list[str]:
+    """2026-10-31 (the Desk): an actor out of the package by name, or back in -- the cluster file's `package.off`,
+    whichever fragment declares it. Refused while another actor reads one of its outputs (`manifest`, the package the
+    cell runs): that one would lose its input. Returns the names switched off."""
+    p = Path(cluster)
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    pkg = doc.setdefault("package", {})
+    names = list(pkg.get("off", []))
+    if off:
+        if name in names:
+            return names
+        if manifest is not None:
+            if not any(a.name == name for a in manifest.actors):
+                raise SetupError(f"no actor named {name!r} in the package the cell runs")
+            prefix = f"potluck://{manifest.system}/act/{name}/"
+            users = sorted({a.name for a in manifest.actors if a.name != name
+                            for q in a.needs if manifest.bindings.get(q, q).startswith(prefix)})
+            if users:
+                raise SetupError(f"{', '.join(users)} read{'s' if len(users) == 1 else ''} {name}'s output: remove "
+                                 f"{'it' if len(users) == 1 else 'them'} first")
+        names.append(name)
+    elif name in names:
+        names.remove(name)
+    else:
+        return names
+    if names:
+        pkg["off"] = names
+    else:
+        pkg.pop("off", None)
+        if not pkg:
+            doc.pop("package")
+    _write_cluster(p, doc)
+    return names
+
+
 def set_outside(cluster: str | Path, changes: dict[str, str]) -> dict[str, str]:
     """M20's library: what Home Assistant (any system outside the cell) may see and control, per resource --
     "read", "read_write" or "off" -- written as the cluster file's `outside`, which only the owner sets (M13)."""

@@ -355,6 +355,12 @@ class LibraryRoutes(Pair):
             self.assertEqual((code, lib["apps"][0]["enabled"], lib["home_assistant"]["on"]), (200, True, False))
             code, lib = self.req(self.local_addr, "POST", "/api/setup/library", {"app": "passive-sensor", "enabled": False})
             self.assertEqual((code, lib["apps"][0]["enabled"]), (200, False))
+            # 2026-10-31, the Desk: an actor out of the package by name (no package known here: not checked), and back
+            code, lib = self.req(self.local_addr, "POST", "/api/setup/actor", {"remove": "alarm_test"})
+            self.assertEqual((code, lib["actors_off"]), (200, ["alarm_test"]))
+            code, lib = self.req(self.local_addr, "POST", "/api/setup/actor", {"restore": "alarm_test"})
+            self.assertEqual((code, lib["actors_off"]), (200, []))
+            self.assertEqual(self.req(self.local_addr, "POST", "/api/setup/actor", {"remove": 3})[0], 400)
             code, lib = self.req(self.local_addr, "POST", "/api/setup/library",
                                  {"outside": {"potluck://home/act/rf_fusion/out": "read"}})
             self.assertEqual(code, 200)

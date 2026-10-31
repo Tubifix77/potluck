@@ -1597,7 +1597,8 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
         return {"apps": [{"name": a.name, "enabled": a.enabled, "built_in": bool(a.components)} for a in cl.apps],
                 "home_assistant": {"on": pr is not None, "broker": (pr or {}).get("broker"),
                                    "tls": bool((pr or {}).get("tls_ca"))},
-                "resources": sorted(res, key=lambda x: x["name"])}
+                "resources": sorted(res, key=lambda x: x["name"]),
+                "actors_off": list(cl.off)}  # 2026-10-31: POST /api/setup/actor's, restored by name
 
     def cell_keys() -> tuple[str, str] | None:
         """The CA key and the node registry beside the cluster's ca.pub (potluck.enrol's defaults)."""
@@ -1838,7 +1839,14 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                                          *(login or (None, None)))
                     self._json(200, dict(res, with_login=login is not None))
                     return
-                if "app" in req:
+                if path == "/api/setup/actor":
+                    if not isinstance(req.get("remove", req.get("restore")), str):
+                        self._json(400, {"ok": False, "result": "expected {\"remove\": <actor>} or {\"restore\": <actor>}"})
+                        return
+                    pkg = getattr(model, "package", None)
+                    st.set_actor_off(cl.path, req.get("remove", req.get("restore")), "remove" in req,
+                                     pkg.manifest if pkg is not None else None)
+                elif "app" in req:
                     st.set_app(cl.path, str(req["app"]), bool(req.get("enabled", True)))
                 elif "outside" in req and isinstance(req["outside"], dict):
                     st.set_outside(cl.path, {str(k): str(v) for k, v in req["outside"].items()})
@@ -1968,7 +1976,7 @@ def serve_api(model: Model, addr: str, sessions=None, tls=None, pairing=None) ->
                         "/api/setup/broker_login", "/api/setup/update", "/api/setup/job"):
                 self._setup_cell(path)
                 return
-            if path in ("/api/setup/library", "/api/setup/broker"):
+            if path in ("/api/setup/library", "/api/setup/broker", "/api/setup/actor"):
                 self._setup_library(path)
                 return
             if path.startswith("/api/setup/store"):

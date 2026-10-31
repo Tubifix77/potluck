@@ -318,6 +318,9 @@ class Cluster:
     stubs: frozenset[int] = frozenset()
     #: M19: package.manifests entries that name the cell their portable actors live in (index -> cell).
     manifest_cells: dict[int, str] = field(default_factory=dict)
+    #: 2026-10-31: actors switched off by name (`package.off`) -- left out of the package wherever their fragment
+    #: comes from (an app's, the store's, one written by hand), so removing one never edits a fragment.
+    off: tuple[str, ...] = ()
 
 
 #: M19: a board's unicast peers -- ESP-NOW's 20 less the broadcast entry (node.hpp's kMaxUnicastPeers).
@@ -543,6 +546,9 @@ def load_cluster(path: str) -> Cluster:
         else:
             raise ApplyError(f"package.manifests[{i}]: a path, or {{\"manifest\": ..., \"root\": ...}}")
     modules = [_rel(base, m) for m in pkg.get("modules", [])]
+    off = pkg.get("off", [])
+    if not isinstance(off, list) or not all(isinstance(x, str) and x for x in off) or len(set(off)) != len(off):
+        raise ApplyError("package.off: a list of actor names, each once")
     ver = doc.get("verify", {})
     outside_raw = doc.get("outside", {})
     if not isinstance(outside_raw, dict):
@@ -573,6 +579,7 @@ def load_cluster(path: str) -> Cluster:
     cl.writers = writers
     cl.stubs = frozenset(stubs)
     cl.manifest_cells = manifest_cells
+    cl.off = tuple(off)
     cl.rooms = rooms
     cl.positions = positions
     cl.plan = check_plan(doc.get("plan"))
@@ -1389,6 +1396,15 @@ def plan_package(c: Cluster, cache: Path, log) -> Package | None:
             for act in frag.get("actors", []):
                 act["_cell"] = c.manifest_cells[k]
         fragments.append((frag, root, str(mp)))
+    if c.off:
+        found = set()
+        for frag, _root, _what in fragments:
+            acts = frag.get("actors", [])
+            found |= {a.get("name") for a in acts if a.get("name") in c.off}
+            frag["actors"] = [a for a in acts if a.get("name") not in c.off]
+        for name in c.off:
+            log(f"package: actor '{name}' switched off (package.off)" if name in found else
+                f"package: package.off names '{name}', which no fragment has")
     if not fragments:
         if not c.boards:
             raise ApplyError("no package and no boards: name the boards (\"boards\"), or give a package")
