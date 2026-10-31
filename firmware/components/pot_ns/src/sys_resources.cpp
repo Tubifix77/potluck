@@ -197,7 +197,7 @@ size_t declare_pocket_resources(Namespace& ns, uint16_t node_id) {
 }
 
 uint32_t nodeport_resource_hash(uint16_t node_id) {
-    char buf[64];
+    char buf[96];
     std::snprintf(buf, sizeof(buf), "potluck://%s/node-%04x/sys/nodeport", g_system, static_cast<unsigned>(node_id));
     return path_hash(buf);
 }
