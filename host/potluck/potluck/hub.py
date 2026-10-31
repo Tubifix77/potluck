@@ -1441,6 +1441,8 @@ class Model:
                           if t["key"] == key}
                 if owners == {"00fe"}:
                     running = ["00fe"]
+                elif len(owners) == 1 and BRIDGED_FIRST <= int(next(iter(owners)), 16) <= BRIDGED_LAST:
+                    running = list(owners)  # 2026-10-31: a guest on a node the hub bridges (a tablet), as the PC's
             outs = actor_reads(m, a, [int(n, 16) for n in nodes])[1]  # its own outputs, not its board's
             bad_outs = [p for p in outs if quality.get(p) not in (None, "GOOD", "STARTING")]
             if portable:

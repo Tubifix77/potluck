@@ -792,6 +792,24 @@ class Bridge(unittest.TestCase):
         with self.assertRaises(dp.DeployError):
             dp.compile_image(mf.parse(doc("builtin:die_temp", {}, 0x00FD)), 1, ".")
 
+    def test_a_guest_may_list_a_bridged_node_that_opts_in_and_never_the_pc(self) -> None:
+        from potluck import manifest as mf
+        from potluck import reconcile as rc
+
+        doc = {"schema": 1, "system": "lab", "min_core_version": 1,
+               "nodes": [{"node_id": 0x8160, "label": "C", "owns": [
+                   {"path": "potluck://lab/node-8160/hw/die_temp", "unit": "celsius", "kind": "sampled",
+                    "access": "read", "latency_class": 4, "staleness_bound_ms": 5000}]},
+                         {"node_id": 0x00FD, "label": "tablet", "kind": "host", "placement": True},
+                         {"node_id": 0x00FE, "label": "pc", "kind": "host", "placement": True}],
+               "actors": [{"name": "t", "module": "guest:overheat_alarm", "latency_class": 4,
+                           "needs": ["potluck://lab/node-8160/hw/die_temp"], "config": {}}]}
+        m = mf.parse(doc)
+        self.assertEqual(rc.eligible(m, m.actors[0]), [(0x8160, 2), (0x00FD, 1)])  # C first (its input), the tablet next
+        doc["nodes"][1]["placement"] = False
+        m = mf.parse(doc)
+        self.assertEqual(rc.eligible(m, m.actors[0]), [(0x8160, 2)])  # a tablet that does not opt in runs none
+
     def test_each_bridged_node_is_one_more_peer_on_every_board(self) -> None:
         c = ap.Cluster.__new__(ap.Cluster)
         c.boards, c.cells, c.foremen, c.parents, c.bridged = list(self.BOARDS), {}, [], {}, {0x00FD: "Tablet"}

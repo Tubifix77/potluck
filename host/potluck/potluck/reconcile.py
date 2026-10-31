@@ -29,6 +29,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 
+from .hub_bridge import BRIDGED_FIRST, BRIDGED_LAST
 from .manifest import ActorSpec, Manifest
 from .paths import path_hash
 
@@ -96,7 +97,11 @@ def eligible(m: Manifest, a: ActorSpec) -> list[tuple[int, int]]:
         if n.kind == "host" and not n.placement:
             continue  # M8: a host that only offers named services; M10's placement hosts opt in
         hub_presents = a.module == "builtin:present" and bool(a.config.get("hub"))
-        if n.kind == "host" and a.module not in HOST_MODULES and not hub_presents:
+        # 2026-10-31: a node the hub bridges (a tablet) runs guests in its own copy of the boards' sandbox, from the
+        # same source, when it opts in to placement -- unlike the PC's node, which has no sandbox
+        bridged_guest = (a.module.startswith("guest:") and n.kind == "host" and n.placement and
+                         BRIDGED_FIRST <= n.node_id <= BRIDGED_LAST)
+        if n.kind == "host" and a.module not in HOST_MODULES and not hub_presents and not bridged_guest:
             # A placement host runs only what pot_hostnode has a row for. M7 already kept guests (the boards'
             # sandbox) off it; M14 found the rest on the bench: an app's external actors and the presenter listed the
             # PC, and pot_hostnode refused the whole image (M0-LOG session 42).
