@@ -741,6 +741,43 @@ TEST(reconcile, a_holder_hands_its_checkpoint_over_with_the_actor_even_if_the_fi
     g_ck_save_once = false;
 }
 
+TEST(reconcile, a_node_back_in_a_new_incarnation_resumes_from_a_replica_even_if_the_first_copy_was_lost) {
+    // Found on the real cell (2026-10-31): B, the guest's first choice, came back power-cycled twice in 6 s; the
+    // second time nobody had taken the guest over, so no release carried a checkpoint, and the tablet's copy sent
+    // when it saw B's new epoch was lost (B had not admitted it yet). B resumed from its own flash copy. A node's
+    // first claim set of an incarnation says it hears us: the replica goes to it then, ahead of our claims.
+    std::memset(g_ck_had, 0, sizeof(g_ck_had));
+    std::memset(g_ck_last_saved, 0, sizeof(g_ck_last_saved));
+    RCell c;
+    saver_specs(c, 2);
+    c.specs[0].place.gravity[0] = 1;
+    c.specs[0].place.gravity[1] = 9;
+    c.build(2, {});
+    c.run(8000);
+    CHECK_EQ(c.runner(), 1);
+    c.kill(1);
+    c.run(300);  // back before node 0 would take over
+    const uint32_t saved = g_ck_last_saved[1];
+    CHECK(saved > 0);
+    const uint32_t sets_before = c.nodes[0].rec->counters().sets_received;
+    c.drop_from = 0;
+    c.drop_to = 1;
+    c.drop_op = kOpCast;
+    c.drop_path = kCheckpointPath;
+    c.drop_until_us = UINT32_MAX;  // every checkpoint to it is lost -- until node 0 hears its first claim set
+    c.revive(1);
+    g_ck_had[1] = false;
+    c.run(10000, [&] {
+        if (c.drop_until_us == UINT32_MAX && c.nodes[0].rec->counters().sets_received > sets_before)
+            c.drop_until_us = c.now_us;
+    });
+    CHECK(c.drop_until_us != UINT32_MAX);
+    CHECK_EQ(c.runner(), 1);
+    CHECK(g_ck_had[1]);  // resumed from node 0's replica instead of starting over
+    CHECK(g_ck_loaded[1] + 10 >= saved);
+    c.drop_path = 0;
+}
+
 TEST(reconcile, a_node_still_hunting_for_its_channel_does_not_settle_until_it_knows_it_or_the_cap) {
     // Found on the bench (M0-LOG session 33): the extender settled 2.6 s after booting, its station's
     // association then hid a peer from it for 600 ms, and it started the actor that peer was running.

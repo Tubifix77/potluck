@@ -476,6 +476,13 @@ bool Reconciler::on_cast(uint16_t from_node, uint32_t path_hash, const uint8_t* 
         return true;
     }
     ++counters_.sets_received;
+    if (c->epoch != epoch) {
+        // Its first claim set of this incarnation: it hears us now. The checkpoints sent when its new epoch first
+        // appeared may have gone before it admitted us (found 2026-10-31: B power-cycled, the tablet's copy lost,
+        // B resumed from its own flash copy), so they go again -- ahead of our claims, before it may settle on them.
+        send_checkpoints_to(from_node);
+        send_to(from_node);
+    }
     c->epoch = epoch;
     c->settled = (args[1] & kClaimFlagSettled) != 0;
     std::memset(c->term, 0, sizeof(c->term));
