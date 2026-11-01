@@ -1367,24 +1367,51 @@ class Model:
         boards run (most of them), the one the installed Potluck carries (its release, setup.packaged_firmware), and
         whether they differ -- or a board runs another version than the rest."""
         from .setup import packaged_firmware
-        available = None
+        available, available_at = None, None
         root = packaged_firmware()
         if root is not None and root.is_dir():
             found = []
             for d in root.iterdir():
                 try:
                     meta = json.loads((d / "release.json").read_text(encoding="utf-8"))
-                    found.append((d.stat().st_mtime, str(meta["version"])))
+                    found.append((d.stat().st_mtime, str(meta["version"]), meta.get("built_at")))
                 except (OSError, ValueError, KeyError):
                     continue
             if found:
-                available = max(found)[1]
+                _m, available, available_at = max(found, key=lambda f: f[0])
         with self.lock:
             versions = {b["status"].fw_version for b in self.boards.values()
                         if b.get("status") is not None and b["state"] == "alive"}
         mixed = len(versions) > 1
-        return {"boards": boards_fw, "available": available, "mixed": mixed,
-                "pending": available is not None and (mixed or (boards_fw is not None and boards_fw != available))}
+        newer = self._firmware_newer(available, available_at, boards_fw)
+        # 2026-11-01 (the Desk): an image older than what the boards run -- they were updated past it, by this hub's own
+        # Apply building newer firmware -- is no update; offering it would send them back a version.
+        return {"boards": boards_fw, "available": available, "mixed": mixed, "newer": newer,
+                "pending": available is not None and newer is not False and
+                (mixed or (boards_fw is not None and boards_fw != available))}
+
+    @staticmethod
+    def _firmware_newer(available: str | None, available_at, boards_fw: str | None) -> bool | None:
+        """Whether the installed Potluck's firmware was built after the one the boards run: True, False, or None when
+        either build time is unknown. The release says when it was built (release.json built_at); the boards' firmware
+        is found by its key (the version after the dash) among the builds in this PC's cache, which is where every
+        firmware an Apply sent out was built."""
+        if available is None or boards_fw is None or available == boards_fw or not isinstance(available_at, (int, float)):
+            return None
+        from .apply import default_cache
+        key = boards_fw.rpartition("-")[2]
+        if not key:
+            return None
+        times = []
+        fw_root = default_cache() / "fw"
+        if fw_root.is_dir():
+            for d in fw_root.iterdir():
+                if d.name.startswith(key):
+                    for elf in d.glob("build-*/potluck_m0.elf"):
+                        times.append(elf.stat().st_mtime)
+        if not times:
+            return None
+        return available_at > max(times)
 
     def _panels_json(self, resources: list[dict]) -> list[dict]:
         """M20's app panels: what each app's descriptor asks the dashboard to show (modules.PANEL_KINDS), one entry per

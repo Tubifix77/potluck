@@ -661,13 +661,46 @@ class UpdateStatus(unittest.TestCase):
                 boards("0c1162c-028577", "0c1162c-028577")
                 self.assertEqual(model._update_json("0c1162c-028577"),
                                  {"boards": "0c1162c-028577", "available": "ba193e1-c1480d", "mixed": False,
-                                  "pending": True})
+                                  "newer": None, "pending": True})
                 boards("ba193e1-c1480d", "ba193e1-c1480d")
                 self.assertFalse(model._update_json("ba193e1-c1480d")["pending"])
                 boards("ba193e1-c1480d", "0c1162c-028577")  # one left behind (a rollout stopped half-way)
                 self.assertTrue(model._update_json("ba193e1-c1480d")["pending"])
             with mock.patch.dict(os.environ, {"POTLUCK_FIRMWARE_DIR": str(Path(d) / "none")}):
                 self.assertEqual(model._update_json("x")["available"], None)  # a hub run from source carries none
+
+    def test_an_image_older_than_the_boards_firmware_is_no_update(self) -> None:
+        """2026-11-01, the Desk: the hub's own Apply built newer firmware than the installed Potluck carries and sent it
+        out; Update offered the older image, and pressing it would have sent the boards back a version."""
+        import tempfile
+        from pathlib import Path
+        from types import SimpleNamespace as NS
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            rel = Path(d) / "rel" / "fcfdbb0-111111"
+            rel.mkdir(parents=True)
+            cache = Path(d) / "cache"
+            elf = cache / "fw" / "222222abcdef" / "build-apply" / "potluck_m0.elf"
+            elf.parent.mkdir(parents=True)
+            elf.write_bytes(b"x")
+            os.utime(elf, (2000, 2000))  # the boards' firmware, built at 2000
+            model = hb.Model(NS(record=None))
+            model.boards = {0: {"state": "alive", "status": NS(fw_version="29e3672-222222")}}
+
+            def update(built_at):
+                (rel / "release.json").write_text(json.dumps({"version": "fcfdbb0-111111", "built_at": built_at}))
+                with mock.patch.dict(os.environ, {"POTLUCK_FIRMWARE_DIR": str(rel.parent)}),                         mock.patch("potluck.apply.default_cache", return_value=cache):
+                    return model._update_json("29e3672-222222")
+            u = update(1000)  # built before the boards' firmware
+            self.assertEqual((u["newer"], u["pending"]), (False, False))
+            u = update(3000)
+            self.assertEqual((u["newer"], u["pending"]), (True, True))
+            u = update(None)  # a release from before built_at: unknown, offered as before
+            self.assertEqual((u["newer"], u["pending"]), (None, True))
+            model.boards = {0: {"state": "alive", "status": NS(fw_version="29e3672-333333")}}
+            with mock.patch.dict(os.environ, {"POTLUCK_FIRMWARE_DIR": str(rel.parent)}),                     mock.patch("potluck.apply.default_cache", return_value=cache):
+                (rel / "release.json").write_text(json.dumps({"version": "fcfdbb0-111111", "built_at": 1000}))
+                self.assertIsNone(model._update_json("29e3672-333333")["newer"])  # not built on this PC: unknown
 
 
 class CutActorList(unittest.TestCase):

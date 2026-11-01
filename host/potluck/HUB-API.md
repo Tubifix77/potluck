@@ -246,6 +246,11 @@ The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, descr
   the installed Potluck carries (its release; `null` for a hub run from source), whether the boards run more than one
   version, and whether an update is waiting (`available` differs from `boards`, or `mixed`). An update of the boards is
   `POST /api/setup/update`; an Apply (`POST /api/setup/apply`) while `pending` updates the firmware too.
+  `newer` (2026-11-01): whether `available` was built after the boards' firmware -- `true`, `false`, or `null` when
+  either build time is unknown (a release from before 2026-11-01 says none; the boards' firmware not built on this PC).
+  An Apply builds firmware from the cluster's sources when no release matches, so the boards can run firmware newer
+  than the installed Potluck's; then `newer` is `false` and `pending` is `false` -- updating would send them back a
+  version.
 - `cell.pins` (2026-10-20): the GPIOs the boards' firmware build itself drives, from that build's configuration --
   `{"frame_link": {"tx", "rx"} | null, "can": {"tx", "rx"} | null, "status_led": {"gpio", "alt"}, "button"}`
   (`alt`: the other board revision's LED pin); `null` when the hub has neither the release nor the build of the

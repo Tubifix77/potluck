@@ -62,7 +62,10 @@ def build(out: str | Path, repo: str | Path, rev: str = "HEAD", log=print, clust
         files.append(rel.as_posix())
     shutil.copy2(bdir / "flasher_args.json", dest / "flasher_args.json")
     from .pins import from_build
-    (dest / "release.json").write_text(json.dumps({"version": fw.version, "elf_sha256": fw.elf_sha.hex(),
+    # built_at (2026-11-01): when this firmware was built, so a hub can tell whether it is newer than what the boards run
+    built_at = int(fw.elf.stat().st_mtime) if getattr(fw, "elf", None) is not None and fw.elf.exists() else None
+    (dest / "release.json").write_text(json.dumps({"version": fw.version, "built_at": built_at,
+                                                   "elf_sha256": fw.elf_sha.hex(),
                                                    "extra": extra, "apps": apps, "files": files,
                                                    "pins": from_build(bdir)}, indent=2) + "\n",
                                        encoding="utf-8")
