@@ -23,6 +23,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <type_traits>
 #include <new>  // placement new, for constructing the Node into static storage
 
 #include "actor_table.hpp"
@@ -31,6 +32,7 @@
 #include "uplink.hpp"
 #include "node_port_server.hpp"
 #include "pot/boot_epoch.hpp"
+#include "pot/inbox.hpp"
 #if CONFIG_POT_CAN
 #include "pot/can_port.hpp"
 #include "pot/frame.hpp"
@@ -123,6 +125,56 @@ Reconciler* g_rec = nullptr;
 // present: only tasks touch it.
 EXT_RAM_BSS_ATTR ActorRuntime g_actors(nullptr, 0);  // its table is merged at boot (app::actor_table)
 ActorEnv g_actor_env;
+
+// 2026-11-01 (pot/inbox.hpp, InboxKeep): an inbox's last values across a software restart, in RTC slow memory, which a
+// software restart, a panic or a watchdog keeps and a power-on clears (RTC_NOINIT_ATTR; checked by kInboxKeepMagic and
+// cleared at a power-on or brownout boot, whose contents are not to be trusted). Not in the 64 KB internal budget.
+constexpr uint32_t kInboxKeepMagic = 0x504b4b31;  // "PKK1"
+constexpr size_t kInboxKeepSlots = 48;            // four inboxes of twelve values
+struct InboxKeepSlot {  // plain data, no constructor: a constructed global would be zeroed at every boot
+    uint32_t hash;
+    uint8_t type;
+    uint8_t len;
+    uint8_t raw[kValueBytesMax];
+};
+static_assert(std::is_trivially_default_constructible<InboxKeepSlot>::value, "RTC_NOINIT data must not be constructed");
+RTC_NOINIT_ATTR uint32_t g_inbox_keep_magic;
+RTC_NOINIT_ATTR InboxKeepSlot g_inbox_keep[kInboxKeepSlots];
+void inbox_keep_store(uint32_t hash, const Value& v) {
+    InboxKeepSlot* slot = nullptr;
+    for (InboxKeepSlot& k : g_inbox_keep) {
+        if (k.hash == hash) {
+            slot = &k;
+            break;
+        }
+        if (k.hash == 0 && slot == nullptr) slot = &k;
+    }
+    if (slot == nullptr) return;
+    slot->hash = hash;
+    slot->type = static_cast<uint8_t>(v.type);
+    slot->len = v.len;
+    std::memcpy(slot->raw, v.raw, sizeof(slot->raw));
+}
+bool inbox_keep_load(uint32_t hash, Value& out) {
+    for (const InboxKeepSlot& k : g_inbox_keep) {
+        if (k.hash == hash && hash != 0 && k.len <= kValueBytesMax) {
+            out.type = static_cast<ValueType>(k.type);
+            out.len = k.len;
+            std::memcpy(out.raw, k.raw, sizeof(out.raw));
+            return true;
+        }
+    }
+    return false;
+}
+const InboxKeep kInboxKeep{&inbox_keep_store, &inbox_keep_load};
+void inbox_keep_start() {
+    const esp_reset_reason_t why = esp_reset_reason();
+    if (g_inbox_keep_magic != kInboxKeepMagic || why == ESP_RST_POWERON || why == ESP_RST_BROWNOUT) {
+        std::memset(g_inbox_keep, 0, sizeof(g_inbox_keep));
+        g_inbox_keep_magic = kInboxKeepMagic;
+    }
+    inbox_set_keep(&kInboxKeep);
+}
 
 StaticSemaphore_t g_mutex_buf;
 SemaphoreHandle_t g_mutex = nullptr;
@@ -4075,6 +4127,7 @@ extern "C" int pot_selftest_run(void);
 
 extern "C" void app_main(void) {
     using namespace pot;
+    inbox_keep_start();  // before any actor starts
 
 #if CONFIG_POT_WASM_BENCH
     // M7's experiment, alone on the machine like the crypto bench below.

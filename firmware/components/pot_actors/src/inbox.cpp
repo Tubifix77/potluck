@@ -8,6 +8,7 @@
 namespace pot {
 
 namespace {
+const InboxKeep* g_keep = nullptr;
 uint32_t u32_at(const uint8_t* p) {
     return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) |
            (static_cast<uint32_t>(p[3]) << 24);
@@ -48,10 +49,19 @@ NsDecl inbox_decl(uint16_t node, const InboxConfig& c, size_t i) {
     return d;
 }
 
-bool InboxActor::start(uint32_t) {
+void inbox_set_keep(const InboxKeep* keep) { g_keep = keep; }
+
+bool InboxActor::start(uint32_t now_ms) {
     for (size_t i = 0; i < cfg_.n; ++i) {
         if (node_.ns().declare(inbox_decl(node_.config().node_id, cfg_, i)) != NsError::Ok) return false;
         const NsEntry* e = node_.ns().find(cfg_.hash[i]);
+        Value kept;
+        if (e != nullptr && !e->has_data() && g_keep != nullptr && g_keep->load != nullptr &&
+            g_keep->load(cfg_.hash[i], kept) && kept.type == cfg_.type[i]) {
+            // The last value before a software restart: its time set one bound past now, so it reads STALE.
+            node_.ns().publish(cfg_.hash[i], kept, now_ms - cfg_.stale_ms - 1);
+            e = node_.ns().find(cfg_.hash[i]);
+        }
         last_count_[i] = e != nullptr ? e->update_count : 0;
     }
     return true;
@@ -63,6 +73,7 @@ void InboxActor::tick(uint32_t) {
         if (e != nullptr && e->update_count != last_count_[i]) {
             writes_ += e->update_count - last_count_[i];
             last_count_[i] = e->update_count;
+            if (g_keep != nullptr && g_keep->store != nullptr) g_keep->store(cfg_.hash[i], e->value);
         }
     }
 }

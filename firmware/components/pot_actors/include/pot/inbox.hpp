@@ -46,6 +46,17 @@ class InboxActor : public Actor {
     uint32_t last_count_[kMaxOutputs] = {};
 };
 
+// 2026-11-01: an inbox's last values across a software restart (a rollout, a guest change, a fail-stop). Until its
+// program wrote again a value read NO_DATA -- a phone's for minutes after every Apply that restarted A. Where the board
+// has memory that a software restart keeps (RTC memory on the ESP32; m0_main.cpp), it stores each value written, and a
+// restarted inbox puts it back as the last thing known: published with an age past its bound, so it reads STALE with
+// that age's worth of honesty, never GOOD. Nothing survives a power cut. None on a host.
+struct InboxKeep {
+    void (*store)(uint32_t hash, const Value& v);
+    bool (*load)(uint32_t hash, Value& out);
+};
+void inbox_set_keep(const InboxKeep* keep);
+
 extern const ActorKind kInboxKind;
 
 }  // namespace pot

@@ -108,3 +108,72 @@ TEST(inbox, a_bad_declaration_is_refused) {
     const char* why = nullptr;
     CHECK(!kInboxKind.check(portable, ActorEnv{}, &why));  // held by one board: pinned
 }
+
+namespace {
+uint32_t g_kept_hash = 0;
+Value g_kept;
+void keep_store(uint32_t h, const Value& v) {
+    g_kept_hash = h;
+    g_kept = v;
+}
+bool keep_load(uint32_t h, Value& out) {
+    if (h != g_kept_hash) return false;
+    out = g_kept;
+    return true;
+}
+const InboxKeep kKeep{&keep_store, &keep_load};
+}  // namespace
+
+TEST(inbox, a_value_written_before_a_software_restart_comes_back_stale_not_empty) {
+    // 2026-11-01: a phone's values read NO_DATA after every Apply that restarted A, until the phone wrote again. The
+    // board keeps what was written (RTC memory on the ESP32); a restarted inbox puts it back as STALE, never GOOD.
+    inbox_set_keep(&kKeep);
+    const auto img = from_hex(kGolden);
+    DeployImage d{};
+    const char* why = nullptr;
+    CHECK(parse_image(img.data(), img.size(), d, &why));
+    InboxConfig c{};
+    CHECK(inbox_config(d.actors[0], c));
+    const uint32_t hr = path_hash("potluck://lab/act/phone/heart_rate");
+    const uint8_t flags = kOutsideExposed | kOutsideWritable;
+    {
+        NodeHal hal{};
+        hal.now_ms = [](void*) { return g_t; };
+        hal.send = [](void*, const uint8_t*, const uint8_t*, size_t) -> int32_t { return 0; };
+        NodeConfig cfg;
+        cfg.node_id = 0x6300;
+        cfg.boot_epoch = 1;
+        Node node(cfg, hal);
+        InboxActor a(node, c);
+        g_t = 1000;
+        CHECK(a.start(g_t));
+        CHECK(node.ns().set_outside(&hr, &flags, 1));
+        CHECK_EQ(static_cast<int>(node.ns().write_outside(hr, Value::of_f32(71.5f), g_t)), static_cast<int>(NsError::Ok));
+        a.tick(g_t);  // the write is kept
+        CHECK_EQ(g_kept_hash, hr);
+    }
+    // The board restarts: a new Node, an empty namespace, the clock from zero.
+    NodeHal hal{};
+    hal.now_ms = [](void*) { return g_t; };
+    hal.send = [](void*, const uint8_t*, const uint8_t*, size_t) -> int32_t { return 0; };
+    NodeConfig cfg;
+    cfg.node_id = 0x6300;
+    cfg.boot_epoch = 2;
+    Node node(cfg, hal);
+    InboxActor a(node, c);
+    g_t = 800;
+    CHECK(a.start(g_t));
+    Reading r;
+    node.ns().read(hr, g_t, true, r);
+    CHECK_EQ(static_cast<int>(r.quality), static_cast<int>(Quality::Stale));  // the last value, said to be old
+    float f = 0;
+    CHECK(r.value.as_f32(f) && f > 71.4f && f < 71.6f);
+    const uint32_t steps = path_hash("potluck://lab/act/phone/steps");
+    node.ns().read(steps, g_t, true, r);
+    CHECK_EQ(static_cast<int>(r.quality), static_cast<int>(Quality::NoData));  // never written: nothing to put back
+    CHECK(node.ns().set_outside(&hr, &flags, 1));
+    CHECK_EQ(static_cast<int>(node.ns().write_outside(hr, Value::of_f32(72.0f), g_t)), static_cast<int>(NsError::Ok));
+    node.ns().read(hr, g_t + 10, true, r);
+    CHECK_EQ(static_cast<int>(r.quality), static_cast<int>(Quality::Good));  // the program's next write is fresh
+    inbox_set_keep(nullptr);
+}
