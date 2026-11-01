@@ -635,6 +635,26 @@ class PcPresents(unittest.TestCase):
         from potluck import apply as ap
         self.assertEqual(ap.expected(m, [0x6300])[2], [])  # apply's verify does not wait for that read
 
+    def test_a_job_that_has_not_run_since_its_board_started_works(self) -> None:
+        """2026-11-01: A restarted; demo_job's pi was NO_DATA until its next run and the app read "not working"."""
+        from types import SimpleNamespace as NS
+        from potluck import manifest as mf
+        m = mf.parse({"schema": 1, "system": "lab", "min_core_version": 1,
+                      "nodes": [{"node_id": 0x6300, "label": "A"}],
+                      "actors": [{"name": "demo_job", "module": "builtin:mc_job", "latency_class": 4, "pin": 0x6300,
+                                  "config": {"control": True}}]})
+        model = hb.Model(NS(record=None), package=NS(manifest=m))
+        boards = [{"node": "6300", "state": "alive", "actors": ["mc_job"], "telemetry": None}]
+
+        def app(pi):
+            res = [{"path": "potluck://lab/node-6300/job/mc/pi", "quality": pi, "settled_quality": pi},
+                   {"path": "potluck://lab/node-6300/job/mc/run", "quality": "GOOD", "settled_quality": "GOOD"}]
+            [a] = model._apps_json(boards, res)
+            return a["working"], a["detail"]
+        self.assertEqual(app("NO_DATA"), (True, ""))
+        self.assertEqual(app("GOOD"), (True, ""))
+        self.assertFalse(app("STALE")[0])  # a result that stopped refreshing is still a fault
+
     def test_the_host_node_reports_its_presenting_state(self) -> None:
         from types import SimpleNamespace as NS
         from potluck import hostnode as hn

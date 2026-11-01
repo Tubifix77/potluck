@@ -1515,6 +1515,10 @@ class Model:
                     running = list(owners)  # 2026-10-31: a guest on a node the hub bridges (a tablet), as the PC's
             outs = actor_reads(m, a, [int(n, 16) for n in nodes])[1]  # its own outputs, not its board's
             bad_outs = [p for p in outs if quality.get(p) not in (None, "GOOD", "STARTING")]
+            if a.module == "builtin:mc_job":
+                # 2026-11-01: a job's result exists only after a run; after its board restarts it is NO_DATA until the
+                # next run (A restarted, demo_job read "not working" with nothing wrong)
+                bad_outs = [p for p in bad_outs if quality.get(p) != "NO_DATA"]
             if portable:
                 ok, why = len(running) == 1, ("" if len(running) == 1 else f"running on {len(running)} nodes")
             else:
