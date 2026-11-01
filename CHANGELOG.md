@@ -5,6 +5,10 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **Update no longer offers older firmware**: an Apply builds firmware from the cluster's sources when no release
+  matches, so the boards can run newer firmware than the installed Potluck carries. `cell.update.newer` says whether
+  the release was built after the boards' firmware (a release records `built_at`), and `pending` is false when it was
+  not. A job (`builtin:mc_job`) that has not run since its board started now reads as working.
 - **A node from the house network needs no PC (M29)**: a board whose own Wi-Fi station has an address serves the hub's
   node port itself (TCP 8472, the same login and framing) and publishes where as `node-<id>/sys/nodeport`; a tablet
   dials a board first and the hub second. Every board now passes on its own off-radio members (the tablet on its node
