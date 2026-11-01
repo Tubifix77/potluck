@@ -1362,8 +1362,9 @@ had the tablet on its cable kept that entry when the tablet moved to B, and the 
 a moved off-radio member is now followed (`fcfdbb0`). (3) The hub counts a bridged node present when its values arrive
 fresh, not only when it holds the node. **Accepted 2026-11-01 with caveats** (STATUS M29): hub stopped ~45 s, A and B
 read the tablet GOOD from their own consoles; the tablet took the test guest and handed it back with its count; back
-through a board 18.6 s after its board restarted; 30 minutes on B, worst link +0.01 points. Caveats: the lending share
-(2 of 240, a cost fix not yet on the boards), the Nest point, two fixes (`dca967f`, `36875d1`) not yet rolled out.
+through a board 18.6 s after its board restarted; 30 minutes on B, worst link +0.01 points. Caveats: the Nest point (it
+serves the house network's name on channels 1 and 11 in router mode). Rolled out the same night (package 142): `36875d1`
+(the tablet then lent 151 of 240 units, 9.0 s against 14.8 s), `40a8ae3`, `dca967f`.
 ## 14. Risk register
 
 | Risk | Likelihood | Impact | Mitigation |
