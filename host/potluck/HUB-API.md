@@ -555,6 +555,17 @@ off-radio member (`NodeConfig.has_wire_mac`, the `02:00:00:01` family, its own a
 passes on. A board must be on the same IP network as the node: a station joined to a different router under the same
 network name (a mesh point in router mode) serves an address the node cannot reach.
 
+### A node declares its own values (2026-11-01)
+
+A bridged node may say which values it has, so nobody copies lists: TELEMETRY section 8 (`inventory`), asked with
+`start` = a line's index and answered `u8 version, u8 8, u16 node, u8 total lines, u8 this line's index, u8 length`,
+then the line in ASCII -- one builtin:inbox each, `"<inbox> <name>:<type>[:<unit>] ..."` as the cluster file writes an
+inbox's outputs, at most 4 lines of at most 219 bytes. A board answers section 0 (it declares nothing). With
+`"inventory": true` on the node's `bridge.nodes` entry (and `"stale_ms"`, default 15000), the hub asks every 5 minutes,
+wherever the node is logged in, keeps the lines beside the cluster file as `inventory-<id>.json` when they change (event
+`bridged_inventory`), and the next Apply makes an inbox of each line, pinned to the node. An inbox the package already
+writes by hand under the same name wins, and the node's line is left out.
+
 ## Integrations report their state, and each program has a share
 
 `POST /api/integrations {"name": "Node-RED", "state": "connected" | "disconnected" | "error" | "idle", "detail": "..."}`

@@ -559,6 +559,7 @@ class Model:
         self._telemetry_due = 0.0
         self.telemetry_counts = {"pulls": 0, "replies": 0, "failures": 0, "events": 0}
         self.bridged_compute: dict[int, dict | None] = {}  # 2026-10-31: a lending bridged node's compute section
+        self.inventory_at: dict[int, float] = {}  # 2026-11-01: when each bridged node's own inbox lines were last read
         self.job_times: dict[int, dict[str, tuple[int, int]]] = {}  # M22: a board's last finished run of each kind
         self._services = None  # M23: (system, names, PcServices) -- kept while the cluster file names the same ones
         hub.services_for = self.pc_services
@@ -939,6 +940,7 @@ class Model:
                                         "board_seq": e.seq},
                                        at=now_ms - max(0, up_ms - e.at_ms) if earlier else None, earlier=earlier)
         self._pull_bridged_compute(tm)
+        self._pull_bridged_inventory(tm)
 
     def _lending_bridged(self) -> set[int]:
         """2026-10-31: the bridged nodes the package pins a lender to (builtin:mc_lender) -- only those are asked."""
@@ -963,6 +965,39 @@ class Model:
                 c = None  # no answer this time, or a node that does not keep the section
             with self.lock:
                 self.bridged_compute[nid] = c
+
+    #: How often a bridged node is asked for its inbox lines: they change only when the device or its app does.
+    INVENTORY_EVERY_S = 300.0
+
+    def _pull_bridged_inventory(self, tm) -> None:
+        """2026-11-01: a bridged node whose cluster entry says `"inventory": true` declares its own values (TELEMETRY
+        section 8): its lines are kept beside the cluster file (apply.inventory_file), and the next Apply makes an inbox
+        of each. Asked every INVENTORY_EVERY_S whether it is on the hub or on a board's node port; written only when
+        the lines change, so an Apply is the owner's step, never the hub's."""
+        from .apply import inventory_file
+        cl = self.cluster
+        if cl is None:
+            return
+        now = time.monotonic()
+        for nid in sorted(getattr(cl, "bridge_inventory", {}) or {}):
+            if now - self.inventory_at.get(nid, -1e9) < self.INVENTORY_EVERY_S:
+                continue
+            self.inventory_at[nid] = now
+            try:
+                lines = tm.inventory(self.hub, nid)
+            except (BridgeError, tm.TelemetryError):
+                self.inventory_at[nid] = now - self.INVENTORY_EVERY_S + 30.0  # not there now: try again in 30 s
+                continue
+            p = inventory_file(cl.path, nid)
+            try:
+                old = json.loads(p.read_text(encoding="utf-8")).get("lines") if p.exists() else None
+            except (OSError, ValueError):
+                old = None
+            if lines and lines != old:
+                p.write_text(json.dumps({"node": f"{nid:04x}", "lines": lines, "at": time.time()}, indent=2) + "\n",
+                             encoding="utf-8")
+                with self.lock:
+                    self._event_locked("bridged_inventory", None, {"node": f"{nid:04x}", "lines": len(lines)})
 
     def _read_reset(self, n: int) -> str | None:
         """Why board n last started (its sys/reset), by name; None from firmware before 2026-10-16 or no answer. Read

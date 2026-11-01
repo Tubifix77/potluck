@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from . import frame as fr
 
 VERSION = 1
-HEALTH, LINKS, ACTORS, EVENTS, AUTH, CHIP, COMPUTE = 1, 2, 3, 4, 5, 6, 7
+HEALTH, LINKS, ACTORS, EVENTS, AUTH, CHIP, COMPUTE, INVENTORY = 1, 2, 3, 4, 5, 6, 7, 8
 
 HEALTH_NO_RADIO, HEALTH_BUSY, HEALTH_CONNECTED, HEALTH_LONG_WINDOW, HEALTH_ENROLLED = 1, 2, 4, 8, 16
 LINK_CABLE, LINK_VERIFIED = 1, 2
@@ -289,6 +289,40 @@ def chip(bridge, target: int, *, timeout: float = 2.0) -> dict:
 def compute(bridge, target: int, *, timeout: float = 2.0) -> dict:
     """M22: the lender's counters and the job's run on one board (M9's borrowed cores)."""
     return parse_compute(_ask(bridge, target, COMPUTE, timeout=timeout))
+
+
+#: M29 item: the most inbox lines a node may declare, and the longest line (a reply's 226-byte payload floor, less the
+#: header and the three bytes before the text).
+INVENTORY_MAX_LINES = 4
+INVENTORY_LINE_MAX = 219
+
+
+def parse_inventory(raw: bytes) -> tuple[int, int, str]:
+    """2026-11-01: a node that declares its own values (a tablet) -- (total lines, this line's index, the line): one
+    builtin:inbox each, "<inbox> <name>:<type>[:<unit>] ..." as the cluster file writes an inbox's outputs."""
+    _header(raw, INVENTORY)
+    if len(raw) < 7:
+        raise TelemetryError("inventory section cut short")
+    total, index, n = raw[4], raw[5], raw[6]
+    if len(raw) < 7 + n:
+        raise TelemetryError("inventory line cut short")
+    try:
+        line = raw[7:7 + n].decode("ascii")
+    except UnicodeDecodeError:
+        raise TelemetryError("inventory line is not ASCII") from None
+    return total, index, line
+
+
+def inventory(bridge, target: int, *, timeout: float = 2.0) -> list[str]:
+    """Every inbox line a node declares, asked one at a time (start = the line's index)."""
+    out: list[str] = []
+    total = 1
+    while len(out) < min(total, INVENTORY_MAX_LINES):
+        total, index, line = parse_inventory(_ask(bridge, target, INVENTORY, start=len(out), timeout=timeout))
+        if index != len(out):
+            raise TelemetryError(f"asked for inventory line {len(out)}, got {index}")
+        out.append(line)
+    return out
 
 
 def links(bridge, target: int, *, timeout: float = 2.0) -> list[Link]:

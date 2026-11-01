@@ -296,6 +296,8 @@ class Cluster:
     #: on (cluster file `bridge`). Each is a member like the PC's node: not a board, one more peer on every board.
     bridged: dict[int, str] = field(default_factory=dict)
     bridge_port: int | None = None
+    #: 2026-11-01: bridged node -> stale_ms, for those whose own inbox lines become inboxes (bridge_inventory).
+    bridge_inventory: dict[int, int] = field(default_factory=dict)
     #: M19: the cells (groups) each board belongs to, by name -- one, or two for a foreman. A cluster file with none
     #: is one cell as before; with cells, a board admits only boards of its own cells.
     cells: dict[int, tuple[str, ...]] = field(default_factory=dict)
@@ -602,6 +604,7 @@ def load_cluster(path: str) -> Cluster:
             raise ApplyError(f"bulk.folder: {folder} is not a folder")
         cl.bulk_folder = str(folder)
     cl.bridged, cl.bridge_port = check_bridge(doc.get("bridge"), cl.boards)
+    cl.bridge_inventory = bridge_inventory(doc.get("bridge"))
     if not cells and cl.bridged and len(cl.boards) + len(cl.bridged) > PEER_CAP:
         raise ApplyError(f"bridge: {len(cl.boards) - 1} other boards, the PC and {len(cl.bridged)} bridged node(s) are "
                          f"more than the {PEER_CAP} peers a board holds")
@@ -1100,7 +1103,8 @@ def check_bridge(br: Any, boards: list[tuple[int, str]]) -> tuple[dict[int, str]
         except (TypeError, KeyError, ValueError):
             raise ApplyError(usage) from None
         lab = nd.get("label") if isinstance(nd, dict) else None
-        if not isinstance(nd, dict) or not set(nd) <= {"node", "label"} or not BRIDGED_FIRST <= nid <= BRIDGED_LAST:
+        if (not isinstance(nd, dict) or not set(nd) <= {"node", "label", "inventory", "stale_ms"} or
+                not BRIDGED_FIRST <= nid <= BRIDGED_LAST):
             raise ApplyError(f"bridge.nodes[{i}]: " + usage)
         if not isinstance(lab, str) or not 1 <= len(lab) <= 40 or not lab.isprintable():
             raise ApplyError(f"bridge.nodes[{i}].label: 1..40 printable characters")
@@ -1109,6 +1113,54 @@ def check_bridge(br: Any, boards: list[tuple[int, str]]) -> tuple[dict[int, str]
         out[nid] = lab
         taken.add(lab)
     return out, port
+
+
+#: 2026-11-01: an inbox a node declares for itself is held this long by default, as the tablet's hand-written ones.
+INVENTORY_STALE_MS = 15000
+
+
+def bridge_inventory(br: Any) -> dict[int, int]:
+    """The bridged nodes whose own inbox lines make inboxes (`"inventory": true` on a bridge.nodes entry), and how long
+    each holds a value (`"stale_ms"`, default INVENTORY_STALE_MS). check_bridge has checked the rest."""
+    out: dict[int, int] = {}
+    for i, nd in enumerate((br or {}).get("nodes", []) if isinstance(br, dict) else []):
+        inv = nd.get("inventory", False)
+        st = nd.get("stale_ms", INVENTORY_STALE_MS)
+        if not isinstance(inv, bool) or isinstance(st, bool) or not isinstance(st, int) or not 1000 <= st <= 3600000:
+            raise ApplyError(f"bridge.nodes[{i}]: \"inventory\": true or false, \"stale_ms\": 1000..3600000")
+        if inv:
+            out[int(nd["node"], 16)] = st
+    return out
+
+
+def inventory_file(cluster_path: Path, node_id: int) -> Path:
+    """Where the hub keeps a bridged node's last inbox lines, beside the cluster file."""
+    return Path(cluster_path).parent / f"inventory-{node_id:04x}.json"
+
+
+def inventory_fragment(c: Cluster, log) -> dict | None:
+    """The inboxes the bridged nodes declare for themselves (their inventory files), as one fragment: each line an
+    inbox pinned to its node. None when no node has one yet."""
+    nodes, actors = [], []
+    for nid, stale in sorted(c.bridge_inventory.items()):
+        p = inventory_file(c.path, nid)
+        if not p.exists():
+            log(f"package: no inventory from node {nid:04x} yet ({p.name}): its own inboxes wait for the hub to read it")
+            continue
+        try:
+            lines = json.loads(p.read_text(encoding="utf-8"))["lines"]
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise ApplyError(f"{p}: {exc}") from None
+        nodes.append({"node_id": nid, "label": c.bridged.get(nid, f"node-{nid:04x}"), "kind": "host"})
+        for line in lines:
+            name, _, outs = str(line).strip().partition(" ")
+            if not name or not outs:
+                raise ApplyError(f"{p}: an inventory line is '<inbox> <name>:<type>[:<unit>] ...', not {line!r}")
+            actors.append({"name": name, "module": "builtin:inbox", "latency_class": 4, "pin": nid,
+                           "config": {"outputs": outs.strip(), "stale_ms": stale}})
+    if not actors:
+        return None
+    return {"schema": 1, "system": c.system, "min_core_version": 1, "nodes": nodes, "actors": actors}
 
 
 def peer_budget(c: Cluster, cabled: int | None = None) -> dict[int, dict[str, Any]]:
@@ -1396,6 +1448,17 @@ def plan_package(c: Cluster, cache: Path, log) -> Package | None:
             for act in frag.get("actors", []):
                 act["_cell"] = c.manifest_cells[k]
         fragments.append((frag, root, str(mp)))
+    inv = inventory_fragment(c, log)
+    if inv is not None:
+        # A hand-written inbox of the same name wins: the node's line is skipped, said once.
+        written = {a.get("name") for frag, _r, _w in fragments for a in frag.get("actors", [])}
+        dup = [a["name"] for a in inv["actors"] if a["name"] in written]
+        for name in dup:
+            log(f"package: inbox '{name}' is written by hand too: the node's own line is left out")
+        inv["actors"] = [a for a in inv["actors"] if a["name"] not in written]
+        if inv["actors"]:
+            fragments.append((inv, c.path.parent, "the bridged nodes' own inventories"))
+            log("package: from the bridged nodes' inventories: " + ", ".join(a["name"] for a in inv["actors"]))
     if c.off:
         found = set()
         for frag, _root, _what in fragments:
