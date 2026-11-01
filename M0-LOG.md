@@ -6208,3 +6208,20 @@ tablet depend on the PC when a weaker board stands alone?" -- through a board's 
   those caveats (STATUS M29). Not yet on the boards: `36875d1`, `40a8ae3`, `dca967f` (the next package). Open: A
   restarted by software at 01:06, 01:56 and 02:17 with no record caught; A counts ~22-27 % of the PC node's cable frames
   as gaps (an accounting question, older than M29).
+
+## Session 52 -- 2026-11-01 (afternoon): Update's ordering, and the pause
+
+- **Update offered older firmware.** The hub's own Apply builds firmware from the cluster's sources when no release
+  matches, so the boards ran `29e3672` while the installed Potluck carried `fcfdbb0`, and `cell.update` read pending:
+  pressing Update would have sent the boards back a version. `a0d812a`: a release records `built_at`; the hub finds the
+  boards' build in its cache by key; `cell.update.newer` true/false/null, and `pending` is false when `newer` is
+  false (asked for by a client of the hub's API, which now refuses Update when the release is older). `3e62ca7`: an
+  `mc_job` whose result is NO_DATA (it has not run since its board started) reads working -- A restarted by software
+  again around 13:00 (the fifth that day, still no record caught) and the demo job read red with nothing wrong.
+- **Installed** by the owner: hub `4f7fd71`. Checked after: `cell.update` boards == available, pending false; the PC
+  presenting; A, B, C alive on channel 11, firmware `29e3672-728f8d` (counter 101), package 146 confirmed; 27 of 27
+  apps working; the tablet logged in through a board, 19 values GOOD.
+- **Watch items, unfinished:** channel 11 held from 05:01 to at least 13:18 (the day-long watch was stopped with the
+  session); the power-on radio watch has not fired live.
+- **Development paused** at the owner's word (the tooling budget). The README's new Status section lists where the
+  reference cell stood and the loose ends in the order to pick them up; it is the place to start again.

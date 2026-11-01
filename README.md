@@ -5,10 +5,11 @@ dish — a sensor, some RAM, a radio — and the cluster eats together.
 
 *e(SP)luribus unum — out of many, one machine.*
 
-**Status: release 1.0.1, built and run on real hardware, and still being built on.** Since the first boards arrived
+**Status: paused since 2026-11-01** -- [where it stopped and where to pick it up](#status-paused-since-2026-11-01).
+Release 1.0.1, built and run on real hardware, with everything since in *Unreleased*. Since the first boards arrived
 on 2026-10-01, every feature below has been built and then run on three ESP32-S3 boards: a 24.5-hour unattended soak,
 a walk through a two-storey house, cables pulled and power cut by hand, and signed firmware and packages rolled out
-over the radio again and again (by 2026-10-29 the test cell's package counter stood at 128). All 35 milestones through M29
+over the radio again and again (when it paused, the test cell's package counter stood at 146 and its firmware counter at 101). All 35 milestones through M29
 are accepted, some with caveats; [How it was tested](#how-it-was-tested) is the short version,
 [STATUS.md](STATUS.md) the full one, and [CHANGELOG.md](CHANGELOG.md) lists what has changed since the release.
 
@@ -21,6 +22,47 @@ board brings and shares, how the cell presents itself to the house network and t
 glance.
 
 ---
+
+## Status: paused since 2026-11-01
+
+Development stopped on 2026-11-01 for want of the maintainer's time and tooling budget, not because of a fault. Nothing
+is half done: every change is committed, pushed and running on the reference cell, and every milestone through M29 is
+accepted (some with caveats -- [STATUS.md](STATUS.md)). No release has been cut since 1.0.1; everything since is under
+*Unreleased* in [CHANGELOG.md](CHANGELOG.md) and would make a 1.1.
+
+**The reference cell when it paused.** Boards A, B and C on firmware `29e3672-728f8d` (firmware counter 101) and
+package 146, all confirmed; the hub at `4f7fd71` (main's code; later commits are documents); all 27 apps working; the
+radio on channel 11; the PC presenting the cell to Home Assistant; a tablet member (node `00fd`) logged in through a
+board's node port (M29), its 19 values fresh. The step-by-step record ends with session 52 of [M0-LOG.md](M0-LOG.md).
+
+**Loose ends, in the order to pick them up:**
+
+1. **Board A restarts by software with no record caught** -- five times on 2026-11-01, each a clean restart
+   (reset reason "software"). The candidates write a JSON line first: the radio fail-stop (`{"t":"tx_dead"}`), the
+   power-on radio watch (`{"t":"radio_poor"}`), a firmware or package step. Next: keep a JSON-only capture of A's
+   console running across one restart (`tools/json_capture.py`) and read its last record.
+2. **Reads starve when one board carries all of them.** A board's table of requests waiting for another node's
+   answer (`kMaxPendingNs`, 20, shared by every peer) filled while A carried every read of the tablet's values, and
+   those values went stale on the hub's path. Next: count the table's high-water mark, then raise it or pace reads.
+3. **A counts about a quarter of the PC node's cable frames as gaps**, yet reads over the cable are not lost. Find
+   whether it is the counting or real loss before trusting the cable's loss figure.
+4. **A board serving a node port must be on the same IP network as the node.** In the reference house a second
+   access point in router mode carries the house network's name; a board that restarts can join it and becomes
+   unreachable to the tablet (it moves to the hub or another board, as designed). The fix belongs to the network
+   (bridge mode, or a name of its own); Potluck could at most report a board on another subnet.
+5. **B paused the tablet's inbound traffic every 15 s for five hours** on 2026-11-01 (the extender app's Wi-Fi
+   scans are the suspect). Next: lay the extender's scan record beside B's node-port log.
+6. **Not yet seen live:** the power-on radio watch firing (B's known power-on stall has not recurred since it was
+   built), and a whole day on channel 11 (eight hours watched).
+7. **Hardware tests owed:** CAN bus-off recovery on two boards (the code is in, the test needs the transceivers
+   wired again); M28's second half, a buzzer at each board (waits for a part).
+8. **The question from the 1.0 review:** is a distributed runtime worth its complexity next to ESPHome + MQTT + Home
+   Assistant? The planned answer is a side-by-side demonstration (unplug a board: the reading survives, the work
+   moves, Home Assistant keeps working) and a timed newcomer test.
+
+**To pick it up:** read this section, then [STATUS.md](STATUS.md), the latest session of [M0-LOG.md](M0-LOG.md), and
+*Unreleased* in [CHANGELOG.md](CHANGELOG.md). The gates (`tools\run_all_tests.ps1`) say whether the tree still builds
+with today's toolchain; ESP-IDF v6.0.2 and Python 3.14 were the last tested.
 
 ## The idea
 
@@ -78,8 +120,9 @@ Everything below runs on real ESP32-S3 boards and has passed a test written befo
 roadmap (a *milestone*) has one, and a criterion that would have killed it. All 35 milestones through M29 are
 accepted, some with caveats -- the friendly way in (M20: a setup wizard, a library of apps, a floor plan,
 boards added from the dashboard over their own USB cable) on a reinstall of a known board rather than a
-newcomer's first cell. The latest, M28, is sound across the cell -- any app's alarm played as a pattern of notes on
-the PC's speakers; a buzzer at each board waits for a part. [STATUS.md](STATUS.md) lists every
+newcomer's first cell. The latest, M29, lets a computer on the house network -- a tablet, say -- be a member
+through a board's own Wi-Fi with no PC in between; before it, M28 played any app's alarm as a pattern of notes on the
+PC's speakers (a buzzer at each board waits for a part). [STATUS.md](STATUS.md) lists every
 milestone with its measurements and caveats.
 
 - **Boards that find each other and know when one is gone.** Over the radio, a missing board is declared dead
@@ -97,7 +140,9 @@ milestone with its measurements and caveats.
 - **Your own apps** in their own repositories: native code compiled in, or untrusted code in a WebAssembly
   sandbox that cannot touch the board.
 - **More than microcontrollers:** a PC can join as a member and take work while it is on, offer services the
-  boards call, and boards lend each other their idle cores.
+  boards call, and boards lend each other their idle cores; another computer on the house network (a tablet, say)
+  joins through the hub or through any board's own Wi-Fi, declares its own sensors, lends its cores and takes over
+  work when a board goes.
 - **Tight loops stay next to their hardware** (checked when you build), and boards can share a CAN bus.
 - **Potluck shares the radio**: a board can be a cluster member and a Wi-Fi extender at the same time.
 - **Record and replay** a session byte for byte, to see exactly what happened.

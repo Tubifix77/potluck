@@ -15,9 +15,9 @@ milestone counts as *built* when the code exists, and *accepted* only when its t
 of the test that was run differently from how it was written (a reset standing in for a power cut, say); a *waived*
 part was not run, by the maintainer's decision, and the evidence that stands in its place is given.
 
-Where they stand **(2026-11-01)**: all 35 accepted, some with caveats. Every
-"accepted" below was run on real ESP32-S3 boards unless the row says simulation. The first
-published release was v0.2.0, earlier the same day.
+Where they stand **(2026-11-01, when development paused)**: all 35 accepted, some with caveats. Every
+"accepted" below was run on real ESP32-S3 boards unless the row says simulation. The loose ends left open are listed
+in the README's [Status](README.md#status-paused-since-2026-11-01) section.
 
 **The reference bench.** Every hardware measurement below comes from the maintainer's test cell: three
 ESP32-S3-DevKitC-1 N16R8 boards called **A**, **B** and **C**, each on its own USB cable, with the PC's USB-serial

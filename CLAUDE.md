@@ -5,6 +5,9 @@ optionally, a PC) share their sensors, compute and radios as one "cell". Think "
 hardware". Version 1.0.1, the S3 Edition: the tested hardware is the ESP32-S3 with 16 MB flash and 8 MB PSRAM; the host
 tools are tested on Windows 11. Licence: Apache-2.0 (NOTICE lists third-party code).
 
+**Paused since 2026-11-01.** Before anything else, read the README's "Status: paused since 2026-11-01" section: where
+the reference cell stood and the loose ends in the order to pick them up.
+
 ## Where things are
 
 | need | read |
