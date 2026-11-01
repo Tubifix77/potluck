@@ -741,6 +741,30 @@ TEST(reconcile, a_holder_hands_its_checkpoint_over_with_the_actor_even_if_the_fi
     g_ck_save_once = false;
 }
 
+TEST(reconcile, an_owner_back_from_a_quick_restart_resumes_from_the_replica_not_its_own_copy) {
+    // Found on the real cell (2026-11-01): C, the guest's holder, restarted over USB and was back within its peers'
+    // window; the tablet still counted C the owner, so it sent C nothing, and its claim set (sent first) let C settle
+    // and start from its own flash copy (233 -> 182). The replica now goes to a returning owner too, ahead of the claims.
+    std::memset(g_ck_had, 0, sizeof(g_ck_had));
+    std::memset(g_ck_last_saved, 0, sizeof(g_ck_last_saved));
+    RCell c;
+    saver_specs(c, 2);
+    c.specs[0].place.gravity[0] = 1;
+    c.specs[0].place.gravity[1] = 9;
+    c.build(2, {});
+    c.run(8000);
+    CHECK_EQ(c.runner(), 1);
+    const uint32_t saved = g_ck_last_saved[1];
+    CHECK(saved > 0);
+    c.kill(1);
+    c.revive(1);  // back at once: no death declared, the old claim still in node 0's view
+    g_ck_had[1] = false;
+    c.run(6000);
+    CHECK_EQ(c.runner(), 1);
+    CHECK(g_ck_had[1]);
+    CHECK(g_ck_loaded[1] + 10 >= saved);
+}
+
 TEST(reconcile, a_node_back_in_a_new_incarnation_resumes_from_a_replica_even_if_the_first_copy_was_lost) {
     // Found on the real cell (2026-10-31): B, the guest's first choice, came back power-cycled twice in 6 s; the
     // second time nobody had taken the guest over, so no release carried a checkpoint, and the tablet's copy sent

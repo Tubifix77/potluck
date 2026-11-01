@@ -247,9 +247,14 @@ uint32_t McJobActor::rtt_ms(uint16_t node_id) const {
     const size_t i = node_.peers().index_of(p);
     uint32_t lo = 0, hi = 0;
     // The 99th percentile's upper bucket edge: pessimistic, so a unit is lent only when lending clearly
-    // pays. No samples yet (or the overflow bucket): the largest round trip seen, or a second.
-    if (i < PeerTable::capacity() && node_.peers().histogram(i).percentile(99, lo, hi) && hi != 0xFFFFFFFFu) {
-        return hi / 1000u + 1u;
+    // pays. In the overflow bucket, the 75th, then the median: a node on Wi-Fi through a board's node port
+    // (2026-11-01, the tablet through B: median 16-22 ms, a quarter past 200 ms) was costed at its single worst
+    // round trip, 757 ms, and got 2 units of 240. No samples yet: the largest round trip seen, or a second.
+    if (i < PeerTable::capacity()) {
+        static constexpr uint8_t kPcts[] = {99, 75, 50};
+        for (const uint8_t pct : kPcts) {
+            if (node_.peers().histogram(i).percentile(pct, lo, hi) && hi != 0xFFFFFFFFu) return hi / 1000u + 1u;
+        }
     }
     return p->rtt_max_us != 0 ? p->rtt_max_us / 1000u + 1u : 1000u;
 }

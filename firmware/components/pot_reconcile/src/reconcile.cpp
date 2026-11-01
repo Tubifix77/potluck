@@ -543,11 +543,12 @@ bool Reconciler::refresh_view(uint32_t now) {
         }
         if (!known) {
             changed = true;
-            send_to(cur[i].node_id);
             // M8.2 (PS-4): a node that (re)appeared holds no checkpoint -- it rebooted, or was away for
             // the saves -- and may be the one the actor hands over to next. Bench: C came back and took
-            // rf_fusion over at 2.4 s with nothing to resume from, and relearned for ~64 s.
+            // rf_fusion over at 2.4 s with nothing to resume from, and relearned for ~64 s. Ahead of our claim
+            // set (2026-11-01): the claim set lets it settle and start, and a checkpoint after it came too late.
             send_checkpoints_to(cur[i].node_id);
+            send_to(cur[i].node_id);
         }
     }
     if (changed) {
@@ -880,7 +881,9 @@ void Reconciler::send_checkpoints_to(uint16_t node) {
         const Slot& s = slots_[i];
         // As the owner; or (M12) while nobody owns it yet -- after a whole-cell reboot every node holds only
         // what it restored, and the newest copy must reach whoever starts the actor.
-        if (!s.active || !s.ck_have || !((s.running && s.owner == self) || s.owner == 0)) continue;
+        // And to the node that held it, back from a restart quicker than our window (2026-11-01, C over USB): we
+        // still count it the owner, and its own copy is older than the replica it cast to us.
+        if (!s.active || !s.ck_have || !((s.running && s.owner == self) || s.owner == 0 || s.owner == node)) continue;
         for (uint8_t k = 0; k < s.cfg.count; ++k) {
             if (s.cfg.node[k] == node) {
                 ck_send(s, node);

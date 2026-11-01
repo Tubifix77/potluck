@@ -958,7 +958,8 @@ class Model:
         """2026-10-31: a node on the node port that lends its cores (a tablet) has no NODE_STATUS, but answers the
         compute section of TELEMETRY, which the cabled board passes on to it as to any board: its lender's counters go
         on its hub.bridged entry (`lend`), as a board's on boards[].telemetry.lend."""
-        for nid in sorted(self._lending_bridged() & set(getattr(self.hub, "bridged", {}) or {})):
+        # Wherever it is logged in: the hub's node port or, since M29, a board's (2026-11-01: on B's, its counters went).
+        for nid in sorted(self._lending_bridged()):
             try:
                 c = tm.compute(self.hub, nid)
             except (BridgeError, tm.TelemetryError):
@@ -1131,7 +1132,7 @@ class Model:
         out = []
         for nid in sorted(set(labels) | set(on) | set(left)):
             b = on.get(nid)
-            lend = ((getattr(self, "bridged_compute", {}) or {}).get(nid) or {}).get("lender") if b is not None else None
+            lend = ((getattr(self, "bridged_compute", {}) or {}).get(nid) or {}).get("lender")  # on a board's port too
             out.append({"node": f"{nid:04x}", "label": labels.get(nid, f"node-{nid:04x}"), "attached": b is not None,
                         "since_at": b.since_at if b is not None else left.get(nid),
                         "epoch": b.epoch if b is not None else None, "from": b.address if b is not None else None,

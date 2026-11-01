@@ -1167,7 +1167,11 @@ class BridgedNode(HubFixture):
         deadline = time.time() + 3
         while time.time() < deadline and self.hub.bridged:
             time.sleep(0.05)
-        self.assertIsNone(self.model._bridged_json()[0]["lend"])  # detached: no counters shown as current
+        # Off the hub's port it may be on a board's (M29): its counters stay what the last read said, and a read that
+        # finds nobody clears them (the pull stores None).
+        self.assertEqual(self.model._bridged_json()[0]["lend"]["served"], 6)
+        self.model.bridged_compute[0x00FD] = None
+        self.assertIsNone(self.model._bridged_json()[0]["lend"])
 
     def test_a_good_login_waits_for_the_cabled_boards_address(self) -> None:
         self.cable = None  # the hub has not read the cabled board's NODE_STATUS yet (or it runs older firmware)
