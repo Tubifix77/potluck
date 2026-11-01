@@ -26,6 +26,12 @@ bool g_started = false;
 std::atomic<int> g_client{-1};      // the logged-in node's socket
 std::atomic<uint16_t> g_node{0};    // its id
 std::atomic<uint32_t> g_addr{0};
+// The link task cannot send to the node: the server task closes the connection, so the node redials (another board,
+// or the hub). Found on the owner's cell 2026-11-01: B's sends to the tablet stopped at 02:42:37 -- each one dropped
+// silently -- while the socket stayed open and the tablet's own frames kept arriving, for 13 minutes.
+std::atomic<bool> g_kick{false};
+uint32_t g_send_fail_since = 0;  // the link task's only (send_to runs under the node mutex)
+constexpr uint32_t kSendStuckMs = 3000;
 void* g_notify = nullptr;
 Counters g_c{};
 
@@ -215,6 +221,11 @@ void task(void*) {
                 close_client(fd);  // closed, or broken
             }
         }
+        if (g_kick.exchange(false) && g_client.load() >= 0) {
+            ++g_c.send_fail;
+            close_client(g_client.load());
+            continue;
+        }
         if (g_client.load() >= 0 && now_ms() - last_rx > kIdleMs) {
             ++g_c.idle_drops;
             close_client(g_client.load());
@@ -263,8 +274,24 @@ int32_t send_to(uint16_t node, const uint8_t* frame, size_t len) {
     if (fd < 0 || g_node.load() != node) return -1;
     const size_t n = write_serial_frame(frame, len, g_wire, sizeof(g_wire));
     if (n == 0) return -1;
-    // Never block the link task: a socket that will not take a whole frame now loses it, as the radio would.
-    if (::send(fd, g_wire, n, MSG_DONTWAIT) != static_cast<ssize_t>(n)) {
+    // Never block the link task: a socket that will not take a whole frame now loses it, as the radio would -- but a
+    // frame half taken has torn the stream, and one refused for kSendStuckMs means the node no longer reads: either
+    // way the connection is closed (by the server task), and the node redials.
+    const ssize_t sent = ::send(fd, g_wire, n, MSG_DONTWAIT);
+    if (sent == static_cast<ssize_t>(n)) {
+        g_send_fail_since = 0;
+    } else {
+        const uint32_t t = now_ms();
+        if (sent > 0 || (errno != EAGAIN && errno != EWOULDBLOCK)) {
+            g_kick.store(true);
+        } else if (g_send_fail_since == 0) {
+            g_send_fail_since = t == 0 ? 1 : t;
+        } else if (t - g_send_fail_since > kSendStuckMs) {
+            g_kick.store(true);
+            g_send_fail_since = 0;
+        }
+    }
+    if (sent != static_cast<ssize_t>(n)) {
         ++g_c.send_fail;
         return -1;
     }
