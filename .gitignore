@@ -87,3 +87,4 @@ firmware/build-*/
 
 # The maintainer's own notes for Claude Code sessions (auto-loaded, never published)
 CLAUDE.local.md
+CLAUDE.local.history.md
