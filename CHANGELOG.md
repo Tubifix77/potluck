@@ -5,6 +5,25 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **A node from the house network needs no PC (M29)**: a board whose own Wi-Fi station has an address serves the hub's
+  node port itself (TCP 8472, the same login and framing) and publishes where as `node-<id>/sys/nodeport`; a tablet
+  dials a board first and the hub second. Every board now passes on its own off-radio members (the tablet on its node
+  port, the PC's node on its cable) whether or not it is the cell's relay (ADR-009 amended), follows such a member
+  when it moves to another board, and the hub counts it present when its values arrive. A board must be on the same IP
+  network as the node it serves.
+- **A bridged node declares its own values**: TELEMETRY section 8; with `"inventory": true` on its `bridge.nodes`
+  entry the hub keeps its lines beside the cluster file and the next Apply makes an inbox of each.
+- **The PC keeps presenting after the role goes away and comes straight back** -- an ended session no longer marks
+  the new one disconnected (Home Assistant got no values while the log read "connected").
+- **A holder hands an actor's checkpoint over with the actor**, and again to a node's first claim set of a new boot:
+  a returning board resumes from the newest copy, not its own minutes-old one.
+- **A station probes for a split only when it misses most of its cell**: a board unplugged no longer sends the others
+  off their channel looking for it. **A board that powers on with a radio hardly heard restarts itself once.**
+- **A lending job stops asking a peer that answers nothing** after two overdue units (the PC's node took four a run).
+- **A bridged node is never listed for the presenter, and takes a guest only when the guest names it**; the hub reads
+  where a portable actor runs from alive boards only. **An actor can be switched off by name** (`package.off`,
+  `POST /api/setup/actor`).
+
 - **A bridged node may lend its cores**: a package may pin `builtin:mc_lender` to it, and the hub shows its
   lender's counters on its `hub.bridged` entry (`lend`) and its label in a job's lenders.
 - **A package may name 64 resources in its outside section** (was 32): the owner's cell needed 34 -- a phone's
