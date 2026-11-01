@@ -81,6 +81,7 @@
 #include "esp_psram.h"
 #endif
 #include "esp_attr.h"
+#include "esp_wifi.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_system.h"
@@ -3091,6 +3092,14 @@ bool handle_test(const char* line, size_t len) {
                 vTaskDelete(nullptr);
             },
             "pot_hog", 2048, nullptr, 20, nullptr, 0);
+        return true;
+    }
+    // M29 test instrument: "POT! sta drop" -- the board's own station leaves its access point once (as a router going
+    // away would), whichever module owns it; the module joins again by itself. The node port closes with the address,
+    // so a node logged in here moves to another board or the hub (M29's acceptance, line 3).
+    if (std::strcmp(buf, "POT! sta drop") == 0) {
+        const esp_err_t err = esp_wifi_disconnect();
+        std::printf("{\"t\":\"test\",\"cmd\":\"sta_drop\",\"err\":%d}\n", static_cast<int>(err));
         return true;
     }
     unsigned deaf_tail = 0;
