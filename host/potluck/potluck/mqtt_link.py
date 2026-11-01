@@ -139,6 +139,9 @@ class PresenterLink:
             self.goodbye = publish_packet(cfg["will_topic"], base64.b64decode(cfg["will_b64"]))
             self.cfg = None
             self.generation += 1
+            was, self.connected = self.connected, False
+        if was:
+            self.control("connected 0")  # now, before any new session's "connected 1"
 
     # ---- the connection ----
     def _open(self, cfg: dict):
@@ -183,12 +186,7 @@ class PresenterLink:
                 self._serve(sock, cfg, gen, buf[used:])
             except (OSError, ConnectionError, ssl.SSLError, ValueError) as exc:
                 self.log(f"presenting: {exc}")
-            with self.lock:
-                was, self.connected = self.connected, False
-                ended = gen != self.generation
-            if was:
-                self.control("connected 0")
-            if ended:
+            if self._end(gen):
                 return
             if sock is not None:
                 try:
@@ -198,6 +196,20 @@ class PresenterLink:
             time.sleep(RECONNECT_S)
             with self.lock:
                 cfg = self.cfg if gen == self.generation else None
+
+    def _end(self, gen: int) -> bool:
+        """A session's connection is gone. True if its generation has ended -- then it touches nothing shared: the link
+        and the node belong to the new session, which may have connected already (2026-11-01: a role handed on and
+        back in 65 ms; the old thread, ending after the new one's "connected 1", said "connected 0" and cleared the
+        flag, and the PC published nothing to Home Assistant for good). stop() says "connected 0" for an ended one."""
+        with self.lock:
+            ended = gen != self.generation
+            was = False
+            if not ended:
+                was, self.connected = self.connected, False
+        if was:
+            self.control("connected 0")
+        return ended
 
     def _bye(self, sock) -> None:
         with self.lock:

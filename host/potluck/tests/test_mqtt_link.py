@@ -144,6 +144,41 @@ class Transport(unittest.TestCase):
         finally:
             slow.close()
 
+    def test_the_role_handed_on_and_straight_back_stays_connected(self) -> None:
+        """2026-11-01, the owner's cell: the role went away and came back in 65 ms; the new connection said "connected 1"
+        at once, and the old thread, waking seconds later to find it had ended, said "connected 0" and cleared the
+        link's connected flag -- so the PC's node published nothing to Home Assistant for good, while the hub's own log
+        read "connected"."""
+        self.link.start(self.cfg)
+        self.assertTrue(wait_for(lambda: "connected 1" in self.ctl))
+        real_bye = self.link._bye
+
+        def slow_bye(sock) -> None:  # the old thread's goodbye over TLS, slower than the new connection
+            time.sleep(1.0)
+            real_bye(sock)
+        self.link._bye = slow_bye
+        self.link.start(self.cfg)  # handed on and back: the node's new presenter asks again
+        self.assertTrue(wait_for(lambda: self.ctl.count("connected 1") >= 2))
+        time.sleep(ml.RECONNECT_S + 6.0)  # past the old thread's receive timeout: it has seen that it ended
+        self.assertEqual([c for c in self.ctl if c.startswith("connected")][-1], "connected 1")
+        self.assertTrue(self.link.connected)
+        self.link.publish("potluck/ef76cc2e/0badf00d/state", b'{"value":2}')
+        self.assertTrue(wait_for(lambda: any(e["ev"] == "publish" and e.get("payload_b64") == base64.b64encode(
+            b'{"value":2}').decode() or (e["ev"] == "publish" and e.get("topic") == "potluck/ef76cc2e/0badf00d/state")
+            for e in events(self.mod))))
+
+    def test_an_ended_session_leaves_the_new_ones_connection_alone(self) -> None:
+        """The bookkeeping of the race above, without its timing: the old generation's thread ends after the new one
+        connected, and must neither clear the flag nor say "connected 0"."""
+        link = ml.PresenterLink(self.ctl.append)
+        link.generation, link.connected = 5, True  # generation 5 connected; an older one now ends
+        self.assertTrue(link._end(3))
+        self.assertTrue(link.connected)
+        self.assertNotIn("connected 0", self.ctl)
+        self.assertFalse(link._end(5))  # the current one losing its broker does
+        self.assertFalse(link.connected)
+        self.assertEqual(self.ctl[-1], "connected 0")
+
     def test_a_broker_that_is_not_there_is_retried_and_reachable_says_so(self) -> None:
         dead = socket.socket()
         dead.bind(("127.0.0.1", 0))
