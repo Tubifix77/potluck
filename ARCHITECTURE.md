@@ -1350,7 +1350,17 @@ to a job on A and takes a guest when its board goes, as through the hub; (3) C's
 to the hub within its window plus 15 s; (4) 30 minutes with the tablet on C raise no link's heartbeat loss by more than
 one point. *Bound:* at most 512 B of new static internal RAM (the server's task and buffers in PSRAM; 2.0 KB are left).
 *Kill:* if serving the port wedges C's radio (NO_MEM, tx_dead) more than once in a day that it would not have otherwise
--- then the tablet stays on the hub and the PC-free member waits for a board with a second radio.
+-- then the tablet stays on the hub and the PC-free member waits for a board with a second radio. *As built so far (2026-11-01, M0-LOG session 51):* pot/node_port.hpp (the login, byte for byte the hub's),
+node_port_server (the task and its buffers in PSRAM; +~200 B of static internal RAM, 1.2 KB left), `sys/nodeport`, and
+ADR-009's amendment: every board passes on its own off-radio members, so C or B serves the tablet while A relays the
+PC. Found on the owner's cell: (1) the boards' stations had joined a Google Nest point in router mode that carries the
+house network's name but hands out its own addresses behind the house router (double NAT), so the tablet and the PC
+could not reach them -- the rule this makes explicit: **a board serves only nodes on its own IP network**. Fixed
+without touching the house network: the cell moved to channel 11 (`POT! channel 11 quiet` saved on B and C, each
+reset), where the stations joined the house router's access points; the cell has run on 11 since. (2) A board that
+had the tablet on its cable kept that entry when the tablet moved to B, and the relay refused its frames through B --
+a moved off-radio member is now followed (`fcfdbb0`). (3) The hub counts a bridged node present when its values arrive
+fresh, not only when it holds the node.
 ## 14. Risk register
 
 | Risk | Likelihood | Impact | Mitigation |

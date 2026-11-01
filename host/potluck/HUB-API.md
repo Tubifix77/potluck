@@ -537,6 +537,24 @@ the node under an address outside the cable's trusted family (`02:00:00:01:<id>`
 that address and its frames tagged, as a radio board's are. Its own requests may use any msg_id: the cell's replies to
 it go to it alone. If the hub restarts on another cabled board, the node logs in again and learns the new one.
 
+### The same port on a board (M29, 2026-10-31)
+
+A board whose own Wi-Fi station holds an address (the `wifi` module, or the extender's station) serves the same node
+port itself, TCP 8472 on every interface, so the node needs no PC: the same login lines, except that `ok` names that
+board and its own MAC; the same framing; one node at a time per board (a new login replaces it, 15 s of silence drops
+it). Who may log in: a node certificate from the cell's CA with an id in `00f0`..`00fd` -- the certificate is the cell's
+word, so a board needs no list. The board publishes where it serves as `node-<id>/sys/nodeport`, U64 `(IPv4 << 16) |
+port`, with the IPv4 address in host order (`a.b.c.d` is `a << 24 | b << 16 | c << 8 | d`), only while it serves;
+other boards adopt it on demand, and the hub reads it through `POST /api/interest` with the full path. A node reads it
+from any board, dials a board first and the hub second, and logs in to the new link before it closes the old one.
+
+Every board passes on its own off-radio members -- a node on its node port, the PC's node on its cable -- whether or not
+it is the cell's relay (ARCHITECTURE ADR-009, amended 2026-10-31): their HELLO with their MAC appended, their beacons,
+and unicast both ways, and it copies the cell's verified HELLOs and beacons down to them. The node marks itself an
+off-radio member (`NodeConfig.has_wire_mac`, the `02:00:00:01` family, its own address in it) so it takes what its board
+passes on. A board must be on the same IP network as the node: a station joined to a different router under the same
+network name (a mesh point in router mode) serves an address the node cannot reach.
+
 ## Integrations report their state, and each program has a share
 
 `POST /api/integrations {"name": "Node-RED", "state": "connected" | "disconnected" | "error" | "idle", "detail": "..."}`
