@@ -1357,7 +1357,7 @@ PC. Found on the owner's cell: (1) the boards' stations had joined a Google Nest
 house network's name but hands out its own addresses behind the house router (double NAT), so the tablet and the PC
 could not reach them -- the rule this makes explicit: **a board serves only nodes on its own IP network**. Fixed
 without touching the house network: the cell moved to channel 11 (`POT! channel 11 quiet` saved on B and C, each
-reset), where the stations joined the house router's access points; the cell has run on 11 since. (2) A board that
+reset), where the stations joined the house router's access points. It did not hold: the Nest point serves the same name on channel 11 too, and a board that restarts picks an access point by its own scan -- B at 02:56 and C twice landed on the Nest network again (one moved back by hand, C still there after package 142). A channel cannot keep a board off a second router under the same name; only the network can (the Nest point in bridge mode, or a name of its own) -- the owner's, asked. Until then, a board on the wrong network serves nothing the node can reach, and the node uses another board or the hub. (2) A board that
 had the tablet on its cable kept that entry when the tablet moved to B, and the relay refused its frames through B --
 a moved off-radio member is now followed (`fcfdbb0`). (3) The hub counts a bridged node present when its values arrive
 fresh, not only when it holds the node. **Accepted 2026-11-01 with caveats** (STATUS M29): hub stopped ~45 s, A and B
