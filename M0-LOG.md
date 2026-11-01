@@ -6170,3 +6170,41 @@ is the boards', not measured against a thermometer [MEASURE]. The store's copy w
 firmware tree, so the firmware key moved and the hub rolled out `f4137eb-df1f55` too). Both alarms now read 0.
 
 Open: the owner's 24 h and hand power-cut evidence as listed in STATUS; a buzzer for M28's second half.
+
+## Session 51 -- 2026-10-30/11-01: the tablet as a member, and M29 -- a member with no PC
+
+The owner's example system: an Android tablet (potluck-android, its own session) as a member of the cell. No unrooted
+Android sends ESP-NOW, so it joined first through the hub's node port (hub `b1c4b9a`), then -- the owner: "why does the
+tablet depend on the PC when a weaker board stands alone?" -- through a board's own station (M29).
+
+- **Through the hub** (2026-10-30/31): login by certificate and challenge, an untrusted address family on the cable
+  (`02:00:00:01:<id>`), NODE_STATUS v3 carries a board's MAC (the tablet verifies A's HELLO over it); the tablet's own
+  sensors as inboxes pinned to it (nine values, then three more groups and its cameras -- an 8x8 grid of means, no
+  picture leaves it); it lends its cores (5.27x with it, pi bits equal) and runs a guest in its own copy of the boards'
+  sandbox. Found on the way: the PC's node crashed every minute after the outside limit went to 64 (its presenter
+  outgrew its actor slot -- `dd3f9c3`, a static_assert now); the tablet was listed for the presenter and refused the
+  whole portable part (`0b1934d`); the hub read where a guest runs from a dead board's last telemetry (`9d0f5f6`); a
+  returning board resumed from its own old checkpoint (`af31d3d`, `14a860a`, `36875d1`: the holder's copy now goes at
+  the release, to a node's first claim set of a new boot, to a returning owner, and ahead of the claims).
+- **Fixes the owner asked for "now"**: a station probes for a split only when it misses most of its cell (C had left
+  A, the PC and the tablet for 30 s whenever B was unplugged -- the pop-ups); a board that powers on with a radio hardly
+  heard restarts once (B's power-on stall, `pot/radio_watch.hpp`, not yet seen live); a lending job stops asking a peer
+  that answers nothing (`9550c20`); an actor can be switched off by name for the Desk's Remove (`dcd990d`); an inbox's
+  last values survive a software restart, back as STALE (`40a8ae3`); a bridged node declares its own values (TELEMETRY
+  section 8, `c1e1830`).
+- **M29**: the login on a board, the node port task (PSRAM), `sys/nodeport`, ADR-009 amended (every board passes on its
+  own off-radio members; one path each, so no duplicate). On the cell the boards' stations turned out to sit on a Google
+  Nest point in router mode that carries the house network's name (192.168.86.x behind the house router): the tablet
+  and PC could not reach them. Moved without touching the owner's network -- `POT! channel 11 quiet` saved on B and C,
+  each reset -- to the house router's access points on channel 11; it does not stick: a restarted board can pick the
+  Nest point again (B at 02:56, C at 03:0x; moved back by hand). The owner's choice (bridge mode, or renaming the Nest
+  point's network) is open. The PC stopped presenting after the role went away and came straight back -- an ended
+  session cleared the new one's connected flag (`c60eb48`; Home Assistant had no new values 01:56-02:08).
+- **M29's acceptance** (firmware `fcfdbb0`, package 141): hub stopped ~45 s -- A and B read the tablet GOOD themselves;
+  the tablet lent (2 of 240 units: costed at its worst round trip; `36875d1` uses the median past an overflowing 99th)
+  and took the test guest while C was away, handing back with the count carried; its board restarted, back through a
+  board in 18.6 s; 30 minutes on B, worst link +0.01 points. B's node port dropped every send for 13 minutes while the
+  socket stayed open (02:42-02:55) -- `dca967f` closes it, and the tablet redials after 15 s of silence. Accepted with
+  those caveats (STATUS M29). Not yet on the boards: `36875d1`, `40a8ae3`, `dca967f` (the next package). Open: A
+  restarted by software at 01:06, 01:56 and 02:17 with no record caught; A counts ~22-27 % of the PC node's cable frames
+  as gaps (an accounting question, older than M29).
