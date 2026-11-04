@@ -1080,12 +1080,13 @@ class Model:
                 if not a["working"]:
                     a["working"], a["detail"] = None, "starting: the hub has not seen the whole cell yet"
         panels = self._panels_json(resources)
+        link, link_detail = self._link_json()
         return {
             "api": API_VERSION,
             "at": _hub_ms(),
             "hub": {"version": self.version, "up_ms": int((time.monotonic() - self.started) * 1000),
                     "port": getattr(self.hub.transport, "port", None) or self.hub.transport.description,
-                    "link": "up" if self.hub.peer_node_id is not None else "down", "link_detail": "",
+                    "link": link, "link_detail": link_detail,
                     "frames_rx": self.hub.stats.rx_frames, "frames_tx": self.hub.stats.tx_frames,
                     "pull_period_ms": self.pull_period_ms, "clock_error_ms": self._clock_error_ms(),
                     "telemetry_period_ms": self.telemetry_period_ms, "telemetry": dict(self.telemetry_counts),
@@ -1104,6 +1105,24 @@ class Model:
             "signals": self._signals_json(boards),
             "last_event_seq": events_tail[0]["seq"] if events_tail else 0,
         }
+
+    LINK_SILENT_S = 3.0  # nothing over the cable for this long and the link reads down (the cabled board beats at 10 Hz)
+
+    def _link_json(self) -> tuple[str, str]:
+        """hub.link and hub.link_detail: up while the cable carries frames. 2026-11-04: it read up for good once a board
+        had answered, so with the PC's adapter unplugged the hub said up while every board read dead (the field demo)."""
+        h = self.hub
+        port = getattr(h.transport, "port", None) or h.transport.description
+        if getattr(h.transport, "is_open", True) is False:
+            return "down", f"{port} is not open: the adapter unplugged?"
+        if h.peer_node_id is None:
+            return "down", f"no board has answered on {port} yet"
+        last = getattr(h, "last_rx_at", None)
+        silent = time.monotonic() - last if last is not None else None
+        if silent is not None and silent < self.LINK_SILENT_S:
+            return "up", ""
+        quiet = f"for {int(silent)} s" if silent is not None else "yet"
+        return "down", f"nothing from the cabled board {h.peer_node_id:04x} on {port} {quiet}"
 
     def _host_node_json(self) -> dict:
         """2026-10-29: is the PC's own node (M10's pot_hostnode, 0x00fe) in the cell? With it attached the PC is a member

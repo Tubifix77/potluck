@@ -58,6 +58,11 @@ class SerialTransport:
     def description(self) -> str:
         return f"serial {self.port} @ {self.baud}"
 
+    @property
+    def is_open(self) -> bool:
+        """False while the port is gone (an adapter unplugged): a failed read closes it, and it reopens on its return."""
+        return self._ser is not None
+
     def _open(self):
         try:
             import serial  # type: ignore[import-untyped]

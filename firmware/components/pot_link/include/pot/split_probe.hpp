@@ -42,6 +42,7 @@ class SplitProbe {
         uint8_t members;         // members the package names, not this board
         uint8_t alive;           // radio peers alive now
         bool outranked_here;     // a lower-id station is alive on this channel (Node::outranking_channel() == channel)
+        uint8_t home = 0;        // the channel this board last shared with its cell (saved across boots), 0 if none
     };
 
     // How long a member must be missing before a probe; kSplitMs unless set. An extender waits longer: its channel is
@@ -118,7 +119,12 @@ inline SplitProbe::Act SplitProbe::tick(const Inputs& in) {
     if (split_since_ == 0) split_since_ = in.now_ms == 0 ? 1 : in.now_ms;
     if (in.now_ms - split_since_ < split_ms_) return Act::None;
     if (next_allowed_ != 0 && static_cast<int32_t>(in.now_ms - next_allowed_) < 0) return Act::None;
-    const uint8_t to = next_channel(in.seen, last_probe_ != 0 ? last_probe_ : in.channel, in.channel);
+    // The channel last shared with the cell first, then each one the network was heard on in turn (2026-11-04: C,
+    // powered on into channel 1 with the cell on 11, walked 1 -> 6 -> 11 and found it on the second probe, 219 s in).
+    const bool home_first = in.home != 0 && in.home != in.channel && last_probe_ != in.home &&
+                            (in.seen & (1u << in.home)) != 0;
+    const uint8_t to = home_first ? in.home
+                                  : next_channel(in.seen, last_probe_ != 0 ? last_probe_ : in.channel, in.channel);
     if (to == 0) return Act::None;  // the network is on this channel only: the split is not the mesh's doing
     ++c_.probes;
     state_ = State::Probing;

@@ -167,6 +167,8 @@ class Bridge:
         self.peer_hb_miss_limit: int | None = None
         self.last_heartbeat: Heartbeat | Beacon | None = None
         self.last_heartbeat_at: float | None = None
+        #: when the transport last gave any bytes -- the link's own sign of life, whoever they came from.
+        self.last_rx_at: float | None = None
 
         self._started = time.monotonic()
         self._seq = 0
@@ -422,6 +424,7 @@ class Bridge:
                 time.sleep(0.005)
                 continue
             self.stats.rx_bytes += len(data)
+            self.last_rx_at = time.monotonic()
             for raw in self.reassembler.feed(data):
                 self._on_raw_frame(raw)
             self.stats.bad_frames = (

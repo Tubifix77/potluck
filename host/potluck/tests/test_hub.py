@@ -144,6 +144,20 @@ class Api(HubFixture):
         for k in ("latency_p50_ms", "latency_p99_ms", "traffic_frames_s", "errors_min", "saturation"):
             self.assertIn(k, m["signals"])
 
+    def test_the_link_reads_down_once_the_cable_goes_quiet(self) -> None:
+        # 2026-11-04, the field demo: with the PC's adapter unplugged the hub said "up" while every board read dead.
+        self.assertEqual(self.model.snapshot()["hub"]["link"], "up")
+        self.node.stop()  # the cable carries nothing from here
+        self.model.LINK_SILENT_S = 0.3
+        time.sleep(0.5)
+        h = self.model.snapshot()["hub"]
+        self.assertEqual(h["link"], "down")
+        self.assertIn("nothing from the cabled board 1001", h["link_detail"])
+        self.node.start()
+        time.sleep(0.3)  # its heartbeats again
+        h = self.model.snapshot()["hub"]
+        self.assertEqual((h["link"], h["link_detail"]), ("up", ""))
+
     def test_events_page_by_sequence(self) -> None:
         self.model.record("hub_started", None, {"port": "loopback"})
         self.model.record("board_dead", 0x1001, {"was": "alive"})

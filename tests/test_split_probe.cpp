@@ -109,3 +109,29 @@ TEST(split_probe, three_channels_are_tried_in_turn) {
     CHECK(p.tick(at(t, 1, 2, 0, true, false, seen)) == SplitProbe::Act::Probe);
     CHECK_EQ(p.target(), static_cast<uint8_t>(11));
 }
+
+TEST(split_probe, a_station_powered_on_into_another_channel_looks_on_the_cells_saved_channel_first) {
+    // 2026-11-04: C, powered on, joined channel 1 with the cell on 11 and the network heard on 1, 6 and 11. Walking the
+    // channels in order it probed 6 first and found the cell on the second probe, 219 s after boot.
+    constexpr uint16_t k1And6And11 = (1u << 1) | (1u << 6) | (1u << 11);
+    SplitProbe walk, home;
+    SplitProbe::Inputs in = at(1000, 1, 2, 0, true, false, k1And6And11);
+    CHECK(walk.tick(in) == SplitProbe::Act::None);
+    in.now_ms += SplitProbe::kSplitMs;
+    CHECK(walk.tick(in) == SplitProbe::Act::Probe);
+    CHECK_EQ(walk.target(), static_cast<uint8_t>(6));
+    in = at(1000, 1, 2, 0, true, false, k1And6And11);
+    in.home = 11;
+    CHECK(home.tick(in) == SplitProbe::Act::None);
+    in.now_ms += SplitProbe::kSplitMs;
+    CHECK(home.tick(in) == SplitProbe::Act::Probe);
+    CHECK_EQ(home.target(), static_cast<uint8_t>(11));
+    // Not there after all: back, and the next probe walks on from it rather than trying it again at once.
+    in.now_ms += SplitProbe::kLandMs;
+    CHECK(home.tick(in) == SplitProbe::Act::Return);
+    in.now_ms += 1000;
+    CHECK(home.tick(in) == SplitProbe::Act::None);  // split again from here
+    in.now_ms += SplitProbe::kFirstBackoffMs + SplitProbe::kSplitMs;
+    CHECK(home.tick(in) == SplitProbe::Act::Probe);
+    CHECK_EQ(home.target(), static_cast<uint8_t>(6));
+}

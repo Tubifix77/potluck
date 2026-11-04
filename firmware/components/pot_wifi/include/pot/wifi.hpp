@@ -8,9 +8,10 @@
 //    tools/wifi_set.py from a file); nothing typed is ever printed back, and ESP-IDF's own "connected with
 //    <name>" line is silenced, since a soak captures the console whole;
 //  * a scan before each association that prefers an access point on the channel the cell is on, within a margin
-//    of the strongest or heard at -70 dBm or better (the house mesh serves one network on several channels:
-//    CR-7, M0-LOG session 31; the floor from 2026-10-25), so a
-//    station does not drag or split the cell when it joins;
+//    of the strongest or heard at CONFIG_POT_WIFI_PREFER_FLOOR_DBM or better (the house mesh serves one network on
+//    several channels: CR-7, M0-LOG session 31; the floor from 2026-10-25, -85 since 2026-11-04), so a station does
+//    not drag or split the cell when it joins; when the scan heard nothing on that channel, up to three looks on it
+//    alone come first (a single scan misses an access point now and then, 2026-11-04);
 //  * reconnects that back off (1 s, doubling to 60 s): each scan takes the radio off the cell's channel for
 //    seconds (M0-LOG session 30), and the node declares a looser heartbeat window while the station hunts.
 //
@@ -65,6 +66,9 @@ struct Status {
     uint32_t scans = 0;
     uint32_t retry_in_ms = 0;   // 0 unless waiting to retry
     uint8_t last_reason = 0;    // ESP-IDF's disconnect reason, 0 if none yet
+    uint32_t looks = 0;         // looks on the preferred channel alone, after a full scan missed it (since boot)
+    uint32_t look_found = 0;    // of those picks, the ones a look found the preferred channel for
+    uint8_t first_channel = 0;  // the first association's since boot: where a power-on landed
 };
 Status status();
 

@@ -34,6 +34,8 @@ constexpr uint32_t kRetryFirstMs = 1000;
 constexpr uint32_t kRetryMaxMs = 60000;
 constexpr uint32_t kRepickGapMs = 30000;
 constexpr uint16_t kMaxRecords = 16;
+constexpr uint8_t kPreferLooks = 3;      // looks on the preferred channel alone after a full scan missed it
+constexpr uint32_t kLookMaxMs = 300;     // per look: a full scan's default dwell is shorter
 
 bool g_active = false;
 // Kept for the association only: the driver holds its own copy once set_config has run.
@@ -51,6 +53,13 @@ std::atomic<uint32_t> g_associations{0};
 std::atomic<uint32_t> g_scans{0};
 std::atomic<uint8_t> g_last_reason{0};
 std::atomic<bool> g_repick{false};       // a disconnect we asked for: pick again at once
+std::atomic<uint8_t> g_look{0};          // the channel the scan in flight looks at alone, 0 for a full scan
+// The event task's only: looks taken in this pick, and what the full scan would have joined meanwhile.
+uint8_t g_looks = 0;
+std::atomic<uint32_t> g_looks_total{0}, g_look_found{0};
+std::atomic<uint8_t> g_first_channel{0};
+wifi_ap_record_t g_fallback{};
+bool g_have_fallback = false;
 std::atomic<uint32_t> g_retry_ms{kRetryFirstMs};
 std::atomic<int64_t> g_retry_at_us{0};
 std::atomic<int64_t> g_last_repick_us{0};
@@ -70,11 +79,18 @@ bool load_creds() {
     return ok;
 }
 
-void scan_now() {
+// `only`: look on that channel alone (0: every channel).
+void scan_now(uint8_t only = 0) {
     wifi_scan_config_t sc{};
     sc.ssid = reinterpret_cast<uint8_t*>(g_ssid);  // only this network's access points
     sc.show_hidden = false;
     sc.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+    sc.channel = only;
+    if (only != 0) {
+        sc.scan_time.active.min = 100;
+        sc.scan_time.active.max = kLookMaxMs;
+    }
+    g_look.store(only);
     g_retry_at_us.store(0);
     if (esp_wifi_scan_start(&sc, false) == ESP_OK) {
         g_scans.fetch_add(1);
@@ -101,9 +117,11 @@ void on_retry(void*) {
 
 // The access point to join: on the preferred channel if one there is within the margin of the strongest, or
 // heard at least CONFIG_POT_WIFI_PREFER_FLOOR_DBM (a good link: no reason to split the cell), else the strongest. Returns false if the network was not heard.
-bool pick(wifi_ap_record_t& out) {
+// `missed`: a channel is preferred (not forced) and this scan heard no access point on it.
+bool pick(wifi_ap_record_t& out, bool& missed) {
     EXT_RAM_BSS_ATTR static wifi_ap_record_t recs[kMaxRecords];  // only the event task: PSRAM where there is any
     uint16_t n = kMaxRecords;
+    missed = g_force.load() == 0 && g_prefer.load() != 0;
     if (esp_wifi_scan_get_ap_records(&n, recs) != ESP_OK || n == 0) return false;
     const uint8_t force = g_force.exchange(0);
     const uint8_t prefer = force != 0 ? force : g_prefer.load();
@@ -116,13 +134,12 @@ bool pick(wifi_ap_record_t& out) {
             best_pref = i;
         }
     }
+    missed = force == 0 && prefer != 0 && best_pref < 0;
     if (best < 0) return false;
     const bool take_pref = best_pref >= 0 && (force != 0 ||
                                               recs[best_pref].rssi >= recs[best].rssi - CONFIG_POT_WIFI_PREFER_MARGIN_DB ||
                                               recs[best_pref].rssi >= CONFIG_POT_WIFI_PREFER_FLOOR_DBM);
     out = recs[take_pref ? best_pref : best];
-    ESP_LOGI(kTag, "joining an access point on channel %u (%d dBm)%s", static_cast<unsigned>(out.primary),
-             static_cast<int>(out.rssi), take_pref ? ", the cell's" : (prefer != 0 ? "; none within the margin on the cell's" : ""));
     return true;
 }
 
@@ -131,12 +148,41 @@ void on_wifi(void*, esp_event_base_t base, int32_t id, void* data) {
         scan_now();
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_SCAN_DONE) {
         if (g_assoc.load()) return;  // a scan that finished after an association: nothing to join
+        if (g_look.load() == 0) {    // a full scan: a fresh pick
+            g_looks = 0;
+            g_have_fallback = false;
+        }
         wifi_ap_record_t ap{};
-        if (!pick(ap)) {
+        bool missed = false;
+        bool heard = pick(ap, missed);
+        if (missed && g_looks < kPreferLooks) {
+            // The preferred channel unheard. One scan misses an access point now and then: C, powered on, joined
+            // channel 1 with the cell on 11 and stayed split for 219 s (2026-11-04). So look there alone first.
+            if (heard && !g_have_fallback) {
+                g_fallback = ap;
+                g_have_fallback = true;
+            }
+            ++g_looks;
+            g_looks_total.fetch_add(1);
+            scan_now(g_prefer.load());
+            return;
+        }
+        if (!heard && g_have_fallback) {
+            ap = g_fallback;
+            heard = true;
+        }
+        g_have_fallback = false;
+        if (!heard) {
             ESP_LOGW(kTag, "network not heard; retrying in %u ms", static_cast<unsigned>(g_retry_ms.load()));
             retry_later();
             return;
         }
+        const uint8_t prefer = g_prefer.load();
+        if (g_looks != 0 && prefer != 0 && ap.primary == prefer) g_look_found.fetch_add(1);
+        ESP_LOGI(kTag, "joining an access point on channel %u (%d dBm)%s, after %u look(s) there alone",
+                 static_cast<unsigned>(ap.primary), static_cast<int>(ap.rssi),
+                 prefer == 0 ? "" : (ap.primary == prefer ? ", the preferred" : "; none within the margin on the preferred"),
+                 static_cast<unsigned>(g_looks));
         wifi_config_t cfg{};
         std::memcpy(cfg.sta.ssid, g_ssid, std::strlen(g_ssid));
         std::memcpy(cfg.sta.password, g_pass, std::strlen(g_pass));
@@ -154,7 +200,7 @@ void on_wifi(void*, esp_event_base_t base, int32_t id, void* data) {
         g_assoc.store(true);
         g_channel.store(ev->channel);
         g_take.store(ev->channel);
-        g_associations.fetch_add(1);
+        if (g_associations.fetch_add(1) == 0) g_first_channel.store(ev->channel);
         wifi_ap_record_t info{};
         if (esp_wifi_sta_get_ap_info(&info) == ESP_OK) g_rssi.store(info.rssi);
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
@@ -293,6 +339,9 @@ Status status() {
     s.rssi = g_rssi.load();
     s.associations = g_associations.load();
     s.scans = g_scans.load();
+    s.looks = g_looks_total.load();
+    s.look_found = g_look_found.load();
+    s.first_channel = g_first_channel.load();
     const int64_t at = g_retry_at_us.load();
     const int64_t now = esp_timer_get_time();
     s.retry_in_ms = (at != 0 && at > now) ? static_cast<uint32_t>((at - now) / 1000) : 0;
@@ -308,10 +357,13 @@ void print_status() {
     }
     const Status s = status();
     std::printf("{\"t\":\"wifi\",\"assoc\":%d,\"ip\":%d,\"ch\":%u,\"rssi\":%d,\"associations\":%lu,\"scans\":%lu,"
-                "\"retry_in_ms\":%lu,\"last_reason\":%u,\"int_free\":%u,\"int_largest\":%u}\n",
+                "\"retry_in_ms\":%lu,\"last_reason\":%u,\"looks\":%lu,\"look_found\":%lu,\"first_ch\":%u,"
+                "\"int_free\":%u,\"int_largest\":%u}\n",
                 s.associated ? 1 : 0, s.has_ip ? 1 : 0, static_cast<unsigned>(s.channel), static_cast<int>(s.rssi),
                 static_cast<unsigned long>(s.associations), static_cast<unsigned long>(s.scans),
                 static_cast<unsigned long>(s.retry_in_ms), static_cast<unsigned>(s.last_reason),
+                static_cast<unsigned long>(s.looks), static_cast<unsigned long>(s.look_found),
+                static_cast<unsigned>(s.first_channel),
                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                 static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
 }

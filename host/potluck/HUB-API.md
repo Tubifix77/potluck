@@ -131,7 +131,9 @@ The whole model, one JSON object. Fields may be added; none in version 1 will be
 The example leaves out `hub.relay`, `hub.retention` and `board.telemetry`, described below.
 
 - `hub.version`: the commit the hub was built from. `hub.port`: the serial port it holds. `hub.link`: `up` | `down`
-  (the cable to the cell). `hub.tls_fp`: with `--listen`, the SHA-256 of its certificate; `null` without.
+  (the cable to the cell: `up` while it carries frames; `down` before any board answered, while the port is not open
+  -- an adapter unplugged -- or after 3 s with nothing on it), and `hub.link_detail` says why it is `down` (empty when
+  `up`). `hub.tls_fp`: with `--listen`, the SHA-256 of its certificate; `null` without.
   `hub.relay`: counts for the PC's other tools that go through the hub, `{clients, requests, replies, unmatched,
   fanned_out, node_frames_out, node_frames_in}`. `hub.telemetry` counts `{pulls, replies, failures, events}`.
   `hub.interest`: the on-demand reads programs ask for (POST /api/interest), `{paths, clients, max, per_client}`.

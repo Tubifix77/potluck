@@ -485,18 +485,21 @@ uint32_t hal_free_dram(void*) { return free_internal_dram(); }
 // channel at the next boot, pulling the cell after it instead of keeping it where it was.
 namespace chan_store {
 constexpr const char* kNs = "potchan";
+uint8_t g_home = 0;  // the channel saved with the cell: at boot, then each save (the split probe looks there first)
 uint8_t load() {
     nvs_handle_t h;
     uint8_t ch = 0;
     if (nvs_open(kNs, NVS_READONLY, &h) != ESP_OK) return 0;
     if (nvs_get_u8(h, "chan", &ch) != ESP_OK) ch = 0;
     nvs_close(h);
+    g_home = ch;
     return ch;
 }
 void save_if_with_cell(uint8_t ch, size_t radio_peers_alive) {
     static uint8_t s_saved = 0;  // this boot's last write, to spare NVS a read every period
     if (ch < 1 || ch > 14 || radio_peers_alive == 0 || ch == s_saved) return;
     s_saved = ch;
+    g_home = ch;
     nvs_handle_t h;
     if (nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) return;
     uint8_t old = 0;
@@ -2064,7 +2067,7 @@ void link_task(void*) {
                 xSemaphoreGive(g_mutex);
                 const SplitProbe::Act act = deploy_rt::g_split.tick(SplitProbe::Inputs{
                     nt, assoc, radio_ch, uplink::seen_channels(), missing, static_cast<uint8_t>(deploy_rt::g_members_n),
-                    alive, outranked});
+                    alive, outranked, chan_store::g_home});
                 if (act != SplitProbe::Act::None && uplink::join_channel(deploy_rt::g_split.target())) {
                     std::printf("{\"t\":\"split\",\"act\":\"%s\",\"from\":%u,\"to\":%u,\"missing\":%u,\"alive\":%u}\n",
                                 act == SplitProbe::Act::Probe ? "probe" : "return", static_cast<unsigned>(radio_ch),
