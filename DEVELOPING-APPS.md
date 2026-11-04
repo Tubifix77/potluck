@@ -422,7 +422,8 @@ the smaller figures in brackets.
 |---|---|
 | 0x80-0x8F | the room-presence app built into the release image |
 | 0x90-0x9F | [potluck-amiga](https://github.com/Tubifix77/potluck-amiga), an Amiga 500 emulator (M27's experiment, 2026-10-26) |
-| 0xA0-0xEF | free: ask Potluck's maintainer for a block ([an issue](https://github.com/Tubifix77/potluck/issues)); it is recorded here. Until then, use one provisionally and say so in your README (JSON has no comments; the descriptor loader ignores keys it does not know) |
+| 0xA0-0xAF | the field watch, `examples/field-watch` (Potluck's own; an alarm when two of three senses agree, 2026-11-04) |
+| 0xB0-0xEF | free: ask Potluck's maintainer for a block ([an issue](https://github.com/Tubifix77/potluck/issues)); it is recorded here. Until then, use one provisionally and say so in your README (JSON has no comments; the descriptor loader ignores keys it does not know) |
 | 0xF0-0xFF | Potluck's own examples and tests (`pot_hello` is 0xF0) |
 
 ---

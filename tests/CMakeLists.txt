@@ -159,6 +159,7 @@ add_test(NAME pot_tests COMMAND pot_tests)
 # is compiled and run here every time, not only in someone else's repository.
 add_subdirectory(testkit)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../examples/apps/pot_hello/tests" pot_hello_tests)
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../examples/field-watch/pot_watch/tests" pot_watch_tests)  # 2026-11-04
 
 # The suites are also registered individually so a failure names the area rather than just
 # "pot_tests". The filter is a substring match on suite or case name.

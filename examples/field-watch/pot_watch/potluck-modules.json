@@ -1,0 +1,25 @@
+{
+  "component": "pot_watch",
+  "types": [160, 175],
+  "modules": [
+    {
+      "module": "ext:watch/two_of_three",
+      "type": 160,
+      "placement": "portable",
+      "panel": {"kind": "value", "output": "act/{actor}/out", "label": "Field watch"},
+      "outputs": ["act/{actor}/out", "act/{actor}/agree", "act/{actor}/missing"],
+      "config": [
+        {"name": "outputs", "kind": "path"},
+        {"name": "presence", "kind": "path"},
+        {"name": "presence_min", "kind": "f32", "default": 0.5},
+        {"name": "motion", "kind": "path"},
+        {"name": "motion_b", "kind": "path"},
+        {"name": "motion_min", "kind": "f32", "default": 5.0},
+        {"name": "sound", "kind": "path"},
+        {"name": "sound_min", "kind": "f32", "default": -35.0},
+        {"name": "hold_ms", "kind": "u16", "default": 10000, "min": 1000, "max": 60000},
+        {"name": "led", "kind": "bool", "default": true}
+      ]
+    }
+  ]
+}
