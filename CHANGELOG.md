@@ -15,7 +15,9 @@ Potluck's releases. The full record -- every milestone with its measurements and
   pulls it out of the cell. When a scan hears nothing on the cell's channel, the station looks on that channel alone
   up to three times before it joins another; and a board split from its cell looks first on the channel it last
   shared with the cell. (A board powered on into another channel had taken 219 s to find its cell.) The `wifi` status
-  line gains `looks`, `look_found` and `first_ch`.
+  line gains `looks`, `look_found` and `first_ch`. The root of it: while its station was still searching, a board took
+  the radio's idle channel (1) for its own, and the station preferred that over the channel saved with the cell, at
+  every power-on; a board now keeps the saved channel until its station associates.
 - **The hub's link reads down when the cable is**: `hub.link` is `down`, with `hub.link_detail` saying why, while the
   serial port is not open (an adapter unplugged) or after 3 s with nothing over the cable. It used to stay `up` once a
   board had answered.

@@ -4239,10 +4239,12 @@ extern "C" void app_main(void) {
     cfg.hello_interval_ms = CONFIG_POT_HELLO_INTERVAL_MS;
     cfg.channel = ecfg.channel;
     if (uplink::active()) {
-        // M6.1: the router owns this radio's channel. Declare what it is on now (0 until the station
-        // first associates), never hop, never follow an announcement -- CR-1's station case.
+        // M6.1: the router owns this radio's channel. Declare what it is on now, never hop, never follow an
+        // announcement -- CR-1's station case. Only once associated: before that the driver sits on its default
+        // channel (1), and taking it made the station prefer 1 over the saved channel at every power-on -- the link
+        // loop prefers the node's channel -- so C joined channel 1 with the cell on 11 (2026-11-04, its boot log).
         const uint8_t now_ch = espnow_current_channel();
-        if (now_ch >= cfg.channel_lo && now_ch <= cfg.channel_hi) cfg.channel = now_ch;
+        if (uplink::associated() && now_ch >= cfg.channel_lo && now_ch <= cfg.channel_hi) cfg.channel = now_ch;
         cfg.channel_fixed = true;
         // At boot the station is usually still hunting; the link loop tightens this once it associates.
         if (!uplink::associated()) {
