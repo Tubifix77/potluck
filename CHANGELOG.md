@@ -5,6 +5,14 @@ Potluck's releases. The full record -- every milestone with its measurements and
 
 ## Unreleased
 
+- **The field watch** (`examples/field-watch`, type block 0xA0-0xAF): an example app that raises an alarm when two of
+  three senses agree -- a presence value, a camera's motion (the larger of two), a sound level -- each held on for a
+  while after it crossed its threshold. Portable, so it moves when its board goes; it blinks the LED of the board
+  running it cyan (an app cannot draw red, the board's own colour for a dead link). Outputs `act/<name>/out`,
+  `agree` and `missing`.
+- **A board keeps to the cell's channel**: it joins an access point on the cell's channel whenever it hears one at
+  -85 dBm or better (was -70), so a second access point under the same network name on another channel no longer
+  pulls it out of the cell.
 - **Update no longer offers older firmware**: an Apply builds firmware from the cluster's sources when no release
   matches, so the boards can run newer firmware than the installed Potluck carries. `cell.update.newer` says whether
   the release was built after the boards' firmware (a release records `built_at`), and `pending` is false when it was
